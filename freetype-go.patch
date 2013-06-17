@@ -1,0 +1,70 @@
+diff -r 15b6d4e04151 freetype/freetype.go
+--- a/freetype/freetype.go	Wed Jul 25 22:10:25 2012 +1000
++++ b/freetype/freetype.go	Sun May 26 07:56:07 2013 +0200
+@@ -66,7 +66,7 @@
+ 	// fontSize and dpi are used to calculate scale. scale is the number of
+ 	// 26.6 fixed point units in 1 em.
+ 	fontSize, dpi float64
+-	scale         int32
++	Scale         int32
+ 	// cache is the glyph cache.
+ 	cache [nGlyphs * nXFractions * nYFractions]cacheEntry
+ }
+@@ -128,7 +128,7 @@
+ // given glyph at the given sub-pixel offsets.
+ // The 24.8 fixed point arguments fx and fy must be in the range [0, 1).
+ func (c *Context) rasterize(glyph truetype.Index, fx, fy raster.Fix32) (*image.Alpha, image.Point, error) {
+-	if err := c.glyphBuf.Load(c.font, c.scale, glyph, nil); err != nil {
++	if err := c.glyphBuf.Load(c.font, c.Scale, glyph, nil); err != nil {
+ 		return nil, image.ZP, err
+ 	}
+ 	// Calculate the integer-pixel bounds for the glyph.
+@@ -161,7 +161,7 @@
+ // glyph returns the glyph mask and integer-pixel offset to render the given
+ // glyph at the given sub-pixel point. It is a cache for the rasterize method.
+ // Unlike rasterize, p's co-ordinates do not have to be in the range [0, 1).
+-func (c *Context) glyph(glyph truetype.Index, p raster.Point) (*image.Alpha, image.Point, error) {
++func (c *Context) Glyph(glyph truetype.Index, p raster.Point) (*image.Alpha, image.Point, error) {
+ 	// Split p.X and p.Y into their integer and fractional parts.
+ 	ix, fx := int(p.X>>8), p.X&0xff
+ 	iy, fy := int(p.Y>>8), p.Y&0xff
+@@ -198,13 +198,13 @@
+ 	for _, rune := range s {
+ 		index := c.font.Index(rune)
+ 		if hasPrev {
+-			p.X += raster.Fix32(c.font.Kerning(c.scale, prev, index)) << 2
++			p.X += raster.Fix32(c.font.Kerning(c.Scale, prev, index)) << 2
+ 		}
+-		mask, offset, err := c.glyph(index, p)
++		mask, offset, err := c.Glyph(index, p)
+ 		if err != nil {
+ 			return raster.Point{}, err
+ 		}
+-		p.X += raster.Fix32(c.font.HMetric(c.scale, index).AdvanceWidth) << 2
++		p.X += raster.Fix32(c.font.HMetric(c.Scale, index).AdvanceWidth) << 2
+ 		glyphRect := mask.Bounds().Add(offset)
+ 		dr := c.clip.Intersect(glyphRect)
+ 		if !dr.Empty() {
+@@ -219,12 +219,12 @@
+ // recalc recalculates scale and bounds values from the font size, screen
+ // resolution and font metrics, and invalidates the glyph cache.
+ func (c *Context) recalc() {
+-	c.scale = int32(c.fontSize * c.dpi * (64.0 / 72.0))
++	c.Scale = int32(c.fontSize * c.dpi * (64.0 / 72.0))
+ 	if c.font == nil {
+ 		c.r.SetBounds(0, 0)
+ 	} else {
+ 		// Set the rasterizer's bounds to be big enough to handle the largest glyph.
+-		b := c.font.Bounds(c.scale)
++		b := c.font.Bounds(c.Scale)
+ 		xmin := +int(b.XMin) >> 6
+ 		ymin := -int(b.YMax) >> 6
+ 		xmax := +int(b.XMax+63) >> 6
+@@ -288,6 +288,6 @@
+ 		glyphBuf: truetype.NewGlyphBuf(),
+ 		fontSize: 12,
+ 		dpi:      72,
+-		scale:    12 << 6,
++		Scale:    12 << 6,
+ 	}
+ }

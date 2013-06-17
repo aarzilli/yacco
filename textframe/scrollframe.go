@@ -1,0 +1,160 @@
+package textframe
+
+import (
+	"image/draw"
+	"image"
+	"time"
+	"runtime"
+	"github.com/skelterjohn/go.wde"
+)
+
+type ScrollFrame struct {
+	b draw.Image // where the scrollbar and textframe will be displayed
+	r image.Rectangle // the rectangle that should be occupied by the scrollbar and textframe
+	Wnd wde.Window
+	Color image.Uniform // color for the scrollbar
+	Width int // horizontal width of the scrollbar
+	Fr Frame // text frame
+
+	bodyLen int
+}
+
+// Initializes the ScrollFrame, will set B, R and Wnd of the underlying Frame itself
+func (sfr *ScrollFrame) Init(margin int) error {
+	sfr.Fr.B = sfr.b
+	sfr.Fr.R = sfr.r
+	sfr.Fr.R.Min.X += sfr.Width
+	sfr.Fr.Wnd = sfr.Wnd
+	if sfr.Width < 2 {
+		return ScrollFrameErrorNotWideEnough
+	}
+	return sfr.Fr.Init(margin)
+}
+
+func (sfr *ScrollFrame) Set(top, bodyLen int) {
+	sfr.Fr.Top = top
+	sfr.bodyLen = bodyLen
+}
+
+func (sfr *ScrollFrame) scale(x int) int {
+	scrollsz := (sfr.r.Max.Y - sfr.r.Min.Y)
+	return int(float32(x) / float32(sfr.bodyLen) * float32(scrollsz))
+}
+
+func (sfr *ScrollFrame) SetRects(b draw.Image, r image.Rectangle) {
+	sfr.b = b
+	sfr.r = r
+	sfr.Fr.B = sfr.b
+	sfr.Fr.R = sfr.r
+	sfr.Fr.R.Min.X += sfr.Width
+}
+
+func (sfr *ScrollFrame) Redraw(flush bool) {
+	drawingFuncs := GetOptimizedDrawing(sfr.b)
+
+	// background
+	bgr := sfr.r
+	bgr.Max.X = bgr.Min.X + sfr.Width
+	drawingFuncs.DrawFillSrc(sfr.b, sfr.r.Intersect(bgr), &sfr.Color)
+
+	// position indicator
+	posr := bgr
+	posr.Max.X = posr.Max.X - 1
+	posr.Min.Y = sfr.scale(sfr.Fr.Top) + sfr.r.Min.Y
+	posz := sfr.scale(len(sfr.Fr.glyphs))
+	if posz < 5 {
+		posz = 5
+	}
+	posr.Max.Y = posz + posr.Min.Y
+	drawingFuncs.DrawFillSrc(sfr.b, sfr.r.Intersect(posr), &sfr.Fr.Colors[0][0])
+
+	sfr.Fr.Redraw(false)
+
+	if flush && (sfr.Wnd != nil) {
+		sfr.Wnd.FlushImage(sfr.r)
+	}
+}
+
+func (sfr *ScrollFrame) scrollSetClick(event wde.MouseDownEvent, events <-chan interface{}) {
+	scrollr := sfr.r
+	scrollr.Max.X = scrollr.Min.X + sfr.Width
+
+	for ei := range events {
+		runtime.Gosched()
+		switch e := ei.(type) {
+		case wde.MouseUpEvent:
+			return
+		case wde.MouseDraggedEvent:
+			p := int(float32(e.Where.Y - sfr.r.Min.Y) / float32(sfr.r.Max.Y - sfr.r.Min.Y) * float32(sfr.bodyLen))
+			sfr.Fr.Scroll(0, p)
+			sfr.Redraw(true)
+		}
+	}
+}
+
+func (sfr *ScrollFrame) Under(p image.Point) bool {
+	return p.In(sfr.r)
+}
+
+// If the click wasn't in the scrollbar area returns false
+// Otherwise handles the click, until mouse-up is received, then returns true
+func (sfr *ScrollFrame) ScrollClick(e wde.MouseDownEvent, events <-chan interface{}) bool {
+	scrollr := sfr.r
+	scrollr.Max.X = scrollr.Min.X + sfr.Width
+
+	if !e.Where.In(scrollr) {
+		return false
+	}
+
+	if e.Which == wde.MiddleButton {
+		sfr.scrollSetClick(e, events)
+		return false
+	}
+
+	where := e.Where
+	which := e.Which
+	autoscrollTicker := time.NewTicker(200 * time.Millisecond)
+
+	scroll := func() {
+		c := int(float32(where.Y - sfr.r.Min.Y) / float32(sfr.Fr.lineHeight() >> 8))
+
+		switch which {
+		case wde.LeftButton:
+			sfr.Fr.Scroll(-1, c)
+		case wde.RightButton:
+			sfr.Fr.Scroll(1, c)
+		}
+		sfr.Redraw(true)
+	}
+
+	scroll()
+
+	loop:
+	for {
+		runtime.Gosched()
+		select {
+		case ei := <- events:
+			switch e := ei.(type) {
+			case wde.MouseUpEvent:
+				break loop
+			case wde.MouseDraggedEvent:
+				where = e.Where
+			}
+
+		case <- autoscrollTicker.C:
+			scroll()
+		}
+	}
+
+	return true
+}
+
+func (sfr *ScrollFrame) OnClick(e wde.MouseDownEvent, events <- chan interface{}) {
+	if sfr.ScrollClick(e, events) {
+		return
+	}
+
+	sfr.Fr.OnClick(e, events)
+
+	sfr.Redraw(true)
+}
