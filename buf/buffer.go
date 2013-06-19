@@ -234,6 +234,9 @@ func (b *Buffer) Tonl(start int, dir int) int {
 	ba, bb := b.Selection(util.Sel{ 0, sz })
 
 	i := start
+	if i < 0 {
+		i = 0
+	}
 	if i >= sz {
 		i = sz-1
 	}
@@ -263,4 +266,17 @@ func (b *Buffer) ShortName() string {
 	p, _ = filepath.Rel(wd, filepath.Clean(p))
 	//TODO: compress like ppwd
 	return p
+}
+
+func (b *Buffer) FixSel(sel *util.Sel) {
+	if sel.S < 0 {
+		sel.S = 0
+	} else if sel.S > b.Size() {
+		sel.S = b.Size()
+	}
+	if sel.E < 0 {
+		sel.E = 0
+	} else if sel.E > b.Size() {
+		sel.S = b.Size()
+	}
 }

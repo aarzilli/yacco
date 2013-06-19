@@ -64,7 +64,7 @@ type Frame struct {
 	cs      []*freetype.Context
 	glyphs  []glyph
 	ins     raster.Point
-	atStart bool
+	lastFull int
 
 	dblclickp int
 	dblclickc int
@@ -172,7 +172,7 @@ func (fr *Frame) Clear() {
 	gb := fr.Font.Bounds()
 	fr.ins = raster.Point{raster.Fix32(fr.R.Min.X<<8) + fr.margin, raster.Fix32(fr.R.Min.Y << 8) + raster.Fix32(gb.YMax << 8)}
 	fr.glyphs = fr.glyphs[:0]
-	fr.atStart = true
+	fr.lastFull = 0
 }
 
 // Inserts text into the frame, returns number of inserted runes
@@ -206,6 +206,10 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 	for i, crune := range runes {
 		if p.Y > bottom {
 			return i
+		}
+
+		if p.Y + lh < bottom {
+			fr.lastFull = i
 		}
 
 		if crune.R == '\n' {
@@ -244,19 +248,19 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 		} else if (crune.R == ' ') && (fr.Hackflags&HF_BOLSPACES != 0) {
 			width := raster.Fix32(0)
 			if i == 0 {
-				if fr.atStart {
+				if len(fr.glyphs) == 0 {
 					width = bigSpaceWidth
 				} else {
 					width = spaceWidth
 				}
 			} else {
-				switch fr.glyphs[i-1].r {
+				switch fr.glyphs[len(fr.glyphs)-1].r {
 				case '\t':
 					fallthrough
 				case '\n':
 					width = bigSpaceWidth
 				case ' ':
-					width = fr.glyphs[i-1].width
+					width = fr.glyphs[len(fr.glyphs)-1].width
 				default:
 					width = spaceWidth
 				}
@@ -311,8 +315,6 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 			p.X += width
 			prev, prevFontIdx, hasPrev = index, fontIdx, true
 		}
-
-		fr.atStart = false
 	}
 	fr.ins = p
 	return len(runes)
@@ -325,6 +327,13 @@ func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interfac
 	var autoscrollTicker *time.Ticker
 	var autoscrollChan <-chan time.Time
 
+	stopAutoscroll := func() {
+		if autoscrollTicker != nil {
+			autoscrollTicker.Stop()
+			autoscrollTicker = nil
+		}
+	}
+
 	var lastPos image.Point
 
 	for {
@@ -335,10 +344,7 @@ func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interfac
 			case wde.MouseDraggedEvent:
 				lastPos  = e.Where
 				if e.Where.In(fr.R) {
-					if autoscrollTicker != nil {
-						autoscrollTicker.Stop()
-						autoscrollTicker = nil
-					}
+					stopAutoscroll()
 
 					p := fr.CoordToPoint(e.Where)
 					fr.SetSelect(idx, kind, fix, p)
@@ -350,10 +356,13 @@ func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interfac
 					}
 				}
 
+			case wde.MouseEnteredEvent:
+				stopAutoscroll()
+				return
+
 			case wde.MouseUpEvent:
-				if e.Which == button {
-					return
-				}
+				stopAutoscroll()
+				return
 			}
 
 		case <- autoscrollChan:
@@ -661,7 +670,6 @@ func (fr *Frame) scrollDir(recalcPos image.Point) int {
 }
 
 func (f *Frame) OnClick(e wde.MouseDownEvent, events <- chan interface{}) {
-
 	if e.Which == wde.WheelUpButton {
 		f.Scroll(-1, 1)
 		f.Redraw(true)
@@ -704,4 +712,19 @@ func (f *Frame) OnClick(e wde.MouseDownEvent, events <- chan interface{}) {
 		f.Select(sel, f.dblclickc, e.Which, events)
 		f.Redraw(true)
 	}
+}
+
+func (fr *Frame) LineNo() int {
+	return int(float32(fr.R.Max.Y - fr.R.Min.Y) / float32(fr.lineHeight() >> 8))
+}
+
+func (fr *Frame) Inside(p int) bool {
+	rp := p - fr.Top
+	if rp < 0 {
+		return false
+	}
+	if rp > fr.lastFull {
+		return false
+	}
+	return true
 }

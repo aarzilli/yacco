@@ -40,6 +40,7 @@ func realmain() {
 }
 
 func main() {
+	PlatformInit()
 	go realmain()
 	wde.Run()
 }

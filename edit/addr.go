@@ -2,13 +2,15 @@ package edit
 
 import (
 	"fmt"
+	"strconv"
 	"yacco/util"
+	"yacco/buf"
 )
 
 type Addr interface {
 	Empty() bool
 	String() string
-	Eval(sel *util.Sel)
+	Eval(b *buf.Buffer, sel util.Sel) util.Sel
 }
 
 type AddrOp struct {
@@ -25,8 +27,9 @@ func (e *AddrOp) String() string {
 	return fmt.Sprintf("Op<%s %s %s>", e.Lh.String(), e.Op, e.Rh.String())
 }
 
-func (e *AddrOp) Eval(sel *util.Sel) {
+func (e *AddrOp) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 	//TODO
+	return
 }
 
 type addrEmpty struct {
@@ -40,7 +43,8 @@ func (e *addrEmpty) String() string {
 	return "·"
 }
 
-func (e *addrEmpty) Eval(sel *util.Sel) {
+func (e *addrEmpty) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
+	return sel
 }
 
 type AddrBase struct {
@@ -63,30 +67,94 @@ func (e *AddrBase) String() string{
 	return fmt.Sprintf("%s%s%s", dirch, e.Batype, e.Value)
 }
 
-func (e *AddrBase) Eval(sel *util.Sel) {
+func (e *AddrBase) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 	switch e.Batype {
 	case ".":
+		if e.Dir != 0 {
+			panic(fmt.Errorf("Bad address syntax, non-absolute '.'"))
+		}
+		rsel = sel
 		// Nothing to do
 
 	case "":
-		//TODO: by line
+		if e.Dir >= 0 {
+			rsel = sel
+			if rsel.S != rsel.E {
+				rsel.E -= 1
+			}
+
+			prev_lineend := rsel.E
+			lineend := b.Tonl(rsel.S, 1)
+			for i := 0; i < asnumber(e.Value); i++ {
+				prev_lineend = lineend
+				lineend = b.Tonl(lineend, 1)
+			}
+			rsel.S = prev_lineend
+			rsel.E = lineend
+		} else {
+			rsel = sel
+			prev_linestart := rsel.S
+			linestart := b.Tonl(rsel.S-1, -1)
+			if linestart >= prev_linestart {
+				linestart = prev_linestart
+			}
+			for i := 0; i < asnumber(e.Value); i++ {
+				prev_linestart = linestart
+				linestart = b.Tonl(linestart-2, -1)
+			}
+			rsel.S = linestart
+			rsel.E = prev_linestart
+		}
+
+		return rsel
 
 	case "#w":
+		rsel = setStartSel(e.Dir, sel)
 		//TODO: by word
 
 	case "#":
-		//TODO: by character
+		rsel = setStartSel(e.Dir, sel)
+		rsel.S += e.Dir * asnumber(e.Value)
+		b.FixSel(&rsel)
+		rsel.E = rsel.S
 
 	case "$":
-		//TODO: end of file
+		if e.Dir != 0 {
+			panic(fmt.Errorf("Bad address syntax, non-absolute '$'"))
+		}
+		rsel.S = b.Size()
+		rsel.E = rsel.S
 
 	case "?":
-		//TODO: regexp backwards
+		rsel = setStartSel(e.Dir, sel)
+		rsel = regexpEval(b, rsel, e.Value, -e.Dir)
 
 	case "/":
-		//TODO: regexp forward
+		rsel = setStartSel(e.Dir, sel)
+		rsel = regexpEval(b, rsel, e.Value, e.Dir)
 
 	}
+
+	return rsel
+}
+
+func setStartSel(dir int, sel util.Sel) (rsel util.Sel) {
+	if dir == 0 {
+		rsel.S = 0
+		rsel.E = 0
+	} else if dir > 0 {
+		rsel.S = sel.E
+		rsel.E = sel.E
+	} else if dir < 0 {
+		rsel.S = sel.S
+		rsel.E = sel.E
+	}
+	return
+}
+
+func regexpEval(b *buf.Buffer, sel util.Sel, rstr string, dir int) util.Sel{
+	//TODO: search regexp in given direction
+	return sel
 }
 
 type AddrList struct {
@@ -106,6 +174,18 @@ func (e *AddrList) String() string{
 	return s
 }
 
-func (e *AddrList) Eval(sel *util.Sel) {
-	//TODO
+func (e *AddrList) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
+	r := sel
+	for _, addr := range e.addrs {
+		r = addr.Eval(b, r)
+	}
+	return r
+}
+
+func asnumber(v string) int {
+	n, err := strconv.Atoi(v)
+	if err != nil {
+		n = 0
+	}
+	return n
 }

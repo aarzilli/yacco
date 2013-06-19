@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"strings"
+	"regexp"
 	"yacco/buf"
 	"yacco/edit"
 	"yacco/textframe"
@@ -51,8 +53,16 @@ var cmds = map[string]Cmd{
 	"Cd": CdCmd,
 }
 
+var spacesRe = regexp.MustCompile("\\s+")
+
 func Exec(ec ExecContext, cmd string) {
-	v := strings.SplitN(strings.TrimSpace(cmd), "\\s+", 2)
+	defer func() {
+		if r := recover(); r != nil {
+			errmsg := fmt.Sprintf("%v", r)
+			Warn(errmsg)
+		}
+	}()
+	v := spacesRe.Split(strings.TrimSpace(cmd), 2)
 	if f, ok := cmds[v[0]]; ok {
 		f(ec, v[1])
 	} else {

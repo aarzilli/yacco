@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"unicode"
 	"yacco/util"
+	"yacco/buf"
 )
 
 type cmdDef struct {
@@ -14,6 +15,7 @@ type cmdDef struct {
 	addrarg bool
 	bodyarg bool
 	optxtarg bool
+	fn func(c *cmd, buf *buf.Buffer, sels []util.Sel)
 }
 
 var commands = map[rune]cmdDef{
@@ -49,7 +51,7 @@ func parseEx(pgm []rune) (*cmd, []rune) {
 	for {
 		if len(rest) == 0 {
 			addr := parseAddr(addrs)
-			r, rest = parseCmd(' ', cmdDef{0, false, false, false, false}, addr, []rune{})
+			r, rest = parseCmd(' ', cmdDef{txtargs: 0, fn: nilcmdfn }, addr, []rune{})
 			break
 		}
 
@@ -80,6 +82,7 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*cmd, []run
 	r := &cmd{}
 	r.cmdch = cmdch
 	r.rangeaddr = addr
+	r.fn = theCmdDef.fn
 
 	rest = skipSpaces(rest)
 
@@ -103,7 +106,6 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*cmd, []run
 	if theCmdDef.txtargs > 0 {
 		if !unicode.IsLetter(rest[0]) && !unicode.IsDigit(rest[0]) {
 			endr := rest[0]
-			r.delim = endr
 			rest = rest[1:]
 			for i := 0; i < theCmdDef.txtargs; i++ {
 				var arg string
@@ -202,6 +204,7 @@ func readNumber(rest []rune) (string, []rune) {
 }
 
 func readDelim(pgm []rune, endr rune) (string, []rune) {
+	r := []rune{}
 	escaping := false
 	for i := 1; i < len(pgm); i++ {
 		if !escaping {
@@ -209,9 +212,17 @@ func readDelim(pgm []rune, endr rune) (string, []rune) {
 			case '\\':
 				escaping = true
 			case endr:
-				return string(pgm[:i]), pgm[i+1:]
+				return string(r), pgm[i+1:]
+			default:
+				r = append(r, pgm[i])
 			}
 		} else {
+			if pgm[i] == endr {
+				r = append(r, endr)
+			} else {
+				r = append(r, '\\')
+				r = append(r, pgm[i])
+			}
 			escaping = false
 		}
 	}

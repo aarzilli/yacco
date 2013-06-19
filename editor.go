@@ -115,7 +115,7 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
 	sfrr := r
 	sfrr.Min.Y = sfrr.Min.Y + TagHeight(&e.tagfr) + 3
 	sfrr.Max.X -= 2
-	sfrr.Max.Y -= 2
+	//sfrr.Max.Y -= 1
 	e.sfr.SetRects(b, sfrr)
 
 	e.sfr.Fr.Clear()
@@ -206,6 +206,7 @@ func (e *Editor) BufferRefresh(ontag bool) {
 		e.tagfr.Redraw(true)
 	} else {
 		e.sfr.Fr.Clear()
+		e.sfr.Set(e.top, e.bodybuf.Size())
 		ba, bb := e.bodybuf.Selection(util.Sel{ e.top, e.bodybuf.Size() })
 		e.sfr.Fr.InsertColor(ba)
 		e.sfr.Fr.InsertColor(bb)

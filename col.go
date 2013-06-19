@@ -83,7 +83,7 @@ func (c *Col) RecalcRects(screen draw.Image) {
 	c.tagfr.R = c.r
 	c.tagfr.R.Min.Y += 2
 	c.tagfr.R.Min.X += SCROLL_WIDTH
-	c.tagfr.R.Max.X -= 10
+	c.tagfr.R.Max.X -= 2
 	c.tagfr.R.Max.Y = c.tagfr.R.Min.Y + TagHeight(&c.tagfr)
 	c.tagfr.R = screen.Bounds().Intersect(c.tagfr.R)
 	c.tagfr.B = screen

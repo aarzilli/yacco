@@ -15,20 +15,24 @@ type cmd struct {
 	cmdch rune
 	rangeaddr Addr
 	txtargs []string
-	delim rune
 	numarg int
 	flags commandFlag
 	argaddr Addr
 	body *cmd
+	fn func(c *cmd, buf *buf.Buffer, sels []util.Sel)
 }
 
-func Edit(pgm string, buf *buf.Buffer, sels []util.Sel) {
+func Edit(pgm string, b *buf.Buffer, sels []util.Sel) {
 	ppgm := parse([]rune(pgm))
-	ppgm.Exec(buf, sels)
+	ppgm.Exec(b, sels)
 }
 
-func (ecmd *cmd) Exec(buf *buf.Buffer, sels []util.Sel) {
-	//TODO
+func (ecmd *cmd) Exec(b *buf.Buffer, sels []util.Sel) {
+	if ecmd.fn == nil {
+		panic(fmt.Errorf("Command '%c' not implemented", ecmd.cmdch))
+	}
+
+	ecmd.fn(ecmd, b, sels)
 }
 
 func (ecmd *cmd) String() string {

@@ -7,6 +7,7 @@ import (
 
 type ColorScheme struct {
 	WindowBG image.Uniform
+	TooltipBG image.Uniform
 
 	Border image.Uniform
 	Scrollbar image.Uniform

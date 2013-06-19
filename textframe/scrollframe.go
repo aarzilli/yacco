@@ -84,6 +84,8 @@ func (sfr *ScrollFrame) scrollSetClick(event wde.MouseDownEvent, events <-chan i
 		switch e := ei.(type) {
 		case wde.MouseUpEvent:
 			return
+		case wde.MouseExitedEvent:
+			return
 		case wde.MouseDraggedEvent:
 			p := int(float32(e.Where.Y - sfr.r.Min.Y) / float32(sfr.r.Max.Y - sfr.r.Min.Y) * float32(sfr.bodyLen))
 			sfr.Fr.Scroll(0, p)

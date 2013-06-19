@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"fmt"
 	"image"
 	"runtime"
 	"image/draw"
@@ -117,56 +118,53 @@ func (w *Window) Resized() {
 func (w *Window) EventLoop() {
 	events := util.FilterEvents(wnd.wnd.EventChan())
 	var lastWhere image.Point
-	for {
+	for ei := range events {
 		runtime.Gosched()
-		select {
-		case ei := <- events:
-			switch e := ei.(type) {
-			case wde.CloseEvent:
-				wde.Stop()
+		switch e := ei.(type) {
+		case wde.CloseEvent:
+			wde.Stop()
 
-			case wde.ResizeEvent:
-				wnd.Resized()
+		case wde.ResizeEvent:
+			wnd.Resized()
 
-			case wde.MouseMovedEvent:
-				lastWhere = e.Where
-				wnd.SetTick(e.Where)
+		case wde.MouseMovedEvent:
+			lastWhere = e.Where
+			wnd.SetTick(e.Where)
 
-			case wde.MouseDownEvent:
-				lastWhere = e.Where
-				lp := w.TranslatePosition(e.Where)
+		case wde.MouseDownEvent:
+			lastWhere = e.Where
+			lp := w.TranslatePosition(e.Where)
 
-				if lp.tagfr != nil {
-					lp.tagfr.OnClick(e, events)
-					break
-				}
-
-				if lp.sfr != nil {
-					lp.sfr.OnClick(e, events)
-					break
-				}
-
-				if lp.ed != nil { // clicked on editor's resize handle
-					w.EditorMove(lp.ed, e, events)
-					break
-				}
-
-				if lp.col != nil { // clicked on column's resize handle
-					//TODO: resize column
-				}
-
-			case wde.MouseExitedEvent:
-				wnd.HideAllTicks()
-
-			case wde.MouseEnteredEvent:
-				lastWhere = e.Where
-				wnd.SetTick(e.Where)
-
-			case wde.KeyTypedEvent:
-				lp := w.TranslatePosition(lastWhere)
-
-				w.Type(lp, e)
+			if lp.tagfr != nil {
+				lp.tagfr.OnClick(e, events)
+				break
 			}
+
+			if lp.sfr != nil {
+				lp.sfr.OnClick(e, events)
+				break
+			}
+
+			if lp.ed != nil { // clicked on editor's resize handle
+				w.EditorMove(lp.col, lp.ed, e, events)
+				break
+			}
+
+			if lp.col != nil { // clicked on column's resize handle
+				w.ColResize(lp.col, e, events)
+			}
+
+		case wde.MouseExitedEvent:
+			wnd.HideAllTicks()
+
+		case wde.MouseEnteredEvent:
+			lastWhere = e.Where
+			wnd.SetTick(e.Where)
+
+		case wde.KeyTypedEvent:
+			lp := w.TranslatePosition(lastWhere)
+
+			w.Type(lp, e)
 		}
 	}
 }
@@ -298,8 +296,8 @@ func dist(a, b image.Point) float32 {
 	return float32(math.Sqrt(float64(dx*dx + dy*dy)))
 }
 
-func (w *Window) EditorMove(ed *Editor, e wde.MouseDownEvent, events <-chan interface{}) {
-	//TODO: change mouse pointer
+func (w *Window) EditorMove(col *Col, ed *Editor, e wde.MouseDownEvent, events <-chan interface{}) {
+	w.wnd.ChangeCursor(wde.FleurCursor)
 
 	startPos := e.Where
 	endPos := startPos
@@ -312,7 +310,7 @@ loop:
 			break loop
 
 		case wde.MouseDownEvent:
-			//TODO: reset mouse pointer
+			w.wnd.ChangeCursor(-1)
 			return // cancelled
 
 		case wde.MouseDraggedEvent:
@@ -320,20 +318,59 @@ loop:
 		}
 	}
 
-	//TODO: reset mouse pointer
+	w.wnd.ChangeCursor(-1)
 
 	if dist(startPos, endPos) < 10 {
 		switch e.Which {
 		case wde.LeftButton:
 			//TODO: grow
-		case wde.RightButton:
-			//TODO: maximize
+
+		case wde.RightButton: // Maximize
+			d := endPos.Sub(ed.r.Min)
+			for _, oed := range col.editors {
+				if oed == ed {
+					continue
+				}
+				oed.frac = 0.0
+			}
+			ed.frac = 10.0
+			col.RecalcRects(col.tagfr.B)
+			w.wnd.WarpMouse(ed.r.Min.Add(d))
+			col.Redraw()
+			w.wnd.FlushImage()
 		}
 	} else {
 		//TODO: move
 	}
 }
 
+func (w *Window) ColResize(col *Col, e wde.MouseDownEvent, events <-chan interface{}) {
+	w.wnd.ChangeCursor(wde.FleurCursor)
+
+	startPos := e.Where
+	endPos := startPos
+
+loop:
+	for ei := range events {
+		runtime.Gosched()
+		switch e := ei.(type) {
+		case wde.MouseUpEvent:
+			break loop
+
+		case wde.MouseDownEvent:
+			w.wnd.ChangeCursor(-1)
+			return // cancelled
+
+		case wde.MouseDraggedEvent:
+			endPos = e.Where
+		}
+	}
+
+	w.wnd.ChangeCursor(-1)
+
+	//TODO: resize column
+	println("Moved to:", endPos.String())
+}
 
 func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
 	var ec = ExecContext{
@@ -412,13 +449,31 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			ec.br.BufferRefresh(ec.ontag)
 		}
 
+	case "backspace":
+		ec := lp.asExecContext(true)
+		if ec.fr.Sels[0].S == ec.fr.Sels[0].E {
+			ec.fr.Sels[0].S--
+			ec.buf.FixSel(&ec.fr.Sels[0])
+		}
+		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels)
+		ec.br.BufferRefresh(ec.ontag)
+
+	case "delete":
+		ec := lp.asExecContext(true)
+		if ec.fr.Sels[0].S == ec.fr.Sels[0].E {
+			ec.fr.Sels[0].E++
+			ec.buf.FixSel(&ec.fr.Sels[0])
+		}
+		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels)
+		ec.br.BufferRefresh(ec.ontag)
+
 	default:
 		ec := lp.asExecContext(true)
 		if cmd, ok := config.KeyBindings[e.Chord]; ok {
-			println("Execute command: <" + cmd + ">")
+			//println("Execute command: <" + cmd + ">")
 			Exec(ec, cmd)
 			ec.ed.BufferRefresh(ec.ontag)
-		} else {
+		} else if e.Glyph != "" {
 			if !ec.ontag && ec.ed != nil {
 				activeEditor = ec.ed
 			}
@@ -426,5 +481,22 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			ec.ed.BufferRefresh(ec.ontag)
 		}
 	}
+
+	if lp.sfr != nil {
+		if !lp.sfr.Fr.Inside(lp.sfr.Fr.Sels[0].E) {
+			n := lp.sfr.Fr.LineNo() / 2
+			x := lp.sfr.Fr.Sels[0].E
+			for i := 0; i < n; i++ {
+				x = lp.bodybuf.Tonl(x-2, -1)
+			}
+			lp.ed.top = x
+			lp.ed.BufferRefresh(false)
+		}
+	}
 }
 
+// Warn user about error
+func Warn(msg string) {
+	fmt.Printf("Warn: %s\n", msg)
+	//TODO: show a window with the error
+}
