@@ -1,11 +1,10 @@
 package config
 
-type AltingEntry struct {
-	Seq string
-	Glyph string
-}
+import (
+	"yacco/util"
+)
 
-var AltingList = []AltingEntry{
+var AltingList = []util.AltingEntry{
 	{ "+ + ", "␣" },
 	{ "+ +i", "ı" },
 	{ "+!+~+-", "≄" },

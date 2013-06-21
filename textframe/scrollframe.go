@@ -79,17 +79,21 @@ func (sfr *ScrollFrame) scrollSetClick(event wde.MouseDownEvent, events <-chan i
 	scrollr := sfr.r
 	scrollr.Max.X = scrollr.Min.X + sfr.Width
 
+	set := func(where image.Point) {
+		p := int(float32(where.Y - sfr.r.Min.Y) / float32(sfr.r.Max.Y - sfr.r.Min.Y) * float32(sfr.bodyLen))
+		sfr.Fr.Scroll(0, p)
+		sfr.Redraw(true)
+	}
+
+	set(event.Where)
+
 	for ei := range events {
 		runtime.Gosched()
 		switch e := ei.(type) {
 		case wde.MouseUpEvent:
 			return
-		case wde.MouseExitedEvent:
-			return
 		case wde.MouseDraggedEvent:
-			p := int(float32(e.Where.Y - sfr.r.Min.Y) / float32(sfr.r.Max.Y - sfr.r.Min.Y) * float32(sfr.bodyLen))
-			sfr.Fr.Scroll(0, p)
-			sfr.Redraw(true)
+			set(e.Where)
 		}
 	}
 }
@@ -110,7 +114,7 @@ func (sfr *ScrollFrame) ScrollClick(e wde.MouseDownEvent, events <-chan interfac
 
 	if e.Which == wde.MiddleButton {
 		sfr.scrollSetClick(e, events)
-		return false
+		return true
 	}
 
 	where := e.Where
@@ -151,12 +155,12 @@ func (sfr *ScrollFrame) ScrollClick(e wde.MouseDownEvent, events <-chan interfac
 	return true
 }
 
-func (sfr *ScrollFrame) OnClick(e wde.MouseDownEvent, events <- chan interface{}) {
+func (sfr *ScrollFrame) OnClick(e wde.MouseDownEvent, events <- chan interface{}) (bool, *wde.MouseUpEvent) {
 	if sfr.ScrollClick(e, events) {
-		return
+		return false, nil
 	}
 
-	sfr.Fr.OnClick(e, events)
-
+	ee := sfr.Fr.OnClick(e, events)
 	sfr.Redraw(true)
+	return true, ee
 }

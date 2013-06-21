@@ -3,6 +3,7 @@ package buf
 import (
 	"os"
 	"fmt"
+	"unicode"
 	"io/ioutil"
 	"yacco/util"
 	"yacco/textframe"
@@ -52,6 +53,7 @@ func NewBuffer(dir, name string) (b *Buffer) {
 			util.Must(err, fmt.Sprintf("Could not read %s/%s", dir, name))
 			runes := []rune(string(bytes))
 			b.Replace(runes, &util.Sel{ -1, 0 }, []util.Sel{})
+			b.Modified = false
 		} else {
 			// doesn't exist, mark as modified
 			b.Modified = true
@@ -71,8 +73,12 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel) {
 	}
 
 	if sel.S < b.EditableStart {
+		sel.S = b.EditableStart
+		sel.E = b.EditableStart
 		return
 	}
+
+	b.Modified = true
 
 	//TODO: stop lexer here
 
@@ -196,7 +202,11 @@ func (b *Buffer) Selection(sel util.Sel) ([]textframe.ColorRune, []textframe.Col
 	if (ps < b.gap) && (pe >= b.gap) {
 		return b.buf[ps:b.gap], b.buf[b.gap+b.gapsz:pe]
 	} else {
-		return b.buf[ps:pe], []textframe.ColorRune{}
+		if pe <= ps {
+			return []textframe.ColorRune{}, []textframe.ColorRune{}
+		} else {
+			return b.buf[ps:pe], []textframe.ColorRune{}
+		}
 	}
 }
 
@@ -260,6 +270,47 @@ func (b *Buffer) Tonl(start int, dir int) int {
 	}
 }
 
+func (b *Buffer) Towd(start int, dir int) int {
+	first := (dir < 0)
+	notfirst := !first
+	var i int
+	for i = start; (i >= 0) && (i < b.Size()); i += dir {
+		c := b.At(i).R
+		if !(unicode.IsLetter(c) || unicode.IsDigit(c) || (c == '_')) {
+			if !first {
+				i++
+			}
+			break
+		}
+		first = notfirst
+	}
+	if i < 0 {
+		i = 0
+	}
+	return i
+}
+
+func (b *Buffer) Tospc(start int, dir int) int {
+	first := (dir < 0)
+	notfirst := !first
+	var i int
+	for i = start; (i >= 0) && (i < b.Size()); i += dir {
+		c := b.At(i).R
+		if unicode.IsSpace(c) {
+			if !first {
+				i++
+			}
+			break
+		}
+		first = notfirst
+	}
+	if i < 0 {
+		i = 0
+	}
+	return i
+}
+
+
 func (b *Buffer) ShortName() string {
 	p := filepath.Join(b.Dir, b.Name)
 	wd, _ := os.Getwd()
@@ -279,4 +330,12 @@ func (b *Buffer) FixSel(sel *util.Sel) {
 	} else if sel.E > b.Size() {
 		sel.S = b.Size()
 	}
+}
+
+func ToRunes(v []textframe.ColorRune) []rune {
+	r := make([]rune, len(v))
+	for i := range v {
+		r[i] = v[i].R
+	}
+	return r
 }

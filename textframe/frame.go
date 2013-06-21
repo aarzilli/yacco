@@ -3,8 +3,6 @@ package textframe
 import (
 	"image"
 	"image/draw"
-	"io/ioutil"
-	"strings"
 	"runtime"
 	"time"
 	"unicode"
@@ -18,13 +16,6 @@ import (
 
 type Redrawable interface {
 	Redraw(flush bool)
-}
-
-type Font struct {
-	fonts   []*truetype.Font
-	dpi     float64
-	size    float64
-	Spacing float64
 }
 
 type ColorRune struct {
@@ -46,7 +37,7 @@ const (
 )
 
 type Frame struct {
-	Font        *Font
+	Font        *util.Font
 	Hackflags   uint32
 	B           draw.Image      // the image the text will be drawn upon
 	R           image.Rectangle // the rectangle occupied by the frame
@@ -93,33 +84,6 @@ type glyph struct {
 	color     uint8
 }
 
-// Reads a Font: fontPath is a ':' separated list of ttf font files (they will be used to search characters)
-func NewFont(dpi, size, lineSpacing float64, fontPath string) (*Font, error) {
-	fontPathV := strings.Split(fontPath, ":")
-	rf := &Font{make([]*truetype.Font, 0, len(fontPathV)), dpi, size, lineSpacing}
-	for _, fontfile := range fontPathV {
-		fontBytes, err := ioutil.ReadFile(fontfile)
-		if err != nil {
-			return nil, err
-		}
-		parsedfont, err := freetype.ParseFont(fontBytes)
-		if err != nil {
-			return nil, err
-		}
-		rf.fonts = append(rf.fonts, parsedfont)
-	}
-	return rf, nil
-}
-
-func (f *Font) LineHeight() int32 {
-	bounds := f.fonts[0].Bounds(int32(f.size))
-	return bounds.YMax - bounds.YMin
-}
-
-func (f *Font) Bounds() truetype.Bounds {
-	return f.fonts[0].Bounds(int32(f.size))
-}
-
 // Initializes frame
 func (fr *Frame) Init(margin int) error {
 	fr.margin = raster.Fix32(margin << 8)
@@ -144,14 +108,7 @@ func (fr *Frame) Init(margin int) error {
 
 	// create font contexts
 
-	fr.cs = make([]*freetype.Context, len(fr.Font.fonts))
-	for i, _ := range fr.Font.fonts {
-		fr.cs[i] = freetype.NewContext()
-		fr.cs[i].SetDPI(fr.Font.dpi)
-		fr.cs[i].SetFont(fr.Font.fonts[i])
-		fr.cs[i].SetFontSize(fr.Font.size)
-		fr.cs[i].SetClip(fr.R)
-	}
+	fr.cs = fr.Font.CreateContexts(fr.R)
 
 	fr.Clear()
 
@@ -199,8 +156,8 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 	bottom := raster.Fix32(fr.R.Max.Y<<8) + lh
 
 	_, xIndex := fr.getIndex('x')
-	spaceWidth := raster.Fix32(fr.Font.fonts[0].HMetric(fr.cs[0].Scale, spaceIndex).AdvanceWidth) << 2
-	bigSpaceWidth := raster.Fix32(fr.Font.fonts[0].HMetric(fr.cs[0].Scale, xIndex).AdvanceWidth) << 2
+	spaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, spaceIndex).AdvanceWidth) << 2
+	bigSpaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, xIndex).AdvanceWidth) << 2
 	tabWidth := bigSpaceWidth * raster.Fix32(fr.TabWidth)
 
 	for i, crune := range runes {
@@ -290,10 +247,10 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 
 			fontIdx, index := fr.getIndex(lur)
 			if hasPrev && (fontIdx == prevFontIdx) {
-				p.X += raster.Fix32(fr.Font.fonts[fontIdx].Kerning(fr.cs[fontIdx].Scale, prev, index)) << 2
+				p.X += raster.Fix32(fr.Font.Fonts[fontIdx].Kerning(fr.cs[fontIdx].Scale, prev, index)) << 2
 			}
 
-			width := raster.Fix32(fr.Font.fonts[fontIdx].HMetric(fr.cs[fontIdx].Scale, index).AdvanceWidth) << 2
+			width := raster.Fix32(fr.Font.Fonts[fontIdx].HMetric(fr.cs[fontIdx].Scale, index).AdvanceWidth) << 2
 
 			if fr.Hackflags&HF_TRUNCATE == 0 {
 				if p.X+width > rightMargin {
@@ -322,7 +279,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 
 // Tracks the mouse position, selecting text, the events channel is from go.wde
 // kind is 1 for character by character selection, 2 for word by word selection, 3 for line by line selection
-func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interface{}) {
+func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interface{}) *wde.MouseUpEvent {
 	fix := fr.Sels[idx].S
 	var autoscrollTicker *time.Ticker
 	var autoscrollChan <-chan time.Time
@@ -358,11 +315,11 @@ func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interfac
 
 			case wde.MouseEnteredEvent:
 				stopAutoscroll()
-				return
+				return nil
 
 			case wde.MouseUpEvent:
 				stopAutoscroll()
-				return
+				return &e
 			}
 
 		case <- autoscrollChan:
@@ -383,9 +340,23 @@ func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interfac
 // Sets extremes of the selection, pass start == end if you want an empty selection
 // idx is the index of the selection
 func (fr *Frame) SetSelect(idx, kind, start, end int) {
+	fr.setSelectEx(idx, kind, start, end, true)
+}
+
+func (fr *Frame) DisableOtherSelections(idx int) {
 	for i := range fr.Sels {
 		if i != idx {
 			fr.Sels[i].E = fr.Sels[i].S
+		}
+	}
+}
+
+func (fr *Frame) setSelectEx(idx, kind, start, end int, disableOther bool) {
+	if disableOther || (kind != 1) {
+		for i := range fr.Sels {
+			if (i != idx) && (i != 0) {
+				fr.Sels[i].E = fr.Sels[i].S
+			}
 		}
 	}
 
@@ -402,7 +373,14 @@ func (fr *Frame) SetSelect(idx, kind, start, end int) {
 	case 2:
 		var s, e int
 		first := true
-		for s = start-fr.Top; s >= 0; s-- {
+		s = start-fr.Top
+		if s >= len(fr.glyphs) {
+			s = len(fr.glyphs) - 1
+		}
+		if s < 0 {
+			s = 0
+		}
+		for ; s >= 0; s-- {
 			g := fr.glyphs[s].r
 			if !(unicode.IsLetter(g) || unicode.IsDigit(g) || (g == '_')) {
 				if !first { s++ }
@@ -415,6 +393,12 @@ func (fr *Frame) SetSelect(idx, kind, start, end int) {
 		}
 
 		first = true
+		if e >= len(fr.glyphs) {
+			e = len(fr.glyphs) - 1
+		}
+		if e < 0 {
+			e = 0
+		}
 		for e = end-fr.Top; e < len(fr.glyphs); e++ {
 			g := fr.glyphs[e].r
 			if !(unicode.IsLetter(g) || unicode.IsDigit(g) || (g == '_')) {
@@ -462,7 +446,7 @@ func (fr *Frame) CoordToPoint(coord image.Point) int {
 
 	ftcoord := freetype.Pt(coord.X, coord.Y)
 	lh := fr.lineHeight()
-	glyphBounds := fr.Font.fonts[0].Bounds(int32(fr.Font.size))
+	glyphBounds := fr.Font.Fonts[0].Bounds(int32(fr.Font.Size))
 
 	for i, g := range fr.glyphs {
 		if g.p.Y - raster.Fix32(glyphBounds.YMin << 8) < ftcoord.Y {
@@ -485,7 +469,7 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform) {
 	if s < 0 {
 		s = 0
 	}
-	glyphBounds := fr.Font.fonts[0].Bounds(int32(fr.Font.size))
+	glyphBounds := fr.Font.Fonts[0].Bounds(int32(fr.Font.Size))
 	rightMargin := raster.Fix32(fr.R.Max.X<<8) - fr.margin
 	leftMargin := raster.Fix32(fr.R.Min.X<<8) + fr.margin
 	drawingFuncs := GetOptimizedDrawing(fr.B)
@@ -528,7 +512,7 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform) {
 }
 
 func (fr *Frame) Redraw(flush bool) {
-	glyphBounds := fr.Font.fonts[0].Bounds(int32(fr.Font.size))
+	glyphBounds := fr.Font.Fonts[0].Bounds(int32(fr.Font.Size))
 	rightMargin := raster.Fix32(fr.R.Max.X<<8) - fr.margin
 	leftMargin := raster.Fix32(fr.R.Min.X<<8) + fr.margin
 
@@ -642,7 +626,7 @@ func (fr *Frame) Redraw(flush bool) {
 
 func (fr *Frame) getIndex(x rune) (fontIdx int, index truetype.Index) {
 	var font *truetype.Font
-	for fontIdx, font = range fr.Font.fonts {
+	for fontIdx, font = range fr.Font.Fonts {
 		index = font.Index(x)
 		if index != 0 {
 			return
@@ -669,17 +653,17 @@ func (fr *Frame) scrollDir(recalcPos image.Point) int {
 	return 0
 }
 
-func (f *Frame) OnClick(e wde.MouseDownEvent, events <- chan interface{}) {
+func (f *Frame) OnClick(e wde.MouseDownEvent, events <- chan interface{}) *wde.MouseUpEvent {
 	if e.Which == wde.WheelUpButton {
 		f.Scroll(-1, 1)
 		f.Redraw(true)
-		return
+		return nil
 	}
 
 	if e.Which == wde.WheelDownButton {
 		f.Scroll(+1, 1)
 		f.Redraw(true)
-		return
+		return nil
 	}
 
 	p := f.CoordToPoint(e.Where)
@@ -701,17 +685,20 @@ func (f *Frame) OnClick(e wde.MouseDownEvent, events <- chan interface{}) {
 
 	sel := int(math.Log2(float64(e.Which)))
 	if sel >= len(f.Sels) {
-		return
+		return nil
 	}
 
 	if p >= 0 {
-		f.SetSelect(sel, f.dblclickc, p, p)
+		f.setSelectEx(sel, f.dblclickc, p, p, false)
 		if f.dblclickc > 1 {
 			f.Redraw(true)
 		}
-		f.Select(sel, f.dblclickc, e.Which, events)
+		ee := f.Select(sel, f.dblclickc, e.Which, events)
 		f.Redraw(true)
+		return ee
 	}
+
+	return nil
 }
 
 func (fr *Frame) LineNo() int {

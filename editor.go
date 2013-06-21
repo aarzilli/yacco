@@ -3,7 +3,6 @@ package main
 import (
 	"image"
 	"image/draw"
-	"path/filepath"
 	"yacco/util"
 	"yacco/buf"
 	"yacco/config"
@@ -22,6 +21,7 @@ type Editor struct {
 	bodybuf *buf.Buffer
 	top int
 	tagbuf *buf.Buffer
+	confirmDel bool
 }
 
 const SCROLL_WIDTH = 10
@@ -58,14 +58,18 @@ func (e *Editor) SetWnd(wnd wde.Window) {
 func NewEditor(bodybuf *buf.Buffer) *Editor {
 	e := &Editor{}
 
+	e.confirmDel = false
+
 	e.bodybuf = bodybuf
 	e.tagbuf = buf.NewBuffer(bodybuf.Dir, "+Tag")
+
+	buffers = append(buffers, bodybuf)
 
 	e.sfr = textframe.ScrollFrame{
 		Width: SCROLL_WIDTH,
 		Color: config.TheColorScheme.Scrollbar,
 		Fr: textframe.Frame{
-			Font: Font,
+			Font: config.MainFont,
 			Hackflags: textframe.HF_MARKSOFTWRAP | textframe.HF_BOLSPACES | textframe.HF_QUOTEHACK,
 			Scroll: func (sd, sl int) { scrollfn(e, sd, sl) },
 			VisibleTick: false,
@@ -88,7 +92,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 		},
 	}
 	e.tagfr = textframe.Frame{
-		Font: Font,
+		Font: config.TagFont,
 		Hackflags: textframe.HF_MARKSOFTWRAP | textframe.HF_BOLSPACES | textframe.HF_QUOTEHACK,
 		Scroll: func (sd, sl int) { },
 		VisibleTick: false,
@@ -187,13 +191,25 @@ func (e *Editor) Redraw() {
 }
 
 func (e *Editor) GenTag() {
-	e.tagbuf.Replace([]rune(e.bodybuf.ShortName()), &e.tagfr.Sels[0], e.tagfr.Sels)
+	usertext := ""
+	if e.tagbuf.EditableStart >= 0 {
+		usertext = string(buf.ToRunes(e.tagbuf.SelectionX(util.Sel{ e.tagbuf.EditableStart, e.tagbuf.Size() })))
+	}
+
+	e.tagfr.Sels[0].S = 0
+	e.tagfr.Sels[0].E = e.tagbuf.Size()
+
+	t := e.bodybuf.ShortName()
+	t += config.DefaultEditorTag
 	if e.bodybuf.Modified {
+		t += " Put"
 		e.tagbuf.Replace([]rune(" Put"), &e.tagfr.Sels[0], e.tagfr.Sels)
 	}
 	//TODO: if has undo info add " Undo"
 	//TODO: if has redo info add " Redo"
-	e.tagbuf.Replace([]rune(" | "), &e.tagfr.Sels[0], e.tagfr.Sels)
+	t += " | " + usertext
+	e.tagbuf.EditableStart = -1
+	e.tagbuf.Replace([]rune(t), &e.tagfr.Sels[0], e.tagfr.Sels)
 	TagSetEditableStart(e.tagbuf)
 }
 
@@ -210,15 +226,30 @@ func (e *Editor) BufferRefresh(ontag bool) {
 		ba, bb := e.bodybuf.Selection(util.Sel{ e.top, e.bodybuf.Size() })
 		e.sfr.Fr.InsertColor(ba)
 		e.sfr.Fr.InsertColor(bb)
-		e.sfr.Redraw(true)
+
+		e.GenTag()
+		e.tagfr.Clear()
+		ta, tb := e.tagbuf.Selection(util.Sel{ 0, e.tagbuf.Size() })
+		e.tagfr.InsertColor(ta)
+		e.tagfr.InsertColor(tb)
+
+		e.Redraw()
+		e.sfr.Wnd.FlushImage()
 	}
 }
 
-func EditOpen(path string) *Editor {
-	abspath, err := filepath.Abs(path)
-	util.Must(err, "Error parsing argument")
-	dir := filepath.Dir(abspath)
-	name := filepath.Base(abspath)
-	return NewEditor(buf.NewBuffer(dir, name))
+func (ed *Editor) Column() *Col {
+	for _, col := range wnd.cols.cols {
+		for _, ce := range col.editors {
+			if ce == ed {
+				return col
+			}
+		}
+	}
+
+	return nil
 }
 
+func (ed *Editor) Height() int {
+	return ed.r.Max.Y - ed.r.Min.Y
+}

@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 	"runtime"
-	"yacco/config"
 	"github.com/skelterjohn/go.wde"
 )
 
@@ -13,11 +12,17 @@ type Sel struct {
 	S, E int
 }
 
-func FilterEvents(in <-chan interface{}) (out chan interface{}) {
+type AltingEntry struct {
+	Seq string
+	Glyph string
+}
+
+func FilterEvents(in <-chan interface{}, altingList []AltingEntry) (out chan interface{}) {
 	out = make(chan interface{})
 	go func() {
 		shift := false
 		ctrl := false
+		alt := false
 		alting := false
 
 		resizeChan := make(chan bool, 1)
@@ -43,10 +48,19 @@ func FilterEvents(in <-chan interface{}) (out chan interface{}) {
 
 		fixButton := func(which *wde.Button) {
 			if *which == wde.LeftButton {
-				if shift {
+				if alt {
 					*which = wde.RightButton
 				} else if ctrl {
-					*which = wde.MiddleButton
+					if shift {
+						*which = wde.MiddleButton | wde.LeftButton
+					} else {
+						*which = wde.MiddleButton
+					}
+				}
+			}
+			if *which == wde.MiddleButton {
+				if shift {
+					*which = wde.MiddleButton | wde.LeftButton
 				}
 			}
 		}
@@ -61,7 +75,7 @@ func FilterEvents(in <-chan interface{}) (out chan interface{}) {
 						altingSeq += "+" + e.Glyph
 						//println("altingSeq:", altingSeq)
 						keepAlting := false
-						for _, altingEntry := range config.AltingList {
+						for _, altingEntry := range altingList {
 							if altingEntry.Seq == altingSeq {
 								//println("Emitting:", altingEntry.Glyph)
 								out <- wde.KeyTypedEvent{
@@ -94,6 +108,8 @@ func FilterEvents(in <-chan interface{}) (out chan interface{}) {
 						shift = true
 					case "left_control":
 						ctrl = true
+					case "left_alt":
+						alt = true
 					}
 					out <- ei
 
@@ -103,6 +119,8 @@ func FilterEvents(in <-chan interface{}) (out chan interface{}) {
 						shift = false
 					case "left_control":
 						ctrl = false
+					case "left_alt":
+						alt = false
 					case "Multi_key":
 						alting = true
 						altingSeq = ""

@@ -9,13 +9,14 @@ import (
 type Cols struct {
 	cols []*Col
 	wnd wde.Window
+	b draw.Image
 	r image.Rectangle
 }
 
 const COL_MIN_WIDTH = 40
 
 func NewCols(wnd wde.Window, r image.Rectangle) *Cols {
-	return &Cols{ []*Col{}, wnd, r }
+	return &Cols{ []*Col{}, wnd, wnd.Screen(), r }
 }
 
 func (cs *Cols) SetRects(wnd wde.Window, b draw.Image, r image.Rectangle) {
@@ -50,6 +51,7 @@ func (cs *Cols) AddAfter(n int) *Col {
 
 func (cs *Cols) RecalcRects(b draw.Image) {
 	w := cs.r.Max.X - cs.r.Min.X
+	cs.b = b
 
 	minimizedw := 0
 	lastNonminimized := -1

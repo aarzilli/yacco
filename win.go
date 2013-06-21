@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"fmt"
 	"image"
 	"runtime"
 	"image/draw"
@@ -35,6 +34,7 @@ type BufferRefreshable interface {
 	BufferRefresh(ontag bool)
 }
 
+var activeSel string = ""
 var activeEditor *Editor = nil
 
 func (w *Window) Init(width, height int) (err error) {
@@ -47,7 +47,7 @@ func (w *Window) Init(width, height int) (err error) {
 	w.wnd.Show()
 	w.cols = NewCols(w.wnd, screen.Bounds())
 	w.tagfr = textframe.Frame{
-		Font: Font,
+		Font: config.TagFont,
 		Scroll: func(sd, sl int) { },
 		VisibleTick: false,
 		Wnd: w.wnd,
@@ -62,8 +62,7 @@ func (w *Window) Init(width, height int) (err error) {
 	w.tagbuf = buf.NewBuffer(cwd, "+Tag")
 	util.Must(w.tagfr.Init(5), "Editor initialization failed")
 
-	w.tagbuf.Replace(config.DefaultWindowTag, &w.tagfr.Sels[0], w.tagfr.Sels)
-	TagSetEditableStart(w.tagbuf)
+	w.GenTag()
 
 	w.calcRects(screen)
 
@@ -87,10 +86,7 @@ func (w *Window) calcRects(screen draw.Image) {
 	w.tagfr.R.Max.Y = w.tagfr.R.Min.Y + TagHeight(&w.tagfr)
 	w.tagfr.R = r.Intersect(w.tagfr.R)
 	w.tagfr.B = screen
-	w.tagfr.Clear()
-	ta, tb := w.tagbuf.Selection(util.Sel{ 0, w.tagbuf.Size() })
-	w.tagfr.InsertColor(ta)
-	w.tagfr.InsertColor(tb)
+	w.BufferRefresh(true)
 }
 
 func (w *Window) padDraw(screen draw.Image) {
@@ -116,7 +112,7 @@ func (w *Window) Resized() {
 }
 
 func (w *Window) EventLoop() {
-	events := util.FilterEvents(wnd.wnd.EventChan())
+	events := util.FilterEvents(wnd.wnd.EventChan(), config.AltingList)
 	var lastWhere image.Point
 	for ei := range events {
 		runtime.Gosched()
@@ -136,12 +132,16 @@ func (w *Window) EventLoop() {
 			lp := w.TranslatePosition(e.Where)
 
 			if lp.tagfr != nil {
-				lp.tagfr.OnClick(e, events)
+				ee := lp.tagfr.OnClick(e, events)
+				clickExec(lp, e, ee)
 				break
 			}
 
 			if lp.sfr != nil {
-				lp.sfr.OnClick(e, events)
+				onframe, ee := lp.sfr.OnClick(e, events)
+				if onframe {
+					clickExec(lp, e, ee)
+				}
 				break
 			}
 
@@ -175,9 +175,9 @@ func TagHeight(tagfr *textframe.Frame) int {
 
 func TagSetEditableStart(tagbuf *buf.Buffer) {
 	c := string(tagbuf.SelectionRunes(util.Sel{ 0, tagbuf.Size() }))
-	idx := strings.Index(c, " |")
+	idx := strings.Index(c, " | ")
 	if idx >= 0 {
-		tagbuf.EditableStart = idx+2
+		tagbuf.EditableStart = idx+3
 	}
 }
 
@@ -265,6 +265,8 @@ func (w *Window) SetTick(p image.Point) {
 
 	if (&w.tagfr != lp.tagfr) && w.tagfr.VisibleTick {
 		w.tagfr.VisibleTick = false
+		w.tagfr.Sels[1].E = w.tagfr.Sels[1].S
+		w.tagfr.Sels[2].E = w.tagfr.Sels[2].S
 		w.tagfr.Redraw(true)
 	}
 
@@ -275,15 +277,21 @@ func (w *Window) SetTick(p image.Point) {
 	for _, col := range w.cols.cols {
 		if col.tagfr.VisibleTick && (&col.tagfr != lp.tagfr) {
 			col.tagfr.VisibleTick = false
+			col.tagfr.Sels[1].E = col.tagfr.Sels[1].S
+			col.tagfr.Sels[2].E = col.tagfr.Sels[2].S
 			col.tagfr.Redraw(true)
 		}
 		for _, editor := range col.editors {
 			if editor.tagfr.VisibleTick && (&editor.tagfr != lp.tagfr) {
 				editor.tagfr.VisibleTick = false
+				editor.tagfr.Sels[1].E = editor.tagfr.Sels[1].S
+				editor.tagfr.Sels[2].E = editor.tagfr.Sels[2].S
 				editor.tagfr.Redraw(true)
 			}
 			if editor.sfr.Fr.VisibleTick && (&editor.sfr != lp.sfr) {
 				editor.sfr.Fr.VisibleTick = false
+				editor.sfr.Fr.Sels[1].E = editor.sfr.Fr.Sels[1].S
+				editor.sfr.Fr.Sels[2].E = editor.sfr.Fr.Sels[2].S
 				editor.sfr.Fr.Redraw(true)
 			}
 		}
@@ -323,7 +331,7 @@ loop:
 	if dist(startPos, endPos) < 10 {
 		switch e.Which {
 		case wde.LeftButton:
-			//TODO: grow
+			w.GrowEditor(col, ed)
 
 		case wde.RightButton: // Maximize
 			d := endPos.Sub(ed.r.Min)
@@ -340,8 +348,37 @@ loop:
 			w.wnd.FlushImage()
 		}
 	} else {
-		//TODO: move
+		col.Remove(col.IndexOf(ed))
+		col.RecalcRects(col.b)
+
+		mlp := w.TranslatePosition(endPos)
+		dstcol := mlp.col
+		dsted := mlp.ed
+
+		if dstcol == nil {
+			dstcol = col
+			dsted = nil
+		}
+
+		if dsted == nil {
+			if len(col.editors) > 0 {
+				dsted = col.editors[0]
+			}
+		}
+
+		if dsted == nil {
+			dstcol.AddAfter(ed, -1, 0.5)
+			return
+		}
+
+		dsth := endPos.Y - dsted.r.Min.Y
+		dstcol.AddAfter(ed, -1, float32(dsth) / float32(dsted.Height()))
+		w.wnd.FlushImage()
 	}
+}
+
+func (w *Window) GrowEditor(col *Col, ed *Editor) {
+	//TODO: implement
 }
 
 func (w *Window) ColResize(col *Col, e wde.MouseDownEvent, events <-chan interface{}) {
@@ -386,11 +423,7 @@ func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
 	// the activeEditor is the last editor where a command was executed, or text was typed
 	// selecting stuff is not enough to make an editor the active editor
 	if chord {
-		if lp.ed != nil {
-			ec.br = lp.ed
-		} else {
-			ec.br = lp.col
-		}
+		ec.br = lp.bufferRefreshable()
 
 		if lp.tagfr != nil {
 			ec.ontag = true
@@ -417,6 +450,16 @@ func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
 	}
 
 	return ec
+}
+
+func (lp *LogicalPos) bufferRefreshable() BufferRefreshable {
+	if lp.ed != nil {
+		return lp.ed
+	} else if lp.col != nil {
+		return lp.col
+	} else {
+		return &wnd
+	}
 }
 
 func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
@@ -472,13 +515,13 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		if cmd, ok := config.KeyBindings[e.Chord]; ok {
 			//println("Execute command: <" + cmd + ">")
 			Exec(ec, cmd)
-			ec.ed.BufferRefresh(ec.ontag)
+			ec.br.BufferRefresh(ec.ontag)
 		} else if e.Glyph != "" {
 			if !ec.ontag && ec.ed != nil {
 				activeEditor = ec.ed
 			}
 			ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], ec.fr.Sels)
-			ec.ed.BufferRefresh(ec.ontag)
+			ec.br.BufferRefresh(ec.ontag)
 		}
 	}
 
@@ -495,8 +538,108 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 	}
 }
 
-// Warn user about error
-func Warn(msg string) {
-	fmt.Printf("Warn: %s\n", msg)
-	//TODO: show a window with the error
+func clickExec(lp LogicalPos, e wde.MouseDownEvent, ee *wde.MouseUpEvent) {
+	switch e.Which {
+	case wde.MiddleButton:
+		cmd := expandedSelection(lp, 1)
+		ec := lp.asExecContext(false)
+		c := cmd
+		if (ee != nil) && (ee.Which == wde.LeftButton) {
+			c += " " + activeSel
+		}
+		Exec(ec, cmd)
+
+	case wde.MiddleButton | wde.LeftButton:
+		cmd := expandedSelection(lp, 1)
+		ec := lp.asExecContext(false)
+		Exec(ec, cmd + " " + activeSel)
+
+	case wde.RightButton:
+		s := expandedSelection(lp, 2)
+		println("Open: ", s)
+		//TODO: implement
+
+	case wde.LeftButton:
+		br := lp.bufferRefreshable()
+		if lp.sfr != nil {
+			lp.sfr.Fr.DisableOtherSelections(0)
+			activeSel = string(buf.ToRunes(lp.bodybuf.SelectionX(lp.sfr.Fr.Sels[0])))
+			br.BufferRefresh(false)
+		}
+		if lp.tagfr != nil {
+			lp.tagfr.DisableOtherSelections(0)
+			activeSel = string(buf.ToRunes(lp.tagbuf.SelectionX(lp.tagfr.Sels[0])))
+			br.BufferRefresh(true)
+		}
+	}
+}
+
+func expandedSelection(lp LogicalPos, idx int) string {
+	if lp.sfr != nil {
+		sel := &lp.sfr.Fr.Sels[idx]
+		if sel.S == sel.E {
+			if lp.sfr.Fr.Sels[0].S != lp.sfr.Fr.Sels[0].E {
+				lp.sfr.Fr.SetSelect(idx, 1, lp.sfr.Fr.Sels[0].S, lp.sfr.Fr.Sels[0].E)
+				lp.sfr.Redraw(true)
+			} else {
+				s := lp.bodybuf.Tonl(sel.S-1, -1)
+				e := lp.bodybuf.Tonl(sel.S, +1)
+				lp.sfr.Fr.SetSelect(idx, 1, s, e)
+				lp.sfr.Redraw(true)
+			}
+		}
+
+		return string(buf.ToRunes(lp.bodybuf.SelectionX(*sel)))
+	}
+
+	if lp.tagfr != nil {
+		sel := &lp.tagfr.Sels[idx]
+		if sel.S == sel.E {
+			if lp.tagfr.Sels[0].S != lp.tagfr.Sels[0].E {
+				*sel = lp.tagfr.Sels[0]
+				lp.tagfr.Sels[0].S = lp.tagfr.Sels[0].E
+				lp.tagfr.Redraw(true)
+			} else if sel.S < lp.tagbuf.EditableStart {
+				s := lp.tagbuf.Tospc(sel.S, -1)
+				e := lp.tagbuf.Tospc(sel.S, +1)
+				lp.tagfr.SetSelect(idx, 1, s, e)
+				lp.tagfr.Redraw(true)
+			} else {
+				lp.tagfr.SetSelect(idx, 1, lp.tagbuf.EditableStart, lp.tagbuf.Size())
+				lp.tagfr.Redraw(true)
+			}
+		}
+
+		return string(buf.ToRunes(lp.tagbuf.SelectionX(*sel)))
+
+	}
+
+	return ""
+}
+
+func (w *Window) BufferRefresh(ontag bool) {
+	w.tagfr.Clear()
+	ta, tb := w.tagbuf.Selection(util.Sel{ 0, w.tagbuf.Size() })
+	w.tagfr.InsertColor(ta)
+	w.tagfr.InsertColor(tb)
+	w.tagfr.Redraw(true)
+}
+
+func (w *Window) GenTag() {
+	usertext := ""
+	if w.tagbuf.EditableStart >= 0 {
+		usertext = string(buf.ToRunes(w.tagbuf.SelectionX(util.Sel{ w.tagbuf.EditableStart, w.tagbuf.Size() })))
+	}
+
+	w.tagfr.Sels[0].S = 0
+	w.tagfr.Sels[0].E = w.tagbuf.Size()
+
+	pwd, _ := os.Getwd()
+
+	//TODO: compress like ppwd
+
+	t := pwd + " " + string(config.DefaultWindowTag) + usertext
+	w.tagbuf.EditableStart = -1
+	w.tagbuf.Replace([]rune(t), &w.tagfr.Sels[0], w.tagfr.Sels)
+	TagSetEditableStart(w.tagbuf)
 }

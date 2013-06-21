@@ -15,6 +15,7 @@ type Col struct {
 	editors []*Editor
 	wnd wde.Window
 	r image.Rectangle
+	b draw.Image
 	frac float64
 
 	tagfr textframe.Frame
@@ -28,7 +29,7 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 	c.r = r
 	c.frac = 10.0
 	c.tagfr = textframe.Frame{
-		Font: Font,
+		Font: config.TagFont,
 		Hackflags: textframe.HF_MARKSOFTWRAP | textframe.HF_BOLSPACES | textframe.HF_QUOTEHACK,
 		Scroll: func (sd, sl int) { },
 		VisibleTick: false,
@@ -53,8 +54,8 @@ func (c *Col) SetRects(wnd wde.Window, b draw.Image, r image.Rectangle) {
 	c.RecalcRects(b)
 }
 
-func (c *Col) AddAfter(ed *Editor, n int) {
-	screen := c.wnd.Screen()
+func (c *Col) AddAfter(ed *Editor, n int, h float32) {
+	screen := c.b
 
 	if len(c.editors) == 0 {
 		ed.SetWnd(c.wnd)
@@ -67,8 +68,8 @@ func (c *Col) AddAfter(ed *Editor, n int) {
 		}
 
 		ed.SetWnd(c.wnd)
-		ed.frac = c.editors[n].frac / 2
-		c.editors[n].frac = ed.frac
+		ed.frac = c.editors[n].frac * float64(1 - h)
+		c.editors[n].frac -= ed.frac
 
 		c.editors = append(c.editors, nil)
 		copy(c.editors[n+2:], c.editors[n+1:])
@@ -80,6 +81,7 @@ func (c *Col) AddAfter(ed *Editor, n int) {
 }
 
 func (c *Col) RecalcRects(screen draw.Image) {
+	c.b = screen
 	c.tagfr.R = c.r
 	c.tagfr.R.Min.Y += 2
 	c.tagfr.R.Min.X += SCROLL_WIDTH
@@ -135,6 +137,8 @@ func (c *Col) Redraw() {
 	drawingFuncs := textframe.GetOptimizedDrawing(c.tagfr.B)
 
 	br := c.r
+	drawingFuncs.DrawFillSrc(c.tagfr.B, br, &config.TheColorScheme.WindowBG)
+
 	br.Max.Y = br.Min.Y + 2
 	drawingFuncs.DrawFillSrc(c.tagfr.B, br, &config.TheColorScheme.Border)
 
@@ -146,6 +150,9 @@ func (c *Col) Redraw() {
 
 	br.Min.X = c.r.Max.X - 2
 	br.Max.X = br.Min.X + 2
+	if len(c.editors) <= 0 {
+		br.Max.Y = c.r.Max.Y
+	}
 	drawingFuncs.DrawFillSrc(c.tagfr.B, br, &config.TheColorScheme.Border)
 
 	c.tagfr.Redraw(false)
@@ -161,4 +168,30 @@ func (c *Col) BufferRefresh(ontag bool) {
 	c.tagfr.InsertColor(ta)
 	c.tagfr.InsertColor(tb)
 	c.tagfr.Redraw(true)
+}
+
+func (c *Col) IndexOf(ed *Editor) int {
+	for i, ced := range c.editors {
+		if ced == ed {
+			return i
+		}
+	}
+
+	return -1
+}
+
+func (c *Col) Remove(i int) {
+	if i == 0 {
+		if i+1 < len(c.editors) {
+			c.editors[i+1].frac += c.editors[i].frac
+		}
+	} else {
+		c.editors[i-1].frac += c.editors[i].frac
+	}
+
+	copy(c.editors[i:], c.editors[i+1:])
+	c.editors = c.editors[:len(c.editors)-1]
+
+	c.RecalcRects(c.b)
+	c.Redraw()
 }

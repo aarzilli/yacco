@@ -3,35 +3,26 @@ package main
 import (
 	"log"
 	"os"
-	"yacco/textframe"
+	"yacco/buf"
 	"github.com/skelterjohn/go.wde"
 	_ "github.com/skelterjohn/go.wde/init"
 )
 
-var Font *textframe.Font
+//var Font *textframe.Font
 var wnd Window
+var buffers []*buf.Buffer = []*buf.Buffer{}
 
 func realmain() {
-	var err error
-	Font, err = textframe.NewFont(72, 16, 1.0, "luxisr.ttf")
+	err := wnd.Init(640, 480)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
-	err = wnd.Init(640, 480)
-	if err != nil {
-		log.Fatalf(err.Error())
-	}
+	wnd.cols.AddAfter(-1)
+	wnd.cols.AddAfter(-1)
 
-	col1 := wnd.cols.AddAfter(-1)
-	col2 := wnd.cols.AddAfter(-1)
-
-	for i, arg := range os.Args[1:] {
-		if i % 2 == 0 {
-			col1.AddAfter(EditOpen(arg), -1)
-		} else {
-			col2.AddAfter(EditOpen(arg), -1)
-		}
+	for _, arg := range os.Args[1:] {
+		HeuristicOpen(arg, false)
 	}
 
 	wnd.wnd.FlushImage()
@@ -43,4 +34,14 @@ func main() {
 	PlatformInit()
 	go realmain()
 	wde.Run()
+}
+
+func removeBuffer(b *buf.Buffer) {
+	for i, cb := range buffers {
+		if cb == b {
+			copy(buffers[i:], buffers[i+1:])
+			buffers = buffers[:len(buffers)-1]
+			return
+		}
+	}
 }

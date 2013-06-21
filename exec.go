@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"fmt"
 	"strings"
 	"regexp"
@@ -54,6 +55,7 @@ var cmds = map[string]Cmd{
 }
 
 var spacesRe = regexp.MustCompile("\\s+")
+var exitConfirmed = false
 
 func Exec(ec ExecContext, cmd string) {
 	defer func() {
@@ -62,108 +64,228 @@ func Exec(ec ExecContext, cmd string) {
 			Warn(errmsg)
 		}
 	}()
-	v := spacesRe.Split(strings.TrimSpace(cmd), 2)
-	if f, ok := cmds[v[0]]; ok {
-		f(ec, v[1])
+
+	cmd = strings.TrimSpace(cmd)
+
+	if (cmd[0] == '<') || (cmd[0] == '>') || (cmd[0] == '|') {
+		cmds[cmd[:1]](ec, cmd[1:])
 	} else {
-		println("External command:", cmd)
+		v := spacesRe.Split(cmd, 2)
+		if f, ok := cmds[v[0]]; ok {
+			arg := ""
+			if len(v) > 1 {
+				arg = v[1]
+			}
+			f(ec, arg)
+		} else {
+			println("External command:", cmd)
+		}
 	}
 }
 
 func CopyCmd(ec ExecContext, arg string, del bool) {
+	exitConfirmed = false
+	if ec.ed == nil {
+		return
+	}
+	ec.ed.confirmDel = false
 	//TODO
 }
 
-func DelCmd(ec ExecContext, arg string, del bool) {
-	//TODO
+func DelCmd(ec ExecContext, arg string, confirmed bool) {
+	exitConfirmed = false
+	if !ec.ed.bodybuf.Modified || confirmed || ec.ed.confirmDel {
+		col := ec.ed.Column()
+		col.Remove(col.IndexOf(ec.ed))
+		removeBuffer(ec.ed.bodybuf)
+		wnd.wnd.FlushImage()
+	} else {
+		ec.ed.confirmDel = true
+		Warn("File " + ec.ed.bodybuf.ShortName() + " has unsaved changes")
+	}
 }
 
 func DelcolCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
 	//TODO
 }
 
 func DumpCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
 	//TODO
 }
 
 func EditCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	if ec.ed == nil {
+		return
+	}
+	ec.ed.confirmDel = false
+
 	edit.Edit(arg, ec.buf, ec.fr.Sels)
 	ec.br.BufferRefresh(ec.ontag)
 }
 
 func ExitCmd(ec ExecContext, arg string) {
-	//TODO
+	t := "The following files have unsaved changes:\n"
+	n := 0
+	for _, buf := range buffers {
+		if buf.Modified && (buf.Name[0] != '+') {
+			t += buf.ShortName() + "\n"
+			n++
+		}
+	}
+
+	if (n == 0) || exitConfirmed {
+		os.Exit(0)
+	} else {
+		exitConfirmed = true
+		Warn(t)
+	}
 }
 
 func KillCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
 	//TODO
 }
 
 func LoadCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
 	//TODO
 }
 
 func SetenvCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
 	//TODO
 }
 
 func LookCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	if ec.ed == nil {
+		return
+	}
+	ec.ed.confirmDel = false
 	//TODO
 }
 
 func NewCmd(ec ExecContext, arg string) {
-	//TODO
+	exitConfirmed = false
+	arg = strings.TrimSpace(arg)
+	if arg == "" {
+		Warn("New: must specify argument")
+		return
+	}
+	HeuristicOpen(arg, true)
 }
 
 func NewcolCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
 	//TODO
 }
 
 func PasteCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	if ec.ed == nil {
+		return
+	}
+	ec.ed.confirmDel = false
 	//TODO
 }
 
 func PutCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	if ec.ed == nil {
+		return
+	}
+	ec.ed.confirmDel = false
 	//TODO
 }
 
 func PutallCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
 	//TODO
 }
 
 func RedoCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	if ec.ed == nil {
+		return
+	}
+	ec.ed.confirmDel = false
 	//TODO
 }
 
 func SendCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	if ec.ed == nil {
+		return
+	}
+	ec.ed.confirmDel = false
 	//TODO
 }
 
 func SortCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
 	//TODO
 }
 
 func UndoCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	if ec.ed == nil {
+		return
+	}
+	ec.ed.confirmDel = false
 	//TODO
 }
 
 func ZeroxCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+
 	//TODO
 }
 
 func PipeCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	if ec.ed == nil {
+		return
+	}
+	ec.ed.confirmDel = false
 	//TODO
 }
 
 func PipeInCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	if ec.ed == nil {
+		return
+	}
+	ec.ed.confirmDel = false
 	//TODO
 }
 
 func PipeOutCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	if ec.ed == nil {
+		return
+	}
+	ec.ed.confirmDel = false
 	//TODO
 }
 
 func CdCmd(ec ExecContext, arg string) {
-	//TODO
+	exitConfirmed = false
+	os.Chdir(arg)
+	for _, col := range wnd.cols.cols {
+		for _, ed := range col.editors {
+			ed.BufferRefresh(false)
+		}
+	}
+
+	wnd.GenTag()
+
+	wnd.BufferRefresh(true)
+
+	wnd.cols.Redraw()
+	wnd.tagfr.Redraw(false)
+	wnd.wnd.FlushImage()
 }
 
