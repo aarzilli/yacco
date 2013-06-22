@@ -27,9 +27,10 @@ func (e *AddrOp) String() string {
 	return fmt.Sprintf("Op<%s %s %s>", e.Lh.String(), e.Op, e.Rh.String())
 }
 
-func (e *AddrOp) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
-	//TODO
-	return
+func (e *AddrOp) Eval(b *buf.Buffer, sel util.Sel) util.Sel {
+	slh := e.Lh.Eval(b, sel)
+	srh := e.Rh.Eval(b, sel)
+	return util.Sel{ slh.S, srh.E }
 }
 
 type addrEmpty struct {
@@ -78,7 +79,12 @@ func (e *AddrBase) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 
 	case "":
 		if e.Dir >= 0 {
-			rsel = sel
+			if e.Dir == 0 {
+				rsel.S = 0
+				rsel.E = 0
+			} else {
+				rsel = sel
+			}
 			if rsel.S != rsel.E {
 				rsel.E -= 1
 			}
@@ -109,8 +115,26 @@ func (e *AddrBase) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 		return rsel
 
 	case "#w":
-		rsel = setStartSel(e.Dir, sel)
-		//TODO: by word
+		if e.Dir >= 0 {
+			if e.Dir == 0 {
+				rsel.S = 0
+				rsel.E = 0
+			} else {
+				rsel = sel
+			}
+
+			for i := 0; i < asnumber(e.Value); i++ {
+				rsel.S = rsel.E
+				rsel.E = b.Towd(rsel.E, +1)
+			}
+		} else {
+			rsel = sel
+			for i := 0; i < asnumber(e.Value); i++ {
+				rsel.E = rsel.S
+				rsel.S = b.Towd(rsel.S-1, -1)
+			}
+		}
+		b.FixSel(&rsel)
 
 	case "#":
 		rsel = setStartSel(e.Dir, sel)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 	"regexp"
+	"sort"
 	"yacco/buf"
 	"yacco/edit"
 	"yacco/textframe"
@@ -89,7 +90,12 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 		return
 	}
 	ec.ed.confirmDel = false
-	//TODO
+	s := string(buf.ToRunes(ec.buf.SelectionX(ec.fr.Sels[0])))
+	if del {
+		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels)
+		ec.br.BufferRefresh(ec.ontag)
+	}
+	wnd.wnd.SetClipboard(s)
 }
 
 func DelCmd(ec ExecContext, arg string, confirmed bool) {
@@ -107,7 +113,29 @@ func DelCmd(ec ExecContext, arg string, confirmed bool) {
 
 func DelcolCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	//TODO
+	if ec.col == nil {
+		return
+	}
+
+	t := "The following files have unsaved changes:\n"
+	n := 0
+	for _, ed := range ec.col.editors {
+		if ed.bodybuf.Modified && (ed.bodybuf.Name[0] != '+') && !ed.confirmDel {
+			ed.confirmDel = true
+			t += ed.bodybuf.ShortName() + "\n"
+			n++
+		}
+	}
+
+	if n == 0 {
+		for _, ed := range ec.col.editors {
+			removeBuffer(ed.bodybuf)
+		}
+		wnd.cols.Remove(wnd.cols.IndexOf(ec.col))
+		wnd.wnd.FlushImage()
+	} else {
+		Warn(t)
+	}
 }
 
 func DumpCmd(ec ExecContext, arg string) {
@@ -156,7 +184,12 @@ func LoadCmd(ec ExecContext, arg string) {
 
 func SetenvCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	//TODO
+	v := spacesRe.Split(arg, 2)
+	if len(v) != 2 {
+		Warn("Setenv: wrong number of arguments")
+		return
+	}
+	os.Setenv(v[0], v[1])
 }
 
 func LookCmd(ec ExecContext, arg string) {
@@ -175,12 +208,16 @@ func NewCmd(ec ExecContext, arg string) {
 		Warn("New: must specify argument")
 		return
 	}
-	HeuristicOpen(arg, true)
+	_, err := HeuristicOpen(arg, true)
+	if err != nil {
+		Warn("New: " + err.Error())
+	}
 }
 
 func NewcolCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	//TODO
+	wnd.cols.AddAfter(-1)
+	wnd.wnd.FlushImage()
 }
 
 func PasteCmd(ec ExecContext, arg string) {
@@ -189,7 +226,8 @@ func PasteCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	//TODO
+	ec.buf.Replace([]rune(wnd.wnd.GetClipboard()), &ec.fr.Sels[0], ec.fr.Sels)
+	ec.br.BufferRefresh(ec.ontag)
 }
 
 func PutCmd(ec ExecContext, arg string) {
@@ -198,12 +236,35 @@ func PutCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	//TODO
+	if ec.ed.bodybuf.Name[0] == '+' {
+		return
+	}
+	err := ec.ed.bodybuf.Put()
+	if err != nil {
+		Warn(fmt.Sprintf("Put: Couldn't save %s: %s", ec.ed.bodybuf.ShortName(), err.Error()))
+	}
+	ec.ed.BufferRefresh(false)
 }
 
 func PutallCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	//TODO
+	t := "Putall: Saving the following files failed:\n"
+	nerr := 0
+	for _, col := range wnd.cols.cols {
+		for _, ed := range col.editors {
+			if (ed.bodybuf.Name[0] != '+') && ed.bodybuf.Modified {
+				err := ed.bodybuf.Put()
+				if err != nil {
+					t += ed.bodybuf.ShortName() + ": " + err.Error() + "\n"
+					nerr++
+				}
+				ed.BufferRefresh(false)
+			}
+		}
+	}
+	if nerr != 0 {
+		Warn(t)
+	}
 }
 
 func RedoCmd(ec ExecContext, arg string) {
@@ -221,12 +282,19 @@ func SendCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	//TODO
+	//TODO: append
 }
 
 func SortCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	//TODO
+	if ec.col == nil {
+		return
+	}
+
+	sort.Sort((*Editors)(&ec.col.editors))
+	ec.col.RecalcRects()
+	ec.col.Redraw()
+	wnd.wnd.FlushImage()
 }
 
 func UndoCmd(ec ExecContext, arg string) {
@@ -240,7 +308,6 @@ func UndoCmd(ec ExecContext, arg string) {
 
 func ZeroxCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-
 	//TODO
 }
 
@@ -289,3 +356,18 @@ func CdCmd(ec ExecContext, arg string) {
 	wnd.wnd.FlushImage()
 }
 
+type Editors []*Editor
+
+func (ev *Editors) Len() int {
+	return len(*ev)
+}
+
+func (ev *Editors) Less(i, j int) bool {
+	return (*ev)[i].bodybuf.Name < (*ev)[j].bodybuf.Name
+}
+
+func (ev *Editors) Swap(i, j int) {
+	e := (*ev)[i]
+	(*ev)[i] = (*ev)[j]
+	(*ev)[j] = e
+}

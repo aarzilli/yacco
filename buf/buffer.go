@@ -2,8 +2,10 @@ package buf
 
 import (
 	"os"
+	"bufio"
 	"fmt"
 	"unicode"
+	"unicode/utf8"
 	"io/ioutil"
 	"yacco/util"
 	"yacco/textframe"
@@ -24,7 +26,7 @@ type Buffer struct {
 	gap, gapsz int
 }
 
-func NewBuffer(dir, name string) (b *Buffer) {
+func NewBuffer(dir, name string) (b *Buffer, err error) {
 	b = &Buffer{
 		Dir: dir,
 		Name: name,
@@ -37,12 +39,16 @@ func NewBuffer(dir, name string) (b *Buffer) {
 		gapsz: SLOP }
 
 	dirfile, err := os.Open(dir)
+	if err != nil {
+		return nil, err
+	}
 	defer dirfile.Close()
-	util.Must(err, "Not a directory")
 	dirinfo, err := dirfile.Stat()
-	util.Must(err, "Could not stat")
+	if err != nil {
+		return nil, err
+	}
 	if !dirinfo.IsDir() {
-		panic(fmt.Errorf("Not a directory: %s", dir))
+		return nil, fmt.Errorf("Not a directory: %s", dir)
 	}
 
 	if name[0] != '+' {
@@ -60,7 +66,7 @@ func NewBuffer(dir, name string) (b *Buffer) {
 		}
 	}
 
-	return b
+	return b, nil
 }
 
 func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel) {
@@ -332,6 +338,34 @@ func (b *Buffer) FixSel(sel *util.Sel) {
 	}
 }
 
+func (b *Buffer) Put() error {
+	out, err := os.OpenFile(filepath.Join(b.Dir, b.Name), os.O_WRONLY, 0666)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	bout := bufio.NewWriter(out)
+	ba, bb := b.Selection(util.Sel{ 0, b.Size() })
+	p := make([]byte, 12)
+	for _, r := range ba {
+		n := utf8.EncodeRune(p, r.R)
+		bout.Write(p[:n])
+	}
+	for _, r := range bb {
+		n := utf8.EncodeRune(p, r.R)
+		_, err := bout.Write(p[:n])
+		if err != nil {
+			return err
+		}
+	}
+	err = bout.Flush()
+	if err != nil {
+		return err
+	}
+	b.Modified = false
+	return nil
+}
+
 func ToRunes(v []textframe.ColorRune) []rune {
 	r := make([]rune, len(v))
 	for i := range v {
@@ -339,3 +373,4 @@ func ToRunes(v []textframe.ColorRune) []rune {
 	}
 	return r
 }
+

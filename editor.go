@@ -61,7 +61,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 	e.confirmDel = false
 
 	e.bodybuf = bodybuf
-	e.tagbuf = buf.NewBuffer(bodybuf.Dir, "+Tag")
+	e.tagbuf, _ = buf.NewBuffer(bodybuf.Dir, "+Tag")
 
 	buffers = append(buffers, bodybuf)
 
@@ -203,7 +203,6 @@ func (e *Editor) GenTag() {
 	t += config.DefaultEditorTag
 	if e.bodybuf.Modified {
 		t += " Put"
-		e.tagbuf.Replace([]rune(" Put"), &e.tagfr.Sels[0], e.tagfr.Sels)
 	}
 	//TODO: if has undo info add " Undo"
 	//TODO: if has redo info add " Redo"

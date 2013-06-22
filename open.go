@@ -1,21 +1,34 @@
 package main
 
 import (
+	"fmt"
+	"os"
 	"image"
 	"path/filepath"
 	"yacco/util"
 	"yacco/buf"
 )
 
-func EditOpen(path string) *Editor {
+func EditOpen(path string) (*Editor, error) {
 	abspath, err := filepath.Abs(path)
 	util.Must(err, "Error parsing argument")
 	dir := filepath.Dir(abspath)
 	name := filepath.Base(abspath)
-	return NewEditor(buf.NewBuffer(dir, name))
+
+	if fi, err := os.Stat(abspath); err == nil {
+		if fi.Size() > 10 * 1024 * 1024 {
+			return nil, fmt.Errorf("Refusing to open file larger than 10MB")
+		}
+	}
+
+	b, err := buf.NewBuffer(dir, name)
+	if err != nil {
+		return nil, fmt.Errorf("Could not open file: %s\n", abspath)
+	}
+	return NewEditor(b), nil
 }
 
-func EditFind(path string) *Editor {
+func EditFind(path string) (*Editor, error) {
 	abspath, err := filepath.Abs(path)
 	util.Must(err, "Error parsing argument")
 	dir := filepath.Dir(abspath)
@@ -27,7 +40,7 @@ func EditFind(path string) *Editor {
 				if ed.frac < 0.5 {
 					wnd.GrowEditor(col, ed)
 					wnd.wnd.WarpMouse(ed.sfr.Fr.R.Min.Add(image.Point{ 2, 2}))
-					return ed
+					return ed, nil
 				}
 			}
 		}
@@ -36,8 +49,11 @@ func EditFind(path string) *Editor {
 	return HeuristicOpen(path, true)
 }
 
-func HeuristicOpen(path string, warp bool) *Editor {
-	ed := EditOpen(path)
+func HeuristicOpen(path string, warp bool) (*Editor, error) {
+	ed, err := EditOpen(path)
+	if err != nil {
+		return nil, err
+	}
 
 	if len(wnd.cols.cols) == 0 {
 		wnd.cols.AddAfter(-1)
@@ -73,21 +89,24 @@ func HeuristicOpen(path string, warp bool) *Editor {
 	}
 
 	col.AddAfter(ed, col.IndexOf(ted), 0.5)
-	wnd.cols.RecalcRects(wnd.cols.b)
+	wnd.cols.RecalcRects()
 	col.Redraw()
 	wnd.wnd.FlushImage()
 	wnd.wnd.WarpMouse(ed.sfr.Fr.R.Min.Add(image.Point{ 2, 2}))
 
-	return ed
+	return ed, nil
 }
 
 // Warn user about error
 func Warn(msg string) {
-	ed := EditFind("+Error")
+	ed, err := EditFind("+Error")
+	if err != nil {
+		fmt.Printf("Warn: %s (additionally error %s while displaying this warning)\n", msg, err.Error())
+	} else {
+		ed.sfr.Fr.Sels[0].S = 0
+		ed.sfr.Fr.Sels[0].E = ed.bodybuf.Size()
 
-	ed.sfr.Fr.Sels[0].S = 0
-	ed.sfr.Fr.Sels[0].E = ed.bodybuf.Size()
-
-	ed.bodybuf.Replace([]rune(msg), &ed.sfr.Fr.Sels[0], ed.sfr.Fr.Sels)
-	ed.BufferRefresh(false)
+		ed.bodybuf.Replace([]rune(msg), &ed.sfr.Fr.Sels[0], ed.sfr.Fr.Sels)
+		ed.BufferRefresh(false)
+	}
 }

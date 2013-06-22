@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 	"runtime"
+	"image"
 	"github.com/skelterjohn/go.wde"
 )
 
@@ -15,6 +16,11 @@ type Sel struct {
 type AltingEntry struct {
 	Seq string
 	Glyph string
+}
+
+type WheelEvent struct {
+	Where image.Point
+	Count int
 }
 
 func FilterEvents(in <-chan interface{}, altingList []AltingEntry) (out chan interface{}) {
@@ -44,6 +50,20 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry) (out chan int
 					mouseChan <- true
 				}()
 			}
+		}
+
+		wheelTotal := 0
+		var wheelEvent wde.MouseDownEvent
+		wheelChan := make(chan bool, 1)
+		scheduleWheelEvent := func(e wde.MouseDownEvent, n int) {
+			if wheelTotal == 0 {
+				wheelEvent = e
+				go func() {
+					time.Sleep(20 * time.Millisecond)
+					wheelChan <- true
+				}()
+			}
+			wheelTotal += n
 		}
 
 		fixButton := func(which *wde.Button) {
@@ -131,6 +151,7 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry) (out chan int
 					ctrl = false
 					shift = false
 					alting = false
+					alt = false
 					out <- ei
 
 				case wde.MouseEnteredEvent:
@@ -148,7 +169,14 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry) (out chan int
 
 				case wde.MouseDownEvent:
 					fixButton(&e.Which)
-					out <- e
+					switch e.Which {
+					case wde.WheelUpButton:
+						scheduleWheelEvent(e, -1)
+					case wde.WheelDownButton:
+						scheduleWheelEvent(e, +1)
+					default:
+						out <- e
+					}
 
 				case wde.MouseUpEvent:
 					fixButton(&e.Which)
@@ -176,6 +204,12 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry) (out chan int
 				mouseFlag = false
 				out <- mouseEvent
 
+			case <- wheelChan:
+				out <- WheelEvent{
+					Count: wheelTotal,
+					Where: wheelEvent.Where,
+				}
+				wheelTotal = 0
 			}
 		}
 	}()

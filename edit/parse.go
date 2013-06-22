@@ -19,19 +19,19 @@ type cmdDef struct {
 }
 
 var commands = map[rune]cmdDef{
-	'a': cmdDef{ txtargs: 1 },
-	'c': cmdDef{ txtargs: 1 },
-	'i': cmdDef{ txtargs: 1 },
-	'd': cmdDef{ txtargs: 0 },
-	's': cmdDef{ txtargs: 2, sarg: true },
-	'm': cmdDef{ txtargs: 0, addrarg: true },
-	't': cmdDef{ txtargs: 0, addrarg: true },
-	'p': cmdDef{ txtargs: 0 },
-	'=': cmdDef{ txtargs: 0 },
-	'x': cmdDef{ txtargs: 1, bodyarg: true, optxtarg: true },
-	'y': cmdDef{ txtargs: 1, bodyarg: true },
-	'g': cmdDef{ txtargs: 1, bodyarg: true },
-	'v': cmdDef{ txtargs: 1, bodyarg: true },
+	'a': cmdDef{ txtargs: 1, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { inscmdfn(+1, c, buf, sels) } },
+	'c': cmdDef{ txtargs: 1, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { inscmdfn(0, c, buf, sels)  } },
+	'i': cmdDef{ txtargs: 1, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { inscmdfn(-1, c, buf, sels) } },
+	'd': cmdDef{ txtargs: 0, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { c.txtargs = []string{ "" }; inscmdfn(0, c, buf, sels) } },
+	's': cmdDef{ txtargs: 2, sarg: true, fn: scmdfn },
+	'm': cmdDef{ txtargs: 0, addrarg: true, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { mtcmdfn(true, c, buf, sels) } },
+	't': cmdDef{ txtargs: 0, addrarg: true, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { mtcmdfn(false, c, buf, sels) } },
+	'p': cmdDef{ txtargs: 0, fn: pcmdfn },
+	'=': cmdDef{ txtargs: 0, fn: eqcmdfn },
+	'x': cmdDef{ txtargs: 1, bodyarg: true, optxtarg: true, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { xcmdfn(false, c, buf, sels) } },
+	'y': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { xcmdfn(true, c, buf, sels) }  },
+	'g': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, buf *buf.Buffer, sels[]util.Sel) { gcmdfn(false, c, buf, sels) } },
+	'v': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, buf *buf.Buffer, sels[]util.Sel) { gcmdfn(true, c, buf, sels) }  },
 }
 
 type addrTok string

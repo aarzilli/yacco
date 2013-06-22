@@ -119,7 +119,7 @@ func (sfr *ScrollFrame) ScrollClick(e wde.MouseDownEvent, events <-chan interfac
 
 	where := e.Where
 	which := e.Which
-	autoscrollTicker := time.NewTicker(200 * time.Millisecond)
+	autoscrollTicker := time.NewTicker(100 * time.Millisecond)
 
 	scroll := func() {
 		c := int(float32(where.Y - sfr.r.Min.Y) / float32(sfr.Fr.lineHeight() >> 8))

@@ -59,7 +59,8 @@ func (w *Window) Init(width, height int) (err error) {
 	}
 
 	cwd, _ := os.Getwd()
-	w.tagbuf = buf.NewBuffer(cwd, "+Tag")
+	w.tagbuf, err = buf.NewBuffer(cwd, "+Tag")
+	util.Must(err, "Editor initialization failed")
 	util.Must(w.tagfr.Init(5), "Editor initialization failed")
 
 	w.GenTag()
@@ -152,6 +153,18 @@ func (w *Window) EventLoop() {
 
 			if lp.col != nil { // clicked on column's resize handle
 				w.ColResize(lp.col, e, events)
+			}
+
+		case util.WheelEvent:
+			println("wheel:", e.Where.String(), e.Count)
+			lp := w.TranslatePosition(e.Where)
+			if lp.sfr != nil {
+				if e.Count > 0 {
+					lp.sfr.Fr.Scroll(+1, e.Count)
+				} else {
+					lp.sfr.Fr.Scroll(-1, -e.Count)
+				}
+				lp.sfr.Redraw(true)
 			}
 
 		case wde.MouseExitedEvent:
@@ -290,8 +303,8 @@ func (w *Window) SetTick(p image.Point) {
 			}
 			if editor.sfr.Fr.VisibleTick && (&editor.sfr != lp.sfr) {
 				editor.sfr.Fr.VisibleTick = false
-				editor.sfr.Fr.Sels[1].E = editor.sfr.Fr.Sels[1].S
-				editor.sfr.Fr.Sels[2].E = editor.sfr.Fr.Sels[2].S
+				/*editor.sfr.Fr.Sels[1].E = editor.sfr.Fr.Sels[1].S
+				editor.sfr.Fr.Sels[2].E = editor.sfr.Fr.Sels[2].S*/
 				editor.sfr.Fr.Redraw(true)
 			}
 		}
@@ -323,6 +336,40 @@ loop:
 
 		case wde.MouseDraggedEvent:
 			endPos = e.Where
+
+			if !endPos.In(wnd.cols.r) {
+				break
+			}
+
+			col.Remove(col.IndexOf(ed))
+			col.RecalcRects()
+
+			mlp := w.TranslatePosition(endPos)
+			dstcol := mlp.col
+			dsted := mlp.ed
+
+			if dstcol == nil {
+				dstcol = col
+			}
+
+			if dsted == nil {
+				if len(col.editors) > 0 {
+					dsted = col.editors[0]
+				}
+			}
+
+			if dsted == nil {
+				dstcol.AddAfter(ed, -1, 0.5)
+				col = dstcol
+			} else {
+				dsth := endPos.Y - dsted.r.Min.Y
+				if dsth < 0 {
+					dsth = 0
+				}
+				dstcol.AddAfter(ed, dstcol.IndexOf(dsted), float32(dsth) / float32(dsted.Height()))
+				col = dstcol
+			}
+			w.wnd.FlushImage()
 		}
 	}
 
@@ -342,38 +389,11 @@ loop:
 				oed.frac = 0.0
 			}
 			ed.frac = 10.0
-			col.RecalcRects(col.tagfr.B)
+			col.RecalcRects()
 			w.wnd.WarpMouse(ed.r.Min.Add(d))
 			col.Redraw()
 			w.wnd.FlushImage()
 		}
-	} else {
-		col.Remove(col.IndexOf(ed))
-		col.RecalcRects(col.b)
-
-		mlp := w.TranslatePosition(endPos)
-		dstcol := mlp.col
-		dsted := mlp.ed
-
-		if dstcol == nil {
-			dstcol = col
-			dsted = nil
-		}
-
-		if dsted == nil {
-			if len(col.editors) > 0 {
-				dsted = col.editors[0]
-			}
-		}
-
-		if dsted == nil {
-			dstcol.AddAfter(ed, -1, 0.5)
-			return
-		}
-
-		dsth := endPos.Y - dsted.r.Min.Y
-		dstcol.AddAfter(ed, -1, float32(dsth) / float32(dsted.Height()))
-		w.wnd.FlushImage()
 	}
 }
 
@@ -386,6 +406,12 @@ func (w *Window) ColResize(col *Col, e wde.MouseDownEvent, events <-chan interfa
 
 	startPos := e.Where
 	endPos := startPos
+
+	var before *Col
+	bidx := wnd.cols.IndexOf(col)-1
+	if bidx >= 0 {
+		before = wnd.cols.cols[bidx]
+	}
 
 loop:
 	for ei := range events {
@@ -400,13 +426,31 @@ loop:
 
 		case wde.MouseDraggedEvent:
 			endPos = e.Where
+
+			if before != nil {
+				w := endPos.X - before.r.Min.X
+				if w < 0 {
+					w = 0
+				}
+				tw := col.r.Max.X - before.r.Min.X
+				tf := col.frac + before.frac
+				if w < tw {
+					r := float64(w) / float64(tw)
+					col.frac = tf * (1 - r)
+					before.frac = tf * r
+				} else {
+					before.frac += col.frac
+					col.frac = 0
+				}
+
+				wnd.cols.RecalcRects()
+				wnd.cols.Redraw()
+				wnd.wnd.FlushImage()
+			}
 		}
 	}
 
 	w.wnd.ChangeCursor(-1)
-
-	//TODO: resize column
-	println("Moved to:", endPos.String())
 }
 
 func (lp *LogicalPos) asExecContext(chord bool) ExecContext {

@@ -41,7 +41,13 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 	}
 	util.Must(c.tagfr.Init(5), "Column initialization failed")
 	cwd, _ := os.Getwd()
-	c.tagbuf = buf.NewBuffer(cwd, "+Tag")
+	var err error
+	c.tagbuf, err = buf.NewBuffer(cwd, "+Tag")
+	if err != nil {
+		Warn("Error opening new column: " + err.Error())
+		return c
+	}
+
 	c.tagbuf.Replace(config.DefaultColumnTag, &c.tagfr.Sels[0], c.tagfr.Sels)
 	TagSetEditableStart(c.tagbuf)
 	return c
@@ -51,7 +57,8 @@ func (c *Col) SetRects(wnd wde.Window, b draw.Image, r image.Rectangle) {
 	c.tagfr.Wnd = wnd
 	c.wnd = wnd
 	c.r = r
-	c.RecalcRects(b)
+	c.b = b
+	c.RecalcRects()
 }
 
 func (c *Col) AddAfter(ed *Editor, n int, h float32) {
@@ -76,12 +83,12 @@ func (c *Col) AddAfter(ed *Editor, n int, h float32) {
 		c.editors[n + 1] = ed
 	}
 
-	c.RecalcRects(screen)
+	c.RecalcRects()
 	c.Redraw()
 }
 
-func (c *Col) RecalcRects(screen draw.Image) {
-	c.b = screen
+func (c *Col) RecalcRects() {
+	screen := c.b
 	c.tagfr.R = c.r
 	c.tagfr.R.Min.Y += 2
 	c.tagfr.R.Min.X += SCROLL_WIDTH
@@ -192,6 +199,6 @@ func (c *Col) Remove(i int) {
 	copy(c.editors[i:], c.editors[i+1:])
 	c.editors = c.editors[:len(c.editors)-1]
 
-	c.RecalcRects(c.b)
+	c.RecalcRects()
 	c.Redraw()
 }
