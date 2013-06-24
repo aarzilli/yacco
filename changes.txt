@@ -22,11 +22,10 @@ REASON: No special code for the C language is implemented, rules for things simi
 CHANGE: removed command: Local
 REASON: The command is related to plan 9 namespaces that don't exist in unix. The new command Setenv to set environment variables is provided
 
-CHANGE: removed command: Get
-REASON: Most useful with directory listings, which yacco doesn't support. Use New instead
-
 CHANGE: the escape key does nothing, return in the tag selects everything past the | character and executes it
 REASON: selecting through escape is unusual, anyway escape can be bound to anything the user might want through the shortcut configuration file. Return in the tag would otherwise be useless
 
 CHANGE: In the edit language #w<number> selects word-by-word
 REASON: It's useful
+
+CHANGE: unlimited Undo and Redo

@@ -6,9 +6,13 @@ import (
 	"strings"
 	"regexp"
 	"sort"
+	"runtime"
+	"strconv"
+	"path/filepath"
 	"yacco/buf"
 	"yacco/edit"
 	"yacco/textframe"
+	"yacco/config"
 )
 
 type ExecContext struct {
@@ -31,6 +35,7 @@ var cmds = map[string]Cmd{
 	"Dump": DumpCmd,
 	"Edit": EditCmd,
 	"Exit": ExitCmd,
+	"Jobs": JobsCmd,
 	"Kill": KillCmd,
 	"Load": LoadCmd,
 	"Setenv": SetenvCmd,
@@ -61,7 +66,14 @@ var exitConfirmed = false
 func Exec(ec ExecContext, cmd string) {
 	defer func() {
 		if r := recover(); r != nil {
-			errmsg := fmt.Sprintf("%v", r)
+			errmsg := fmt.Sprintf("%v\n", r)
+			if config.EditErrorTrace {
+				for i := 1; ; i++ {
+					_, file, line, ok := runtime.Caller(i)
+					if !ok { break }
+					errmsg += fmt.Sprintf("  %s:%d\n", file, line)
+				}
+			}
 			Warn(errmsg)
 		}
 	}()
@@ -79,9 +91,17 @@ func Exec(ec ExecContext, cmd string) {
 			}
 			f(ec, arg)
 		} else {
-			println("External command:", cmd)
+			ExtExec(ec, cmd)
 		}
 	}
+}
+
+func ExtExec(ec ExecContext, cmd string) {
+	wd := wnd.tagbuf.Dir
+	if ec.buf != nil {
+		wd = ec.buf.Dir
+	}
+	NewJob(wd, cmd, "", nil)
 }
 
 func CopyCmd(ec ExecContext, arg string, del bool) {
@@ -92,7 +112,7 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 	ec.ed.confirmDel = false
 	s := string(buf.ToRunes(ec.buf.SelectionX(ec.fr.Sels[0])))
 	if del {
-		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels)
+		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true)
 		ec.br.BufferRefresh(ec.ontag)
 	}
 	wnd.wnd.SetClipboard(s)
@@ -100,7 +120,7 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 
 func DelCmd(ec ExecContext, arg string, confirmed bool) {
 	exitConfirmed = false
-	if !ec.ed.bodybuf.Modified || confirmed || ec.ed.confirmDel {
+	if !ec.ed.bodybuf.Modified || (ec.ed.bodybuf.Name[0] == '+') || confirmed || ec.ed.confirmDel {
 		col := ec.ed.Column()
 		col.Remove(col.IndexOf(ec.ed))
 		removeBuffer(ec.ed.bodybuf)
@@ -172,9 +192,25 @@ func ExitCmd(ec ExecContext, arg string) {
 	}
 }
 
+func JobsCmd(ec ExecContext, arg string) {
+	t := ""
+	for i, job := range jobs {
+		t += fmt.Sprintf("%d %s\n", i, job.descr)
+	}
+	Warnfull(filepath.Join(wnd.tagbuf.Dir, "+Jobs"), t)
+}
+
 func KillCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	//TODO
+	arg = strings.TrimSpace(arg)
+	if arg == "" {
+		for i := range jobs {
+			jobKill(i)
+		}
+	} else {
+		n, _ := strconv.Atoi(arg)
+		jobKill(n)
+	}
 }
 
 func LoadCmd(ec ExecContext, arg string) {
@@ -226,7 +262,7 @@ func PasteCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	ec.buf.Replace([]rune(wnd.wnd.GetClipboard()), &ec.fr.Sels[0], ec.fr.Sels)
+	ec.buf.Replace([]rune(wnd.wnd.GetClipboard()), &ec.fr.Sels[0], ec.fr.Sels, true)
 	ec.br.BufferRefresh(ec.ontag)
 }
 
@@ -273,7 +309,7 @@ func RedoCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	ec.buf.Undo(ec.fr.Sels, false)
+	ec.buf.Undo(ec.fr.Sels, true)
 	ec.br.BufferRefresh(ec.ontag)
 }
 
@@ -328,7 +364,13 @@ func PipeInCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	//TODO
+
+	wd := wnd.tagbuf.Dir
+	if ec.buf != nil {
+		wd = ec.buf.Dir
+	}
+
+	NewJob(wd, arg, "", &ec)
 }
 
 func PipeOutCmd(ec ExecContext, arg string) {
@@ -337,13 +379,25 @@ func PipeOutCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	//TODO
+
+	wd := wnd.tagbuf.Dir
+	if ec.buf != nil {
+		wd = ec.buf.Dir
+	}
+
+	txt := string(buf.ToRunes(ec.ed.bodybuf.SelectionX(ec.fr.Sels[0])))
+	NewJob(wd, arg, txt, nil)
 }
 
 func CdCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	os.Chdir(arg)
+	wd, _ := os.Getwd()
+
+	wnd.tagbuf.Dir = wd
+
 	for _, col := range wnd.cols.cols {
+		col.tagbuf.Dir = wd
 		for _, ed := range col.editors {
 			ed.BufferRefresh(false)
 		}

@@ -34,6 +34,16 @@ type BufferRefreshable interface {
 	BufferRefresh(ontag bool)
 }
 
+type WarnMsg struct {
+	dir string
+	msg string
+}
+
+type ReplaceMsg struct {
+	ec *ExecContext
+	txt string
+}
+
 var activeSel string = ""
 var activeEditor *Editor = nil
 
@@ -112,8 +122,25 @@ func (w *Window) Resized() {
 	w.wnd.FlushImage()
 }
 
+func eventUnion(a <- chan interface{}, b <- chan interface{}) (<- chan interface{}) {
+	out := make(chan interface{})
+
+	go func() {
+		for {
+			select {
+			case v := <- a:
+				out <- v
+			case v := <- b:
+				out <- v
+			}
+		}
+	}()
+
+	return out
+}
+
 func (w *Window) EventLoop() {
-	events := util.FilterEvents(wnd.wnd.EventChan(), config.AltingList)
+	events := eventUnion(util.FilterEvents(wnd.wnd.EventChan(), config.AltingList), sideChan)
 	var lastWhere image.Point
 	for ei := range events {
 		runtime.Gosched()
@@ -177,6 +204,17 @@ func (w *Window) EventLoop() {
 			lp := w.TranslatePosition(lastWhere)
 
 			w.Type(lp, e)
+
+		case WarnMsg:
+			if e.dir != "" {
+				Warndir(e.dir, e.msg)
+			} else {
+				Warn(e.msg)
+			}
+
+		case ReplaceMsg:
+			e.ec.ed.bodybuf.Replace([]rune(e.txt), &e.ec.fr.Sels[0], e.ec.fr.Sels, true)
+			e.ec.br.BufferRefresh(false)
 		}
 	}
 }
@@ -531,7 +569,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				nl += indent
 			}
 
-			ec.buf.Replace([]rune(nl), &ec.fr.Sels[0], ec.fr.Sels)
+			ec.buf.Replace([]rune(nl), &ec.fr.Sels[0], ec.fr.Sels, true)
 			ec.br.BufferRefresh(ec.ontag)
 		}
 
@@ -541,7 +579,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			ec.fr.Sels[0].S--
 			ec.buf.FixSel(&ec.fr.Sels[0])
 		}
-		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels)
+		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true)
 		ec.br.BufferRefresh(ec.ontag)
 
 	case "delete":
@@ -550,7 +588,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			ec.fr.Sels[0].E++
 			ec.buf.FixSel(&ec.fr.Sels[0])
 		}
-		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels)
+		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true)
 		ec.br.BufferRefresh(ec.ontag)
 
 	default:
@@ -563,7 +601,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			if !ec.ontag && ec.ed != nil {
 				activeEditor = ec.ed
 			}
-			ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], ec.fr.Sels)
+			ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], ec.fr.Sels, true)
 			ec.br.BufferRefresh(ec.ontag)
 		}
 	}
@@ -683,6 +721,6 @@ func (w *Window) GenTag() {
 
 	t := pwd + " " + string(config.DefaultWindowTag) + usertext
 	w.tagbuf.EditableStart = -1
-	w.tagbuf.Replace([]rune(t), &w.tagfr.Sels[0], w.tagfr.Sels)
+	w.tagbuf.Replace([]rune(t), &w.tagfr.Sels[0], w.tagfr.Sels, true)
 	TagSetEditableStart(w.tagbuf)
 }

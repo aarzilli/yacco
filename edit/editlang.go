@@ -19,6 +19,7 @@ type cmd struct {
 	flags commandFlag
 	argaddr Addr
 	body *cmd
+	bodytxt string
 	fn func(c *cmd, buf *buf.Buffer, sels []util.Sel)
 }
 

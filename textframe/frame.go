@@ -166,7 +166,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 		}
 
 		if p.Y + lh < bottom {
-			fr.lastFull = i
+			fr.lastFull = len(fr.glyphs)
 		}
 
 		if crune.R == '\n' {

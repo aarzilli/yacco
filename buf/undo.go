@@ -17,6 +17,7 @@ type undoInfo struct {
 	after undoSel
 	ts time.Time
 	saved bool
+	solid bool
 }
 
 type undoList struct {
@@ -74,9 +75,17 @@ func (ul *undoList) Undo() *undoInfo {
 	return &ul.lst[ul.cur]
 }
 
+func (ul *undoList) PeekUndo() *undoInfo {
+	if ul.cur <= 0 {
+		return nil
+	}
+
+	return &ul.lst[ul.cur-1]
+}
+
 // retrieves redo information, returns it
 func (ul *undoList) Redo() *undoInfo {
-	if ul.cur <= len(ul.lst) {
+	if ul.cur >= len(ul.lst) {
 		return nil
 	}
 

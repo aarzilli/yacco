@@ -13,3 +13,5 @@ var DefaultEditorTag = " Del"
 var MainFont = util.MustNewFontFromBytes(72, 16, 1.0, [][]byte{ luxibytes })
 var TagFont = util.MustNewFontFromBytes(72, 14, 1.0, [][]byte{ luxibytes })
 var AltFont = util.MustNewFontFromBytes(72, 16, 1.0, [][]byte{ luximonobytes })
+
+var EditErrorTrace = true

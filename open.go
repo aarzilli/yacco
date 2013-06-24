@@ -39,9 +39,9 @@ func EditFind(path string) (*Editor, error) {
 			if (ed.bodybuf.Name == name) && (ed.bodybuf.Dir == dir) {
 				if ed.frac < 0.5 {
 					wnd.GrowEditor(col, ed)
-					wnd.wnd.WarpMouse(ed.sfr.Fr.R.Min.Add(image.Point{ 2, 2}))
-					return ed, nil
 				}
+				wnd.wnd.WarpMouse(ed.sfr.Fr.R.Min.Add(image.Point{ 2, 2}))
+				return ed, nil
 			}
 		}
 	}
@@ -61,8 +61,7 @@ func HeuristicOpen(path string, warp bool) (*Editor, error) {
 
 	var col *Col = nil
 
-
-	if path[0] == '+' {
+	if filepath.Base(path)[0] == '+' {
 		col = wnd.cols.cols[len(wnd.cols.cols)-1]
 	} else {
 		if activeEditor != nil {
@@ -97,16 +96,24 @@ func HeuristicOpen(path string, warp bool) (*Editor, error) {
 	return ed, nil
 }
 
-// Warn user about error
-func Warn(msg string) {
-	ed, err := EditFind("+Error")
+func Warnfull(bufname, msg string) {
+	ed, err := EditFind(bufname)
 	if err != nil {
 		fmt.Printf("Warn: %s (additionally error %s while displaying this warning)\n", msg, err.Error())
 	} else {
 		ed.sfr.Fr.Sels[0].S = 0
 		ed.sfr.Fr.Sels[0].E = ed.bodybuf.Size()
 
-		ed.bodybuf.Replace([]rune(msg), &ed.sfr.Fr.Sels[0], ed.sfr.Fr.Sels)
+		ed.bodybuf.Replace([]rune(msg), &ed.sfr.Fr.Sels[0], ed.sfr.Fr.Sels, true)
 		ed.BufferRefresh(false)
 	}
+}
+
+// Warn user about error
+func Warn(msg string) {
+	Warnfull("+Error", msg)
+}
+
+func Warndir(dir, msg string) {
+	Warnfull(filepath.Join(dir, "+Error"), msg)
 }

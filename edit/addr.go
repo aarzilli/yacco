@@ -3,6 +3,7 @@ package edit
 import (
 	"fmt"
 	"strconv"
+	"regexp"
 	"yacco/util"
 	"yacco/buf"
 )
@@ -28,9 +29,17 @@ func (e *AddrOp) String() string {
 }
 
 func (e *AddrOp) Eval(b *buf.Buffer, sel util.Sel) util.Sel {
-	slh := e.Lh.Eval(b, sel)
-	srh := e.Rh.Eval(b, sel)
-	return util.Sel{ slh.S, srh.E }
+	switch e.Op {
+	default: fallthrough
+	case ",":
+		slh := e.Lh.Eval(b, sel)
+		srh := e.Rh.Eval(b, sel)
+		return util.Sel{ slh.S, srh.E }
+	case ";":
+		slh := e.Lh.Eval(b, sel)
+		return e.Rh.Eval(b, slh)
+	}
+
 }
 
 type addrEmpty struct {
@@ -176,8 +185,26 @@ func setStartSel(dir int, sel util.Sel) (rsel util.Sel) {
 	return
 }
 
-func regexpEval(b *buf.Buffer, sel util.Sel, rstr string, dir int) util.Sel{
-	//TODO: search regexp in given direction
+func regexpEval(b *buf.Buffer, sel util.Sel, rstr string, dir int) util.Sel {
+	if dir < 0 {
+		panic(fmt.Errorf("Backward search regular expressions not implemented"))
+	}
+	doerr := true
+	if rstr[0] == '@' {
+		rstr = rstr[1:]
+		doerr = false
+	}
+	rstr = "(?m)" + rstr
+	re := regexp.MustCompile(rstr)
+	loc := re.FindReaderIndex(b.ReaderFrom(sel.E))
+	if loc == nil {
+		if doerr {
+			panic(fmt.Errorf("No match found for: %s", rstr))
+		}
+	} else {
+		sel.S = sel.E + loc[0]
+		sel.E = sel.E + loc[1]
+	}
 	return sel
 }
 

@@ -2,6 +2,7 @@ package buf
 
 import (
 	"os"
+	"io"
 	"bufio"
 	"fmt"
 	"unicode"
@@ -62,7 +63,7 @@ func NewBuffer(dir, name string) (b *Buffer, err error) {
 			bytes, err := ioutil.ReadAll(infile)
 			util.Must(err, fmt.Sprintf("Could not read %s/%s", dir, name))
 			runes := []rune(string(bytes))
-			b.Replace(runes, &util.Sel{ -1, 0 }, []util.Sel{})
+			b.Replace(runes, &util.Sel{ 0, 0 }, []util.Sel{}, true)
 			b.Modified = false
 			b.ul.Reset()
 		} else {
@@ -76,7 +77,7 @@ func NewBuffer(dir, name string) (b *Buffer, err error) {
 
 // Replaces text between sel.S and sel.E with text, updates sels AND sel accordingly
 // After the replacement the highlighter is restarted
-func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel) {
+func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel, solid bool) {
 	if (!b.Editable) {
 		return
 	}
@@ -95,7 +96,7 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel) {
 
 	b.lock()
 
-	b.pushUndo(*sel, text)
+	b.pushUndo(*sel, text, solid)
 	b.replaceIntl(text, sel, sels)
 	updateSels(sels, sel, len(text))
 
@@ -112,39 +113,61 @@ func (b *Buffer) Undo(sels []util.Sel, redo bool) {
 		return
 	}
 
-	var ui *undoInfo
-	if redo {
-		ui = b.ul.Redo()
-	} else {
-		ui = b.ul.Undo()
+	first := true
+
+	for {
+		var ui *undoInfo
+		if redo {
+			ui = b.ul.PeekUndo()
+			if (ui != nil) && ui.solid && !first {
+				return
+			}
+			ui = b.ul.Redo()
+		} else {
+			ui = b.ul.Undo()
+		}
+
+		if ui == nil {
+			return
+		}
+
+		first = false
+
+		b.lock()
+
+		var us undoSel
+		var text []rune
+		if redo {
+			us = ui.before
+			text = []rune(ui.after.text)
+		} else {
+			us = ui.after
+			text = []rune(ui.before.text)
+		}
+		ws := util.Sel{ us.S, us.E }
+		b.replaceIntl(text, &ws, sels)
+		updateSels(sels, &ws, len(text))
+
+		b.hlFrom(ws.S-1)
+
+		b.unlock()
+
+		sels[0].S = ws.S
+		sels[0].E = ws.S
+
+		mui := ui
+		if !redo {
+			mui = b.ul.PeekUndo()
+		}
+
+		b.Modified = (mui != nil) && !mui.saved
+
+		if !redo {
+			if ui.solid {
+				return
+			}
+		}
 	}
-
-	if ui == nil {
-		return
-	}
-
-	b.lock()
-
-	var us undoSel
-	var text []rune
-	if redo {
-		us = ui.before
-		text = []rune(ui.after.text)
-	} else {
-		us = ui.after
-		text = []rune(ui.before.text)
-	}
-	ws := util.Sel{ us.S, us.E }
-	b.replaceIntl(text, &ws, sels)
-	updateSels(sels, &ws, len(text))
-
-	b.hlFrom(ws.S-1)
-
-	b.unlock()
-
-	sels[0].S = ws.S
-	sels[0].E = ws.S
-	b.Modified = !ui.saved
 }
 
 func (b *Buffer) lock() {
@@ -182,7 +205,7 @@ func (b *Buffer) replaceIntl(text []rune, sel *util.Sel, sels []util.Sel) {
 }
 
 // Saves undo information for replacement of text between sel.S and sel.E with text
-func (b *Buffer) pushUndo(sel util.Sel, text []rune) {
+func (b *Buffer) pushUndo(sel util.Sel, text []rune, solid bool) {
 	if b.Name == "+Tag" {
 		return
 	}
@@ -193,6 +216,7 @@ func (b *Buffer) pushUndo(sel util.Sel, text []rune) {
 	ui.after.S = sel.S
 	ui.after.E = sel.S + len(text)
 	ui.after.text = string(text)
+	ui.solid = solid
 	b.ul.Add(ui)
 }
 
@@ -276,7 +300,7 @@ func (b *Buffer) phisical(p int) int {
 
 func (b *Buffer) At(p int) *textframe.ColorRune {
 	pp := b.phisical(p)
-	if (pp < 0) || (pp > len(b.buf)) {
+	if (pp < 0) || (pp >= len(b.buf)) {
 		return nil
 	}
 	return &b.buf[pp]
@@ -454,6 +478,76 @@ func (b *Buffer) HasUndo() bool {
 
 func (b *Buffer) HasRedo() bool {
 	return b.ul.cur < len(b.ul.lst)
+}
+
+func (b *Buffer) ReaderFrom(s int) io.RuneReader {
+	return &runeReader{ b, s }
+}
+
+type runeReader struct {
+	b *Buffer
+	s int
+}
+
+func (rr *runeReader) ReadRune() (r rune, size int, err error) {
+	cr := rr.b.At(rr.s)
+	rr.s++
+	if cr != nil {
+		return cr.R, sizeOfRune(cr.R), nil
+	} else {
+		return 0, 0, io.EOF
+	}
+}
+
+func (b *Buffer) GetLine(i int) (int, int) {
+	ba, bb := b.Selection(util.Sel{ 0, b.Size() })
+	if i < len(ba) {
+		n, c := countNl(ba[:i])
+		return n+1, c
+	} else {
+		di := i - len(ba)
+		na, offa := countNl(ba)
+		nb, offb := countNl(bb[:di])
+		if nb == 0 {
+			return na + 1, offa + offb
+		} else {
+			return na + nb + 1, offb
+		}
+	}
+}
+
+func countNl(rs []textframe.ColorRune) (int, int) {
+	count := 0
+	off := 0
+	for _, r := range rs {
+		if r.R == '\n' {
+			count++
+			off = 0
+		} else {
+			off++
+		}
+	}
+	return count, off
+}
+
+func sizeOfRune(r rune) int {
+	if r <= 0x007F {
+		return 1
+	}
+	if r <= 0x07FF {
+		return 2
+	}
+	if r <= 0xFFFF {
+		return 3
+	}
+	if r <= 0x1FFFFF {
+		return 4
+	}
+	// this cases never actually happen
+	if r <= 0x3FFFFFF {
+		return 5
+	}
+	return 6
 }
 
 func ToRunes(v []textframe.ColorRune) []rune {

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"image"
 	"image/draw"
 	"yacco/util"
@@ -200,6 +201,12 @@ func (e *Editor) GenTag() {
 	e.tagfr.Sels[0].E = e.tagbuf.Size()
 
 	t := e.bodybuf.ShortName()
+
+	if e.sfr.Fr.Sels[0].E <= 10000 {
+		line, col := e.bodybuf.GetLine(e.sfr.Fr.Sels[0].E)
+		t += fmt.Sprintf(":%d:%d", line, col)
+	}
+
 	t += config.DefaultEditorTag
 	if e.bodybuf.Modified {
 		t += " Put"
@@ -214,7 +221,7 @@ func (e *Editor) GenTag() {
 
 	t += " | " + usertext
 	e.tagbuf.EditableStart = -1
-	e.tagbuf.Replace([]rune(t), &e.tagfr.Sels[0], e.tagfr.Sels)
+	e.tagbuf.Replace([]rune(t), &e.tagfr.Sels[0], e.tagfr.Sels, true)
 	TagSetEditableStart(e.tagbuf)
 }
 

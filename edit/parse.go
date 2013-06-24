@@ -15,6 +15,7 @@ type cmdDef struct {
 	addrarg bool
 	bodyarg bool
 	optxtarg bool
+	restargs bool
 	fn func(c *cmd, buf *buf.Buffer, sels []util.Sel)
 }
 
@@ -32,6 +33,9 @@ var commands = map[rune]cmdDef{
 	'y': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { xcmdfn(true, c, buf, sels) }  },
 	'g': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, buf *buf.Buffer, sels[]util.Sel) { gcmdfn(false, c, buf, sels) } },
 	'v': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, buf *buf.Buffer, sels[]util.Sel) { gcmdfn(true, c, buf, sels) }  },
+	'<': cmdDef{ restargs: true, fn: pipeincmdfn },
+	'>': cmdDef{ restargs: true, fn: pipeoutcmdfn },
+	'|': cmdDef{ restargs: true, fn: pipecmdfn },
 }
 
 type addrTok string
@@ -109,7 +113,7 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*cmd, []run
 			rest = rest[1:]
 			for i := 0; i < theCmdDef.txtargs; i++ {
 				var arg string
-				arg, rest = readDelim(rest, endr)
+				arg, rest = readDelim(rest[1:], endr)
 				r.txtargs = append(r.txtargs, arg)
 				rest = skipSpaces(rest)
 			}
@@ -154,6 +158,9 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*cmd, []run
 
 	if theCmdDef.bodyarg {
 		r.body, rest = parseEx(rest)
+	} else if theCmdDef.restargs {
+		r.bodytxt = string(rest)
+		rest = []rune{}
 	}
 
 	return r, rest
@@ -206,7 +213,7 @@ func readNumber(rest []rune) (string, []rune) {
 func readDelim(pgm []rune, endr rune) (string, []rune) {
 	r := []rune{}
 	escaping := false
-	for i := 1; i < len(pgm); i++ {
+	for i := 0; i < len(pgm); i++ {
 		if !escaping {
 			switch pgm[i] {
 			case '\\':

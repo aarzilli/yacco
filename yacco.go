@@ -4,13 +4,14 @@ import (
 	"log"
 	"os"
 	"yacco/buf"
+	"yacco/edit"
 	"github.com/skelterjohn/go.wde"
 	_ "github.com/skelterjohn/go.wde/init"
 )
 
-//var Font *textframe.Font
 var wnd Window
 var buffers []*buf.Buffer = []*buf.Buffer{}
+var sideChan chan interface{}
 
 func realmain() {
 	err := wnd.Init(640, 480)
@@ -32,6 +33,11 @@ func realmain() {
 
 func main() {
 	PlatformInit()
+
+	edit.Warnfn = Warn
+
+	sideChan = make(chan interface{}, 5)
+
 	go realmain()
 	wde.Run()
 }
