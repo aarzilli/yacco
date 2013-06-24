@@ -24,6 +24,8 @@ type Buffer struct {
 	// gap buffer implementation
 	buf []textframe.ColorRune
 	gap, gapsz int
+
+	ul undoList
 }
 
 func NewBuffer(dir, name string) (b *Buffer, err error) {
@@ -36,7 +38,9 @@ func NewBuffer(dir, name string) (b *Buffer, err error) {
 
 		buf: make([]textframe.ColorRune, SLOP),
 		gap: 0,
-		gapsz: SLOP }
+		gapsz: SLOP,
+
+		ul: undoList{ 0, []undoInfo{} }, }
 
 	dirfile, err := os.Open(dir)
 	if err != nil {
@@ -60,6 +64,7 @@ func NewBuffer(dir, name string) (b *Buffer, err error) {
 			runes := []rune(string(bytes))
 			b.Replace(runes, &util.Sel{ -1, 0 }, []util.Sel{})
 			b.Modified = false
+			b.ul.Reset()
 		} else {
 			// doesn't exist, mark as modified
 			b.Modified = true
@@ -69,6 +74,8 @@ func NewBuffer(dir, name string) (b *Buffer, err error) {
 	return b, nil
 }
 
+// Replaces text between sel.S and sel.E with text, updates sels AND sel accordingly
+// After the replacement the highlighter is restarted
 func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel) {
 	if (!b.Editable) {
 		return
@@ -86,10 +93,75 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel) {
 
 	b.Modified = true
 
-	//TODO: stop lexer here
+	b.lock()
 
-	//TODO: generate undo information unless there is a job attached to this buffer
+	b.pushUndo(*sel, text)
+	b.replaceIntl(text, sel, sels)
+	updateSels(sels, sel, len(text))
 
+	b.hlFrom(sel.S-1)
+	b.unlock()
+
+	sel.S = sel.S + len(text)
+	sel.E = sel.S
+}
+
+// Undo last change. Redoes last undo if redo == true
+func (b *Buffer) Undo(sels []util.Sel, redo bool) {
+	if (!b.Editable) {
+		return
+	}
+
+	var ui *undoInfo
+	if redo {
+		ui = b.ul.Redo()
+	} else {
+		ui = b.ul.Undo()
+	}
+
+	if ui == nil {
+		return
+	}
+
+	b.lock()
+
+	var us undoSel
+	var text []rune
+	if redo {
+		us = ui.before
+		text = []rune(ui.after.text)
+	} else {
+		us = ui.after
+		text = []rune(ui.before.text)
+	}
+	ws := util.Sel{ us.S, us.E }
+	b.replaceIntl(text, &ws, sels)
+	updateSels(sels, &ws, len(text))
+
+	b.hlFrom(ws.S-1)
+
+	b.unlock()
+
+	sels[0].S = ws.S
+	sels[0].E = ws.S
+	b.Modified = !ui.saved
+}
+
+func (b *Buffer) lock() {
+	//TODO: stop highlighter here, lock buffer
+}
+
+func (b *Buffer) hlFrom(s int) {
+	//TODO: start highlighter at s (needs how many lines to do?)
+}
+
+func (b *Buffer) unlock() {
+	//TODO: unlock buffer
+}
+
+// Replaces text between sel.S and sel.E with text, updates selections in sels except sel itself
+// NOTE sel IS NOT modified, we need a pointer specifically so we can skip updating it in sels
+func (b *Buffer) replaceIntl(text []rune, sel *util.Sel, sels []util.Sel) {
 	regionSize := sel.E - sel.S
 
 	if (sel.S != sel.E) {
@@ -107,15 +179,25 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel) {
 	}
 	b.gap += len(text)
 	b.gapsz -= len(text)
-
-	updateSels(sels, sel, len(text))
-
-	//TODO: lexing starting at sel.S-1
-
-	sel.S = sel.S + len(text)
-	sel.E = sel.S
 }
 
+// Saves undo information for replacement of text between sel.S and sel.E with text
+func (b *Buffer) pushUndo(sel util.Sel, text []rune) {
+	if b.Name == "+Tag" {
+		return
+	}
+	var ui undoInfo
+	ui.before.S = sel.S
+	ui.before.E = sel.E
+	ui.before.text = string(ToRunes(b.SelectionX(sel)))
+	ui.after.S = sel.S
+	ui.after.E = sel.S + len(text)
+	ui.after.text = string(text)
+	b.ul.Add(ui)
+}
+
+// Updates position of items in sels except for the one pointed by sel
+// The update is for a text replacement starting at sel.S of size delta
 func updateSels(sels []util.Sel, sel *util.Sel, delta int) {
 	var end int
 	if delta < 0 {
@@ -364,6 +446,14 @@ func (b *Buffer) Put() error {
 	}
 	b.Modified = false
 	return nil
+}
+
+func (b *Buffer) HasUndo() bool {
+	return b.ul.cur > 0
+}
+
+func (b *Buffer) HasRedo() bool {
+	return b.ul.cur < len(b.ul.lst)
 }
 
 func ToRunes(v []textframe.ColorRune) []rune {

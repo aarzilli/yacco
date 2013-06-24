@@ -204,8 +204,14 @@ func (e *Editor) GenTag() {
 	if e.bodybuf.Modified {
 		t += " Put"
 	}
-	//TODO: if has undo info add " Undo"
-	//TODO: if has redo info add " Redo"
+
+	if e.bodybuf.HasUndo() {
+		t += " Undo"
+	}
+	if e.bodybuf.HasRedo() {
+		t += " Redo"
+	}
+
 	t += " | " + usertext
 	e.tagbuf.EditableStart = -1
 	e.tagbuf.Replace([]rune(t), &e.tagfr.Sels[0], e.tagfr.Sels)

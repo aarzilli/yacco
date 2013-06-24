@@ -37,6 +37,8 @@ var KeyBindings  = map[string]string{
 	"control+v": "Paste",
 	"control+x": "Cut",
 	"control+s": "Put",
+	"control+z": "Undo",
+	"control+shift+z": "Redo",
 }
 
 /* TODO:
@@ -48,4 +50,10 @@ delete: Do
 	Edit v/./ .,+#1
 	Edit c//
 
+control-home Edit #0
+control-end Edit $
+home and control-a Edit +--#0+/[^ \t]/-#0
+end and control-e Edit +-+#0
+control-s Put
+control-k kill to end of line
 */

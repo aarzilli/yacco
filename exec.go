@@ -273,7 +273,8 @@ func RedoCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	//TODO
+	ec.buf.Undo(ec.fr.Sels, false)
+	ec.br.BufferRefresh(ec.ontag)
 }
 
 func SendCmd(ec ExecContext, arg string) {
@@ -303,7 +304,8 @@ func UndoCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	//TODO
+	ec.buf.Undo(ec.fr.Sels, false)
+	ec.br.BufferRefresh(ec.ontag)
 }
 
 func ZeroxCmd(ec ExecContext, arg string) {

@@ -156,7 +156,6 @@ func (w *Window) EventLoop() {
 			}
 
 		case util.WheelEvent:
-			println("wheel:", e.Where.String(), e.Count)
 			lp := w.TranslatePosition(e.Where)
 			if lp.sfr != nil {
 				if e.Count > 0 {
