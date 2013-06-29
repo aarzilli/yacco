@@ -35,6 +35,7 @@ var KeyBindings  = map[string]string{
 	"control+shift+right_arrow": "Edit .,+#w1+#0",
 	"control+left_arrow": "Edit -#w1-#0",
 	"control+shift+left_arrow": "Edit .,+#0-#w1-#0",
+	"control+backspace": "Edit -#w1,. c//",
 	"control+c": "Copy",
 	"control+v": "Paste",
 	"control+x": "Cut",

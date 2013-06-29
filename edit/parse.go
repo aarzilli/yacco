@@ -16,23 +16,23 @@ type cmdDef struct {
 	bodyarg bool
 	optxtarg bool
 	restargs bool
-	fn func(c *cmd, buf *buf.Buffer, sels []util.Sel)
+	fn func(c *cmd, buf *buf.Buffer, sels []util.Sel, eventChan chan string)
 }
 
 var commands = map[rune]cmdDef{
-	'a': cmdDef{ txtargs: 1, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { inscmdfn(+1, c, buf, sels) } },
-	'c': cmdDef{ txtargs: 1, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { inscmdfn(0, c, buf, sels)  } },
-	'i': cmdDef{ txtargs: 1, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { inscmdfn(-1, c, buf, sels) } },
-	'd': cmdDef{ txtargs: 0, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { c.txtargs = []string{ "" }; inscmdfn(0, c, buf, sels) } },
+	'a': cmdDef{ txtargs: 1, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel, eventChan chan string) { inscmdfn(+1, c, buf, sels, eventChan) } },
+	'c': cmdDef{ txtargs: 1, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel, eventChan chan string) { inscmdfn(0, c, buf, sels, eventChan)  } },
+	'i': cmdDef{ txtargs: 1, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel, eventChan chan string) { inscmdfn(-1, c, buf, sels, eventChan) } },
+	'd': cmdDef{ txtargs: 0, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel, eventChan chan string) { c.txtargs = []string{ "" }; inscmdfn(0, c, buf, sels, eventChan) } },
 	's': cmdDef{ txtargs: 2, sarg: true, fn: scmdfn },
-	'm': cmdDef{ txtargs: 0, addrarg: true, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { mtcmdfn(true, c, buf, sels) } },
-	't': cmdDef{ txtargs: 0, addrarg: true, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { mtcmdfn(false, c, buf, sels) } },
+	'm': cmdDef{ txtargs: 0, addrarg: true, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel, eventChan chan string) { mtcmdfn(true, c, buf, sels, eventChan) } },
+	't': cmdDef{ txtargs: 0, addrarg: true, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel, eventChan chan string) { mtcmdfn(false, c, buf, sels, eventChan) } },
 	'p': cmdDef{ txtargs: 0, fn: pcmdfn },
 	'=': cmdDef{ txtargs: 0, fn: eqcmdfn },
-	'x': cmdDef{ txtargs: 1, bodyarg: true, optxtarg: true, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { xcmdfn(false, c, buf, sels) } },
-	'y': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel) { xcmdfn(true, c, buf, sels) }  },
-	'g': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, buf *buf.Buffer, sels[]util.Sel) { gcmdfn(false, c, buf, sels) } },
-	'v': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, buf *buf.Buffer, sels[]util.Sel) { gcmdfn(true, c, buf, sels) }  },
+	'x': cmdDef{ txtargs: 1, bodyarg: true, optxtarg: true, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel, eventChan chan string) { xcmdfn(false, c, buf, sels, eventChan) } },
+	'y': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, buf *buf.Buffer, sels []util.Sel, eventChan chan string) { xcmdfn(true, c, buf, sels, eventChan) }  },
+	'g': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, buf *buf.Buffer, sels[]util.Sel, eventChan chan string) { gcmdfn(false, c, buf, sels, eventChan) } },
+	'v': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, buf *buf.Buffer, sels[]util.Sel, eventChan chan string) { gcmdfn(true, c, buf, sels, eventChan) }  },
 	'<': cmdDef{ restargs: true, fn: pipeincmdfn },
 	'>': cmdDef{ restargs: true, fn: pipeoutcmdfn },
 	'|': cmdDef{ restargs: true, fn: pipecmdfn },
@@ -113,7 +113,7 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*cmd, []run
 			rest = rest[1:]
 			for i := 0; i < theCmdDef.txtargs; i++ {
 				var arg string
-				arg, rest = readDelim(rest[1:], endr)
+				arg, rest = readDelim(rest, endr)
 				r.txtargs = append(r.txtargs, arg)
 				rest = skipSpaces(rest)
 			}

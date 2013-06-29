@@ -7,6 +7,7 @@ import (
 	"image/draw"
 	"math"
 	"strings"
+	"sync"
 	"yacco/util"
 	"yacco/buf"
 	"yacco/config"
@@ -19,6 +20,7 @@ type Window struct {
 	cols *Cols
 	tagfr textframe.Frame
 	tagbuf *buf.Buffer
+	Lock sync.Mutex // fuck it, we don't need no performance!
 }
 
 type LogicalPos struct {
@@ -41,7 +43,26 @@ type WarnMsg struct {
 
 type ReplaceMsg struct {
 	ec *ExecContext
+	sel *util.Sel
+	append bool
 	txt string
+	origin util.EventOrigin
+}
+
+type ExecMsg struct {
+	ec *ExecContext
+	s, e int
+	cmd string
+}
+
+type LoadMsg struct {
+	dir string
+	s string
+}
+
+type ExecFsMsg struct {
+	ec *ExecContext
+	cmd string
 }
 
 var activeSel string = ""
@@ -144,9 +165,10 @@ func (w *Window) EventLoop() {
 	var lastWhere image.Point
 	for ei := range events {
 		runtime.Gosched()
+		wnd.Lock.Lock()
 		switch e := ei.(type) {
 		case wde.CloseEvent:
-			wde.Stop()
+			FsQuit()
 
 		case wde.ResizeEvent:
 			wnd.Resized()
@@ -213,9 +235,29 @@ func (w *Window) EventLoop() {
 			}
 
 		case ReplaceMsg:
-			e.ec.ed.bodybuf.Replace([]rune(e.txt), &e.ec.fr.Sels[0], e.ec.fr.Sels, true)
+			sel := e.sel
+			if sel == nil {
+				if e.append {
+					sel = &util.Sel{ e.ec.ed.bodybuf.Size(), e.ec.ed.bodybuf.Size() }
+				} else {
+					sel = &e.ec.fr.Sels[0]
+				}
+			}
+			e.ec.ed.bodybuf.Replace([]rune(e.txt), sel, e.ec.fr.Sels, true, e.ec.eventChan, e.origin)
 			e.ec.br.BufferRefresh(false)
+
+		case LoadMsg:
+			Load(e.dir, e.s)
+
+		case ExecMsg:
+			println("Executing command from file")
+			e.ec.fr.Sels[0] = util.Sel{ e.s, e.e }
+			Exec(*e.ec, e.cmd)
+
+		case ExecFsMsg:
+			ExecFs(e.ec, e.cmd)
 		}
+		wnd.Lock.Unlock()
 	}
 }
 
@@ -496,6 +538,10 @@ func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
 		ed: lp.ed,
 	}
 
+	if ec.ed != nil {
+		ec.eventChan = ec.ed.eventChan
+	}
+
 	// commands executed with a keybinding always have the focused thing as the context
 	// commands executed with mouse clicks will always have an editor's body as context
 	// The picked body will be:
@@ -551,8 +597,10 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			lp.tagfr.SetSelect(1, 1, lp.tagbuf.EditableStart, lp.tagbuf.Size())
 			if lp.ed != nil {
 				lp.ed.BufferRefresh(true)
-			} else {
+			} else if (lp.col != nil) {
 				lp.col.BufferRefresh(true)
+			} else {
+				wnd.BufferRefresh(true)
 			}
 			cmd := string(lp.tagbuf.SelectionRunes(lp.tagfr.Sels[1]))
 			Exec(ec, cmd)
@@ -563,13 +611,22 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			//TODO: check autoindent enabled
 			if ec.fr.Sels[0].S == ec.fr.Sels[0].E {
 				is := ec.buf.Tonl(ec.fr.Sels[0].S, -1)
-				var ie int
-				for ie = is; (ec.buf.At(ie).R == ' ') || (ec.buf.At(ie).R == '\t'); ie++ { }
+				ie := is
+				for {
+					cr := ec.buf.At(ie)
+					if cr == nil {
+						break
+					}
+					if (cr.R != ' ') && (cr.R != '\t') {
+						break
+					}
+					ie++
+				}
 				indent := string(ec.buf.SelectionRunes(util.Sel{ is, ie }))
 				nl += indent
 			}
 
-			ec.buf.Replace([]rune(nl), &ec.fr.Sels[0], ec.fr.Sels, true)
+			ec.buf.Replace([]rune(nl), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
 			ec.br.BufferRefresh(ec.ontag)
 		}
 
@@ -579,7 +636,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			ec.fr.Sels[0].S--
 			ec.buf.FixSel(&ec.fr.Sels[0])
 		}
-		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true)
+		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
 		ec.br.BufferRefresh(ec.ontag)
 
 	case "delete":
@@ -588,34 +645,41 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			ec.fr.Sels[0].E++
 			ec.buf.FixSel(&ec.fr.Sels[0])
 		}
-		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true)
+		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
+		ec.br.BufferRefresh(ec.ontag)
+
+	case "tab":
+		ec := lp.asExecContext(true)
+		ec.buf.Replace([]rune{ '\t' }, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
 		ec.br.BufferRefresh(ec.ontag)
 
 	default:
 		ec := lp.asExecContext(true)
 		if cmd, ok := config.KeyBindings[e.Chord]; ok {
 			//println("Execute command: <" + cmd + ">")
-			Exec(ec, cmd)
-			ec.br.BufferRefresh(ec.ontag)
+			if ec.eventChan == nil {
+				Exec(ec, cmd)
+				ec.br.BufferRefresh(ec.ontag)
+			} else {
+				cmd = strings.TrimSpace(cmd)
+				_, _, isintl := IntlCmd(cmd)
+				flags := util.EventFlag(0)
+				if isintl {
+					flags = util.EFX_BUILTIN
+				}
+				util.Fmtevent(ec.eventChan, util.EO_KBD, ec.ontag, util.ET_BODYEXEC, ec.fr.Sels[0].S, ec.fr.Sels[0].E, flags, cmd)
+			}
 		} else if e.Glyph != "" {
 			if !ec.ontag && ec.ed != nil {
 				activeEditor = ec.ed
 			}
-			ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], ec.fr.Sels, true)
+			ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
 			ec.br.BufferRefresh(ec.ontag)
 		}
 	}
 
 	if lp.sfr != nil {
-		if !lp.sfr.Fr.Inside(lp.sfr.Fr.Sels[0].E) {
-			n := lp.sfr.Fr.LineNo() / 2
-			x := lp.sfr.Fr.Sels[0].E
-			for i := 0; i < n; i++ {
-				x = lp.bodybuf.Tonl(x-2, -1)
-			}
-			lp.ed.top = x
-			lp.ed.BufferRefresh(false)
-		}
+		lp.ed.Recenter()
 	}
 }
 
@@ -625,20 +689,55 @@ func clickExec(lp LogicalPos, e wde.MouseDownEvent, ee *wde.MouseUpEvent) {
 		cmd := expandedSelection(lp, 1)
 		ec := lp.asExecContext(false)
 		c := cmd
+		extraArg := false
 		if (ee != nil) && (ee.Which == wde.LeftButton) {
+			extraArg = true
 			c += " " + activeSel
 		}
-		Exec(ec, cmd)
+		if ec.eventChan == nil {
+			Exec(ec, cmd)
+		} else {
+			_, _, isintl := IntlCmd(cmd)
+			flags := util.EventFlag(0)
+			if isintl {
+				flags = util.EFX_BUILTIN
+			}
+			if extraArg {
+				flags |= util.EFX_EXTRAARG
+			}
+			util.Fmtevent(ec.eventChan, util.EO_MOUSE, ec.ontag, util.ET_BODYEXEC, ec.fr.Sels[0].S, ec.fr.Sels[0].E, flags, cmd)
+		}
 
 	case wde.MiddleButton | wde.LeftButton:
 		cmd := expandedSelection(lp, 1)
 		ec := lp.asExecContext(false)
-		Exec(ec, cmd + " " + activeSel)
+		cmd = cmd + activeSel
+		if ec.eventChan == nil {
+			Exec(ec, cmd + " " + activeSel)
+		} else {
+			_, _, isintl := IntlCmd(cmd)
+			flags := util.EventFlag(0)
+			if isintl {
+				flags = util.EFX_BUILTIN
+			}
+			util.Fmtevent(ec.eventChan, util.EO_MOUSE, ec.ontag, util.ET_BODYEXEC, ec.fr.Sels[0].S, ec.fr.Sels[0].E, flags, cmd)
+		}
 
 	case wde.RightButton:
 		s := expandedSelection(lp, 2)
-		println("Open: ", s)
-		//TODO: implement
+		if (lp.ed == nil) || (lp.ed.eventChan == nil) {
+			dir := wnd.tagbuf.Dir
+			if lp.ed != nil {
+				dir = lp.ed.bodybuf.Dir
+			}
+			Load(dir, s)
+		} else {
+			fr := lp.tagfr
+			if fr == nil {
+				fr = &lp.sfr.Fr
+			}
+			util.Fmtevent(lp.ed.eventChan, util.EO_MOUSE, lp.tagfr != nil, util.ET_BODYLOAD, fr.Sels[0].S, fr.Sels[0].E, 0, s)
+		}
 
 	case wde.LeftButton:
 		br := lp.bufferRefreshable()
@@ -721,6 +820,6 @@ func (w *Window) GenTag() {
 
 	t := pwd + " " + string(config.DefaultWindowTag) + usertext
 	w.tagbuf.EditableStart = -1
-	w.tagbuf.Replace([]rune(t), &w.tagfr.Sels[0], w.tagfr.Sels, true)
+	w.tagbuf.Replace([]rune(t), &w.tagfr.Sels[0], w.tagfr.Sels, true, nil, 0)
 	TagSetEditableStart(w.tagbuf)
 }

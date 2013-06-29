@@ -20,20 +20,35 @@ type cmd struct {
 	argaddr Addr
 	body *cmd
 	bodytxt string
-	fn func(c *cmd, buf *buf.Buffer, sels []util.Sel)
+	fn func(c *cmd, buf *buf.Buffer, sels []util.Sel, eventChan chan string)
 }
 
-func Edit(pgm string, b *buf.Buffer, sels []util.Sel) {
+func Edit(pgm string, b *buf.Buffer, sels []util.Sel, eventChan chan string) {
 	ppgm := parse([]rune(pgm))
-	ppgm.Exec(b, sels)
+	ppgm.Exec(b, sels, eventChan)
 }
 
-func (ecmd *cmd) Exec(b *buf.Buffer, sels []util.Sel) {
+func (ecmd *cmd) Exec(b *buf.Buffer, sels []util.Sel, eventChan chan string) {
 	if ecmd.fn == nil {
 		panic(fmt.Errorf("Command '%c' not implemented", ecmd.cmdch))
 	}
 
-	ecmd.fn(ecmd, b, sels)
+	ecmd.fn(ecmd, b, sels, eventChan)
+}
+
+func AddrEval(pgm string, b *buf.Buffer, sel util.Sel) util.Sel{
+	rest := []rune(pgm)
+	toks := []addrTok{}
+	for {
+		if len(rest) == 0 {
+			break
+		}
+		var tok addrTok
+		tok, rest = readAddressTok(rest)
+		toks = append(toks, tok)
+	}
+	addr := parseAddr(toks)
+	return addr.Eval(b, sel)
 }
 
 func (ecmd *cmd) String() string {

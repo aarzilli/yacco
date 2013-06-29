@@ -116,6 +116,13 @@ func (cs *Cols) IndexOf(c *Col) int {
 }
 
 func (cs *Cols) Remove(i int) {
+	if i > 0 {
+		cs.cols[i-1].frac += cs.cols[i].frac
+	} else { // i == 0
+		if len(cs.cols) > 0 {
+			cs.cols[1].frac += cs.cols[0].frac
+		}
+	}
 	copy(cs.cols[i:], cs.cols[i+1:])
 	cs.cols = cs.cols[:len(cs.cols)-1]
 	cs.RecalcRects()

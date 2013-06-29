@@ -39,7 +39,6 @@ func (e *AddrOp) Eval(b *buf.Buffer, sel util.Sel) util.Sel {
 		slh := e.Lh.Eval(b, sel)
 		return e.Rh.Eval(b, slh)
 	}
-
 }
 
 type addrEmpty struct {
@@ -147,7 +146,12 @@ func (e *AddrBase) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 
 	case "#":
 		rsel = setStartSel(e.Dir, sel)
-		rsel.S += e.Dir * asnumber(e.Value)
+		dir := 1
+		if e.Dir < 0 {
+			dir = -1
+		}
+		rsel.S += dir * asnumber(e.Value)
+		rsel.E = rsel.S
 		b.FixSel(&rsel)
 		rsel.E = rsel.S
 

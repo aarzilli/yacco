@@ -38,16 +38,59 @@ func main() {
 
 	sideChan = make(chan interface{}, 5)
 
+	FsInit()
+
 	go realmain()
 	wde.Run()
+}
+
+func bufferAdd(b *buf.Buffer) {
+	buffers = append(buffers, b)
+	fsNodefs.addBuffer(len(buffers)-1, b)
+}
+
+func bufferIndex(b *buf.Buffer) int {
+	for i := range buffers {
+		if buffers[i] == b {
+			return i
+		}
+	}
+	return -1
 }
 
 func removeBuffer(b *buf.Buffer) {
 	for i, cb := range buffers {
 		if cb == b {
-			copy(buffers[i:], buffers[i+1:])
-			buffers = buffers[:len(buffers)-1]
+			buffers[i] = nil
+			fsNodefs.removeBuffer(i)
 			return
 		}
 	}
+}
+
+func bufferExecContext(i int) *ExecContext {
+	wnd.Lock.Lock()
+	defer wnd.Lock.Unlock()
+
+	if buffers[i] == nil {
+		return nil
+	}
+
+	for _, col := range wnd.cols.cols {
+		for _, ed := range col.editors {
+			if ed.bodybuf == buffers[i] {
+				return &ExecContext{
+					col: col,
+					ed: ed,
+					br: ed,
+					ontag: false,
+					fr: &ed.sfr.Fr,
+					buf: ed.bodybuf,
+					eventChan: ed.eventChan,
+				}
+			}
+		}
+	}
+
+	return nil
 }

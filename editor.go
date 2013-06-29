@@ -23,6 +23,8 @@ type Editor struct {
 	top int
 	tagbuf *buf.Buffer
 	confirmDel bool
+
+	eventChan chan string
 }
 
 const SCROLL_WIDTH = 10
@@ -42,6 +44,8 @@ func scrollfn(e *Editor, sd int, sl int) {
 
 	sz := e.bodybuf.Size()
 	a, b := e.bodybuf.Selection(util.Sel{e.top, sz})
+
+	//TODO: start full hl from the last known clean position
 
 	e.sfr.Set(e.top, sz)
 	e.sfr.Fr.Clear()
@@ -64,7 +68,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 	e.bodybuf = bodybuf
 	e.tagbuf, _ = buf.NewBuffer(bodybuf.Dir, "+Tag")
 
-	buffers = append(buffers, bodybuf)
+	bufferAdd(bodybuf)
 
 	e.sfr = textframe.ScrollFrame{
 		Width: SCROLL_WIDTH,
@@ -76,12 +80,12 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 			VisibleTick: false,
 			Colors:  [][]image.Uniform{
 				config.TheColorScheme.EditorPlain,
-				config.TheColorScheme.EditorSel1,
-				config.TheColorScheme.EditorSel2,
-				config.TheColorScheme.EditorSel3,
+				config.TheColorScheme.EditorSel1, // 0 first button selection
+				config.TheColorScheme.EditorSel2, // 1 second button selection
+				config.TheColorScheme.EditorSel3, // 2 third button selection
+				config.TheColorScheme.EditorPlain, // 3 highlighted parenthesis
+				config.TheColorScheme.EditorPlain, // 4 content of 'addr' file
 				/* space for jumps */
-				config.TheColorScheme.EditorPlain,
-				config.TheColorScheme.EditorPlain,
 				config.TheColorScheme.EditorPlain,
 				config.TheColorScheme.EditorPlain,
 				config.TheColorScheme.EditorPlain,
@@ -204,7 +208,9 @@ func (e *Editor) GenTag() {
 
 	if e.sfr.Fr.Sels[0].E <= 10000 {
 		line, col := e.bodybuf.GetLine(e.sfr.Fr.Sels[0].E)
-		t += fmt.Sprintf(":%d:%d", line, col)
+		//t += fmt.Sprintf(":%d:%d#%d", line, col, e.sfr.Fr.Sels[0].E)
+		_ = col
+		t += fmt.Sprintf(":%d", line)
 	}
 
 	t += config.DefaultEditorTag
@@ -221,8 +227,16 @@ func (e *Editor) GenTag() {
 
 	t += " | " + usertext
 	e.tagbuf.EditableStart = -1
-	e.tagbuf.Replace([]rune(t), &e.tagfr.Sels[0], e.tagfr.Sels, true)
+	e.tagbuf.Replace([]rune(t), &e.tagfr.Sels[0], e.tagfr.Sels, true, nil, 0)
 	TagSetEditableStart(e.tagbuf)
+}
+
+func (e *Editor) refreshIntl() {
+	e.sfr.Fr.Clear()
+	e.sfr.Set(e.top, e.bodybuf.Size())
+	ba, bb := e.bodybuf.Selection(util.Sel{ e.top, e.bodybuf.Size() })
+	e.sfr.Fr.InsertColor(ba)
+	e.sfr.Fr.InsertColor(bb)
 }
 
 func (e *Editor) BufferRefresh(ontag bool) {
@@ -233,11 +247,10 @@ func (e *Editor) BufferRefresh(ontag bool) {
 		e.tagfr.InsertColor(tb)
 		e.tagfr.Redraw(true)
 	} else {
-		e.sfr.Fr.Clear()
-		e.sfr.Set(e.top, e.bodybuf.Size())
-		ba, bb := e.bodybuf.Selection(util.Sel{ e.top, e.bodybuf.Size() })
-		e.sfr.Fr.InsertColor(ba)
-		e.sfr.Fr.InsertColor(bb)
+		e.refreshIntl()
+		if e.recenterIntl(false) {
+			e.refreshIntl()
+		}
 
 		e.GenTag()
 		e.tagfr.Clear()
@@ -264,4 +277,25 @@ func (ed *Editor) Column() *Col {
 
 func (ed *Editor) Height() int {
 	return ed.r.Max.Y - ed.r.Min.Y
+}
+
+func (ed *Editor) recenterIntl(refresh bool) bool {
+	if ed.sfr.Fr.Inside(ed.sfr.Fr.Sels[0].E) {
+		return false
+	}
+	n := ed.sfr.Fr.LineNo() / 2
+	x := ed.sfr.Fr.Sels[0].E
+	for i := 0; i < n; i++ {
+		x = ed.bodybuf.Tonl(x-2, -1)
+	}
+	ed.top = x
+	if refresh {
+		ed.BufferRefresh(false)
+	}
+	//TODO: start full hl from the last known clean position
+	return true
+}
+
+func (ed *Editor) Recenter() bool {
+	return ed.recenterIntl(true)
 }

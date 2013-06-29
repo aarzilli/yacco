@@ -1,11 +1,13 @@
 package main
 
 import (
+	"os"
 	"fmt"
 	"strings"
 	"sync"
 	"io/ioutil"
 	"os/exec"
+	"yacco/util"
 )
 
 type jobrec struct {
@@ -14,6 +16,7 @@ type jobrec struct {
 	cmd *exec.Cmd
 	outstr string
 	errstr string
+	writeToBuf bool
 
 	done chan bool
 }
@@ -21,9 +24,15 @@ type jobrec struct {
 var jobs = []*jobrec{}
 var jobsMutex = sync.Mutex{}
 
-func NewJob(wd, cmd, input string, ec *ExecContext) {
+func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool) {
 	job := &jobrec{}
 
+	i := -1
+	if ec.ed != nil {
+		i = bufferIndex(ec.ed.bodybuf)
+	}
+
+	job.writeToBuf = writeToBuf
 	job.ec = ec
 	job.done = make(chan bool, 10)
 
@@ -34,6 +43,13 @@ func NewJob(wd, cmd, input string, ec *ExecContext) {
 	} else {
 		job.descr= cmd
 		job.cmd = exec.Command("/bin/bash", "-c", cmd)
+	}
+
+	os.Setenv("yd", fsDir)
+	if i < 0 {
+		os.Setenv("bd", "")
+	} else {
+		os.Setenv("bd", fmt.Sprintf("%s/%d", fsDir, i))
 	}
 
 	job.cmd.Dir = wd
@@ -74,37 +90,34 @@ func NewJob(wd, cmd, input string, ec *ExecContext) {
 	jobsMutex.Unlock()
 
 	go func() {
+		defer func() { job.done <- true }()
 		bs, err := ioutil.ReadAll(stdout)
 		if err != nil {
-			job.done <- true
 			return
 		}
 		job.outstr = string(bs)
 		stdout.Close()
-		job.done <- true
 	}()
 
 	go func() {
+		defer func() { job.done <- true }()
 		bs, err := ioutil.ReadAll(stderr)
 		if err != nil {
-			job.done <- true
 			return
 		}
 		job.errstr = string(bs)
 		stderr.Close()
-		job.done <- true
 	}()
 
 	go func() {
+		defer func() { job.done <- true }()
 		if input != "" {
 			_, err := stdin.Write([]byte(input))
 			if err != nil {
-				job.done <- true
 				return
 			}
 		}
 		stdin.Close()
-		job.done <- true
 	}()
 
 	go func() {
@@ -120,8 +133,8 @@ func NewJob(wd, cmd, input string, ec *ExecContext) {
 			}
 		}
 
-		if ec != nil {
-			sideChan <- ReplaceMsg{ job.ec, job.outstr }
+		if (ec != nil) && job.writeToBuf {
+			sideChan <- ReplaceMsg{ job.ec, nil, false, job.outstr, util.EO_BODYTAG }
 			if job.errstr != "" {
 				sideChan <- WarnMsg{ job.cmd.Dir, job.errstr }
 			}

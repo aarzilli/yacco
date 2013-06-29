@@ -26,9 +26,6 @@ type WheelEvent struct {
 func FilterEvents(in <-chan interface{}, altingList []AltingEntry) (out chan interface{}) {
 	out = make(chan interface{})
 	go func() {
-		shift := false
-		ctrl := false
-		alt := false
 		alting := false
 
 		resizeChan := make(chan bool, 1)
@@ -66,20 +63,17 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry) (out chan int
 			wheelTotal += n
 		}
 
-		fixButton := func(which *wde.Button) {
-			if *which == wde.LeftButton {
-				if alt {
-					*which = wde.RightButton
-				} else if ctrl {
-					if shift {
-						*which = wde.MiddleButton | wde.LeftButton
-					} else {
-						*which = wde.MiddleButton
-					}
+		fixButton := func(which *wde.Button, modifiers string) {
+			switch *which {
+			case wde.LeftButton:
+				switch modifiers {
+				case "control+":
+					*which = wde.MiddleButton
+				case "control+shift+":
+					*which = wde.MiddleButton | wde.LeftButton
 				}
-			}
-			if *which == wde.MiddleButton {
-				if shift {
+			case wde.MiddleButton:
+				if modifiers == "shift+" {
 					*which = wde.MiddleButton | wde.LeftButton
 				}
 			}
@@ -122,53 +116,30 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry) (out chan int
 					//println("Typed:", e.Glyph, e.Chord, "alting:", alting)
 
 				case wde.KeyDownEvent:
-					switch e.Key {
-					case "left_shift": fallthrough
-					case "right_shift":
-						shift = true
-					case "left_control":
-						ctrl = true
-					case "left_alt":
-						alt = true
-					}
 					out <- ei
 
 				case wde.KeyUpEvent:
-					switch e.Key {
-					case "left_shift":
-						shift = false
-					case "left_control":
-						ctrl = false
-					case "left_alt":
-						alt = false
-					case "Multi_key":
+					if e.Key == "Multi_key" {
 						alting = true
 						altingSeq = ""
 					}
 					out <- ei
 
 				case wde.MouseExitedEvent:
-					ctrl = false
-					shift = false
-					alting = false
-					alt = false
 					out <- ei
 
 				case wde.MouseEnteredEvent:
-					ctrl = false
-					shift = false
-					alting = false
 					out <- ei
 
 				case wde.MouseDraggedEvent:
-					fixButton(&e.Which)
+					fixButton(&e.Which, e.Modifiers)
 					scheduleMouseEvent(e)
 
 				case wde.MouseMovedEvent:
 					scheduleMouseEvent(e)
 
 				case wde.MouseDownEvent:
-					fixButton(&e.Which)
+					fixButton(&e.Which, e.Modifiers)
 					switch e.Which {
 					case wde.WheelUpButton:
 						scheduleWheelEvent(e, -1)
@@ -179,7 +150,7 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry) (out chan int
 					}
 
 				case wde.MouseUpEvent:
-					fixButton(&e.Which)
+					fixButton(&e.Which, e.Modifiers)
 					out <- e
 
 				case wde.ResizeEvent:

@@ -91,7 +91,9 @@ func HeuristicOpen(path string, warp bool) (*Editor, error) {
 	wnd.cols.RecalcRects()
 	col.Redraw()
 	wnd.wnd.FlushImage()
-	wnd.wnd.WarpMouse(ed.sfr.Fr.R.Min.Add(image.Point{ 2, 2}))
+	if warp {
+		wnd.wnd.WarpMouse(ed.sfr.Fr.R.Min.Add(image.Point{ 2, 2}))
+	}
 
 	return ed, nil
 }
@@ -101,10 +103,10 @@ func Warnfull(bufname, msg string) {
 	if err != nil {
 		fmt.Printf("Warn: %s (additionally error %s while displaying this warning)\n", msg, err.Error())
 	} else {
-		ed.sfr.Fr.Sels[0].S = 0
+		ed.sfr.Fr.Sels[0].S = ed.bodybuf.Size()
 		ed.sfr.Fr.Sels[0].E = ed.bodybuf.Size()
 
-		ed.bodybuf.Replace([]rune(msg), &ed.sfr.Fr.Sels[0], ed.sfr.Fr.Sels, true)
+		ed.bodybuf.Replace([]rune(msg), &ed.sfr.Fr.Sels[0], ed.sfr.Fr.Sels, true, nil, 0)
 		ed.BufferRefresh(false)
 	}
 }

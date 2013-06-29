@@ -58,12 +58,12 @@ func NewBuffer(dir, name string) (b *Buffer, err error) {
 
 	if name[0] != '+' {
 		infile, err := os.Open(filepath.Join(dir, name))
-		defer infile.Close()
 		if err == nil {
+			defer infile.Close()
 			bytes, err := ioutil.ReadAll(infile)
 			util.Must(err, fmt.Sprintf("Could not read %s/%s", dir, name))
 			runes := []rune(string(bytes))
-			b.Replace(runes, &util.Sel{ 0, 0 }, []util.Sel{}, true)
+			b.Replace(runes, &util.Sel{ 0, 0 }, []util.Sel{}, true, nil, 0)
 			b.Modified = false
 			b.ul.Reset()
 		} else {
@@ -77,7 +77,7 @@ func NewBuffer(dir, name string) (b *Buffer, err error) {
 
 // Replaces text between sel.S and sel.E with text, updates sels AND sel accordingly
 // After the replacement the highlighter is restarted
-func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel, solid bool) {
+func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel, solid bool, eventChan chan string, origin util.EventOrigin) {
 	if (!b.Editable) {
 		return
 	}
@@ -92,9 +92,11 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel, solid bool
 		return
 	}
 
-	b.Modified = true
+	b.generateEvent(text, *sel, eventChan, origin)
 
-	b.lock()
+	b.wrlock()
+
+	b.Modified = true
 
 	b.pushUndo(*sel, text, solid)
 	b.replaceIntl(text, sel, sels)
@@ -105,6 +107,25 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel, solid bool
 
 	sel.S = sel.S + len(text)
 	sel.E = sel.S
+}
+
+func (b *Buffer) generateEvent(text []rune, sel util.Sel, eventChan chan string, origin util.EventOrigin) {
+	if eventChan == nil {
+		return
+	}
+
+	if sel.S != sel.E {
+		etypec := 'D'
+		util.Fmtevent(eventChan, origin, b.Name == "+Tag", util.EventType(etypec), sel.S, sel.E, 0, "")
+	}
+
+	if (sel.S == sel.E) || (len(text) != 0) {
+		etypec := 'I'
+		if b.Name == "+Tag" {
+			etypec = unicode.ToLower(etypec)
+		}
+		util.Fmtevent(eventChan, origin, b.Name == "+Tag", util.EventType(etypec), sel.S, sel.S, 0, string(text))
+	}
 }
 
 // Undo last change. Redoes last undo if redo == true
@@ -133,7 +154,7 @@ func (b *Buffer) Undo(sels []util.Sel, redo bool) {
 
 		first = false
 
-		b.lock()
+		b.wrlock()
 
 		var us undoSel
 		var text []rune
@@ -170,7 +191,15 @@ func (b *Buffer) Undo(sels []util.Sel, redo bool) {
 	}
 }
 
-func (b *Buffer) lock() {
+func (b *Buffer) Rdlock() {
+	//TODO
+}
+
+func (b *Buffer) Rdunlock() {
+	//TODO
+}
+
+func (b *Buffer) wrlock() {
 	//TODO: stop highlighter here, lock buffer
 }
 
