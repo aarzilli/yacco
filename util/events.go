@@ -9,7 +9,7 @@ import (
 
 type EventOrigin rune
 type EventType rune
-type EventFlag uint8
+type EventFlag int
 
 const (
 	EO_BODYTAG = EventOrigin('E')

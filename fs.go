@@ -268,7 +268,7 @@ func (n *NewNode) Create(name string, flags uint32, mode uint32, context *fuse.C
 	wnd.Lock.Lock()
 	defer wnd.Lock.Unlock()
 
-	ed, err := HeuristicOpen("+New", false)
+	ed, err := HeuristicOpen("+New", false, true)
 	if err != nil {
 		fmt.Println("Error creating new editor: ", err)
 		return nil, nil, fuse.EIO
@@ -563,7 +563,7 @@ func writeEventFn(i int, data []byte, off int64) (written uint32, code fuse.Stat
 		return 0, fuse.ENOENT
 	}
 	fmt.Printf("Received <%s>", string(data))
-	origin, etype, s, e, _, arg, ok := util.Parsevent(string(data))
+	origin, etype, s, e, flags, arg, ok := util.Parsevent(string(data))
 	if !ok {
 		return 0, fuse.EIO
 	}
@@ -581,9 +581,16 @@ func writeEventFn(i int, data []byte, off int64) (written uint32, code fuse.Stat
 		}
 		sideChan <- ExecMsg{ &ec2, s, e, arg }
 
-	case util.ET_BODYLOAD: fallthrough
+	case util.ET_BODYLOAD:
+		sideChan <- LoadMsg{ ec, s, e, int(flags) }
+
 	case util.ET_TAGLOAD:
-		sideChan <- LoadMsg{ ec.buf.Dir, arg }
+		ec2 := *ec
+		if ec.ed != nil {
+			ec2.buf = ec2.ed.tagbuf
+			ec2.fr = &ec2.ed.tagfr
+		}
+		sideChan <- LoadMsg{ ec, s, e, int(flags) }
 
 	default:
 		return 0, fuse.EIO

@@ -56,8 +56,9 @@ type ExecMsg struct {
 }
 
 type LoadMsg struct {
-	dir string
-	s string
+	ec *ExecContext
+	s, e int
+	original int
 }
 
 type ExecFsMsg struct {
@@ -90,7 +91,7 @@ func (w *Window) Init(width, height int) (err error) {
 	}
 
 	cwd, _ := os.Getwd()
-	w.tagbuf, err = buf.NewBuffer(cwd, "+Tag")
+	w.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true)
 	util.Must(err, "Editor initialization failed")
 	util.Must(w.tagfr.Init(5), "Editor initialization failed")
 
@@ -247,10 +248,10 @@ func (w *Window) EventLoop() {
 			e.ec.br.BufferRefresh(false)
 
 		case LoadMsg:
-			Load(e.dir, e.s)
+			e.ec.fr.Sels[2] = util.Sel{ e.s, e.e }
+			Load(*e.ec, e.original)
 
 		case ExecMsg:
-			println("Executing command from file")
 			e.ec.fr.Sels[0] = util.Sel{ e.s, e.e }
 			Exec(*e.ec, e.cmd)
 
@@ -563,7 +564,7 @@ func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
 		}
 	} else {
 		ec.ontag = false
-		if (lp.ed != nil) && (lp.tagfr != nil) {
+		if lp.ed != nil {
 			ec.br = lp.ed
 			ec.fr = &lp.ed.sfr.Fr
 			ec.buf = lp.ed.bodybuf
@@ -629,6 +630,10 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			ec.buf.Replace([]rune(nl), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
 			ec.br.BufferRefresh(ec.ontag)
 		}
+		if lp.sfr != nil {
+			lp.ed.Recenter()
+		}
+
 
 	case "backspace":
 		ec := lp.asExecContext(true)
@@ -638,6 +643,9 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		}
 		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
 		ec.br.BufferRefresh(ec.ontag)
+		if lp.sfr != nil {
+			lp.ed.Recenter()
+		}
 
 	case "delete":
 		ec := lp.asExecContext(true)
@@ -647,11 +655,17 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		}
 		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
 		ec.br.BufferRefresh(ec.ontag)
+		if lp.sfr != nil {
+			lp.ed.Recenter()
+		}
 
 	case "tab":
 		ec := lp.asExecContext(true)
 		ec.buf.Replace([]rune{ '\t' }, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
 		ec.br.BufferRefresh(ec.ontag)
+		if lp.sfr != nil {
+			lp.ed.Recenter()
+		}
 
 	default:
 		ec := lp.asExecContext(true)
@@ -659,7 +673,12 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			//println("Execute command: <" + cmd + ">")
 			if ec.eventChan == nil {
 				Exec(ec, cmd)
-				ec.br.BufferRefresh(ec.ontag)
+				if ec.br != nil {
+					ec.br.BufferRefresh(ec.ontag)
+				}
+				if lp.sfr != nil {
+					lp.ed.Recenter()
+				}
 			} else {
 				cmd = strings.TrimSpace(cmd)
 				_, _, isintl := IntlCmd(cmd)
@@ -674,19 +693,20 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				activeEditor = ec.ed
 			}
 			ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
-			ec.br.BufferRefresh(ec.ontag)
+			if ec.br != nil {
+				ec.br.BufferRefresh(ec.ontag)
+			}
+			if lp.sfr != nil {
+				lp.ed.Recenter()
+			}
 		}
-	}
-
-	if lp.sfr != nil {
-		lp.ed.Recenter()
 	}
 }
 
 func clickExec(lp LogicalPos, e wde.MouseDownEvent, ee *wde.MouseUpEvent) {
 	switch e.Which {
 	case wde.MiddleButton:
-		cmd := expandedSelection(lp, 1)
+		cmd, _ := expandedSelection(lp, 1)
 		ec := lp.asExecContext(false)
 		c := cmd
 		extraArg := false
@@ -709,7 +729,7 @@ func clickExec(lp LogicalPos, e wde.MouseDownEvent, ee *wde.MouseUpEvent) {
 		}
 
 	case wde.MiddleButton | wde.LeftButton:
-		cmd := expandedSelection(lp, 1)
+		cmd, _ := expandedSelection(lp, 1)
 		ec := lp.asExecContext(false)
 		cmd = cmd + activeSel
 		if ec.eventChan == nil {
@@ -724,19 +744,16 @@ func clickExec(lp LogicalPos, e wde.MouseDownEvent, ee *wde.MouseUpEvent) {
 		}
 
 	case wde.RightButton:
-		s := expandedSelection(lp, 2)
+		ec := lp.asExecContext(false)
+		s, original := expandedSelection(lp, 2)
 		if (lp.ed == nil) || (lp.ed.eventChan == nil) {
-			dir := wnd.tagbuf.Dir
-			if lp.ed != nil {
-				dir = lp.ed.bodybuf.Dir
-			}
-			Load(dir, s)
+			Load(ec, original)
 		} else {
 			fr := lp.tagfr
 			if fr == nil {
 				fr = &lp.sfr.Fr
 			}
-			util.Fmtevent(lp.ed.eventChan, util.EO_MOUSE, lp.tagfr != nil, util.ET_BODYLOAD, fr.Sels[0].S, fr.Sels[0].E, 0, s)
+			util.Fmtevent(lp.ed.eventChan, util.EO_MOUSE, lp.tagfr != nil, util.ET_BODYLOAD, fr.Sels[0].S, fr.Sels[0].E, util.EventFlag(original), s)
 		}
 
 	case wde.LeftButton:
@@ -754,14 +771,17 @@ func clickExec(lp LogicalPos, e wde.MouseDownEvent, ee *wde.MouseUpEvent) {
 	}
 }
 
-func expandedSelection(lp LogicalPos, idx int) string {
+func expandedSelection(lp LogicalPos, idx int) (string, int) {
+	original := -1
 	if lp.sfr != nil {
 		sel := &lp.sfr.Fr.Sels[idx]
 		if sel.S == sel.E {
 			if lp.sfr.Fr.Sels[0].S != lp.sfr.Fr.Sels[0].E {
+				original = lp.sfr.Fr.Sels[0].S
 				lp.sfr.Fr.SetSelect(idx, 1, lp.sfr.Fr.Sels[0].S, lp.sfr.Fr.Sels[0].E)
 				lp.sfr.Redraw(true)
 			} else {
+				original = sel.S
 				s := lp.bodybuf.Tonl(sel.S-1, -1)
 				e := lp.bodybuf.Tonl(sel.S, +1)
 				lp.sfr.Fr.SetSelect(idx, 1, s, e)
@@ -769,7 +789,7 @@ func expandedSelection(lp LogicalPos, idx int) string {
 			}
 		}
 
-		return string(buf.ToRunes(lp.bodybuf.SelectionX(*sel)))
+		return string(buf.ToRunes(lp.bodybuf.SelectionX(*sel))), original
 	}
 
 	if lp.tagfr != nil {
@@ -777,24 +797,27 @@ func expandedSelection(lp LogicalPos, idx int) string {
 		if sel.S == sel.E {
 			if lp.tagfr.Sels[0].S != lp.tagfr.Sels[0].E {
 				*sel = lp.tagfr.Sels[0]
+				original = lp.tagfr.Sels[0].S
 				lp.tagfr.Sels[0].S = lp.tagfr.Sels[0].E
 				lp.tagfr.Redraw(true)
 			} else if sel.S < lp.tagbuf.EditableStart {
+				original = sel.S
 				s := lp.tagbuf.Tospc(sel.S, -1)
 				e := lp.tagbuf.Tospc(sel.S, +1)
 				lp.tagfr.SetSelect(idx, 1, s, e)
 				lp.tagfr.Redraw(true)
 			} else {
+				original = sel.S
 				lp.tagfr.SetSelect(idx, 1, lp.tagbuf.EditableStart, lp.tagbuf.Size())
 				lp.tagfr.Redraw(true)
 			}
 		}
 
-		return string(buf.ToRunes(lp.tagbuf.SelectionX(*sel)))
+		return string(buf.ToRunes(lp.tagbuf.SelectionX(*sel))), original
 
 	}
 
-	return ""
+	return "", original
 }
 
 func (w *Window) BufferRefresh(ontag bool) {

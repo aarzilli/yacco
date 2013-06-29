@@ -28,7 +28,7 @@ type Buffer struct {
 	ul undoList
 }
 
-func NewBuffer(dir, name string) (b *Buffer, err error) {
+func NewBuffer(dir, name string, create bool) (b *Buffer, err error) {
 	b = &Buffer{
 		Dir: dir,
 		Name: name,
@@ -66,8 +66,12 @@ func NewBuffer(dir, name string) (b *Buffer, err error) {
 			b.Modified = false
 			b.ul.Reset()
 		} else {
-			// doesn't exist, mark as modified
-			b.Modified = true
+			if create {
+				// doesn't exist, mark as modified
+				b.Modified = true
+			} else {
+				return nil, fmt.Errorf("File doesn't exist: %s", filepath.Join(dir, name))
+			}
 		}
 	}
 
@@ -504,16 +508,19 @@ func (b *Buffer) HasRedo() bool {
 	return b.ul.cur < len(b.ul.lst)
 }
 
-func (b *Buffer) ReaderFrom(s int) io.RuneReader {
-	return &runeReader{ b, s }
+func (b *Buffer) ReaderFrom(s, e int) io.RuneReader {
+	return &runeReader{ b, s, e }
 }
 
 type runeReader struct {
 	b *Buffer
-	s int
+	s, e int
 }
 
 func (rr *runeReader) ReadRune() (r rune, size int, err error) {
+	if rr.s >= rr.e {
+		return 0, 0, io.EOF
+	}
 	cr := rr.b.At(rr.s)
 	rr.s++
 	if cr != nil {

@@ -66,7 +66,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 	e.confirmDel = false
 
 	e.bodybuf = bodybuf
-	e.tagbuf, _ = buf.NewBuffer(bodybuf.Dir, "+Tag")
+	e.tagbuf, _ = buf.NewBuffer(bodybuf.Dir, "+Tag", true)
 
 	bufferAdd(bodybuf)
 

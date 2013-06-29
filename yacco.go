@@ -23,7 +23,7 @@ func realmain() {
 	wnd.cols.AddAfter(-1)
 
 	for _, arg := range os.Args[1:] {
-		HeuristicOpen(arg, false)
+		HeuristicOpen(arg, false, true)
 	}
 
 	wnd.wnd.FlushImage()
@@ -33,6 +33,7 @@ func realmain() {
 
 func main() {
 	PlatformInit()
+	LoadInit()
 
 	edit.Warnfn = Warn
 

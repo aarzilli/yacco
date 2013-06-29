@@ -87,7 +87,9 @@ func (e *AddrBase) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 
 	case "":
 		if e.Dir >= 0 {
+			value := asnumber(e.Value)
 			if e.Dir == 0 {
+				value--
 				rsel.S = 0
 				rsel.E = 0
 			} else {
@@ -99,7 +101,7 @@ func (e *AddrBase) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 
 			prev_lineend := rsel.E
 			lineend := b.Tonl(rsel.S, 1)
-			for i := 0; i < asnumber(e.Value); i++ {
+			for i := 0; i < value; i++ {
 				prev_lineend = lineend
 				lineend = b.Tonl(lineend, 1)
 			}
@@ -200,7 +202,7 @@ func regexpEval(b *buf.Buffer, sel util.Sel, rstr string, dir int) util.Sel {
 	}
 	rstr = "(?m)" + rstr
 	re := regexp.MustCompile(rstr)
-	loc := re.FindReaderIndex(b.ReaderFrom(sel.E))
+	loc := re.FindReaderIndex(b.ReaderFrom(sel.E, b.Size()))
 	if loc == nil {
 		if doerr {
 			panic(fmt.Errorf("No match found for: %s", rstr))

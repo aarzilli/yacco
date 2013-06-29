@@ -9,7 +9,7 @@ import (
 	"yacco/buf"
 )
 
-func EditOpen(path string) (*Editor, error) {
+func EditOpen(path string, create bool) (*Editor, error) {
 	abspath, err := filepath.Abs(path)
 	util.Must(err, "Error parsing argument")
 	dir := filepath.Dir(abspath)
@@ -21,14 +21,14 @@ func EditOpen(path string) (*Editor, error) {
 		}
 	}
 
-	b, err := buf.NewBuffer(dir, name)
+	b, err := buf.NewBuffer(dir, name, create)
 	if err != nil {
 		return nil, fmt.Errorf("Could not open file: %s\n", abspath)
 	}
 	return NewEditor(b), nil
 }
 
-func EditFind(path string) (*Editor, error) {
+func EditFind(path string, create bool) (*Editor, error) {
 	abspath, err := filepath.Abs(path)
 	util.Must(err, "Error parsing argument")
 	dir := filepath.Dir(abspath)
@@ -46,11 +46,11 @@ func EditFind(path string) (*Editor, error) {
 		}
 	}
 
-	return HeuristicOpen(path, true)
+	return HeuristicOpen(path, true, create)
 }
 
-func HeuristicOpen(path string, warp bool) (*Editor, error) {
-	ed, err := EditOpen(path)
+func HeuristicOpen(path string, warp bool, create bool) (*Editor, error) {
+	ed, err := EditOpen(path, create)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func HeuristicOpen(path string, warp bool) (*Editor, error) {
 }
 
 func Warnfull(bufname, msg string) {
-	ed, err := EditFind(bufname)
+	ed, err := EditFind(bufname, true)
 	if err != nil {
 		fmt.Printf("Warn: %s (additionally error %s while displaying this warning)\n", msg, err.Error())
 	} else {

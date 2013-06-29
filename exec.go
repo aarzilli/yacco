@@ -276,7 +276,7 @@ func NewCmd(ec ExecContext, arg string) {
 		Warn("New: must specify argument")
 		return
 	}
-	_, err := HeuristicOpen(arg, true)
+	_, err := HeuristicOpen(arg, true, true)
 	if err != nil {
 		Warn("New: " + err.Error())
 	}
