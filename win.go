@@ -610,7 +610,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 
 			//TODO: check autoindent enabled
 			if ec.fr.Sels[0].S == ec.fr.Sels[0].E {
-				is := ec.buf.Tonl(ec.fr.Sels[0].S, -1)
+				is := ec.buf.Tonl(ec.fr.Sels[0].S-1, -1)
 				ie := is
 				for {
 					cr := ec.buf.At(ie)
