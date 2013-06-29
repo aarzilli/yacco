@@ -673,12 +673,6 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			//println("Execute command: <" + cmd + ">")
 			if ec.eventChan == nil {
 				Exec(ec, cmd)
-				if ec.br != nil {
-					ec.br.BufferRefresh(ec.ontag)
-				}
-				if lp.sfr != nil {
-					lp.ed.Recenter()
-				}
 			} else {
 				cmd = strings.TrimSpace(cmd)
 				_, _, isintl := IntlCmd(cmd)
@@ -692,12 +686,9 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			if !ec.ontag && ec.ed != nil {
 				activeEditor = ec.ed
 			}
-			ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
-			if ec.br != nil {
+			if ec.buf != nil {
+				ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
 				ec.br.BufferRefresh(ec.ontag)
-			}
-			if lp.sfr != nil {
-				lp.ed.Recenter()
 			}
 		}
 	}
