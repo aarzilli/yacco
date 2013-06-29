@@ -6,7 +6,6 @@ import (
 	"bufio"
 	"fmt"
 	"unicode"
-	"unicode/utf8"
 	"io/ioutil"
 	"yacco/util"
 	"yacco/textframe"
@@ -481,17 +480,13 @@ func (b *Buffer) Put() error {
 	defer out.Close()
 	bout := bufio.NewWriter(out)
 	ba, bb := b.Selection(util.Sel{ 0, b.Size() })
-	p := make([]byte, 12)
-	for _, r := range ba {
-		n := utf8.EncodeRune(p, r.R)
-		bout.Write(p[:n])
+	_, err = bout.Write([]byte(string(ToRunes(ba))))
+	if err != nil {
+		return err
 	}
-	for _, r := range bb {
-		n := utf8.EncodeRune(p, r.R)
-		_, err := bout.Write(p[:n])
-		if err != nil {
-			return err
-		}
+	_, err = bout.Write([]byte(string(ToRunes(bb))))
+	if err != nil {
+		return err
 	}
 	err = bout.Flush()
 	if err != nil {
