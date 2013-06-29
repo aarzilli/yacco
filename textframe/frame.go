@@ -148,7 +148,6 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 
 	_, spaceIndex := fr.getIndex(' ')
 
-	p := fr.ins
 	prev, prevFontIdx, hasPrev := truetype.Index(0), 0, false
 
 	rightMargin := raster.Fix32(fr.R.Max.X<<8) - fr.margin
@@ -161,11 +160,11 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 	tabWidth := bigSpaceWidth * raster.Fix32(fr.TabWidth)
 
 	for i, crune := range runes {
-		if p.Y > bottom {
+		if fr.ins.Y > bottom {
 			return i
 		}
 
-		if p.Y + lh < bottom {
+		if fr.ins.Y + lh < bottom {
 			fr.lastFull = len(fr.glyphs)
 		}
 
@@ -174,18 +173,18 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 				r:         crune.R,
 				fontIndex: 0,
 				index:     spaceIndex,
-				p:         p,
+				p:         fr.ins,
 				color:     crune.C,
-				width:     raster.Fix32(fr.R.Max.X<<8) - p.X - fr.margin,
+				width:     raster.Fix32(fr.R.Max.X<<8) - fr.ins.X - fr.margin,
 				widthy: lh }
 
 			fr.glyphs = append(fr.glyphs, g)
 
-			p.X = leftMargin
-			p.Y += lh
+			fr.ins.X = leftMargin
+			fr.ins.Y += lh
 			prev, prevFontIdx, hasPrev = spaceIndex, 0, true
 		} else if crune.R == '\t' {
-			toNextCell := tabWidth - ((p.X - leftMargin) % tabWidth)
+			toNextCell := tabWidth - ((fr.ins.X - leftMargin) % tabWidth)
 			if toNextCell <= spaceWidth/2 {
 				toNextCell += tabWidth
 			}
@@ -194,13 +193,13 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 				r:         crune.R,
 				fontIndex: 0,
 				index:     spaceIndex,
-				p:         p,
+				p:         fr.ins,
 				color:     crune.C,
 				width:     toNextCell}
 
 			fr.glyphs = append(fr.glyphs, g)
 
-			p.X += toNextCell
+			fr.ins.X += toNextCell
 			prev, prevFontIdx, hasPrev = spaceIndex, 0, true
 		} else if (crune.R == ' ') && (fr.Hackflags&HF_BOLSPACES != 0) {
 			width := raster.Fix32(0)
@@ -227,12 +226,12 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 				r:         crune.R,
 				fontIndex: 0,
 				index:     spaceIndex,
-				p:         p,
+				p:         fr.ins,
 				color:     crune.C,
 				width:     width}
 
 			fr.glyphs = append(fr.glyphs, g)
-			p.X += width
+			fr.ins.X += width
 			prev, prevFontIdx, hasPrev = spaceIndex, 0, true
 		} else {
 			lur := crune.R
@@ -247,15 +246,15 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 
 			fontIdx, index := fr.getIndex(lur)
 			if hasPrev && (fontIdx == prevFontIdx) {
-				p.X += raster.Fix32(fr.Font.Fonts[fontIdx].Kerning(fr.cs[fontIdx].Scale, prev, index)) << 2
+				fr.ins.X += raster.Fix32(fr.Font.Fonts[fontIdx].Kerning(fr.cs[fontIdx].Scale, prev, index)) << 2
 			}
 
 			width := raster.Fix32(fr.Font.Fonts[fontIdx].HMetric(fr.cs[fontIdx].Scale, index).AdvanceWidth) << 2
 
 			if fr.Hackflags&HF_TRUNCATE == 0 {
-				if p.X+width > rightMargin {
-					p.X = leftMargin
-					p.Y += lh
+				if fr.ins.X+width > rightMargin {
+					fr.ins.X = leftMargin
+					fr.ins.Y += lh
 				}
 			}
 
@@ -263,17 +262,16 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 				r:         crune.R,
 				fontIndex: fontIdx,
 				index:     index,
-				p:         p,
+				p:         fr.ins,
 				color:     crune.C,
 				width:     width}
 
 			fr.glyphs = append(fr.glyphs, g)
 
-			p.X += width
+			fr.ins.X += width
 			prev, prevFontIdx, hasPrev = index, fontIdx, true
 		}
 	}
-	fr.ins = p
 	return len(runes)
 }
 

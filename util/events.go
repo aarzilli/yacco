@@ -61,20 +61,16 @@ func Parsevent(eventstr string) (origin EventOrigin, etype EventType, s, e int, 
 	var err error
 	s, err = strconv.Atoi(v[0])
 	if err != nil {
-		println("s")
 		ok = false
 		return
 	}
 
 	e, err = strconv.Atoi(v[1])
 	if err != nil {
-		println("e")
-		ok = false
 		return
 	}
 	nf, err := strconv.Atoi(v[2])
 	if err != nil {
-		println("nf")
 		ok = false
 		return
 	}
@@ -82,7 +78,6 @@ func Parsevent(eventstr string) (origin EventOrigin, etype EventType, s, e int, 
 
 	arglen, err := strconv.Atoi(v[3])
 	if err != nil {
-		println("arglen")
 		ok = false
 		return
 	}
@@ -90,14 +85,12 @@ func Parsevent(eventstr string) (origin EventOrigin, etype EventType, s, e int, 
 	arg = v[4]
 
 	if arg[len(arg)-1] != '\n' {
-		println("newline", arg)
 		ok = false
 		return
 	}
 	arg = arg[:len(arg)-1]
 
 	if len(arg) != arglen {
-		println("length", len(arg), arglen)
 		ok = false
 		return
 	}
