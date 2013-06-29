@@ -474,7 +474,7 @@ func (b *Buffer) FixSel(sel *util.Sel) {
 }
 
 func (b *Buffer) Put() error {
-	out, err := os.OpenFile(filepath.Join(b.Dir, b.Name), os.O_WRONLY, 0666)
+	out, err := os.OpenFile(filepath.Join(b.Dir, b.Name), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}
