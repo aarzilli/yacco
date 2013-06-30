@@ -25,6 +25,8 @@ type ExecContext struct {
 	fr *textframe.Frame
 	buf *buf.Buffer
 	eventChan chan string
+	
+	dir string
 }
 
 type Cmd func(ec ExecContext, arg string)
@@ -42,6 +44,8 @@ var cmds = map[string]Cmd{
 	"Load": LoadCmd,
 	"Setenv": SetenvCmd,
 	"Look": LookCmd,
+	"Look!Again": func (ec ExecContext, arg string) { SpecialSendCmd(ec, "!Again") },
+	"Look!Quit": func (ec ExecContext, arg string) { SpecialSendCmd(ec, "!Quit") },
 	"New": NewCmd,
 	"Newcol": NewcolCmd,
 	"Paste": PasteCmd,
@@ -115,8 +119,8 @@ func Exec(ec ExecContext, cmd string) {
 
 func ExtExec(ec ExecContext, cmd string) {
 	wd := wnd.tagbuf.Dir
-	if ec.buf != nil {
-		wd = ec.buf.Dir
+	if ec.dir != "" {
+		wd = ec.dir
 	}
 	NewJob(wd, cmd, "", &ec, false)
 }
@@ -267,6 +271,15 @@ func LookCmd(ec ExecContext, arg string) {
 	} else {
 		go lookproc(ec)
 	}
+}
+
+func SpecialSendCmd(ec ExecContext, msg string)  {
+	exitConfirmed = false
+	if (ec.ed == nil) || (ec.ed.specialChan == nil) {
+		return
+	}
+	ec.ed.confirmDel = false
+	ec.ed.specialChan <- msg
 }
 
 func GetCmd(ec ExecContext, arg string) {

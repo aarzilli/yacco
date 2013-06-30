@@ -24,6 +24,7 @@ type ColorScheme struct {
 
 	HandleFG image.Uniform
 	HandleModifiedFG image.Uniform
+	HandleSpecialFG image.Uniform
 	HandleBG image.Uniform
 }
 
@@ -50,5 +51,6 @@ var acmeColorScheme = ColorScheme{
 
 	HandleFG:  bluebg,
 	HandleModifiedFG: *DMedblue,
+	HandleSpecialFG: *DMedgreen,
 	HandleBG: *DPurpleblue,
 }

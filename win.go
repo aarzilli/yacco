@@ -30,6 +30,7 @@ type LogicalPos struct {
 	tagbuf *buf.Buffer
 	sfr *textframe.ScrollFrame
 	bodybuf *buf.Buffer
+	notReallyOnTag bool
 }
 
 type BufferRefreshable interface {
@@ -182,6 +183,11 @@ func (w *Window) EventLoop() {
 		case wde.MouseDownEvent:
 			lastWhere = e.Where
 			lp := w.TranslatePosition(e.Where)
+			
+			if (lp.tagfr != nil) && lp.notReallyOnTag {
+				lp.ed.ExitSpecial()
+				lp = w.TranslatePosition(e.Where)
+			}
 
 			if lp.tagfr != nil {
 				ee := lp.tagfr.OnClick(e, events)
@@ -335,8 +341,14 @@ func (w *Window) TranslatePosition(p image.Point) (lp LogicalPos) {
 			}
 
 			if lp.ed.sfr.Under(p) {
-				lp.sfr = &lp.ed.sfr
-				lp.bodybuf = lp.ed.bodybuf
+				if lp.ed.specialChan != nil {
+					lp.tagfr = &lp.ed.tagfr
+					lp.tagbuf = lp.ed.tagbuf
+					lp.notReallyOnTag = true
+				} else {
+					lp.sfr = &lp.ed.sfr
+					lp.bodybuf = lp.ed.bodybuf
+				}
 			}
 
 			return
@@ -549,6 +561,9 @@ func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
 
 	if ec.ed != nil {
 		ec.eventChan = ec.ed.eventChan
+		ec.dir = ec.ed.bodybuf.Dir
+	} else {
+		ec.dir = wnd.tagbuf.Dir
 	}
 
 	// commands executed with a keybinding always have the focused thing as the context
@@ -600,7 +615,18 @@ func (lp *LogicalPos) bufferRefreshable() BufferRefreshable {
 
 func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 	switch e.Chord {
+	case "escape":
+		if (lp.ed != nil) && (lp.ed.specialChan != nil) {
+			lp.ed.ExitSpecial()
+			return
+		}
+
 	case "return":
+		if (lp.ed != nil) && (lp.ed.specialChan != nil) {
+			lp.ed.ExitSpecial()
+			return
+		}
+		
 		if lp.tagfr != nil {
 			ec := lp.asExecContext(false)
 			lp.tagfr.SetSelect(1, 1, lp.tagbuf.EditableStart, lp.tagbuf.Size())
@@ -654,6 +680,11 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		if lp.sfr != nil {
 			lp.ed.Recenter()
 		}
+		if (ec.ed != nil) && (ec.ed.specialChan != nil) {
+			tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size() })))
+			ec.ed.specialChan <- tagstr
+		}
+
 
 	case "delete":
 		ec := lp.asExecContext(true)
@@ -666,6 +697,11 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		if lp.sfr != nil {
 			lp.ed.Recenter()
 		}
+		if (ec.ed != nil) && (ec.ed.specialChan != nil) {
+			tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size() })))
+			ec.ed.specialChan <- tagstr
+		}
+
 
 	case "tab":
 		ec := lp.asExecContext(true)
@@ -674,6 +710,11 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		if lp.sfr != nil {
 			lp.ed.Recenter()
 		}
+		if (ec.ed != nil) && (ec.ed.specialChan != nil) {
+			tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size() })))
+			ec.ed.specialChan <- tagstr
+		}
+
 
 	default:
 		ec := lp.asExecContext(true)
@@ -699,6 +740,11 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				ec.br.BufferRefresh(ec.ontag)
 			}
 		}
+		if (ec.ed != nil) && (ec.ed.specialChan != nil) {
+			tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size() })))
+			ec.ed.specialChan <- "T" + tagstr
+		}
+
 	}
 }
 
@@ -730,9 +776,9 @@ func clickExec(lp LogicalPos, e wde.MouseDownEvent, ee *wde.MouseUpEvent) {
 	case wde.MiddleButton | wde.LeftButton:
 		cmd, _ := expandedSelection(lp, 1)
 		ec := lp.asExecContext(false)
-		cmd = cmd + activeSel
+		cmd = cmd + " " + activeSel
 		if ec.eventChan == nil {
-			Exec(ec, cmd + " " + activeSel)
+			Exec(ec, cmd)
 		} else {
 			_, _, isintl := IntlCmd(cmd)
 			flags := util.EventFlag(0)

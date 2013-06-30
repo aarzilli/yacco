@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"fmt"
 	"unicode"
+	"unicode/utf8"
 	"io/ioutil"
 	"yacco/util"
 	"yacco/textframe"
@@ -59,7 +60,24 @@ func NewBuffer(dir, name string, create bool) (b *Buffer, err error) {
 		infile, err := os.Open(filepath.Join(dir, name))
 		if err == nil {
 			defer infile.Close()
+			
+			fi, err := infile.Stat()
+			if err != nil {
+				return nil, fmt.Errorf("Couldn't stat file (after opening it?) %s", filepath.Join(dir, name))
+			}
+			
+			if fi.Size() > 10 * 1024 * 1024 {
+				return nil, fmt.Errorf("Refusing to open files larger than 10MB")
+			}
+			
 			bytes, err := ioutil.ReadAll(infile)
+			testb := bytes
+			if len(testb) > 1024 {
+				testb = testb[:1024]
+			}
+			if !utf8.Valid(testb) {
+				return nil, fmt.Errorf("Can not open binary file")
+			}
 			util.Must(err, fmt.Sprintf("Could not read %s/%s", dir, name))
 			runes := []rune(string(bytes))
 			b.Replace(runes, &util.Sel{ 0, 0 }, []util.Sel{}, true, nil, 0)

@@ -19,7 +19,7 @@ package config
 // tab
 // space
 
-const HOME_CMD = "Edit -+/[^\t ]/-#0"
+const HOME_CMD = "Edit -+/@[^\t ]/-#0"
 const END_CMD = "Edit +-#1"
 
 var KeyBindings  = map[string]string{
@@ -27,9 +27,9 @@ var KeyBindings  = map[string]string{
 	"shift+left_arrow": "Edit .,+#0-#1",
 	"right_arrow": "Edit +#1",
 	"shift+right_arrow": "Edit .,+#1",
-	"up_arrow": "Edit --#0+/[^\t ]/-#0",
+	"up_arrow": "Edit --#0+/@[^\t ]/-#0",
 	"shift+up_arrow": "Edit .,+#0--#0",
-	"down_arrow": "Edit +-#0+/[^\t ]/-#0",
+	"down_arrow": "Edit +-#0+/@[^\t ]/-#0",
 	"shift+down_arrow": "Edit .,+#0+-#0",
 	"control+right_arrow": "Edit +#w1+#0",
 	"control+shift+right_arrow": "Edit .,+#w1+#0",
@@ -41,6 +41,8 @@ var KeyBindings  = map[string]string{
 	"control+x": "Cut",
 	"control+s": "Put",
 	"control+z": "Undo",
+	"control+f": "Look",
+	"control+g": "Look!Again",
 	"control+shift+z": "Redo",
 	"control+home": "Edit #0",
 	"control+end": "Edit $",

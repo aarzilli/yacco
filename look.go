@@ -1,13 +1,35 @@
 package main
 
+import (
+	"unicode"
+)
+
 func lookfwdEx(ed *Editor, needle []rune, start int) bool {
+	if len(needle) <= 0 {
+		return true
+	}
+	
+	exact := false
+	for _, r := range needle {
+		if unicode.IsUpper(r) {
+			exact = true
+			break
+		}
+	}
+
 	j := 0
 	i := start
 	for {
 		if i >= ed.bodybuf.Size() {
 			break
 		}
-		if ed.bodybuf.At(i).R == needle[j] {
+		match := false
+		if exact {
+			match = (ed.bodybuf.At(i).R == needle[j])
+		} else {
+			match = (unicode.ToLower(ed.bodybuf.At(i).R) == needle[j])
+		}
+		if match {
 			j++
 			if j >= len(needle) {
 				ed.sfr.Fr.Sels[0].S = i - j + 1
@@ -37,5 +59,41 @@ func lookfwd(ed *Editor, needle []rune, fromEnd bool) {
 }
 
 func lookproc(ec ExecContext) {
+	ch := make(chan string, 1)
+	wnd.Lock.Lock()
+	ec.ed.EnterSpecial(ch, " Look!Quit Look!Again")
+	wnd.Lock.Unlock()
+	needle := []rune{}
+	for {
+		specialMsg, ok := <- ch
+		if !ok {
+			break
+		}
+		switch specialMsg[0] {
+		case '!':
+			switch specialMsg[1:] {
+			case "Again":
+				func() {
+					wnd.Lock.Lock()
+					defer wnd.Lock.Unlock()
+					lookfwd(ec.ed, needle, true)
+				}()
+			case "Quit":
+				func() {
+					wnd.Lock.Lock()
+					defer wnd.Lock.Unlock()
+					ec.ed.ExitSpecial()
+				}()
+			}
+		case 'T':
+			newNeedle := specialMsg[1:]
+			needle := []rune(newNeedle)
+			func() {
+				wnd.Lock.Lock()
+				defer wnd.Lock.Unlock()
+				lookfwd(ec.ed, needle, false)
+			}()
+		}
+	}
 }
 

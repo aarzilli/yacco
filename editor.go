@@ -25,6 +25,10 @@ type Editor struct {
 	confirmDel bool
 
 	eventChan chan string
+	
+	specialTag string
+	savedTag string
+	specialChan chan string
 }
 
 const SCROLL_WIDTH = 10
@@ -167,10 +171,14 @@ func (e *Editor) Redraw() {
 	hir.Min.Y += 2
 	hir.Max.Y -= 1
 	var rhc *image.Uniform
-	if e.bodybuf.Modified {
-		rhc = &config.TheColorScheme.HandleModifiedFG
+	if e.specialChan != nil {
+		rhc = &config.TheColorScheme.HandleSpecialFG
 	} else {
-		rhc = &config.TheColorScheme.HandleFG
+		if e.bodybuf.Modified {
+			rhc = &config.TheColorScheme.HandleModifiedFG
+		} else {
+			rhc = &config.TheColorScheme.HandleFG
+		}
 	}
 	drawingFuncs.DrawFillSrc(e.sfr.Fr.B, hir, rhc)
 
@@ -212,17 +220,21 @@ func (e *Editor) GenTag() {
 		_ = col
 		t += fmt.Sprintf(":%d", line)
 	}
+	
+	if e.specialChan == nil {
+		t += config.DefaultEditorTag
+		if e.bodybuf.Modified {
+			t += " Put"
+		}
 
-	t += config.DefaultEditorTag
-	if e.bodybuf.Modified {
-		t += " Put"
-	}
-
-	if e.bodybuf.HasUndo() {
-		t += " Undo"
-	}
-	if e.bodybuf.HasRedo() {
-		t += " Redo"
+		if e.bodybuf.HasUndo() {
+			t += " Undo"
+		}
+		if e.bodybuf.HasRedo() {
+			t += " Redo"
+		}
+	} else {
+		t += e.specialTag
 	}
 
 	t += " | " + usertext
@@ -308,4 +320,20 @@ func (ed *Editor) Warp() {
 	wnd.wnd.WarpMouse(p)
 }
 
+func (ed *Editor) EnterSpecial(specialChan chan string, specialTag string) {
+	ed.specialChan = specialChan
+	ed.specialTag = specialTag
+	ed.savedTag = string(buf.ToRunes(ed.tagbuf.SelectionX(util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() })))
+	ed.tagbuf.Replace([]rune{}, &util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() }, ed.tagfr.Sels, true, nil, 0)
+	ed.BufferRefresh(false)
+	return
+}
+
+func (ed *Editor) ExitSpecial() {
+	close(ed.specialChan)
+	ed.specialChan = nil
+	ed.specialTag = ""
+	ed.tagbuf.Replace([]rune(ed.savedTag), &util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() }, ed.tagfr.Sels, true, nil, 0)
+	ed.BufferRefresh(false)
+}
 

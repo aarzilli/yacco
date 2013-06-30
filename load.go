@@ -62,6 +62,9 @@ func Load(ec ExecContext, origin int) {
 				//println("Match:", strmatches[0])
 				if rule.Exec(ec, strmatches, s, e) {
 					return
+				} else {
+					// abandon rule after the first match straddling the origin
+					break
 				}
 			}
 
@@ -118,7 +121,7 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 		if len(v) > 1 {
 			addrExpr = expandMatches(v[1], matches)
 		}
-		newed, err := EditFind(path, true, false)
+		newed, err := EditFind(path, false, false)
 		if err != nil {
 			return false
 		}
@@ -130,6 +133,7 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 		if addrExpr != "" {
 			newed.sfr.Fr.Sels[0] = edit.AddrEval(addrExpr, newed.bodybuf, newed.sfr.Fr.Sels[0])
 			newed.BufferRefresh(false)
+			newed.Warp()
 		}
 		return true
 	}

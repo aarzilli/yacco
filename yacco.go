@@ -88,6 +88,7 @@ func bufferExecContext(i int) *ExecContext {
 					fr: &ed.sfr.Fr,
 					buf: ed.bodybuf,
 					eventChan: ed.eventChan,
+					dir: ed.bodybuf.Dir,
 				}
 			}
 		}
