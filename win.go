@@ -68,6 +68,7 @@ type ExecFsMsg struct {
 
 var activeSel string = ""
 var activeEditor *Editor = nil
+var HasFocus = true
 
 func (w *Window) Init(width, height int) (err error) {
 	w.wnd, err = wde.NewWindow(width, height)
@@ -185,6 +186,10 @@ func (w *Window) EventLoop() {
 			if lp.tagfr != nil {
 				ee := lp.tagfr.OnClick(e, events)
 				clickExec(lp, e, ee)
+				if (lp.tagfr.Sels[0].S == 0) && (lp.tagfr.Sels[0].E == lp.tagbuf.Size()) && (lp.tagbuf.EditableStart >= 0) {
+					lp.tagfr.Sels[0].S = lp.tagbuf.EditableStart
+					lp.tagfr.Redraw(true)
+				}
 				break
 			}
 
@@ -249,6 +254,7 @@ func (w *Window) EventLoop() {
 
 		case LoadMsg:
 			e.ec.fr.Sels[2] = util.Sel{ e.s, e.e }
+			println("load message received:", e.s, e.e, e.original)
 			Load(*e.ec, e.original)
 
 		case ExecMsg:
@@ -275,6 +281,7 @@ func TagSetEditableStart(tagbuf *buf.Buffer) {
 }
 
 func (w *Window) HideAllTicks() {
+	HasFocus = false
 	for _, col := range w.cols.cols {
 		for _, editor := range col.editors {
 			if editor.tagfr.VisibleTick {
@@ -342,6 +349,7 @@ func (w *Window) TranslatePosition(p image.Point) (lp LogicalPos) {
 }
 
 func (w *Window) SetTick(p image.Point) {
+	HasFocus = true
 	lp := w.TranslatePosition(p)
 	if lp.tagfr != nil {
 		if !lp.tagfr.VisibleTick {
@@ -716,7 +724,7 @@ func clickExec(lp LogicalPos, e wde.MouseDownEvent, ee *wde.MouseUpEvent) {
 			if extraArg {
 				flags |= util.EFX_EXTRAARG
 			}
-			util.Fmtevent(ec.eventChan, util.EO_MOUSE, ec.ontag, util.ET_BODYEXEC, ec.fr.Sels[0].S, ec.fr.Sels[0].E, flags, cmd)
+			util.Fmtevent(ec.eventChan, util.EO_MOUSE, ec.ontag, util.ET_BODYEXEC, ec.fr.Sels[1].S, ec.fr.Sels[1].E, flags, cmd)
 		}
 
 	case wde.MiddleButton | wde.LeftButton:
@@ -731,7 +739,7 @@ func clickExec(lp LogicalPos, e wde.MouseDownEvent, ee *wde.MouseUpEvent) {
 			if isintl {
 				flags = util.EFX_BUILTIN
 			}
-			util.Fmtevent(ec.eventChan, util.EO_MOUSE, ec.ontag, util.ET_BODYEXEC, ec.fr.Sels[0].S, ec.fr.Sels[0].E, flags, cmd)
+			util.Fmtevent(ec.eventChan, util.EO_MOUSE, ec.ontag, util.ET_BODYEXEC, ec.fr.Sels[1].S, ec.fr.Sels[1].E, flags, cmd)
 		}
 
 	case wde.RightButton:
@@ -744,7 +752,7 @@ func clickExec(lp LogicalPos, e wde.MouseDownEvent, ee *wde.MouseUpEvent) {
 			if fr == nil {
 				fr = &lp.sfr.Fr
 			}
-			util.Fmtevent(lp.ed.eventChan, util.EO_MOUSE, lp.tagfr != nil, util.ET_BODYLOAD, fr.Sels[0].S, fr.Sels[0].E, util.EventFlag(original), s)
+			util.Fmtevent(lp.ed.eventChan, util.EO_MOUSE, lp.tagfr != nil, util.ET_BODYLOAD, fr.Sels[2].S, fr.Sels[2].E, util.EventFlag(original), s)
 		}
 
 	case wde.LeftButton:
@@ -767,7 +775,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 	if lp.sfr != nil {
 		sel := &lp.sfr.Fr.Sels[idx]
 		if sel.S == sel.E {
-			if lp.sfr.Fr.Sels[0].S != lp.sfr.Fr.Sels[0].E {
+			if (lp.sfr.Fr.Sels[0].S != lp.sfr.Fr.Sels[0].E) && (lp.sfr.Fr.Sels[0].S-1 <= sel.S) && (sel.S <= lp.sfr.Fr.Sels[0].E+1) {
 				original = lp.sfr.Fr.Sels[0].S
 				lp.sfr.Fr.SetSelect(idx, 1, lp.sfr.Fr.Sels[0].S, lp.sfr.Fr.Sels[0].E)
 				lp.sfr.Redraw(true)
@@ -786,22 +794,22 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 	if lp.tagfr != nil {
 		sel := &lp.tagfr.Sels[idx]
 		if sel.S == sel.E {
-			if lp.tagfr.Sels[0].S != lp.tagfr.Sels[0].E {
+			if (lp.tagfr.Sels[0].S != lp.tagfr.Sels[0].E) && (lp.tagfr.Sels[0].S-1 <= sel.S) && (sel.S <= lp.tagfr.Sels[0].E+1) {
 				*sel = lp.tagfr.Sels[0]
 				original = lp.tagfr.Sels[0].S
 				lp.tagfr.Sels[0].S = lp.tagfr.Sels[0].E
 				lp.tagfr.Redraw(true)
-			} else if sel.S < lp.tagbuf.EditableStart {
+			} else /* if sel.S < lp.tagbuf.EditableStart */ {
 				original = sel.S
 				s := lp.tagbuf.Tospc(sel.S, -1)
 				e := lp.tagbuf.Tospc(sel.S, +1)
 				lp.tagfr.SetSelect(idx, 1, s, e)
 				lp.tagfr.Redraw(true)
-			} else {
+			} /* else {
 				original = sel.S
 				lp.tagfr.SetSelect(idx, 1, lp.tagbuf.EditableStart, lp.tagbuf.Size())
 				lp.tagfr.Redraw(true)
-			}
+			}*/
 		}
 
 		return string(buf.ToRunes(lp.tagbuf.SelectionX(*sel))), original

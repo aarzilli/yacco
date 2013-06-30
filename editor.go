@@ -299,3 +299,13 @@ func (ed *Editor) recenterIntl(refresh bool) bool {
 func (ed *Editor) Recenter() bool {
 	return ed.recenterIntl(true)
 }
+
+func (ed *Editor) Warp() {
+	if !HasFocus {
+		return
+	}
+	p := ed.sfr.Fr.PointToCoord(ed.sfr.Fr.Sels[0].S)
+	wnd.wnd.WarpMouse(p)
+}
+
+

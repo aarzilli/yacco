@@ -463,6 +463,17 @@ func (fr *Frame) CoordToPoint(coord image.Point) int {
 	return fr.Top + len(fr.glyphs)
 }
 
+// Converts rune index into a graphical coordinate
+func (fr *Frame) PointToCoord(p int) image.Point {
+	pp := p - fr.Top
+	if pp < len(fr.glyphs) {
+		r := fr.glyphs[pp].p
+		return image.Point{ int(r.X >> 8), int(r.Y >> 8) }
+	} else {
+		return image.Point{ fr.R.Min.X + 2, fr.R.Min.Y + 2 }
+	}
+}
+
 func (fr *Frame) redrawSelection(s, e int, color *image.Uniform) {
 	if s < 0 {
 		s = 0

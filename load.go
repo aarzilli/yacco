@@ -30,7 +30,7 @@ func LoadInit() {
 }
 
 func Load(ec ExecContext, origin int) {
-	//println("in load")
+	//println("\nin load")
 	if ec.buf == nil {
 		return
 	}
@@ -118,7 +118,7 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 		if len(v) > 1 {
 			addrExpr = expandMatches(v[1], matches)
 		}
-		newed, err := EditFind(path, false)
+		newed, err := EditFind(path, true, false)
 		if err != nil {
 			return false
 		}

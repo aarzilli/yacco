@@ -86,14 +86,20 @@ func FsQuit() {
 		jobKill(i)
 	}
 	go func() {
-		for i := 0; i < 3; i++ {
-			time.Sleep(1 * time.Second)
+		for i := 0; i < 4; i++ {
 			err := fsServer.Unmount()
 			if err == nil {
 				break
 			}
+			time.Sleep(1 * time.Second)
 		}
-		os.Remove(fsDir)
+		for i := 0; i < 2; i++ {
+			err := os.Remove(fsDir)
+			if err == nil {
+				break
+			}
+			time.Sleep(1 * time.Second)
+		}
 		os.Exit(0)
 	}()
 }
@@ -582,9 +588,11 @@ func writeEventFn(i int, data []byte, off int64) (written uint32, code fuse.Stat
 		sideChan <- ExecMsg{ &ec2, s, e, arg }
 
 	case util.ET_BODYLOAD:
+		println("load msg sent")
 		sideChan <- LoadMsg{ ec, s, e, int(flags) }
 
 	case util.ET_TAGLOAD:
+		println("load msg sent")
 		ec2 := *ec
 		if ec.ed != nil {
 			ec2.buf = ec2.ed.tagbuf

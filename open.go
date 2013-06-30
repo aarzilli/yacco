@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"image"
 	"path/filepath"
 	"yacco/util"
 	"yacco/buf"
@@ -28,7 +27,7 @@ func EditOpen(path string, create bool) (*Editor, error) {
 	return NewEditor(b), nil
 }
 
-func EditFind(path string, create bool) (*Editor, error) {
+func EditFind(path string, warp bool, create bool) (*Editor, error) {
 	abspath, err := filepath.Abs(path)
 	util.Must(err, "Error parsing argument")
 	dir := filepath.Dir(abspath)
@@ -40,7 +39,9 @@ func EditFind(path string, create bool) (*Editor, error) {
 				if ed.frac < 0.5 {
 					wnd.GrowEditor(col, ed)
 				}
-				wnd.wnd.WarpMouse(ed.sfr.Fr.R.Min.Add(image.Point{ 2, 2}))
+				if warp {
+					ed.Warp()
+				}
 				return ed, nil
 			}
 		}
@@ -92,14 +93,14 @@ func HeuristicOpen(path string, warp bool, create bool) (*Editor, error) {
 	col.Redraw()
 	wnd.wnd.FlushImage()
 	if warp {
-		wnd.wnd.WarpMouse(ed.sfr.Fr.R.Min.Add(image.Point{ 2, 2}))
+		ed.Warp()
 	}
 
 	return ed, nil
 }
 
 func Warnfull(bufname, msg string) {
-	ed, err := EditFind(bufname, true)
+	ed, err := EditFind(bufname, false, true)
 	if err != nil {
 		fmt.Printf("Warn: %s (additionally error %s while displaying this warning)\n", msg, err.Error())
 	} else {

@@ -262,7 +262,11 @@ func LookCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	//TODO
+	if arg != "" {
+		lookfwd(ec.ed, []rune(arg), true)
+	} else {
+		go lookproc(ec)
+	}
 }
 
 func GetCmd(ec ExecContext, arg string) {
