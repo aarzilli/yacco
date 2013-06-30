@@ -79,7 +79,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 		Color: config.TheColorScheme.Scrollbar,
 		Fr: textframe.Frame{
 			Font: config.MainFont,
-			Hackflags: textframe.HF_MARKSOFTWRAP | textframe.HF_BOLSPACES | textframe.HF_QUOTEHACK,
+			Hackflags: textframe.HF_MARKSOFTWRAP | textframe.HF_QUOTEHACK,
 			Scroll: func (sd, sl int) { scrollfn(e, sd, sl) },
 			VisibleTick: false,
 			Colors:  [][]image.Uniform{
@@ -102,7 +102,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 	}
 	e.tagfr = textframe.Frame{
 		Font: config.TagFont,
-		Hackflags: textframe.HF_MARKSOFTWRAP | textframe.HF_BOLSPACES | textframe.HF_QUOTEHACK,
+		Hackflags: textframe.HF_MARKSOFTWRAP | textframe.HF_QUOTEHACK,
 		Scroll: func (sd, sl int) { },
 		VisibleTick: false,
 		Colors:  [][]image.Uniform{

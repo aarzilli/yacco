@@ -101,11 +101,12 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool) {
 			buf := make([]byte, 1024)
 			for {
 				n, err := stdout.Read(buf)
+				if n > 0 {
+					sideChan <- WarnMsg{ job.cmd.Dir, string(buf[:n]) }
+				}
 				if err != nil {
 					return
 				}
-				sideChan <- WarnMsg{ job.cmd.Dir, string(buf[:n]) }
-				buf = buf[:1024]
 			}
 		}
 	}()
@@ -116,11 +117,12 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool) {
 		buf := make([]byte, 1024)
 		for {
 			n, err := stderr.Read(buf)
+			if n > 0 {
+				sideChan <- WarnMsg{ job.cmd.Dir, string(buf[:n]) }
+			}
 			if err != nil {
 				return
 			}
-			sideChan <- WarnMsg{ job.cmd.Dir, string(buf[:n]) }
-			buf = buf[:1024]
 		}
 	}()
 
@@ -136,16 +138,16 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool) {
 	}()
 
 	go func() {
-		err := job.cmd.Wait()
-		if err != nil {
-			sideChan <- WarnMsg{ job.cmd.Dir, "Error executing command: " + job.descr }
-		}
-
 		// Waits for all three goroutines to terminate before continuing
 		for count := 0; count < 3; count++ {
 			select {
 			case <- job.done:
 			}
+		}
+
+		err := job.cmd.Wait()
+		if err != nil {
+			sideChan <- WarnMsg{ job.cmd.Dir, "Error executing command: " + job.descr }
 		}
 
 		if (ec != nil) && job.writeToBuf {

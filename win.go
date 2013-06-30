@@ -8,8 +8,10 @@ import (
 	"math"
 	"strings"
 	"sync"
+	"strconv"
 	"yacco/util"
 	"yacco/buf"
+	"yacco/edit"
 	"yacco/config"
 	"yacco/textframe"
 	"github.com/skelterjohn/go.wde"
@@ -77,7 +79,7 @@ func (w *Window) Init(width, height int) (err error) {
 		return err
 	}
 	screen := w.wnd.Screen()
-	w.wnd.SetTitle("Teddy")
+	w.wnd.SetTitle("Yacco")
 	w.wnd.Show()
 	w.cols = NewCols(w.wnd, screen.Bounds())
 	w.tagfr = textframe.Frame{
@@ -260,7 +262,6 @@ func (w *Window) EventLoop() {
 
 		case LoadMsg:
 			e.ec.fr.Sels[2] = util.Sel{ e.s, e.e }
-			println("load message received:", e.s, e.e, e.original)
 			Load(*e.ec, e.original)
 
 		case ExecMsg:
@@ -476,12 +477,13 @@ loop:
 	w.wnd.ChangeCursor(-1)
 
 	if dist(startPos, endPos) < 10 {
+		d := endPos.Sub(ed.r.Min)
+
 		switch e.Which {
 		case wde.LeftButton:
-			w.GrowEditor(col, ed)
+			w.GrowEditor(col, ed, &d)
 
 		case wde.RightButton: // Maximize
-			d := endPos.Sub(ed.r.Min)
 			for _, oed := range col.editors {
 				if oed == ed {
 					continue
@@ -490,15 +492,59 @@ loop:
 			}
 			ed.frac = 10.0
 			col.RecalcRects()
-			w.wnd.WarpMouse(ed.r.Min.Add(d))
+			p := ed.r.Min
+			w.wnd.WarpMouse(p.Add(d))
 			col.Redraw()
 			w.wnd.FlushImage()
 		}
 	}
 }
 
-func (w *Window) GrowEditor(col *Col, ed *Editor) {
-	//TODO: implement
+func shrinkEditor(ed *Editor, maxFraction float64) float64 {
+	s := ed.frac / 2
+	if s < 0.25 { s = 0.25 }
+	if s > maxFraction { s = maxFraction }
+	if s > ed.frac { s = ed.frac }
+	ed.frac -= s
+	return s
+}
+
+func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
+	wantFraction := ed.frac / 2
+	if wantFraction < 1.0 {
+		wantFraction = 1.0
+	}
+	
+	idx := col.IndexOf(ed)
+	for off := 1; off < len(col.editors); off++ {
+		i := idx + off
+		if i < len(col.editors) {
+			s := shrinkEditor(col.editors[i], wantFraction)
+			wantFraction -= s
+			ed.frac += s
+		}
+		
+		i = idx - off
+		if i >= 0 {
+			s := shrinkEditor(col.editors[i], wantFraction)
+			wantFraction -= s
+			ed.frac += s
+		}
+		
+		if wantFraction < 0.001 {
+			break
+		}
+	}
+	
+	col.RecalcRects()
+	col.Redraw()
+	w.wnd.FlushImage()
+	if d != nil { 
+		p := ed.r.Min
+		p = p.Add(*d)
+		p = p.Add(image.Point{ 1, 1 }) // the distance I get from the subtraction seems to be off by one?
+		w.wnd.WarpMouse(p)
+	}
 }
 
 func (w *Window) ColResize(col *Col, e wde.MouseDownEvent, events <-chan interface{}) {
@@ -667,41 +713,20 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		if lp.sfr != nil {
 			lp.ed.Recenter()
 		}
-
-
-	case "backspace":
-		ec := lp.asExecContext(true)
-		if ec.fr.Sels[0].S == ec.fr.Sels[0].E {
-			ec.fr.Sels[0].S--
-			ec.buf.FixSel(&ec.fr.Sels[0])
+		
+	case "next","prior":
+		dir := +1
+		if e.Chord == "prior" {
+			dir = -1
 		}
-		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
-		ec.br.BufferRefresh(ec.ontag)
-		if lp.sfr != nil {
-			lp.ed.Recenter()
+		if lp.ed != nil {
+			n := int(float32(lp.ed.sfr.Fr.R.Max.Y - lp.ed.sfr.Fr.R.Min.Y) / (2 * float32(lp.ed.sfr.Fr.Font.LineHeight()))) + 1
+			addr := edit.AddrList{ 
+				[]edit.Addr{ &edit.AddrBase{ "", strconv.Itoa(n), dir }, 
+				&edit.AddrBase{ "#", "0", -1 } } }
+			lp.ed.sfr.Fr.Sels[0] = addr.Eval(lp.ed.bodybuf, lp.ed.sfr.Fr.Sels[0])
+			lp.ed.BufferRefresh(false)
 		}
-		if (ec.ed != nil) && (ec.ed.specialChan != nil) {
-			tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size() })))
-			ec.ed.specialChan <- tagstr
-		}
-
-
-	case "delete":
-		ec := lp.asExecContext(true)
-		if ec.fr.Sels[0].S == ec.fr.Sels[0].E {
-			ec.fr.Sels[0].E++
-			ec.buf.FixSel(&ec.fr.Sels[0])
-		}
-		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
-		ec.br.BufferRefresh(ec.ontag)
-		if lp.sfr != nil {
-			lp.ed.Recenter()
-		}
-		if (ec.ed != nil) && (ec.ed.specialChan != nil) {
-			tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size() })))
-			ec.ed.specialChan <- tagstr
-		}
-
 
 	case "tab":
 		ec := lp.asExecContext(true)
@@ -712,7 +737,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		}
 		if (ec.ed != nil) && (ec.ed.specialChan != nil) {
 			tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size() })))
-			ec.ed.specialChan <- tagstr
+			ec.ed.specialChan <- "T" + tagstr
 		}
 
 

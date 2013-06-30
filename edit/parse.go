@@ -185,7 +185,7 @@ func readAddressTok(pgm []rune) (addrTok, []rune) {
 		return addrTok(fmt.Sprintf("%c%s%c", pgm[0], rx, pgm[0])), rest
 
 	case '#':
-		if (len(pgm) >= 2) && (pgm[1] == 'w') {
+		if (len(pgm) >= 2) && ((pgm[1] == 'w') || (pgm[1] == '?')) {
 			n, rest := readNumber(pgm[2:])
 			return addrTok(fmt.Sprintf("#%c%s", pgm[1], n)), rest
 		} else {
@@ -344,6 +344,9 @@ func parseAddrBase(addrs []addrTok) (Addr, []addrTok) {
 		f := string(addrs[0])
 		if strings.HasPrefix(f, "#w") {
 			return &AddrBase{ "#w", f[2:], 0 }, addrs[1:]
+		}
+		if strings.HasPrefix(f, "#?") {
+			return &AddrBase{ "#?", f[2:], 0 }, addrs[1:]
 		}
 
 		if strings.HasPrefix(f, "#") {

@@ -568,7 +568,6 @@ func writeEventFn(i int, data []byte, off int64) (written uint32, code fuse.Stat
 	if ec == nil {
 		return 0, fuse.ENOENT
 	}
-	fmt.Printf("Received <%s>", string(data))
 	origin, etype, s, e, flags, arg, ok := util.Parsevent(string(data))
 	if !ok {
 		return 0, fuse.EIO
@@ -588,11 +587,9 @@ func writeEventFn(i int, data []byte, off int64) (written uint32, code fuse.Stat
 		sideChan <- ExecMsg{ &ec2, s, e, arg }
 
 	case util.ET_BODYLOAD:
-		println("load msg sent")
 		sideChan <- LoadMsg{ ec, s, e, int(flags) }
 
 	case util.ET_TAGLOAD:
-		println("load msg sent")
 		ec2 := *ec
 		if ec.ed != nil {
 			ec2.buf = ec2.ed.tagbuf

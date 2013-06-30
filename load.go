@@ -116,13 +116,18 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 		return true
 	case 'L':
 		v := strings.SplitN(action, ":", 2)
-		path := expandMatches(v[0], matches)
+		name := expandMatches(v[0], matches)
+		
+		if len(name) <= 0 {
+			return false
+		}		
 		addrExpr := ""
 		if len(v) > 1 {
 			addrExpr = expandMatches(v[1], matches)
 		}
-		newed, err := EditFind(path, false, false)
+		newed, err := EditFind(ec.dir, name, false, false)
 		if err != nil {
+			println("error:", err.Error())
 			return false
 		}
 		if newed == nil {
@@ -133,8 +138,8 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 		if addrExpr != "" {
 			newed.sfr.Fr.Sels[0] = edit.AddrEval(addrExpr, newed.bodybuf, newed.sfr.Fr.Sels[0])
 			newed.BufferRefresh(false)
-			newed.Warp()
 		}
+		newed.Warp()
 		return true
 	}
 	return false

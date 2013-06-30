@@ -30,6 +30,7 @@ type Buffer struct {
 }
 
 func NewBuffer(dir, name string, create bool) (b *Buffer, err error) {
+	//println("NewBuffer call:", dir, name)
 	b = &Buffer{
 		Dir: dir,
 		Name: name,

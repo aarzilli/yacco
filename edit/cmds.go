@@ -2,6 +2,7 @@ package edit
 
 import (
 	"fmt"
+	"regexp"
 	"yacco/util"
 	"yacco/buf"
 )
@@ -69,7 +70,19 @@ func xcmdfn(inv bool, c *cmd, b *buf.Buffer, sels []util.Sel, eventChan chan str
 }
 
 func gcmdfn(inv bool, c *cmd, b *buf.Buffer, sels []util.Sel, eventChan chan string) {
-	//TODO: implement (g, v)
+	sel := c.rangeaddr.Eval(b, sels[0])
+	rr := b.ReaderFrom(sel.S, sel.E)
+	re := regexp.MustCompile(c.txtargs[0])
+	loc := re.FindReaderIndex(rr)
+	if loc == nil {
+		if inv {
+			c.body.Exec(b, sels, eventChan)
+		}
+	} else {
+		if !inv {
+			c.body.Exec(b, sels, eventChan)
+		}
+	}
 }
 
 func pipeincmdfn( c *cmd, b *buf.Buffer, sels []util.Sel, eventChan chan string) {

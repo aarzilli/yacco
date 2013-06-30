@@ -1,35 +1,52 @@
 package main
 
 import (
-	"fmt"
 	"os"
+	"fmt"
 	"path/filepath"
-	"yacco/util"
 	"yacco/buf"
 )
 
-func EditOpen(path string, create bool) (*Editor, error) {
-	abspath, err := filepath.Abs(path)
-	util.Must(err, "Error parsing argument")
-	dir := filepath.Dir(abspath)
-	name := filepath.Base(abspath)
-
-	if fi, err := os.Stat(abspath); err == nil {
-		if fi.Size() > 10 * 1024 * 1024 {
-			return nil, fmt.Errorf("Refusing to open file larger than 10MB")
-		}
-	}
+func editOpen(path string, create bool) (*Editor, error) {
+	//println("editOpen call:", path)
+	dir := filepath.Dir(path)
+	name := filepath.Base(path)
 
 	b, err := buf.NewBuffer(dir, name, create)
 	if err != nil {
-		return nil, fmt.Errorf("Could not open file: %s\n", abspath)
+		return nil, err
 	}
 	return NewEditor(b), nil
 }
 
-func EditFind(path string, warp bool, create bool) (*Editor, error) {
-	abspath, err := filepath.Abs(path)
-	util.Must(err, "Error parsing argument")
+func EditFind(rel2dir, path string, warp bool, create bool) (*Editor, error) {
+	var abspath string
+	if len(path) > 0 {
+		switch path[0] {
+		case '/':
+			var err error
+			abspath, err = filepath.Abs(path)
+			if err != nil {
+				return nil, err
+			}
+		case '~':
+			var err error
+			home := os.Getenv("HOME")
+			abspath = filepath.Join(home, path[1:])
+			abspath, err = filepath.Abs(abspath)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			var err error
+			abspath = filepath.Join(rel2dir, path)
+			abspath, err = filepath.Abs(abspath)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
+	//println("Relative", abspath, rel2dir)
 	dir := filepath.Dir(abspath)
 	name := filepath.Base(abspath)
 
@@ -37,7 +54,7 @@ func EditFind(path string, warp bool, create bool) (*Editor, error) {
 		for _, ed := range col.editors {
 			if (ed.bodybuf.Name == name) && (ed.bodybuf.Dir == dir) {
 				if ed.frac < 0.5 {
-					wnd.GrowEditor(col, ed)
+					wnd.GrowEditor(col, ed, nil)
 				}
 				if warp {
 					ed.Warp()
@@ -47,11 +64,11 @@ func EditFind(path string, warp bool, create bool) (*Editor, error) {
 		}
 	}
 
-	return HeuristicOpen(path, true, create)
+	return HeuristicOpen(abspath, true, create)
 }
 
 func HeuristicOpen(path string, warp bool, create bool) (*Editor, error) {
-	ed, err := EditOpen(path, create)
+	ed, err := editOpen(path, create)
 	if err != nil {
 		return nil, err
 	}
@@ -100,7 +117,7 @@ func HeuristicOpen(path string, warp bool, create bool) (*Editor, error) {
 }
 
 func Warnfull(bufname, msg string) {
-	ed, err := EditFind(bufname, false, true)
+	ed, err := EditFind(wnd.tagbuf.Dir, bufname, false, true)
 	if err != nil {
 		fmt.Printf("Warn: %s (additionally error %s while displaying this warning)\n", msg, err.Error())
 	} else {

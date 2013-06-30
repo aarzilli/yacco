@@ -156,6 +156,16 @@ func (e *AddrBase) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 		rsel.E = rsel.S
 		b.FixSel(&rsel)
 		rsel.E = rsel.S
+		
+	case "#?":
+		if (e.Value != "1") || (e.Dir != -1) {
+			panic(fmt.Errorf("Address starting with #? only supported as backward motion and with a value of 1"))
+		}
+		rsel = setStartSel(e.Dir, sel)
+		if rsel.S < b.Size() {
+			rsel.S--
+			rsel.E = rsel.S
+		}
 
 	case "$":
 		if e.Dir != 0 {
@@ -215,7 +225,7 @@ func regexpEval(b *buf.Buffer, sel util.Sel, rstr string, dir int) util.Sel {
 }
 
 type AddrList struct {
-	addrs []Addr
+	Addrs []Addr
 }
 
 func (e *AddrList) Empty() bool {
@@ -224,7 +234,7 @@ func (e *AddrList) Empty() bool {
 
 func (e *AddrList) String() string{
 	s := "List<"
-	for _, addr := range e.addrs {
+	for _, addr := range e.Addrs {
 		s += addr.String() + " "
 	}
 	s += ">"
@@ -233,7 +243,7 @@ func (e *AddrList) String() string{
 
 func (e *AddrList) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 	r := sel
-	for _, addr := range e.addrs {
+	for _, addr := range e.Addrs {
 		r = addr.Eval(b, r)
 	}
 	return r

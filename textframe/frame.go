@@ -311,9 +311,9 @@ func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interfac
 					}
 				}
 
-			case wde.MouseEnteredEvent:
+			/*case wde.MouseEnteredEvent:
 				stopAutoscroll()
-				return nil
+				return nil*/
 
 			case wde.MouseUpEvent:
 				stopAutoscroll()
@@ -370,40 +370,33 @@ func (fr *Frame) setSelectEx(idx, kind, start, end int, disableOther bool) {
 
 	case 2:
 		var s, e int
-		first := true
 		s = start-fr.Top
-		if s >= len(fr.glyphs) {
-			s = len(fr.glyphs) - 1
-		}
-		if s < 0 {
-			s = 0
-		}
-		for ; s >= 0; s-- {
-			g := fr.glyphs[s].r
-			if !(unicode.IsLetter(g) || unicode.IsDigit(g) || (g == '_')) {
-				if !first { s++ }
-				break
+		if (s < len(fr.glyphs)) && (s >= 0) {
+			first := true
+			for ; s >= 0; s-- {
+				g := fr.glyphs[s].r
+				if !(unicode.IsLetter(g) || unicode.IsDigit(g) || (g == '_')) {
+					if !first { s++ }
+					break
+				}
+				first = false
 			}
-			first = false
-		}
-		if s < 0 {
-			s = 0
+			if s < 0 {
+				s = 0
+			}
 		}
 
-		first = true
-		if e >= len(fr.glyphs) {
-			e = len(fr.glyphs) - 1
-		}
-		if e < 0 {
-			e = 0
-		}
-		for e = end-fr.Top; e < len(fr.glyphs); e++ {
-			g := fr.glyphs[e].r
-			if !(unicode.IsLetter(g) || unicode.IsDigit(g) || (g == '_')) {
-				if first { e++ }
-				break
+		e = end-fr.Top
+		if (e < len(fr.glyphs)) && (e >= 0) {
+			first := true
+			for ; e < len(fr.glyphs); e++ {
+				g := fr.glyphs[e].r
+				if !(unicode.IsLetter(g) || unicode.IsDigit(g) || (g == '_')) {
+					if first { e++ }
+					break
+				}
+				first = false
 			}
-			first = false
 		}
 
 		start = s + fr.Top
@@ -411,21 +404,27 @@ func (fr *Frame) setSelectEx(idx, kind, start, end int, disableOther bool) {
 
 	case 3:
 		var s, e int
-		for s = start-1-fr.Top; s > 0; s-- {
-			if fr.glyphs[s].r == '\n' {
-				s++
-				break
+		s = start-1-fr.Top
+		if (s < len(fr.glyphs)) && (s >= 0) {
+			for ; s > 0; s-- {
+				if fr.glyphs[s].r == '\n' {
+					s++
+					break
+				}
+			}
+
+			if s < 0 {
+				s = 0
 			}
 		}
 
-		if s < 0 {
-			s = 0
-		}
-
-		for e = end-fr.Top; e < len(fr.glyphs); e++ {
-			if fr.glyphs[e].r == '\n' {
-				e++
-				break
+		e = end-fr.Top
+		if (e < len(fr.glyphs)) && (e >= 0) {
+			for ; e < len(fr.glyphs); e++ {
+				if fr.glyphs[e].r == '\n' {
+					e++
+					break
+				}
 			}
 		}
 		start = s + fr.Top

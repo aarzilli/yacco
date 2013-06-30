@@ -20,7 +20,7 @@ package config
 // space
 
 const HOME_CMD = "Edit -+/@[^\t ]/-#0"
-const END_CMD = "Edit +-#1"
+const END_CMD = "Edit +-#?1"
 
 var KeyBindings  = map[string]string{
 	"left_arrow": "Edit -#1",
@@ -36,32 +36,26 @@ var KeyBindings  = map[string]string{
 	"control+left_arrow": "Edit -#w1-#0",
 	"control+shift+left_arrow": "Edit .,+#0-#w1-#0",
 	"control+backspace": "Edit -#w1,. c//",
-	"control+c": "Copy",
-	"control+v": "Paste",
-	"control+x": "Cut",
-	"control+s": "Put",
-	"control+z": "Undo",
-	"control+f": "Look",
-	"control+g": "Look!Again",
-	"control+shift+z": "Redo",
 	"control+home": "Edit #0",
 	"control+end": "Edit $",
 	"home": "Edit +--#0",
 	"control+a": HOME_CMD,
 	"end": END_CMD,
 	"control+e": END_CMD,
+
+	"control+c": "Copy",
+	"control+v": "Paste",
+	"control+y": "Paste!Primary",
+	"control+x": "Cut",
+	"control+s": "Put",
+	"control+k": "Edit -+c//",
+	
+	"control+z": "Undo",
+	"control+shift+z": "Redo",
+
+	"control+f": "Look",
+	"control+g": "Look!Again",
+	
+	"backspace": "Do\nEdit v/./ -#1,.\nEdit c//",
+	"delete": "Do\nEdit v/./ .,+#1\nEdit c//",
 }
-
-/* TODO:
-backspace: Do
-	Edit v/./ -#1,.
-	Edit c//
-
-delete: Do
-	Edit v/./ .,+#1
-	Edit c//
-
-control-k: Do
-	Edit .,+0
-	Cut
-*/

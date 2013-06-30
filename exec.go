@@ -44,11 +44,9 @@ var cmds = map[string]Cmd{
 	"Load": LoadCmd,
 	"Setenv": SetenvCmd,
 	"Look": LookCmd,
-	"Look!Again": func (ec ExecContext, arg string) { SpecialSendCmd(ec, "!Again") },
-	"Look!Quit": func (ec ExecContext, arg string) { SpecialSendCmd(ec, "!Quit") },
 	"New": NewCmd,
 	"Newcol": NewcolCmd,
-	"Paste": PasteCmd,
+	"Paste": func (ec ExecContext, arg string) { PasteCmd(ec, arg, false) },
 	"Put": PutCmd,
 	"Putall": PutallCmd,
 	"Redo": RedoCmd,
@@ -65,10 +63,18 @@ var cmds = map[string]Cmd{
 	// New
 	"Cd": CdCmd,
 	"Jobs": JobsCmd,
+	"Look!Again": func (ec ExecContext, arg string) { SpecialSendCmd(ec, "!Again") },
+	"Look!Quit": func (ec ExecContext, arg string) { SpecialSendCmd(ec, "!Quit") },
+	"Paste!Primary": func (ec ExecContext, arg string) { PasteCmd(ec, arg, true) },
+	"Rename": RenameCmd,
 }
 
 var spacesRe = regexp.MustCompile("\\s+")
 var exitConfirmed = false
+
+func init() {
+	cmds["Do"] = DoCmd // this would otherwise cause an initialization loop
+}
 
 func IntlCmd(cmd string) (Cmd, string, bool) {
 	if len(cmd) <= 0 {
@@ -105,7 +111,11 @@ func Exec(ec ExecContext, cmd string) {
 			Warn(errmsg)
 		}
 	}()
+	
+	execNoDefer(ec, cmd)
+}
 
+func execNoDefer(ec ExecContext, cmd string) {
 	cmd = strings.TrimSpace(cmd)
 	xcmd, arg, isintl := IntlCmd(cmd)
 	if isintl {
@@ -305,7 +315,7 @@ func NewcolCmd(ec ExecContext, arg string) {
 	wnd.wnd.FlushImage()
 }
 
-func PasteCmd(ec ExecContext, arg string) {
+func PasteCmd(ec ExecContext, arg string, primary bool) {
 	exitConfirmed = false
 	if ec.ed != nil {
 		ec.ed.confirmDel = false
@@ -313,7 +323,13 @@ func PasteCmd(ec ExecContext, arg string) {
 	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
 		return
 	}
-	ec.buf.Replace([]rune(wnd.wnd.GetClipboard()), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE)
+	var cb string
+	if primary {
+		cb = wnd.wnd.GetPrimarySelection()
+	} else {
+		cb = wnd.wnd.GetClipboard()
+	}
+	ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE)
 	ec.br.BufferRefresh(ec.ontag)
 }
 
@@ -461,6 +477,26 @@ func CdCmd(ec ExecContext, arg string) {
 	wnd.cols.Redraw()
 	wnd.tagfr.Redraw(false)
 	wnd.wnd.FlushImage()
+}
+
+func DoCmd(ec ExecContext, arg string) {
+	cmds := strings.Split(arg, "\n")
+	//TODO: check the first line for function definition
+	for _, cmd := range cmds {
+		execNoDefer(ec, cmd)
+	}
+}
+
+func RenameCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	if ec.ed != nil {
+		return
+	}
+	ec.ed.confirmDel = false
+	
+	ec.ed.bodybuf.Name = arg
+	ec.ed.bodybuf.Modified = true
+	ec.ed.BufferRefresh(false)
 }
 
 type Editors []*Editor
