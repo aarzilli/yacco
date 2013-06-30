@@ -30,6 +30,7 @@ func LoadInit() {
 }
 
 func Load(ec ExecContext, origin int) {
+	//println("in load")
 	if ec.buf == nil {
 		return
 	}
@@ -42,24 +43,28 @@ func Load(ec ExecContext, origin int) {
 		rr := ec.buf.ReaderFrom(ec.fr.Sels[2].S, ec.fr.Sels[2].E)
 		for {
 			matches := rule.Re.FindReaderSubmatchIndex(rr)
+			//println("match:", matches, ec.fr.Sels[2].S, ec.fr.Sels[2].E)
 			if matches == nil {
 				break
 			}
 			s := matches[0] + start
 			e := matches[1] + start
-						
-			if (s <= origin) && (origin < e) {
+
+			//println("match:", s, e, origin)
+
+			if (s <= origin) && (origin <= e) {
 				strmatches := []string{}
 				for i := 0; 2*i+1 < len(matches); i++ {
 					s := matches[2*i] + start
 					e := matches[2*i+1] + start
 					strmatches = append(strmatches, string(buf.ToRunes(ec.buf.SelectionX(util.Sel{s, e }))))
 				}
+				//println("Match:", strmatches[0])
 				if rule.Exec(ec, strmatches, s, e) {
 					return
 				}
 			}
-			
+
 			start = s+1
 			if start > origin {
 				break
@@ -100,7 +105,7 @@ func expandMatches(str string, matches []string) string {
 
 func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 	action := rule.Action[1:]
-	
+
 	switch rule.Action[0] {
 	case 'X':
 		expaction := expandMatches(action, matches)
@@ -121,7 +126,7 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 			return false
 		}
 		ec.fr.Sels[2] = util.Sel{ s, e }
-		ec.ed.BufferRefresh(ec.ontag)
+		ec.br.BufferRefresh(ec.ontag)
 		if addrExpr != "" {
 			newed.sfr.Fr.Sels[0] = edit.AddrEval(addrExpr, newed.bodybuf, newed.sfr.Fr.Sels[0])
 			newed.BufferRefresh(false)

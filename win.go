@@ -735,7 +735,7 @@ func clickExec(lp LogicalPos, e wde.MouseDownEvent, ee *wde.MouseUpEvent) {
 		}
 
 	case wde.RightButton:
-		ec := lp.asExecContext(false)
+		ec := lp.asExecContext(true)
 		s, original := expandedSelection(lp, 2)
 		if (lp.ed == nil) || (lp.ed.eventChan == nil) {
 			Load(ec, original)

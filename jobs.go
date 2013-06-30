@@ -15,7 +15,6 @@ type jobrec struct {
 	ec *ExecContext
 	cmd *exec.Cmd
 	outstr string
-	errstr string
 	writeToBuf bool
 
 	done chan bool
@@ -91,22 +90,38 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool) {
 
 	go func() {
 		defer func() { job.done <- true }()
-		bs, err := ioutil.ReadAll(stdout)
-		if err != nil {
-			return
+		defer stdout.Close()
+		if (ec != nil) && job.writeToBuf {
+			bs, err := ioutil.ReadAll(stdout)
+			if err != nil {
+				return
+			}
+			job.outstr = string(bs)
+		} else {
+			buf := make([]byte, 1024)
+			for {
+				n, err := stdout.Read(buf)
+				if err != nil {
+					return
+				}
+				sideChan <- WarnMsg{ job.cmd.Dir, string(buf[:n]) }
+				buf = buf[:1024]
+			}
 		}
-		job.outstr = string(bs)
-		stdout.Close()
 	}()
 
 	go func() {
 		defer func() { job.done <- true }()
-		bs, err := ioutil.ReadAll(stderr)
-		if err != nil {
-			return
+		defer stderr.Close()
+		buf := make([]byte, 1024)
+		for {
+			n, err := stderr.Read(buf)
+			if err != nil {
+				return
+			}
+			sideChan <- WarnMsg{ job.cmd.Dir, string(buf[:n]) }
+			buf = buf[:1024]
 		}
-		job.errstr = string(bs)
-		stderr.Close()
 	}()
 
 	go func() {
@@ -135,23 +150,6 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool) {
 
 		if (ec != nil) && job.writeToBuf {
 			sideChan <- ReplaceMsg{ job.ec, nil, false, job.outstr, util.EO_BODYTAG }
-			if job.errstr != "" {
-				sideChan <- WarnMsg{ job.cmd.Dir, job.errstr }
-			}
-		} else {
-			t := ""
-			if job.outstr != "" {
-				t += job.outstr
-			}
-			if job.errstr != "" {
-				if t != "" {
-					t += "\n"
-				}
-				t += job.errstr
-			}
-			if t != "" {
-				sideChan <- WarnMsg{ job.cmd.Dir, t }
-			}
 		}
 
 		jobsMutex.Lock()
