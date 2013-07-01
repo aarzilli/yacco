@@ -479,7 +479,7 @@ func (fr *Frame) PointToCoord(p int) image.Point {
 	if pp < len(fr.glyphs) {
 		r := fr.glyphs[pp].p
 		return image.Point{ int(r.X >> 8), int(r.Y >> 8) }
-	} else if pp == len(fr.glyphs) {
+	} else if (pp == len(fr.glyphs)) && (len(fr.glyphs) > 0) {
 		r := fr.glyphs[pp-1].p
 		return image.Point{ int((r.X + fr.glyphs[pp-1].width) >> 8), int(r.Y >> 8) }
 	} else {

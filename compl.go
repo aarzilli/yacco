@@ -16,6 +16,7 @@ import (
 )
 
 var ComplWnd wde.Window
+var complPrefixSuffix string
 
 const COMPL_MAXX = 512
 const COMPL_MAXY = 100
@@ -102,10 +103,16 @@ func ComplDraw(b *image.RGBA, r image.Rectangle) {
 }
 
 func ComplStart(ec ExecContext) {
+	if ec.buf == nil {
+		return
+	}
 	if ec.fr.Sels[0].S != ec.fr.Sels[0].E {
 		return
 	}
 	if ec.fr.Sels[0].S == 0 {
+		return
+	}
+	if ComplWnd != nil {
 		return
 	}
 	
@@ -115,20 +122,45 @@ func ComplStart(ec ExecContext) {
 	
 	//fmt.Printf("Completing <%s> <%s>\n", fpwd, wdwd)
 	
+	hasFp := false
 	if fpwd != "" {
 		compls = append(compls, getFsCompls(ec.dir, fpwd)...)
+		hasFp = len(compls) > 0
 		//println("after dir:", len(compls))
 	}
 	
-	if (wdwd != "") && ((fpwd == wdwd) || (len(compls) <= 0)) {
-		compls = append(compls, getWordCompls(wdwd)...)
-		//println("after words:", len(compls))
-		compls = util.Dedup(compls)
-		//println("after dedup:", len(compls))
+	fpPrefix := commonPrefix(compls)
+	fpPrefixSuffix := ""
+	if len(fpPrefixSuffix) > len(fpwd) {
+		fpPrefixSuffix = fpPrefix[len(fpwd):]
 	}
 	
+	wdCompls := []string{}
+	if (wdwd != "") && ((fpwd == wdwd) || (len(compls) <= 0)) {
+		wdCompls = append(wdCompls, getWordCompls(wdwd)...)
+		wdCompls = util.Dedup(wdCompls)
+	}
+	
+	hasWd := len(wdCompls) > 0
+	
+	wdPrefix := commonPrefix(wdCompls)
+	wdPrefixSuffix := ""
+	if len(wdPrefix) > len(wdwd) {
+		wdPrefixSuffix = wdPrefix[len(wdwd):]
+	}
+	
+	compls = util.Dedup(append(compls, wdCompls...))
+		
 	if len(compls) <= 0 {
 		return
+	}
+	
+	if hasFp && hasWd {
+		complPrefixSuffix = commonPrefix2(fpPrefixSuffix, wdPrefixSuffix)
+	} else if hasFp {
+		complPrefixSuffix = fpPrefixSuffix
+	} else if hasWd {
+		complPrefixSuffix = wdPrefixSuffix
 	}
 	
 	cmax := 5
@@ -207,9 +239,37 @@ func getWordCompls(wd string) []string {
 
 func complFilter(prefix string, set []string, out *[]string) {
 	for _, cur := range set {
-		if strings.HasPrefix(cur, prefix) {
+		if strings.HasPrefix(cur, prefix) && (cur != prefix) {
 			*out = append(*out, cur)
 		}
 	}
 }
+
+func commonPrefix(in []string) string {
+	if len(in) <= 0 {
+		return ""
+	}
+	r := in[0]
+	for _, x := range in {
+		r = commonPrefix2(r, x)
+		if r == "" {
+			break
+		}
+	}
+	return r
+}
+
+func commonPrefix2(a, b string) string {
+	l := len(a)
+	if l > len(b) {
+		l = len(b)
+	}
+	for i := 0; i < l; i++ {
+		if a[i] != b[i] {
+			return a[:i]
+		}
+	}
+	return a[:l]
+}
+
 

@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"fmt"
 	"image"
 	"runtime"
 	"image/draw"
@@ -246,7 +245,6 @@ func (w *Window) EventLoop() {
 			wnd.SetTick(e.Where)
 
 		case wde.KeyTypedEvent:
-			HideCompl(fmt.Sprintf("key typed %s %s", e.Chord, e.Glyph))
 			lp := w.TranslatePosition(lastWhere)
 
 			w.Type(lp, e)
@@ -673,6 +671,7 @@ func (lp *LogicalPos) bufferRefreshable() BufferRefreshable {
 func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 	switch e.Chord {
 	case "escape":
+		HideCompl("keytype")
 		if (lp.ed != nil) && (lp.ed.specialChan != nil) {
 			lp.ed.sfr.Fr.VisibleTick = true			
 			lp.ed.ExitSpecial()
@@ -680,6 +679,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		}
 
 	case "return":
+		HideCompl("keytype")	
 		if (lp.ed != nil) && (lp.ed.specialChan != nil) {
 			lp.ed.sfr.Fr.VisibleTick = true		
 			lp.ed.ExitSpecial()
@@ -728,6 +728,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		}
 		
 	case "next","prior":
+		HideCompl("keytype")	
 		dir := +1
 		if e.Chord == "prior" {
 			dir = -1
@@ -743,18 +744,31 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 
 	case "tab":
 		ec := lp.asExecContext(true)
-		ec.buf.Replace([]rune{ '\t' }, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
-		ec.br.BufferRefresh(ec.ontag)
-		if lp.sfr != nil {
-			lp.ed.Recenter()
+		if ec.buf != nil {
+			if ComplWnd != nil {
+				ec.buf.Replace([]rune(complPrefixSuffix), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
+				ec.br.BufferRefresh(ec.ontag)
+				ComplWnd.Close()
+				ComplWnd = nil
+				ComplStart(ec)
+			} else {
+				ec.buf.Replace([]rune{ '\t' }, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
+				ec.br.BufferRefresh(ec.ontag)
+				if (ec.ed != nil) && (ec.ed.specialChan != nil) {
+					tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size() })))
+					ec.ed.specialChan <- "T" + tagstr
+				}
+			}
 		}
-		if (ec.ed != nil) && (ec.ed.specialChan != nil) {
-			tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size() })))
-			ec.ed.specialChan <- "T" + tagstr
+		
+	case "insert":
+		if ComplWnd == nil {
+			ec := lp.asExecContext(true)
+			ComplStart(ec)
 		}
-
 
 	default:
+		HideCompl("keytype")	
 		ec := lp.asExecContext(true)
 		if cmd, ok := config.KeyBindings[e.Chord]; ok {
 			//println("Execute command: <" + cmd + ">")
