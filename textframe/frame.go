@@ -132,8 +132,8 @@ func (fr *Frame) Clear() {
 	fr.lastFull = 0
 }
 
-// Inserts text into the frame, returns number of inserted runes
-func (fr *Frame) Insert(runes []rune) int {
+// Inserts text into the frame, returns the maximum X and Y used
+func (fr *Frame) Insert(runes []rune) (limit image.Point) {
 	cr := make([]ColorRune, len(runes))
 	for i, _ := range runes {
 		cr[i].C = 1
@@ -142,8 +142,8 @@ func (fr *Frame) Insert(runes []rune) int {
 	return fr.InsertColor(cr)
 }
 
-// Inserts text into the frame, returns the number of inserted runes
-func (fr *Frame) InsertColor(runes []ColorRune) int {
+// Inserts text into the frame, returns the maximum X and Y used
+func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	lh := fr.lineHeight()
 
 	_, spaceIndex := fr.getIndex(' ')
@@ -158,16 +158,19 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 	spaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, spaceIndex).AdvanceWidth) << 2
 	bigSpaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, xIndex).AdvanceWidth) << 2
 	tabWidth := bigSpaceWidth * raster.Fix32(fr.TabWidth)
+	
+	limit.X = int(fr.ins.X >> 8)
+	limit.Y = int(fr.ins.Y >> 8)
 
 	for i, crune := range runes {
 		if fr.ins.Y > bottom {
-			return i
+			return
 		}
 
 		if fr.ins.Y + lh < bottom {
 			fr.lastFull = len(fr.glyphs)
 		}
-
+		
 		if crune.R == '\n' {
 			g := glyph{
 				r:         crune.R,
@@ -271,8 +274,16 @@ func (fr *Frame) InsertColor(runes []ColorRune) int {
 			fr.ins.X += width
 			prev, prevFontIdx, hasPrev = index, fontIdx, true
 		}
+		
+		if int(fr.ins.X >> 8) > limit.X {
+			limit.X = int(fr.ins.X >> 8)
+		}
+		
+		if int(fr.ins.Y >> 8) > limit.Y {
+			limit.Y = int(fr.ins.Y >> 8)
+		}
 	}
-	return len(runes)
+	return
 }
 
 // Tracks the mouse position, selecting text, the events channel is from go.wde
@@ -468,6 +479,9 @@ func (fr *Frame) PointToCoord(p int) image.Point {
 	if pp < len(fr.glyphs) {
 		r := fr.glyphs[pp].p
 		return image.Point{ int(r.X >> 8), int(r.Y >> 8) }
+	} else if pp == len(fr.glyphs) {
+		r := fr.glyphs[pp-1].p
+		return image.Point{ int((r.X + fr.glyphs[pp-1].width) >> 8), int(r.Y >> 8) }
 	} else {
 		return image.Point{ fr.R.Min.X + 2, fr.R.Min.Y + 2 }
 	}

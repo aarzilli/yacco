@@ -6,6 +6,7 @@ import (
 	"time"
 	"runtime"
 	"image"
+	"sort"
 	"github.com/skelterjohn/go.wde"
 )
 
@@ -192,3 +193,18 @@ func Must(err error, msg string) {
 		panic(fmt.Sprintf("%s: %v", msg, err))
 	}
 }
+
+func Dedup(v []string) []string {
+	sort.Strings(v)
+	dst := 0
+	var prev *string = nil
+	for src := 0; src < len(v); src++ {
+		if (prev == nil) || (v[src] != *prev) {
+			v[dst] = v[src]
+			dst++
+		}
+		prev = &v[dst-1]
+	}
+	return v[:dst]
+}
+

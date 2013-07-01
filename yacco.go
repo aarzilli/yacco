@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"yacco/util"
 	"yacco/buf"
 	"yacco/edit"
 	"github.com/skelterjohn/go.wde"
@@ -67,6 +68,7 @@ func removeBuffer(b *buf.Buffer) {
 			return
 		}
 	}
+	wnd.Words = util.Dedup(append(wnd.Words, b.Words...))
 }
 
 func bufferExecContext(i int) *ExecContext {

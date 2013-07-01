@@ -19,15 +19,15 @@ func editOpen(path string, create bool) (*Editor, error) {
 	return NewEditor(b), nil
 }
 
-func EditFind(rel2dir, path string, warp bool, create bool) (*Editor, error) {
-	var abspath string
+func resolvePath(rel2dir, path string) string {
+	var abspath = path
 	if len(path) > 0 {
 		switch path[0] {
 		case '/':
 			var err error
 			abspath, err = filepath.Abs(path)
 			if err != nil {
-				return nil, err
+				return path
 			}
 		case '~':
 			var err error
@@ -35,17 +35,24 @@ func EditFind(rel2dir, path string, warp bool, create bool) (*Editor, error) {
 			abspath = filepath.Join(home, path[1:])
 			abspath, err = filepath.Abs(abspath)
 			if err != nil {
-				return nil, err
+				return path
 			}
 		default:
 			var err error
 			abspath = filepath.Join(rel2dir, path)
 			abspath, err = filepath.Abs(abspath)
 			if err != nil {
-				return nil, err
+				return path
 			}
 		}
 	}
+	
+	return abspath
+}
+
+func EditFind(rel2dir, path string, warp bool, create bool) (*Editor, error) {
+	abspath := resolvePath(rel2dir, path)
+	
 	//println("Relative", abspath, rel2dir)
 	dir := filepath.Dir(abspath)
 	name := filepath.Base(abspath)

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"unicode"
 	"unicode/utf8"
+	"regexp"
 	"io/ioutil"
 	"yacco/util"
 	"yacco/textframe"
@@ -14,6 +15,8 @@ import (
 )
 
 const SLOP = 128
+
+var nonwdRe = regexp.MustCompile(`\W+`)
 
 type Buffer struct {
 	Dir string
@@ -27,6 +30,8 @@ type Buffer struct {
 	gap, gapsz int
 
 	ul undoList
+	
+	Words []string
 }
 
 func NewBuffer(dir, name string, create bool) (b *Buffer, err error) {
@@ -80,7 +85,9 @@ func NewBuffer(dir, name string, create bool) (b *Buffer, err error) {
 				return nil, fmt.Errorf("Can not open binary file")
 			}
 			util.Must(err, fmt.Sprintf("Could not read %s/%s", dir, name))
-			runes := []rune(string(bytes))
+			str := string(bytes)
+			b.Words = util.Dedup(nonwdRe.Split(str, -1))
+			runes := []rune(str)
 			b.Replace(runes, &util.Sel{ 0, 0 }, []util.Sel{}, true, nil, 0)
 			b.Modified = false
 			b.ul.Reset()
@@ -473,6 +480,26 @@ func (b *Buffer) Tospc(start int, dir int) int {
 	return i
 }
 
+func (b *Buffer) Tofp(start int, dir int) int {
+	first := (dir < 0)
+	notfirst := !first
+	var i int
+	for i = start; (i >= 0) && (i < b.Size()); i += dir {
+		c := b.At(i).R
+		if !(unicode.IsLetter(c) || unicode.IsDigit(c) || (c == '_') || (c == '-') || (c == '+') || (c == '/') || (c == '=') || (c == '~') || (c == '!') || (c == ':') || (c == ',') || (c == '.')) {
+			if !first {
+				i++
+			}
+			break
+		}
+		first = notfirst
+	}
+	if i < 0 {
+		i = 0
+	}
+	return i
+
+}
 
 func (b *Buffer) ShortName() string {
 	p := filepath.Join(b.Dir, b.Name)
@@ -503,11 +530,16 @@ func (b *Buffer) Put() error {
 	defer out.Close()
 	bout := bufio.NewWriter(out)
 	ba, bb := b.Selection(util.Sel{ 0, b.Size() })
-	_, err = bout.Write([]byte(string(ToRunes(ba))))
+	sa := string(ToRunes(ba))
+	newWordsA := nonwdRe.Split(sa, -1)
+	_, err = bout.Write([]byte(sa))
 	if err != nil {
 		return err
 	}
-	_, err = bout.Write([]byte(string(ToRunes(bb))))
+	sb := string(ToRunes(bb))
+	newWordsB := nonwdRe.Split(sb, -1)
+	b.Words = util.Dedup(append(newWordsA[:len(newWordsA)-1], newWordsB[:len(newWordsB)-1]...))
+	_, err = bout.Write([]byte(sb))
 	if err != nil {
 		return err
 	}

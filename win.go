@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"fmt"
 	"image"
 	"runtime"
 	"image/draw"
@@ -23,6 +24,7 @@ type Window struct {
 	tagfr textframe.Frame
 	tagbuf *buf.Buffer
 	Lock sync.Mutex // fuck it, we don't need no performance!
+	Words []string
 }
 
 type LogicalPos struct {
@@ -74,6 +76,7 @@ var activeEditor *Editor = nil
 var HasFocus = true
 
 func (w *Window) Init(width, height int) (err error) {
+	w.Words = []string{}
 	w.wnd, err = wde.NewWindow(width, height)
 	if err != nil {
 		return err
@@ -173,16 +176,20 @@ func (w *Window) EventLoop() {
 		wnd.Lock.Lock()
 		switch e := ei.(type) {
 		case wde.CloseEvent:
+			HideCompl("close event")
 			FsQuit()
 
 		case wde.ResizeEvent:
+			HideCompl("resize event")
 			wnd.Resized()
 
 		case wde.MouseMovedEvent:
+			HideCompl("mouse moved")
 			lastWhere = e.Where
 			wnd.SetTick(e.Where)
 
 		case wde.MouseDownEvent:
+			HideCompl("mouse down")
 			lastWhere = e.Where
 			lp := w.TranslatePosition(e.Where)
 			
@@ -219,6 +226,7 @@ func (w *Window) EventLoop() {
 			}
 
 		case util.WheelEvent:
+			HideCompl("wheel")
 			lp := w.TranslatePosition(e.Where)
 			if lp.sfr != nil {
 				if e.Count > 0 {
@@ -233,10 +241,12 @@ func (w *Window) EventLoop() {
 			wnd.HideAllTicks()
 
 		case wde.MouseEnteredEvent:
+			HideCompl("mouse entered")
 			lastWhere = e.Where
 			wnd.SetTick(e.Where)
 
 		case wde.KeyTypedEvent:
+			HideCompl(fmt.Sprintf("key typed %s %s", e.Chord, e.Glyph))
 			lp := w.TranslatePosition(lastWhere)
 
 			w.Type(lp, e)
@@ -249,6 +259,7 @@ func (w *Window) EventLoop() {
 			}
 
 		case ReplaceMsg:
+			HideCompl("replacemsg")
 			sel := e.sel
 			if sel == nil {
 				if e.append {
@@ -663,12 +674,14 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 	switch e.Chord {
 	case "escape":
 		if (lp.ed != nil) && (lp.ed.specialChan != nil) {
+			lp.ed.sfr.Fr.VisibleTick = true			
 			lp.ed.ExitSpecial()
 			return
 		}
 
 	case "return":
 		if (lp.ed != nil) && (lp.ed.specialChan != nil) {
+			lp.ed.sfr.Fr.VisibleTick = true		
 			lp.ed.ExitSpecial()
 			return
 		}
@@ -763,6 +776,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			if ec.buf != nil {
 				ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
 				ec.br.BufferRefresh(ec.ontag)
+				ComplStart(ec)
 			}
 		}
 		if (ec.ed != nil) && (ec.ed.specialChan != nil) {
