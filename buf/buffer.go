@@ -84,7 +84,9 @@ func NewBuffer(dir, name string, create bool) (b *Buffer, err error) {
 			if !utf8.Valid(testb) {
 				return nil, fmt.Errorf("Can not open binary file")
 			}
-			util.Must(err, fmt.Sprintf("Could not read %s/%s", dir, name))
+			if err != nil {
+				return nil, err
+			}
 			str := string(bytes)
 			b.Words = util.Dedup(nonwdRe.Split(str, -1))
 			runes := []rune(str)

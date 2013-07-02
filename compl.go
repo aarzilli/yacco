@@ -16,18 +16,20 @@ import (
 )
 
 var ComplWnd wde.Window
+var ComplWndSaved wde.Window
+var complEventLoopExit chan struct{}
+var complRect image.Rectangle
+var complImg *image.RGBA
 var complPrefixSuffix string
 
 const COMPL_MAXX = 512
 const COMPL_MAXY = 100
 
 func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
-	r := image.Rectangle{ image.Point{ 0, 0 }, image.Point{ COMPL_MAXX, COMPL_MAXY } }
-	b := image.NewRGBA(r)
 	fr := textframe.Frame{
 		Font: config.ComplFont,
 		Hackflags: textframe.HF_TRUNCATE,
-		B: b, R: r,
+		B: complImg, R: complImg.Bounds(),
 		VisibleTick: false,
 		Colors: [][]image.Uniform{ 
 			config.TheColorScheme.Compl,
@@ -41,8 +43,8 @@ func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 	limit := fr.Insert([]rune(str))
 	fr.Redraw(false)
 	
-	limit.X += 5
-	limit.Y += 5
+	limit.X += 10
+	limit.Y += 10
 	
 	if limit.X > COMPL_MAXX {
 		limit.X = COMPL_MAXX
@@ -50,38 +52,44 @@ func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 	if limit.Y > COMPL_MAXY {
 		limit.Y = COMPL_MAXY
 	}
-	r.Max = limit
+	complRect.Max = limit
 	
-	bd := r
+	bd := complRect
 	bd.Max.X = bd.Min.X + 1
-	draw.Draw(b, bd, &config.TheColorScheme.Border, image.ZP, draw.Src)
+	draw.Draw(complImg, bd, &config.TheColorScheme.Border, image.ZP, draw.Src)
 	
-	bd = r
+	bd = complRect
 	bd.Max.Y = bd.Min.Y + 1
-	draw.Draw(b, bd, &config.TheColorScheme.Border, image.ZP, draw.Src)
+	draw.Draw(complImg, bd, &config.TheColorScheme.Border, image.ZP, draw.Src)
 	
-	bd = r
+	bd = complRect
 	bd.Min.X = bd.Max.X - 1
-	draw.Draw(b, bd, &config.TheColorScheme.Border, image.ZP, draw.Src)
+	draw.Draw(complImg, bd, &config.TheColorScheme.Border, image.ZP, draw.Src)
 	
-	bd = r
+	bd = complRect
 	bd.Min.Y = bd.Max.Y - 1
-	draw.Draw(b, bd, &config.TheColorScheme.Border, image.ZP, draw.Src)
+	draw.Draw(complImg, bd, &config.TheColorScheme.Border, image.ZP, draw.Src)
 	
-	return r, b
+	return complRect, complImg
 }
 
-func ComplWndEventLoop(r image.Rectangle, b *image.RGBA) {
+func ComplWndEventLoop(eventLoopExit chan struct{}) {
 	//println("Compl event loop started")
-	for ei := range ComplWnd.EventChan() {
+	events := ComplWnd.EventChan()
+	for {
 		runtime.Gosched()
-		switch ei.(type) {
-		case wde.CloseEvent:
-			//println("Exiting")
+		select {
+		case ei := <- events:
+			switch ei.(type) {
+			case wde.CloseEvent:
+				//println("Exiting")
+				return
+				
+			case wde.ResizeEvent:
+				ComplDraw(complImg, complRect)
+			}
+		case <- eventLoopExit:
 			return
-			
-		case wde.ResizeEvent:
-			ComplDraw(b, r)
 		}
 	}
 	//println("Loop done")
@@ -90,7 +98,7 @@ func ComplWndEventLoop(r image.Rectangle, b *image.RGBA) {
 func HideCompl(reason string) {
 	if ComplWnd != nil {
 		//println("HideCompl", reason)
-		ComplWnd.Close()
+		ComplWnd.Hide()
 		ComplWnd = nil
 	}
 }
@@ -98,21 +106,27 @@ func HideCompl(reason string) {
 
 func ComplDraw(b *image.RGBA, r image.Rectangle) {
 	screen := ComplWnd.Screen()
-	screen.CopyRGBA(b, r)
-	ComplWnd.FlushImage()
+	if screen != nil {
+		screen.CopyRGBA(b, r)
+		ComplWnd.FlushImage()
+	}
 }
 
 func ComplStart(ec ExecContext) {
 	if ec.buf == nil {
+		HideCompl("")
+		return
+	}
+	if (ec.buf.Name == "+Tag") && (ec.ed != nil) && (ec.ed.specialChan != nil) {
+		HideCompl("")
 		return
 	}
 	if ec.fr.Sels[0].S != ec.fr.Sels[0].E {
+		HideCompl("")
 		return
 	}
 	if ec.fr.Sels[0].S == 0 {
-		return
-	}
-	if ComplWnd != nil {
+		HideCompl("")
 		return
 	}
 	
@@ -123,16 +137,26 @@ func ComplStart(ec ExecContext) {
 	//fmt.Printf("Completing <%s> <%s>\n", fpwd, wdwd)
 	
 	hasFp := false
+	var resDir, resName string
 	if fpwd != "" {
-		compls = append(compls, getFsCompls(ec.dir, fpwd)...)
+		resPath := resolvePath(ec.dir, fpwd)
+		if fpwd[len(fpwd)-1] == '/' {
+			resDir = resPath
+			resName = ""
+		} else {
+			resDir = filepath.Dir(resPath)
+			resName = filepath.Base(resPath)
+		}
+
+		compls = append(compls, getFsCompls(resDir, resName)...)
 		hasFp = len(compls) > 0
 		//println("after dir:", len(compls))
 	}
 	
 	fpPrefix := commonPrefix(compls)
 	fpPrefixSuffix := ""
-	if len(fpPrefixSuffix) > len(fpwd) {
-		fpPrefixSuffix = fpPrefix[len(fpwd):]
+	if len(fpPrefix) > len(resName) {
+		fpPrefixSuffix = fpPrefix[len(resName):]
 	}
 	
 	wdCompls := []string{}
@@ -152,6 +176,7 @@ func ComplStart(ec ExecContext) {
 	compls = util.Dedup(append(compls, wdCompls...))
 		
 	if len(compls) <= 0 {
+		HideCompl("")
 		return
 	}
 	
@@ -163,24 +188,41 @@ func ComplStart(ec ExecContext) {
 		complPrefixSuffix = wdPrefixSuffix
 	}
 	
+	//println("hasFp", hasFp, "hasWd", hasWd, "wdPrefixSuffix", wdPrefixSuffix, "fpPrefixSuffix", fpPrefixSuffix, "complPrefixSuffix", complPrefixSuffix)
+	
 	cmax := 5
 	if cmax > len(compls) {
 		cmax = len(compls)
 	}
 	
 	txt := strings.Join(compls[:cmax], "\n")
-	if cmax > len(compls) {
-		txt += "\n..."
+	if cmax < len(compls) {
+		txt += "\n...\n"
 	}
-	r, b := PrepareCompl(txt)
-	var err error
-	ComplWnd, err = wnd.wnd.NewTemp(ec.fr.PointToCoord(ec.fr.Sels[0].S).Add(image.Point{ 2, 4 }), r.Max.X, r.Max.Y)
-	if err != nil {
-		fmt.Println("Error creating completion window:", err)
+	
+	if complImg == nil {
+		complRect = image.Rectangle{ image.Point{ 0, 0 }, image.Point{ COMPL_MAXX, COMPL_MAXY } }
+		complImg = image.NewRGBA(complRect)
+	}
+
+	complRect, complImg = PrepareCompl(txt)
+	p := ec.fr.PointToCoord(ec.fr.Sels[0].S).Add(image.Point{ 2, 4 })
+	if ComplWndSaved != nil {
+		ComplWnd = ComplWndSaved
+		ComplWnd.Move(p, complRect.Max.X, complRect.Max.Y)
 	} else {
-		ComplDraw(b, r)
+		ComplWnd, _ = wnd.wnd.NewTemp(p, complRect.Max.X, complRect.Max.Y)
+		ComplWndSaved = ComplWnd
+		if ComplWnd != nil {
+			complEventLoopExit = make(chan struct{})
+			go ComplWndEventLoop(complEventLoopExit)
+		}
+	}
+	if ComplWnd == nil {
+		fmt.Println("Error creating completion window")
+	} else {
+		ComplDraw(complImg, complRect)
 		ComplWnd.Show()
-		go ComplWndEventLoop(r, b)
 	}
 }
 
@@ -198,16 +240,7 @@ func getComplWords(ec ExecContext) (fpwd, wdwd string) {
 	return
 }
 
-func getFsCompls(dir string, wd string) []string {
-	resPath := resolvePath(dir, wd)
-	var resDir, resName string
-	if wd[len(wd)-1] == '/' {
-		resDir = resPath
-		resName = ""
-	} else {
-		resDir = filepath.Dir(resPath)
-		resName = filepath.Base(resPath)
-	}
+func getFsCompls(resDir, resName string) []string {
 	
 	//println("\tFs:", resDir, resName)
 	
@@ -230,6 +263,9 @@ func getFsCompls(dir string, wd string) []string {
 func getWordCompls(wd string) []string {
 	r := []string{}
 	for _, buf := range buffers {
+		if buf == nil { 
+			continue
+		}
 		complFilter(wd, buf.Words, &r)
 	}
 	complFilter(wd, wnd.Words, &r)

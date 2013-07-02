@@ -22,9 +22,11 @@ func realmain() {
 
 	wnd.cols.AddAfter(-1)
 	wnd.cols.AddAfter(-1)
+	
+	wd, _ := os.Getwd()
 
 	for _, arg := range os.Args[1:] {
-		HeuristicOpen(arg, false, true)
+		EditFind(wd, arg, false, true)
 	}
 
 	wnd.wnd.FlushImage()

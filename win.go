@@ -550,8 +550,7 @@ func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
 	w.wnd.FlushImage()
 	if d != nil { 
 		p := ed.r.Min
-		p = p.Add(*d)
-		p = p.Add(image.Point{ 1, 1 }) // the distance I get from the subtraction seems to be off by one?
+		p = p.Add(image.Point { SCROLL_WIDTH / 2, int(ed.tagfr.Font.LineHeight() / 2) })
 		w.wnd.WarpMouse(p)
 	}
 }
@@ -748,10 +747,9 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			if ComplWnd != nil {
 				ec.buf.Replace([]rune(complPrefixSuffix), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
 				ec.br.BufferRefresh(ec.ontag)
-				ComplWnd.Close()
-				ComplWnd = nil
 				ComplStart(ec)
 			} else {
+				HideCompl("")
 				ec.buf.Replace([]rune{ '\t' }, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
 				ec.br.BufferRefresh(ec.ontag)
 				if (ec.ed != nil) && (ec.ed.specialChan != nil) {
@@ -768,9 +766,9 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		}
 
 	default:
-		HideCompl("keytype")	
 		ec := lp.asExecContext(true)
 		if cmd, ok := config.KeyBindings[e.Chord]; ok {
+			HideCompl("keytype")
 			//println("Execute command: <" + cmd + ">")
 			if ec.eventChan == nil {
 				Exec(ec, cmd)
