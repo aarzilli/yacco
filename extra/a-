@@ -1,0 +1,9 @@
+#!/bin/bash
+
+ic="\t"
+if [ "x$bd" != "x" ]; then
+	ic=`cat $bd/prop | grep "^indentchar" | cut -d= -f2-`
+fi
+
+sed "s/^\($ic\|  \)//"
+

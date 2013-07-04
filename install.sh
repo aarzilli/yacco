@@ -1,14 +1,16 @@
 #!/bin/bash
 
 ./all.sh
-cp -f bin/win $1/win
-cp -f bin/yacco $1/yacco
-cp -f extra/yacco-makenew $1/yacco-makenew
-chmod u+x $1/yacco-makenew
-cp -f extra/m $1/m
-chmod u+x $1/m
-cp -f extra/yacco-find $1/yacco-find
-chmod u+x $1/yacco-find
-cp -f extra/g $1/g
-chmod u+x $1/g
-
+mkdir -p $1/yaccodir/
+cp -f bin/win $1/yaccodir/win
+cp -f bin/yacco $1/yaccodir/yacco
+for scpt in yacco-makenew m g yacco-find a+ a-; do
+	cp -f extra/$scpt $1/yaccodir/$scpt
+	chmod u+x $1/yaccodir/$scpt
+done
+cat >$1/yacco <<EOF
+#!/bin/bash
+export PATH=\$PATH:$1/yaccodir
+exec $1/yaccodir/yacco
+EOF
+chmod u+x $1/yacco

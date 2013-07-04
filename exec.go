@@ -66,6 +66,7 @@ var cmds = map[string]Cmd{
 	"Look!Again": func (ec ExecContext, arg string) { SpecialSendCmd(ec, "!Again") },
 	"Look!Quit": func (ec ExecContext, arg string) { SpecialSendCmd(ec, "!Quit") },
 	"Paste!Primary": func (ec ExecContext, arg string) { PasteCmd(ec, arg, true) },
+	"Paste!Indent": PasteIndentCmd,
 	"Rename": RenameCmd,
 }
 
@@ -145,6 +146,10 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 	}
 
 	s := string(buf.ToRunes(ec.buf.SelectionX(ec.fr.Sels[0])))
+	if s == "" {
+		// Does not trash clipboard when accidentally copying nil text
+		return
+	}
 	if del {
 		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE)
 		ec.br.BufferRefresh(ec.ontag)
@@ -333,6 +338,71 @@ func PasteCmd(ec ExecContext, arg string, primary bool) {
 	ec.br.BufferRefresh(ec.ontag)
 }
 
+func PasteIndentCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	if ec.ed != nil {
+		ec.ed.confirmDel = false
+	}
+	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
+		return
+	}
+	cb := wnd.wnd.GetClipboard()
+	
+	if (ec.fr.Sels[0].S == 0) || (ec.fr.Sels[0].S != ec.fr.Sels[0].E) || (ec.ed == nil) || (ec.buf != ec.ed.bodybuf) {
+		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE)
+		ec.br.BufferRefresh(ec.ontag)
+		return
+	}
+	
+	failed := false
+	tgtIndent := ""
+	tgtIndentSearch:
+	for i := ec.fr.Sels[0].S-1; i > 0; i-- {
+		r := ec.buf.At(i).R
+		switch r {
+		case '\n':
+			tgtIndent = string(buf.ToRunes(ec.buf.SelectionX(util.Sel{ i+1, ec.fr.Sels[0].S })))
+			break tgtIndentSearch
+		case ' ', '\t':
+			// continue
+		default:
+			failed = true
+			break tgtIndentSearch
+		}
+	}
+	
+	if failed {
+		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE)
+		ec.br.BufferRefresh(ec.ontag)
+		return
+	}
+	
+	pasteLines := strings.Split(cb, "\n")
+	srcIndent := ""
+	for i := range pasteLines[0] {
+		if (pasteLines[0][i] != ' ') && (pasteLines[0][i] != '\t') {
+			srcIndent = pasteLines[0][:i]
+			break
+		}
+	}
+	
+	for i := range pasteLines {
+		if strings.HasPrefix(pasteLines[i], srcIndent) {
+			if i == 0 {
+				pasteLines[i] = pasteLines[i][len(srcIndent):]
+			} else {
+				pasteLines[i] = tgtIndent + pasteLines[i][len(srcIndent):]
+			}
+		} else {
+			pasteLines[i] = pasteLines[i]
+		}
+	}
+	
+	ecb := strings.Join(pasteLines, "\n")
+	ec.buf.Replace([]rune(ecb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE)
+	ec.br.BufferRefresh(ec.ontag)
+}
+
 func PutCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	if ec.ed == nil {
@@ -422,7 +492,13 @@ func PipeCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	//TODO
+	wd := wnd.tagbuf.Dir
+	if ec.buf != nil {
+		wd = ec.buf.Dir
+	}
+	
+	txt := string(buf.ToRunes(ec.ed.bodybuf.SelectionX(ec.fr.Sels[0])))
+	NewJob(wd, arg, txt, &ec, true)
 }
 
 func PipeInCmd(ec ExecContext, arg string) {
@@ -437,7 +513,7 @@ func PipeInCmd(ec ExecContext, arg string) {
 		wd = ec.buf.Dir
 	}
 
-	NewJob(wd, arg, "", &ec, false)
+	NewJob(wd, arg, "", &ec, true)
 }
 
 func PipeOutCmd(ec ExecContext, arg string) {

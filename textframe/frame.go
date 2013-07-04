@@ -120,6 +120,10 @@ func (fr *Frame) Init(margin int) error {
 	return nil
 }
 
+func (fr *Frame) ReinitFont() {
+	fr.cs = fr.Font.CreateContexts(fr.R)
+}
+
 func (fr *Frame) lineHeight() raster.Fix32 {
 	lh := fr.Font.LineHeight()
 	return fr.cs[0].PointToFix32(float64(lh) * fr.Font.Spacing)
@@ -283,6 +287,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 			limit.Y = int(fr.ins.Y >> 8)
 		}
 	}
+	fr.lastFull = len(fr.glyphs)
 	return
 }
 
@@ -415,9 +420,9 @@ func (fr *Frame) setSelectEx(idx, kind, start, end int, disableOther bool) {
 
 	case 3:
 		var s, e int
-		s = start-1-fr.Top
+		s = start-fr.Top
 		if (s < len(fr.glyphs)) && (s >= 0) {
-			for ; s > 0; s-- {
+			for s = s-1; s > 0; s-- {
 				if fr.glyphs[s].r == '\n' {
 					s++
 					break

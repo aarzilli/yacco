@@ -151,7 +151,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool) {
 		}
 
 		if (ec != nil) && job.writeToBuf {
-			sideChan <- ReplaceMsg{ job.ec, nil, false, job.outstr, util.EO_BODYTAG }
+			sideChan <- ReplaceMsg{ job.ec, nil, false, job.outstr, util.EO_BODYTAG, true }
 		}
 
 		jobsMutex.Lock()

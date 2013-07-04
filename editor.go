@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image"
 	"image/draw"
+	"strconv"
 	"yacco/util"
 	"yacco/buf"
 	"yacco/config"
@@ -334,6 +335,24 @@ func (ed *Editor) ExitSpecial() {
 	ed.specialChan = nil
 	ed.specialTag = ""
 	ed.tagbuf.Replace([]rune(ed.savedTag), &util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() }, ed.tagfr.Sels, true, nil, 0)
+	ed.BufferRefresh(false)
+}
+
+func (ed *Editor) PropTrigger() {
+	tabWidth, err := strconv.Atoi(ed.bodybuf.Props["tab"])
+	if err != nil {
+		ed.sfr.Fr.TabWidth = tabWidth
+	}
+	oldFont := ed.sfr.Fr.Font
+	if ed.bodybuf.Props["font"] == "alt" {
+		ed.sfr.Fr.Font = config.AltFont
+	} else {
+		ed.sfr.Fr.Font = config.MainFont
+	}
+	if oldFont != ed.sfr.Fr.Font {
+		ed.sfr.Fr.ReinitFont()
+	}
+	
 	ed.BufferRefresh(false)
 }
 

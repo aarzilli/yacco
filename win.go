@@ -51,6 +51,7 @@ type ReplaceMsg struct {
 	append bool
 	txt string
 	origin util.EventOrigin
+	reselect bool
 }
 
 type ExecMsg struct {
@@ -266,7 +267,11 @@ func (w *Window) EventLoop() {
 					sel = &e.ec.fr.Sels[0]
 				}
 			}
+			oldS := sel.S
 			e.ec.ed.bodybuf.Replace([]rune(e.txt), sel, e.ec.fr.Sels, true, e.ec.eventChan, e.origin)
+			if e.reselect {
+				sel.S = oldS
+			}
 			e.ec.br.BufferRefresh(false)
 
 		case LoadMsg:
@@ -701,8 +706,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			ec := lp.asExecContext(true)
 			nl := "\n"
 
-			//TODO: check autoindent enabled
-			if ec.fr.Sels[0].S == ec.fr.Sels[0].E {
+			if (ec.ed != nil) && (ec.ed.bodybuf == ec.buf) && (ec.ed.bodybuf.Props["indent"] == "on") && (ec.fr.Sels[0].S == ec.fr.Sels[0].E) {
 				is := ec.buf.Tonl(ec.fr.Sels[0].S-1, -1)
 				ie := is
 				for {
@@ -718,7 +722,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				indent := string(ec.buf.SelectionRunes(util.Sel{ is, ie }))
 				nl += indent
 			}
-
+			
 			ec.buf.Replace([]rune(nl), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
 			ec.br.BufferRefresh(ec.ontag)
 		}
@@ -750,7 +754,13 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				ComplStart(ec)
 			} else {
 				HideCompl("")
-				ec.buf.Replace([]rune{ '\t' }, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
+				tch := "\t"
+				
+				if (ec.ed != nil) && (ec.ed.bodybuf == ec.buf) {
+					tch = ec.ed.bodybuf.Props["indentchar"]
+				}
+				
+				ec.buf.Replace([]rune(tch), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
 				ec.br.BufferRefresh(ec.ontag)
 				if (ec.ed != nil) && (ec.ed.specialChan != nil) {
 					tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size() })))

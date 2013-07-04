@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 	"syscall"
+	"strings"
 	"yacco/util"
 	"yacco/config"
 	"yacco/buf"
@@ -194,6 +195,14 @@ func (yfs *YaccoFs) addBuffer(n int, b *buf.Buffer) {
 			func () {
 				releaseEventsFn(n)
 			}}))
+	inode.AddChild("prop", inode.New(false,
+		&ReadWriteNode{ nodefs.NewDefaultNode(),
+			func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
+				return readPropFn(n, dest, off, context)
+			},
+			func (data []byte, off int64) (write uint32, code fuse.Status) {
+				return writePropFn(n, data, off)
+			}, nil, nil }))
 }
 
 func (yfs *YaccoFs) OnMount(conn *nodefs.FileSystemConnector) {
@@ -391,7 +400,7 @@ func writeBodyFn(i int, data []byte, off int64) (written uint32, code fuse.Statu
 	if (len(data) == 1) && (data[0] == 0) {
 		sdata = ""
 	}
-	sideChan <- ReplaceMsg{ ec, nil, true, sdata, util.EO_BODYTAG }
+	sideChan <- ReplaceMsg{ ec, nil, true, sdata, util.EO_BODYTAG, false }
 	return uint32(len(data)), fuse.OK
 }
 
@@ -466,7 +475,7 @@ func writeDataFn(i int, data []byte, off int64) (written uint32, code fuse.Statu
 	if (len(data) == 1) && (data[0] == 0) {
 		sdata = ""
 	}
-	sideChan <- ReplaceMsg{ ec, &ec.fr.Sels[4], false, sdata, util.EO_FILES }
+	sideChan <- ReplaceMsg{ ec, &ec.fr.Sels[4], false, sdata, util.EO_FILES, false }
 	return uint32(len(data)), fuse.OK
 }
 
@@ -599,6 +608,38 @@ func writeEventFn(i int, data []byte, off int64) (written uint32, code fuse.Stat
 
 	default:
 		return 0, fuse.EIO
+	}
+	return uint32(len(data)), fuse.OK
+}
+
+func readPropFn(i int, dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
+	if off > 0 {
+		return &fuse.ReadResultData{ Data: []byte{ }}, fuse.OK
+	}
+	ec := bufferExecContext(i)
+	if ec == nil {
+		return nil, fuse.ENOENT
+	}
+	ec.buf.Rdlock()
+	defer ec.buf.Rdunlock()
+	
+	s := ""
+
+	for k, v := range ec.buf.Props {
+		s += k + "=" + v + "\n"
+	}
+	return &fuse.ReadResultData{ []byte(s) }, fuse.OK
+}
+
+func writePropFn(i int, data []byte, off int64) (written uint32, code fuse.Status) {
+	ec := bufferExecContext(i)
+	if ec == nil {
+		return 0, fuse.ENOENT
+	}
+	v := strings.SplitN(string(data), "=", 2)
+	ec.buf.Props[v[0]] = v[1]
+	if ec.ed != nil {
+		ec.ed.PropTrigger()
 	}
 	return uint32(len(data)), fuse.OK
 }

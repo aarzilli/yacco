@@ -44,7 +44,7 @@ var KeyBindings  = map[string]string{
 	"control+e": END_CMD,
 
 	"control+c": "Copy",
-	"control+v": "Paste",
+	"control+v": "Paste!Indent",
 	"control+y": "Paste!Primary",
 	"control+x": "Cut",
 	"control+s": "Put",
@@ -55,6 +55,9 @@ var KeyBindings  = map[string]string{
 
 	"control+f": "Look",
 	"control+g": "Look!Again",
+	
+	"control+.": "|a+",
+	"control+,": "|a-",
 	
 	"backspace": "Do\nEdit v/./ -#1,.\nEdit c//",
 	"delete": "Do\nEdit v/./ .,+#1\nEdit c//",

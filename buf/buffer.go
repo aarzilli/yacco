@@ -24,6 +24,8 @@ type Buffer struct {
 	Editable bool
 	EditableStart int
 	Modified bool
+	
+	Props map[string]string
 
 	// gap buffer implementation
 	buf []textframe.ColorRune
@@ -102,6 +104,12 @@ func NewBuffer(dir, name string, create bool) (b *Buffer, err error) {
 			}
 		}
 	}
+	
+	b.Props = map[string]string{}
+	b.Props["indentchar"] = "\t"
+	b.Props["font"] = "main"
+	b.Props["indent"] = "on"
+	b.Props["tab"] = "4"
 
 	return b, nil
 }
@@ -368,10 +376,12 @@ func (b *Buffer) At(p int) *textframe.ColorRune {
 
 // Returns the specified selection as two slices. The slices are to be treated as contiguous and may be empty
 func (b *Buffer) Selection(sel util.Sel) ([]textframe.ColorRune, []textframe.ColorRune) {
+	//println(sel.S, sel.E)
 	ps := b.phisical(sel.S)
 	pe := b.phisical(sel.E)
 
 	if (ps < b.gap) && (pe >= b.gap) {
+		//println(len(b.buf), b.gap, b.gapsz, ps, pe)
 		return b.buf[ps:b.gap], b.buf[b.gap+b.gapsz:pe]
 	} else {
 		if pe <= ps {
@@ -644,4 +654,6 @@ func ToRunes(v []textframe.ColorRune) []rune {
 	}
 	return r
 }
+
+
 
