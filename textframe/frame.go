@@ -56,11 +56,6 @@ type Frame struct {
 	glyphs  []glyph
 	ins     raster.Point
 	lastFull int
-
-	dblclickp int
-	dblclickc int
-	dblclickbtn wde.Button
-	dblclickt time.Time
 }
 
 /*
@@ -111,11 +106,6 @@ func (fr *Frame) Init(margin int) error {
 	fr.cs = fr.Font.CreateContexts(fr.R)
 
 	fr.Clear()
-
-	fr.dblclickbtn = wde.LeftButton
-	fr.dblclickp = -1
-	fr.dblclickc = 0
-	fr.dblclickt = time.Now()
 
 	return nil
 }
@@ -680,7 +670,7 @@ func (fr *Frame) scrollDir(recalcPos image.Point) int {
 	return 0
 }
 
-func (f *Frame) OnClick(e wde.MouseDownEvent, events <- chan interface{}) *wde.MouseUpEvent {
+func (f *Frame) OnClick(e util.MouseDownEvent, events <- chan interface{}) *wde.MouseUpEvent {
 	if e.Which == wde.WheelUpButton {
 		f.Scroll(-1, 1)
 		f.Redraw(true)
@@ -694,33 +684,18 @@ func (f *Frame) OnClick(e wde.MouseDownEvent, events <- chan interface{}) *wde.M
 	}
 
 	p := f.CoordToPoint(e.Where)
-	now := time.Now()
-
-	if (e.Which == f.dblclickbtn) && (p == f.dblclickp) && (now.Sub(f.dblclickt) < time.Duration(200 * time.Millisecond)) {
-		f.dblclickt = now
-		f.dblclickc++
-	} else {
-		f.dblclickbtn = e.Which
-		f.dblclickp = p
-		f.dblclickt = now
-		f.dblclickc = 1
-	}
-
-	if f.dblclickc > 3 {
-		f.dblclickc = 1
-	}
-
+	
 	sel := int(math.Log2(float64(e.Which)))
 	if sel >= len(f.Sels) {
 		return nil
 	}
 
 	if p >= 0 {
-		f.setSelectEx(sel, f.dblclickc, p, p, false)
-		if f.dblclickc > 1 {
+		f.setSelectEx(sel, e.Count, p, p, false)
+		if e.Count > 1 {
 			f.Redraw(true)
 		}
-		ee := f.Select(sel, f.dblclickc, e.Which, events)
+		ee := f.Select(sel, e.Count, e.Which, events)
 		f.Redraw(true)
 		return ee
 	}

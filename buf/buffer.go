@@ -421,6 +421,7 @@ func (b *Buffer) Size() int {
 	return len(b.buf) - b.gapsz
 }
 
+// Moves to the beginning or end of a line
 func (b *Buffer) Tonl(start int, dir int) int {
 	sz := b.Size()
 	ba, bb := b.Selection(util.Sel{ 0, sz })
@@ -452,6 +453,7 @@ func (b *Buffer) Tonl(start int, dir int) int {
 	}
 }
 
+// Moves to the beginning or end of an alphanumerically delimited word
 func (b *Buffer) Towd(start int, dir int) int {
 	first := (dir < 0)
 	notfirst := !first
@@ -472,6 +474,7 @@ func (b *Buffer) Towd(start int, dir int) int {
 	return i
 }
 
+// Moves to the beginning or end of a space delimited word
 func (b *Buffer) Tospc(start int, dir int) int {
 	first := (dir < 0)
 	notfirst := !first
@@ -492,6 +495,7 @@ func (b *Buffer) Tospc(start int, dir int) int {
 	return i
 }
 
+// Moves to the beginning or end of something that looks like a file path
 func (b *Buffer) Tofp(start int, dir int) int {
 	first := (dir < 0)
 	notfirst := !first
@@ -511,6 +515,59 @@ func (b *Buffer) Tofp(start int, dir int) int {
 	}
 	return i
 
+}
+
+const OPEN_PARENTHESIS = "([{<"
+const CLOSED_PARENTHESIS = ")]}>"
+// Moves to the matching parenthesis of the one at 'start' in the specified direction
+func (b *Buffer) Topmatch(start int, dir int) int {
+	g := b.At(start)
+	if g == nil {
+		return -1
+	}
+	
+	var open rune = 0
+	var close rune = 0
+	if dir > 0 {
+		for i := range OPEN_PARENTHESIS {
+			if g.R == rune(OPEN_PARENTHESIS[i]) {
+				open = rune(OPEN_PARENTHESIS[i])
+				close = rune(CLOSED_PARENTHESIS[i])
+				break
+			}
+		}
+		
+	} else {
+		for i := range CLOSED_PARENTHESIS {
+			if g.R == rune(CLOSED_PARENTHESIS[i]) {
+				open = rune(CLOSED_PARENTHESIS[i])
+				close = rune(OPEN_PARENTHESIS[i])
+				break
+			}
+		}
+	}
+	
+	if (open == 0) || (close == 0) {
+		return -1
+	}
+	
+	depth := 0
+	for i := start; i < b.Size(); i += dir {
+		g := b.At(i)
+		if g == nil {
+			return -1
+		}
+		if g.R == open {
+			depth++
+		}
+		if g.R == close {
+			depth--
+		}
+		if depth == 0 {
+			return i
+		}
+	}
+	return -1
 }
 
 func (b *Buffer) ShortName() string {

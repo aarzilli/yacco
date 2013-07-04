@@ -90,8 +90,8 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 				config.TheColorScheme.EditorSel3, // 2 third button selection
 				config.TheColorScheme.EditorPlain, // 3 highlighted parenthesis
 				config.TheColorScheme.EditorPlain, // 4 content of 'addr' file
+				config.TheColorScheme.EditorMatchingParenthesis, // 5 matching parenthesis
 				/* space for jumps */
-				config.TheColorScheme.EditorPlain,
 				config.TheColorScheme.EditorPlain,
 				config.TheColorScheme.EditorPlain,
 				config.TheColorScheme.EditorPlain,
@@ -110,7 +110,9 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 			config.TheColorScheme.TagPlain,
 			config.TheColorScheme.TagSel1,
 			config.TheColorScheme.TagSel2,
-			config.TheColorScheme.TagSel3 },
+			config.TheColorScheme.TagSel3,
+			config.TheColorScheme.TagPlain,
+			config.TheColorScheme.TagMatchingParenthesis },
 	}
 	e.top = 0
 
@@ -253,6 +255,15 @@ func (e *Editor) refreshIntl() {
 }
 
 func (e *Editor) BufferRefresh(ontag bool) {
+	match := findPMatch(e.tagbuf, e.tagfr.Sels[0])
+	if match.S >= 0 {
+		e.tagfr.Sels[5] = match
+	}
+	match = findPMatch(e.bodybuf, e.sfr.Fr.Sels[0])
+	if match.S >= 0 {
+		e.sfr.Fr.Sels[5] = match
+	}
+	
 	if ontag {
 		e.tagfr.Clear()
 		ta, tb := e.tagbuf.Selection(util.Sel{ 0, e.tagbuf.Size() })
@@ -274,6 +285,26 @@ func (e *Editor) BufferRefresh(ontag bool) {
 		e.Redraw()
 		e.sfr.Wnd.FlushImage()
 	}
+}
+
+func findPMatch(b *buf.Buffer, sel0 util.Sel) util.Sel {
+	if sel0.S != sel0.E {
+		return util.Sel{ -1, -1 }
+	}
+	
+	match := b.Topmatch(sel0.S, +1)
+	if match >= 0 {
+		return util.Sel{ match, match+1 }
+	}
+	
+	if sel0.S > 0 {
+		match = b.Topmatch(sel0.S-1, -1)
+		if match >= 0 {
+			return util.Sel{ match, match+1 }
+		}
+	}
+	
+	return util.Sel{ -1, -1 }	
 }
 
 func (ed *Editor) Column() *Col {

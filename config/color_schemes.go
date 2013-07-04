@@ -16,12 +16,15 @@ type ColorScheme struct {
 	EditorSel1 []image.Uniform
 	EditorSel2 []image.Uniform
 	EditorSel3 []image.Uniform
+	EditorMatchingParenthesis []image.Uniform
+
 	Compl []image.Uniform
 
 	TagPlain []image.Uniform
 	TagSel1 []image.Uniform
 	TagSel2 []image.Uniform
 	TagSel3 []image.Uniform
+	TagMatchingParenthesis []image.Uniform
 
 	HandleFG image.Uniform
 	HandleModifiedFG image.Uniform
@@ -44,12 +47,14 @@ var acmeColorScheme = ColorScheme{
 	EditorSel1: []image.Uniform{ *DDarkyellow, *image.Black },
 	EditorSel2: []image.Uniform{ col2sel, yellowbg },
 	EditorSel3: []image.Uniform{ col3sel, yellowbg },
+	EditorMatchingParenthesis: []image.Uniform{ *image.Black, yellowbg },
 	Compl: []image.Uniform{ bluebg, *image.Black },
 
 	TagPlain: []image.Uniform{  bluebg, *image.Black },
 	TagSel1: []image.Uniform{ *DPalegreygreen, *image.Black },
 	TagSel2: []image.Uniform{ col2sel, bluebg },
 	TagSel3: []image.Uniform{ col3sel, bluebg },
+	TagMatchingParenthesis: []image.Uniform{ *image.Black, bluebg },
 
 	HandleFG:  bluebg,
 	HandleModifiedFG: *DMedblue,

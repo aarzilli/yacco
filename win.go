@@ -188,7 +188,7 @@ func (w *Window) EventLoop() {
 			lastWhere = e.Where
 			wnd.SetTick(e.Where)
 
-		case wde.MouseDownEvent:
+		case util.MouseDownEvent:
 			HideCompl("mouse down")
 			lastWhere = e.Where
 			lp := w.TranslatePosition(e.Where)
@@ -199,7 +199,10 @@ func (w *Window) EventLoop() {
 			}
 
 			if lp.tagfr != nil {
-				ee := lp.tagfr.OnClick(e, events)
+				ee, could := specialDblClick(lp.tagbuf, lp.tagfr, e, events)
+				if !could {
+					ee = lp.tagfr.OnClick(e, events)
+				}
 				clickExec(lp, e, ee)
 				if (lp.tagfr.Sels[0].S == 0) && (lp.tagfr.Sels[0].E == lp.tagbuf.Size()) && (lp.tagbuf.EditableStart >= 0) {
 					lp.tagfr.Sels[0].S = lp.tagbuf.EditableStart
@@ -209,9 +212,14 @@ func (w *Window) EventLoop() {
 			}
 
 			if lp.sfr != nil {
-				onframe, ee := lp.sfr.OnClick(e, events)
-				if onframe {
+				if e.Where.In(lp.sfr.Fr.R) {
+					ee, could := specialDblClick(lp.bodybuf, &lp.sfr.Fr, e, events)
+					if !could {
+						_, ee = lp.sfr.OnClick(e, events)
+					}
 					clickExec(lp, e, ee)
+				} else {
+					lp.sfr.OnClick(e, events)
 				}
 				break
 			}
@@ -432,7 +440,7 @@ func dist(a, b image.Point) float32 {
 	return float32(math.Sqrt(float64(dx*dx + dy*dy)))
 }
 
-func (w *Window) EditorMove(col *Col, ed *Editor, e wde.MouseDownEvent, events <-chan interface{}) {
+func (w *Window) EditorMove(col *Col, ed *Editor, e util.MouseDownEvent, events <-chan interface{}) {
 	w.wnd.ChangeCursor(wde.FleurCursor)
 
 	startPos := e.Where
@@ -560,7 +568,7 @@ func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
 	}
 }
 
-func (w *Window) ColResize(col *Col, e wde.MouseDownEvent, events <-chan interface{}) {
+func (w *Window) ColResize(col *Col, e util.MouseDownEvent, events <-chan interface{}) {
 	w.wnd.ChangeCursor(wde.FleurCursor)
 
 	startPos := e.Where
@@ -809,7 +817,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 	}
 }
 
-func clickExec(lp LogicalPos, e wde.MouseDownEvent, ee *wde.MouseUpEvent) {
+func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent) {
 	switch e.Which {
 	case wde.MiddleButton:
 		cmd, _ := expandedSelection(lp, 1)
@@ -951,4 +959,36 @@ func (w *Window) GenTag() {
 	w.tagbuf.EditableStart = -1
 	w.tagbuf.Replace([]rune(t), &w.tagfr.Sels[0], w.tagfr.Sels, true, nil, 0)
 	TagSetEditableStart(w.tagbuf)
+}
+
+func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, events <-chan interface{}) (*wde.MouseUpEvent, bool) {
+	if (b == nil) || (fr == nil) || (e.Count != 2) {
+		return nil, false
+	}
+	
+	selIdx := int(math.Log2(float64(e.Which)))
+	if selIdx >= len(fr.Sels) {
+		return nil, false
+	}
+
+	sel := &fr.Sels[selIdx]
+	
+	match := b.Topmatch(sel.S, +1)
+	if match < 0 {
+		return nil, false
+	}
+	
+	sel.E = match+1
+	
+	fr.Redraw(true)
+	
+	for ee := range events {
+		switch eei := ee.(type) {
+		case wde.MouseUpEvent:
+			return &eei, true
+		}
+	}
+	
+	return nil, true
+	
 }

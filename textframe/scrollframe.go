@@ -5,6 +5,7 @@ import (
 	"image"
 	"time"
 	"runtime"
+	"yacco/util"
 	"github.com/skelterjohn/go.wde"
 )
 
@@ -75,7 +76,7 @@ func (sfr *ScrollFrame) Redraw(flush bool) {
 	}
 }
 
-func (sfr *ScrollFrame) scrollSetClick(event wde.MouseDownEvent, events <-chan interface{}) {
+func (sfr *ScrollFrame) scrollSetClick(event util.MouseDownEvent, events <-chan interface{}) {
 	scrollr := sfr.r
 	scrollr.Max.X = scrollr.Min.X + sfr.Width
 
@@ -104,7 +105,7 @@ func (sfr *ScrollFrame) Under(p image.Point) bool {
 
 // If the click wasn't in the scrollbar area returns false
 // Otherwise handles the click, until mouse-up is received, then returns true
-func (sfr *ScrollFrame) ScrollClick(e wde.MouseDownEvent, events <-chan interface{}) bool {
+func (sfr *ScrollFrame) ScrollClick(e util.MouseDownEvent, events <-chan interface{}) bool {
 	scrollr := sfr.r
 	scrollr.Max.X = scrollr.Min.X + sfr.Width
 
@@ -155,7 +156,7 @@ func (sfr *ScrollFrame) ScrollClick(e wde.MouseDownEvent, events <-chan interfac
 	return true
 }
 
-func (sfr *ScrollFrame) OnClick(e wde.MouseDownEvent, events <- chan interface{}) (bool, *wde.MouseUpEvent) {
+func (sfr *ScrollFrame) OnClick(e util.MouseDownEvent, events <- chan interface{}) (bool, *wde.MouseUpEvent) {
 	if sfr.ScrollClick(e, events) {
 		return false, nil
 	}

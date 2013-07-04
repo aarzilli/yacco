@@ -7,6 +7,7 @@ import (
 	"runtime"
 	"image"
 	"sort"
+	"math"
 	"github.com/skelterjohn/go.wde"
 )
 
@@ -24,7 +25,18 @@ type WheelEvent struct {
 	Count int
 }
 
+type MouseDownEvent struct {
+	Where image.Point
+	Which wde.Button
+	Count int
+}
+
 func FilterEvents(in <-chan interface{}, altingList []AltingEntry) (out chan interface{}) {
+	dblclickp := image.Point{ 0, 0 }
+	dblclickc := 0
+	dblclickbtn := wde.LeftButton
+	dblclickt := time.Now()
+
 	out = make(chan interface{})
 	go func() {
 		alting := false
@@ -147,7 +159,29 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry) (out chan int
 					case wde.WheelDownButton:
 						scheduleWheelEvent(e, +1)
 					default:
+						now := time.Now()
+						dist := math.Sqrt(float64(dblclickp.X - e.Where.X) * float64(dblclickp.X - e.Where.X) + float64(dblclickp.Y - e.Where.Y) * float64(dblclickp.Y - e.Where.Y))
+
+						if (e.Which == dblclickbtn) && (dist < 5) && (now.Sub(dblclickt) < time.Duration(200 * time.Millisecond)) {
+							dblclickt = now
+							dblclickc++
+						} else {
+							dblclickbtn = e.Which
+							dblclickp = e.Where
+							dblclickt = now
+							dblclickc = 1
+						}
+
+						if dblclickc > 3 {
+							dblclickc = 1
+						}
+
 						out <- e
+						out <- MouseDownEvent{
+							Where: e.Where,
+							Which: e.Which,
+							Count: dblclickc,
+						}
 					}
 
 				case wde.MouseUpEvent:
