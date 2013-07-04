@@ -504,9 +504,12 @@ func (b *Buffer) Tofp(start int, dir int) int {
 }
 
 func (b *Buffer) ShortName() string {
-	p := filepath.Join(b.Dir, b.Name)
+	ap := filepath.Clean(filepath.Join(b.Dir, b.Name))
 	wd, _ := os.Getwd()
-	p, _ = filepath.Rel(wd, filepath.Clean(p))
+	p, _ := filepath.Rel(wd, ap)
+	if len(ap) < len(p) {
+		p = ap
+	}
 	//TODO: compress like ppwd
 	return p
 }

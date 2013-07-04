@@ -105,10 +105,10 @@ func HideCompl(reason string) {
 
 
 func ComplDraw(b *image.RGBA, r image.Rectangle) {
-	screen := ComplWnd.Screen()
+	screen := ComplWndSaved.Screen()
 	if screen != nil {
 		screen.CopyRGBA(b, r)
-		ComplWnd.FlushImage()
+		ComplWndSaved.FlushImage()
 	}
 }
 

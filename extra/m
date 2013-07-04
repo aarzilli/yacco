@@ -1,0 +1,13 @@
+#!/bin/bash
+
+if [ "x$yd" == "x" ]; then
+	exec man $*
+else
+	if [ $# -eq 1 ]; then
+		name=$1
+	else
+		name=$2
+	fi
+	bd=`yacco-makenew "/+Man/+$name"`
+	exec man $* >>$bd/body 2>&1
+fi
