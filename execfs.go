@@ -39,13 +39,13 @@ func ExecFs(ec *ExecContext, cmd string) {
 		GetCmd(*ec, "")
 
 	case "limit=addr":
-		//TODO
+		//TODO limit=addr (fs exec)
 
 	case "mark":
-		//TODO
+		//TODO mark (fs exec)
 
 	case "nomark":
-		//TODO
+		//TODO nomark (fs exec)
 
 	case "put":
 		PutCmd(*ec, "")
@@ -55,9 +55,9 @@ func ExecFs(ec *ExecContext, cmd string) {
 
 	default:
 		if strings.HasPrefix(cmd, "dump ") {
-			//TODO
+			//TODO dump (fs exec)
 		} else if strings.HasPrefix(cmd, "dumpdir ") {
-			//TODO
+			//TODO dumpdir (fs exec)
 		} else if strings.HasPrefix(cmd, "name ") {
 			newName := strings.TrimSpace(cmd[len("name "):])
 			abspath, err := filepath.Abs(newName)

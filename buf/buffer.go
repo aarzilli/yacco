@@ -231,11 +231,11 @@ func (b *Buffer) Undo(sels []util.Sel, redo bool) {
 }
 
 func (b *Buffer) Rdlock() {
-	//TODO
+	//TODO: Buffer Rdlock
 }
 
 func (b *Buffer) Rdunlock() {
-	//TODO
+	//TODO: Buffer Rdunlock
 }
 
 func (b *Buffer) wrlock() {

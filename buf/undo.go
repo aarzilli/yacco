@@ -5,8 +5,6 @@ import (
 	"yacco/util"
 )
 
-//TODO
-
 type undoSel struct {
 	util.Sel
 	text string

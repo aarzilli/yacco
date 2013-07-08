@@ -30,6 +30,7 @@ type Editor struct {
 	specialTag string
 	savedTag string
 	specialChan chan string
+	specialExitOnReturn bool
 }
 
 const SCROLL_WIDTH = 10
@@ -258,10 +259,14 @@ func (e *Editor) BufferRefresh(ontag bool) {
 	match := findPMatch(e.tagbuf, e.tagfr.Sels[0])
 	if match.S >= 0 {
 		e.tagfr.Sels[5] = match
+	} else {
+		e.tagfr.Sels[5].S = e.tagfr.Sels[5].E
 	}
 	match = findPMatch(e.bodybuf, e.sfr.Fr.Sels[0])
 	if match.S >= 0 {
 		e.sfr.Fr.Sels[5] = match
+	} else {
+		e.sfr.Fr.Sels[5].S = e.sfr.Fr.Sels[5].E
 	}
 	
 	if ontag {
@@ -352,9 +357,10 @@ func (ed *Editor) Warp() {
 	wnd.wnd.WarpMouse(p)
 }
 
-func (ed *Editor) EnterSpecial(specialChan chan string, specialTag string) {
+func (ed *Editor) EnterSpecial(specialChan chan string, specialTag string, exitOnReturn bool) {
 	ed.specialChan = specialChan
 	ed.specialTag = specialTag
+	ed.specialExitOnReturn = exitOnReturn
 	ed.savedTag = string(buf.ToRunes(ed.tagbuf.SelectionX(util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() })))
 	ed.tagbuf.Replace([]rune{}, &util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() }, ed.tagfr.Sels, true, nil, 0)
 	ed.BufferRefresh(false)

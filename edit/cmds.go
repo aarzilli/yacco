@@ -86,14 +86,14 @@ func gcmdfn(inv bool, c *cmd, b *buf.Buffer, sels []util.Sel, eventChan chan str
 }
 
 func pipeincmdfn( c *cmd, b *buf.Buffer, sels []util.Sel, eventChan chan string) {
-	//TODO: implement
+	//TODO: editor < command
 }
 
 func pipeoutcmdfn(c *cmd, b *buf.Buffer, sels []util.Sel, eventChan chan string) {
-	//TODO: implement
+	//TODO: editor > command
 }
 
 func pipecmdfn(c *cmd, b *buf.Buffer, sels []util.Sel, eventChan chan string) {
-	//TODO: implement
+	//TODO: editor | command
 }
 

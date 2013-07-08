@@ -5,7 +5,7 @@ def convert(path, name):
 
 	out = open("config/" + name + ".go", "w")
 	out.write("package config\n")
-	out.write("var " + name + " = []byte{")
+	out.write("var " + name + " = []byte{\n\t")
 	for c in v:
 		out.write(str(ord(c)) + ", ")
 	out.write("}\n")

@@ -191,11 +191,13 @@ func (w *Window) EventLoop() {
 		case util.MouseDownEvent:
 			HideCompl("mouse down")
 			lastWhere = e.Where
-			lp := w.TranslatePosition(e.Where)
+			lp := w.TranslatePosition(e.Where, true)
 			
-			if (lp.tagfr != nil) && lp.notReallyOnTag {
-				lp.ed.ExitSpecial()
-				lp = w.TranslatePosition(e.Where)
+			if (lp.tagfr != nil) && lp.notReallyOnTag && (lp.ed != nil) {
+				if lp.ed.specialExitOnReturn {
+					lp.ed.ExitSpecial()
+				}
+				lp = w.TranslatePosition(e.Where, false)
 			}
 
 			if lp.tagfr != nil {
@@ -235,7 +237,7 @@ func (w *Window) EventLoop() {
 
 		case util.WheelEvent:
 			HideCompl("wheel")
-			lp := w.TranslatePosition(e.Where)
+			lp := w.TranslatePosition(e.Where, false)
 			if lp.sfr != nil {
 				if e.Count > 0 {
 					lp.sfr.Fr.Scroll(+1, e.Count)
@@ -254,7 +256,7 @@ func (w *Window) EventLoop() {
 			wnd.SetTick(e.Where)
 
 		case wde.KeyTypedEvent:
-			lp := w.TranslatePosition(lastWhere)
+			lp := w.TranslatePosition(lastWhere, true)
 
 			w.Type(lp, e)
 
@@ -331,7 +333,7 @@ func (w *Window) HideAllTicks() {
 // - the tag of a editor will have col, editor and tagfr set but no sfr
 // - the body of a editor will have col, editor, sfr but no tagfr (but it could also be the scroll bar)
 // - the resize handle will have col and editor, but nothing else
-func (w *Window) TranslatePosition(p image.Point) (lp LogicalPos) {
+func (w *Window) TranslatePosition(p image.Point, abideSpecial bool) (lp LogicalPos) {
 	if p.In(w.tagfr.R) {
 		lp.tagfr = &w.tagfr
 		lp.tagbuf = w.tagbuf
@@ -364,7 +366,7 @@ func (w *Window) TranslatePosition(p image.Point) (lp LogicalPos) {
 			}
 
 			if lp.ed.sfr.Under(p) {
-				if lp.ed.specialChan != nil {
+				if (lp.ed.specialChan) != nil && abideSpecial {
 					lp.tagfr = &lp.ed.tagfr
 					lp.tagbuf = lp.ed.tagbuf
 					lp.notReallyOnTag = true
@@ -385,7 +387,7 @@ func (w *Window) TranslatePosition(p image.Point) (lp LogicalPos) {
 
 func (w *Window) SetTick(p image.Point) {
 	HasFocus = true
-	lp := w.TranslatePosition(p)
+	lp := w.TranslatePosition(p, true)
 	if lp.tagfr != nil {
 		if !lp.tagfr.VisibleTick {
 			lp.tagfr.VisibleTick = true
@@ -467,7 +469,7 @@ loop:
 			col.Remove(col.IndexOf(ed))
 			col.RecalcRects()
 
-			mlp := w.TranslatePosition(endPos)
+			mlp := w.TranslatePosition(endPos, true)
 			dstcol := mlp.col
 			dsted := mlp.ed
 
@@ -684,7 +686,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 	switch e.Chord {
 	case "escape":
 		HideCompl("keytype")
-		if (lp.ed != nil) && (lp.ed.specialChan != nil) {
+		if (lp.ed != nil) && (lp.ed.specialChan != nil) && lp.ed.specialExitOnReturn {
 			lp.ed.sfr.Fr.VisibleTick = true			
 			lp.ed.ExitSpecial()
 			return
@@ -693,9 +695,13 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 	case "return":
 		HideCompl("keytype")	
 		if (lp.ed != nil) && (lp.ed.specialChan != nil) {
-			lp.ed.sfr.Fr.VisibleTick = true		
-			lp.ed.ExitSpecial()
-			return
+			if lp.ed.specialExitOnReturn {
+				lp.ed.sfr.Fr.VisibleTick = true		
+				lp.ed.ExitSpecial()
+				return
+			} else {
+				lp.ed.specialChan <- "T\n"
+			}
 		}
 		
 		if lp.tagfr != nil {

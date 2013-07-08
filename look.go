@@ -61,7 +61,7 @@ func lookfwd(ed *Editor, needle []rune, fromEnd bool) {
 func lookproc(ec ExecContext) {
 	ch := make(chan string, 1)
 	wnd.Lock.Lock()
-	ec.ed.EnterSpecial(ch, " Look!Quit Look!Again")
+	ec.ed.EnterSpecial(ch, " Look!Quit Look!Again", true)
 	wnd.Lock.Unlock()
 	needle := []rune{}
 	for {

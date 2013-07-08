@@ -68,6 +68,7 @@ var cmds = map[string]Cmd{
 	"Paste!Primary": func (ec ExecContext, arg string) { PasteCmd(ec, arg, true) },
 	"Paste!Indent": PasteIndentCmd,
 	"Rename": RenameCmd,
+	"LookFile": LookFileCmd,
 }
 
 var spacesRe = regexp.MustCompile("\\s+")
@@ -199,7 +200,7 @@ func DelcolCmd(ec ExecContext, arg string) {
 
 func DumpCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	//TODO
+	//TODO: Dump command
 }
 
 func EditCmd(ec ExecContext, arg string) {
@@ -262,7 +263,7 @@ func KillCmd(ec ExecContext, arg string) {
 
 func LoadCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	//TODO
+	//TODO Load command
 }
 
 func SetenvCmd(ec ExecContext, arg string) {
@@ -298,7 +299,7 @@ func SpecialSendCmd(ec ExecContext, msg string)  {
 }
 
 func GetCmd(ec ExecContext, arg string) {
-	//TODO: implement
+	//TODO: Get command
 }
 
 func NewCmd(ec ExecContext, arg string) {
@@ -456,7 +457,7 @@ func SendCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	//TODO: append
+	//TODO: Send command
 }
 
 func SortCmd(ec ExecContext, arg string) {
@@ -483,7 +484,7 @@ func UndoCmd(ec ExecContext, arg string) {
 
 func ZeroxCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	//TODO
+	//TODO: Zerox command
 }
 
 func PipeCmd(ec ExecContext, arg string) {
@@ -553,11 +554,13 @@ func CdCmd(ec ExecContext, arg string) {
 	wnd.cols.Redraw()
 	wnd.tagfr.Redraw(false)
 	wnd.wnd.FlushImage()
+	
+	//TODO: Change directory of LookFile window
 }
 
 func DoCmd(ec ExecContext, arg string) {
 	cmds := strings.Split(arg, "\n")
-	//TODO: check the first line for function definition
+	//TODO: (Do command) check the first line for function definition
 	for _, cmd := range cmds {
 		execNoDefer(ec, cmd)
 	}
@@ -589,4 +592,18 @@ func (ev *Editors) Swap(i, j int) {
 	e := (*ev)[i]
 	(*ev)[i] = (*ev)[j]
 	(*ev)[j] = e
+}
+
+func LookFileCmd(ec ExecContext, arg string) {
+	ed, err := EditFind(wnd.tagbuf.Dir, "+LookFile", true, true)
+	if err != nil {
+		Warn(err.Error())
+		return
+	}
+	
+	if ed.specialChan	== nil {
+		lookFile(ed)
+	} else {
+		ed.tagfr.Sels[0] = util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() }
+	}
 }

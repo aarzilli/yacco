@@ -16,6 +16,7 @@ var LoadRules = []util.LoadRule{
 	util.LoadRule{ BufRe: `.`, Re: `at (\S+) line (\d+)`, Action: "L$1:$2" },
 	util.LoadRule{ BufRe: `.`, Re: `in (\S+) on line (\d+)`, Action: "L$1:$2" },
 	util.LoadRule{ BufRe: `.`, Re: `([^:\s\(\)]+):\[(\d+),(\d+)\]`, Action: "L$1:$2-+#$3" },
+	util.LoadRule{ BufRe: `.`, Re: `([^:\s\(\)]+):\t?/(.*)/`, Action: "L$1:/$2/" },
 	util.LoadRule{ BufRe: `.`, Re: `\S+`, Action: "L$0" },
 	util.LoadRule{ BufRe: `.`, Re: `\w+`, Action: "XLook $0" },
 }

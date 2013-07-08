@@ -471,7 +471,15 @@ func (fr *Frame) CoordToPoint(coord image.Point) int {
 // Converts rune index into a graphical coordinate
 func (fr *Frame) PointToCoord(p int) image.Point {
 	pp := p - fr.Top
-	if pp < len(fr.glyphs) {
+	if pp < 0 {
+		var r raster.Point
+		if len(fr.glyphs) == 0 {
+			r = fr.ins
+		} else {
+			r = fr.glyphs[pp].p
+		}
+		return image.Point{ int(r.X >> 8), int(r.Y >> 8) }
+	} else if pp < len(fr.glyphs) {
 		r := fr.glyphs[pp].p
 		return image.Point{ int(r.X >> 8), int(r.Y >> 8) }
 	} else if (pp == len(fr.glyphs)) && (len(fr.glyphs) > 0) {

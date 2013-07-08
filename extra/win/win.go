@@ -358,6 +358,6 @@ func main() {
 		log.Printf("Finished")
 	}
 	time.Sleep(1 * time.Second)
-	os.Exit(1)
 	bodyfd.Write([]byte("~\n"))
+	os.Exit(1)
 }
