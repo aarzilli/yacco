@@ -269,6 +269,7 @@ func getWordCompls(wd string) []string {
 		complFilter(wd, buf.Words, &r)
 	}
 	complFilter(wd, wnd.Words, &r)
+	complFilter(wd, tagWords, &r)
 	r = util.Dedup(r)
 	return r
 }

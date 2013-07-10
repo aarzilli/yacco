@@ -39,6 +39,9 @@ func main() {
 	LoadInit()
 
 	edit.Warnfn = Warn
+	edit.NewJob = func(wd, cmd, input string, resultChan chan<- string) {
+		NewJob(wd, cmd, input, nil, false, resultChan)
+	}
 
 	sideChan = make(chan interface{}, 5)
 

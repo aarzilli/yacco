@@ -12,7 +12,7 @@ import (
 
 type jobrec struct {
 	descr string
-	ec *ExecContext
+	//ec *ExecContext
 	cmd *exec.Cmd
 	outstr string
 	writeToBuf bool
@@ -23,7 +23,7 @@ type jobrec struct {
 var jobs = []*jobrec{}
 var jobsMutex = sync.Mutex{}
 
-func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool) {
+func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan chan<- string) {
 	job := &jobrec{}
 
 	i := -1
@@ -32,7 +32,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool) {
 	}
 
 	job.writeToBuf = writeToBuf
-	job.ec = ec
+	//job.ec = ec
 	job.done = make(chan bool, 10)
 
 	//TODO: recognize more types of plain commands to run directly without starting bash
@@ -91,7 +91,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool) {
 	go func() {
 		defer func() { job.done <- true }()
 		defer stdout.Close()
-		if (ec != nil) && job.writeToBuf {
+		if ((ec != nil) && job.writeToBuf) || (resultChan != nil) {
 			bs, err := ioutil.ReadAll(stdout)
 			if err != nil {
 				return
@@ -151,9 +151,11 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool) {
 		}
 
 		if (ec != nil) && job.writeToBuf {
-			sideChan <- ReplaceMsg{ job.ec, nil, false, job.outstr, util.EO_BODYTAG, true }
+			sideChan <- ReplaceMsg{ ec, nil, false, job.outstr, util.EO_BODYTAG, true }
+		} else if resultChan != nil {
+			resultChan <- job.outstr
 		}
-
+		
 		jobsMutex.Lock()
 		jobs[idx] = nil
 		jobsMutex.Unlock()

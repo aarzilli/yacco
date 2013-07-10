@@ -8,6 +8,6 @@ else
 	else
 		name=$2
 	fi
-	bd=`yacco-makenew "/+Man/+$name"`
+	bd=`yacco-makenew "+$name"`
 	exec man $* >>$bd/body 2>&1
 fi

@@ -134,7 +134,7 @@ func ExtExec(ec ExecContext, cmd string) {
 	if ec.dir != "" {
 		wd = ec.dir
 	}
-	NewJob(wd, cmd, "", &ec, false)
+	NewJob(wd, cmd, "", &ec, false, nil)
 }
 
 func CopyCmd(ec ExecContext, arg string, del bool) {
@@ -309,7 +309,8 @@ func NewCmd(ec ExecContext, arg string) {
 		Warn("New: must specify argument")
 		return
 	}
-	_, err := HeuristicOpen(arg, true, true)
+	path := resolvePath(ec.dir, arg)
+	_, err := HeuristicOpen(path, true, true)
 	if err != nil {
 		Warn("New: " + err.Error())
 	}
@@ -499,7 +500,7 @@ func PipeCmd(ec ExecContext, arg string) {
 	}
 	
 	txt := string(buf.ToRunes(ec.ed.bodybuf.SelectionX(ec.fr.Sels[0])))
-	NewJob(wd, arg, txt, &ec, true)
+	NewJob(wd, arg, txt, &ec, true, nil)
 }
 
 func PipeInCmd(ec ExecContext, arg string) {
@@ -514,7 +515,7 @@ func PipeInCmd(ec ExecContext, arg string) {
 		wd = ec.buf.Dir
 	}
 
-	NewJob(wd, arg, "", &ec, true)
+	NewJob(wd, arg, "", &ec, true, nil)
 }
 
 func PipeOutCmd(ec ExecContext, arg string) {
@@ -530,7 +531,7 @@ func PipeOutCmd(ec ExecContext, arg string) {
 	}
 
 	txt := string(buf.ToRunes(ec.ed.bodybuf.SelectionX(ec.fr.Sels[0])))
-	NewJob(wd, arg, txt, &ec, false)
+	NewJob(wd, arg, txt, &ec, false, nil)
 }
 
 func CdCmd(ec ExecContext, arg string) {

@@ -169,7 +169,7 @@ func eventUnion(a <- chan interface{}, b <- chan interface{}) (<- chan interface
 }
 
 func (w *Window) EventLoop() {
-	events := eventUnion(util.FilterEvents(wnd.wnd.EventChan(), config.AltingList), sideChan)
+	events := eventUnion(util.FilterEvents(wnd.wnd.EventChan(), config.AltingList, config.KeyConversion), sideChan)
 	var lastWhere image.Point
 	for ei := range events {
 		runtime.Gosched()
@@ -240,9 +240,9 @@ func (w *Window) EventLoop() {
 			lp := w.TranslatePosition(e.Where, false)
 			if lp.sfr != nil {
 				if e.Count > 0 {
-					lp.sfr.Fr.Scroll(+1, e.Count)
+					lp.sfr.Fr.Scroll(+3, e.Count)
 				} else {
-					lp.sfr.Fr.Scroll(-1, -e.Count)
+					lp.sfr.Fr.Scroll(-3, -e.Count)
 				}
 				lp.sfr.Redraw(true)
 			}
@@ -920,17 +920,18 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 				original = lp.tagfr.Sels[0].S
 				lp.tagfr.Sels[0].S = lp.tagfr.Sels[0].E
 				lp.tagfr.Redraw(true)
-			} else /* if sel.S < lp.tagbuf.EditableStart */ {
+			} else {
 				original = sel.S
-				s := lp.tagbuf.Tospc(sel.S, -1)
+				var s int
+				if sel.S >= lp.tagbuf.Size() {
+					s = lp.tagbuf.Tospc(sel.S-1, -1)
+				} else {
+					s = lp.tagbuf.Tospc(sel.S, -1)
+				}
 				e := lp.tagbuf.Tospc(sel.S, +1)
 				lp.tagfr.SetSelect(idx, 1, s, e)
 				lp.tagfr.Redraw(true)
-			} /* else {
-				original = sel.S
-				lp.tagfr.SetSelect(idx, 1, lp.tagbuf.EditableStart, lp.tagbuf.Size())
-				lp.tagfr.Redraw(true)
-			}*/
+			}
 		}
 
 		return string(buf.ToRunes(lp.tagbuf.SelectionX(*sel))), original

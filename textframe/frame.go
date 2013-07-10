@@ -161,7 +161,8 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 			return
 		}
 
-		if fr.ins.Y + lh < bottom {
+		if fr.ins.Y < raster.Fix32(fr.R.Max.Y << 8) {
+			//println("lastFull is: ", len(fr.glyphs), fr.ins.Y + lh, raster.Fix32(fr.R.Max.Y << 8))
 			fr.lastFull = len(fr.glyphs)
 		}
 		
@@ -277,7 +278,10 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 			limit.Y = int(fr.ins.Y >> 8)
 		}
 	}
-	fr.lastFull = len(fr.glyphs)
+	if fr.ins.Y < raster.Fix32(fr.R.Max.Y << 8) {
+		//println("lastFull is: ", len(fr.glyphs), fr.ins.Y + lh, raster.Fix32(fr.R.Max.Y << 8))
+		fr.lastFull = len(fr.glyphs)
+	}
 	return
 }
 
@@ -397,6 +401,9 @@ func (fr *Frame) setSelectEx(idx, kind, start, end int, disableOther bool) {
 			first := true
 			for ; e < len(fr.glyphs); e++ {
 				g := fr.glyphs[e].r
+				if g == '\n' { // don't select end of line newline
+					break
+				}
 				if !(unicode.IsLetter(g) || unicode.IsDigit(g) || (g == '_')) {
 					if first { e++ }
 					break
@@ -717,6 +724,7 @@ func (fr *Frame) LineNo() int {
 
 func (fr *Frame) Inside(p int) bool {
 	rp := p - fr.Top
+	//println("Inside", p, rp, fr.lastFull)
 	if rp < 0 {
 		return false
 	}

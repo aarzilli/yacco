@@ -26,6 +26,8 @@ CHANGE: the escape key does nothing, return in the tag selects everything past t
 REASON: selecting through escape is unusual, anyway escape can be bound to anything the user might want through the shortcut configuration file. Return in the tag would otherwise be useless
 
 CHANGE: In the edit language #w<number> selects word-by-word
-REASON: It's useful
 
 CHANGE: unlimited Undo and Redo
+
+CHANGE: added LookFile command to do incremental search of files to open
+

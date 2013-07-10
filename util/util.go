@@ -31,7 +31,7 @@ type MouseDownEvent struct {
 	Count int
 }
 
-func FilterEvents(in <-chan interface{}, altingList []AltingEntry) (out chan interface{}) {
+func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion map[string]string) (out chan interface{}) {
 	dblclickp := image.Point{ 0, 0 }
 	dblclickc := 0
 	dblclickbtn := wde.LeftButton
@@ -120,6 +120,10 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry) (out chan int
 							//println("Alting end")
 							alting = false
 						}
+					} else if conv, ok := keyConversion[e.Chord]; ok {
+						e.Chord = conv
+						e.Key = conv
+						out <- e
 					} else {
 						if e.Chord == "" {
 							e.Chord = e.Key

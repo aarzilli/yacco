@@ -6,8 +6,9 @@ import os
 #Grep index for one with the specified name
 idxfd = open(os.environ["yd"] + "/index")
 for x in idxfd:
-	x = x.strip()
-	filename = x[61:]
+	if x[len(x)-1] == '\n':
+		x = x[:len(x)-1]
+	filename = x[60:]
 	if filename.endswith(sys.argv[1]):
 		print os.environ["yd"] + "/" + str(int(x[:11])),
 		idxfd.close()

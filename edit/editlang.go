@@ -20,7 +20,7 @@ type cmd struct {
 	argaddr Addr
 	body *cmd
 	bodytxt string
-	fn func(c *cmd, buf *buf.Buffer, sels []util.Sel, eventChan chan string)
+	fn func(c *cmd, buf *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string)
 }
 
 func Edit(pgm string, b *buf.Buffer, sels []util.Sel, eventChan chan string) {
@@ -33,7 +33,7 @@ func (ecmd *cmd) Exec(b *buf.Buffer, sels []util.Sel, eventChan chan string) {
 		panic(fmt.Errorf("Command '%c' not implemented", ecmd.cmdch))
 	}
 
-	ecmd.fn(ecmd, b, sels, eventChan)
+	ecmd.fn(ecmd, b, sels[0], sels, eventChan)
 }
 
 func AddrEval(pgm string, b *buf.Buffer, sel util.Sel) util.Sel{
