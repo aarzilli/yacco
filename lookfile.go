@@ -5,6 +5,7 @@ import (
 	"strings"
 	"path/filepath"
 	"unicode"
+	"strconv"
 	"yacco/util"
 	"yacco/buf"
 	"yacco/textframe"
@@ -26,6 +27,7 @@ const MAX_RESULTS = 20
 const MAX_FS_RECUR_DEPTH = 5
 
 func lookFileIntl(ed *Editor, ch chan string) {
+	defer ed.ExitSpecial()
 	var resultChan chan *lookFileResult
 	var searchDone chan struct{}
 	var resultList = []*lookFileResult{}
@@ -49,14 +51,20 @@ func lookFileIntl(ed *Editor, ch chan string) {
 			//println("Message received", specialMsg)
 			
 			if specialMsg == "T\n" {
-				//TODO: open last result
-				// Clean up and show directory on multiple columns
+				if len(resultList) > 0 {
+					ec := ExecContext{ col: nil, ed: ed, br: ed, ontag: false, fr: &ed.sfr.Fr, buf: ed.bodybuf, eventChan: nil }
+					ed.sfr.Fr.Sels[2].S = 0
+					ed.sfr.Fr.Sels[2].E = ed.bodybuf.Tonl(ed.sfr.Fr.Sels[2].S+1, +1)
+					Load(ec, ed.sfr.Fr.Sels[2].S)
+				}
+				
+				resultList = resultList[0:0]
+				displayResults(ed, resultList)
 			} else {
 				needle := specialMsg[1:]
 				displayResults(ed, resultList)
 				if needle != oldNeedle {
 					resultList = resultList[0:0]
-					displayResults(ed, resultList)
 					if needle != "" {
 						resultChan = make(chan *lookFileResult, 1)
 						searchDone = make(chan struct{})
@@ -64,8 +72,10 @@ func lookFileIntl(ed *Editor, ch chan string) {
 						edDir := ed.tagbuf.Dir
 						wnd.Lock.Unlock()
 						go fileSystemSearch(edDir, resultChan, searchDone, needle)
-						go openBufferSearch(resultChan, searchDone, needle)
+						//go openBufferSearch(resultChan, searchDone, needle)
 						go tagsSearch(resultChan, searchDone, needle)
+					} else {
+						displayResults(ed, resultList)
 					}
 				}
 			}
@@ -252,6 +262,17 @@ func openBufferSearch(resultChan chan<- *lookFileResult, searchDone chan struct{
 			start := 0
 			
 			for {
+				stillGoing := true
+				select {
+				case _, ok := <- searchDone:
+					stillGoing = ok
+				default:
+				}
+				if !stillGoing {
+					//println("Search channel closed")
+					return
+				}
+
 				i := -1
 				if start < len(curb) {
 					i = indexOf(curb[start:], []rune(needle))
@@ -294,6 +315,7 @@ func openBufferSearch(resultChan chan<- *lookFileResult, searchDone chan struct{
 				lineEnd := b.Tonl(i, +1)
 				
 				theLine := string(buf.ToRunes(b.SelectionX(util.Sel{ j+1, lineEnd })))
+				lineNo, _ := b.GetLine(j+1)
 				
 				if ((nl == 0) && !first) || (tabs > 1) || (spaces > 4) {
 					continue
@@ -306,9 +328,7 @@ func openBufferSearch(resultChan chan<- *lookFileResult, searchDone chan struct{
 					continue
 				}
 				
-				show := path + ":\t" + theLine
-				
-				//TODO: add line number to path
+				show := path + ":" + strconv.Itoa(lineNo) + ":\t" + theLine
 				
 				select {
 					case resultChan <- &lookFileResult{ score, show }:

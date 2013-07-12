@@ -202,3 +202,11 @@ func (c *Col) Remove(i int) {
 	c.RecalcRects()
 	c.Redraw()
 }
+
+func (c *Col) Dump() DumpColumn {
+	editors := make([]DumpEditor, len(c.editors))
+	for i := range c.editors {
+		editors[i] = c.editors[i].Dump()
+	}
+	return DumpColumn{ c.frac, editors }
+}

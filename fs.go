@@ -426,7 +426,6 @@ func readCtlFn(i int, dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
 	case config.AltFont:
 		fontName = "alt"
 	}
-	//TODO: font name incorrectly reported, tab width should be in pixels
 
 	tabWidth := ec.fr.TabWidth
 

@@ -66,7 +66,7 @@ func (e *Editor) SetWnd(wnd wde.Window) {
 	e.tagfr.Wnd = wnd
 }
 
-func NewEditor(bodybuf *buf.Buffer) *Editor {
+func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	e := &Editor{}
 
 	e.confirmDel = false
@@ -74,7 +74,9 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 	e.bodybuf = bodybuf
 	e.tagbuf, _ = buf.NewBuffer(bodybuf.Dir, "+Tag", true)
 
-	bufferAdd(bodybuf)
+	if addBuffer {
+		bufferAdd(bodybuf)
+	}
 
 	e.sfr = textframe.ScrollFrame{
 		Width: SCROLL_WIDTH,
@@ -255,7 +257,7 @@ func (e *Editor) refreshIntl() {
 	e.sfr.Fr.InsertColor(bb)
 }
 
-func (e *Editor) BufferRefresh(ontag bool) {
+func (e *Editor) BufferRefreshEx(ontag bool, recur bool) {
 	match := findPMatch(e.tagbuf, e.tagfr.Sels[0])
 	if match.S >= 0 {
 		e.tagfr.Sels[5] = match
@@ -289,7 +291,23 @@ func (e *Editor) BufferRefresh(ontag bool) {
 
 		e.Redraw()
 		e.sfr.Wnd.FlushImage()
+		
+		if (e.bodybuf.RefCount <= 1) || !recur{
+			return
+		}
+		
+		for _, col := range wnd.cols.cols {
+			for _, oe := range col.editors {
+				if oe.bodybuf == e.bodybuf {
+					oe.BufferRefreshEx(false, false)
+				}
+			}
+		}
 	}
+}
+
+func (e *Editor) BufferRefresh(ontag bool) {
+	e.BufferRefreshEx(ontag, true)
 }
 
 func findPMatch(b *buf.Buffer, sel0 util.Sel) util.Sel {
@@ -393,3 +411,20 @@ func (ed *Editor) PropTrigger() {
 	ed.BufferRefresh(false)
 }
 
+func (ed *Editor) Dump() DumpEditor {
+	fontName := ""
+	switch ed.sfr.Fr.Font {
+	default: fallthrough
+	case config.MainFont:
+		fontName = "main"
+	case config.AltFont:
+		fontName = "alt"
+	}
+	
+	return DumpEditor{
+		bufferIndex(ed.bodybuf),
+		ed.frac,
+		fontName,
+		ed.specialChan != nil,
+	}
+}

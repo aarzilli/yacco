@@ -483,7 +483,7 @@ func (fr *Frame) PointToCoord(p int) image.Point {
 		if len(fr.glyphs) == 0 {
 			r = fr.ins
 		} else {
-			r = fr.glyphs[pp].p
+			r = fr.glyphs[0].p
 		}
 		return image.Point{ int(r.X >> 8), int(r.Y >> 8) }
 	} else if pp < len(fr.glyphs) {
@@ -570,8 +570,15 @@ func (fr *Frame) Redraw(flush bool) {
 			for j := range fr.Sels {
 				if (i+fr.Top >= fr.Sels[j].S) && (i+fr.Top < fr.Sels[j].E) {
 					ssel = j + 1
+					var color *image.Uniform
+					if ssel >= len(fr.Colors) {
+						println("BUG: drawing color for a selection that doesn't exist: ", ssel)
+						color = &fr.Colors[0][0]
+					} else {
+						color = &fr.Colors[ssel][0]
+					}
 
-					fr.redrawSelection(fr.Sels[j].S-fr.Top, fr.Sels[j].E-fr.Top, &fr.Colors[ssel][0])
+					fr.redrawSelection(fr.Sels[j].S-fr.Top, fr.Sels[j].E-fr.Top, color)
 				}
 			}
 		}

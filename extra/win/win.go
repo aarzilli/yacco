@@ -226,7 +226,7 @@ func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, pty *os.File
 
 		switch etype {
 		case 'x', 'X':
-			//TODO: look for internal commands
+			//TODO: look for internal commands (it's for win)
 			_, err := eventfd.Write([]byte(event))
 			Must(err)
 		case 'l', 'L':
@@ -296,7 +296,7 @@ func run(c *exec.Cmd) *os.File {
 	return pty
 }
 
-func notifyProc(notifyChan <-chan os.Signal, endChan <-chan bool) {
+func notifyProc(notifyChan <-chan os.Signal, endChan <-chan bool, bodyfd io.ReadWriter, ctlfd io.ReadWriter) {
 	if debug {
 		fmt.Println("Waiting for signal")
 	}
@@ -307,15 +307,49 @@ func notifyProc(notifyChan <-chan os.Signal, endChan <-chan bool) {
 	if debug {
 		fmt.Println("Ending")
 	}
+	bodyfd.Write([]byte("~\n"))
+	ctlfd.Write([]byte("dump "))
+	ctlfd.Write([]byte("dumpdir "))
 	os.Exit(0)
 }
 
-func main() {
+func findWin() string {
+	fh, err := os.Open(os.ExpandEnv("$yd/index"))
+	if err != nil {
+		log.Fatalf("Couldn't open index")
+	}
+	defer fh.Close()
+	
+	bin := bufio.NewReader(fh)
+	
+	for {
+		line, err := bin.ReadString('\n')
+		if err != nil {
+			break
+		}
+		line = strings.TrimSuffix(line, "\n")
+		if strings.HasSuffix(line, "+Win") {
+			id := strings.TrimSpace(line[:11])
+			eventfd, err := os.Open(os.ExpandEnv("$yd/" + id + "/event"))
+			if err != nil {
+				continue
+			}
+			eventfd.Close()
+			return id
+		}
+	}
 	ctlfd, err := os.OpenFile(os.ExpandEnv("$yd/new/ctl"), os.O_RDWR, 0666)
 	Must(err)
 	defer ctlfd.Close()
 	ctlln := read(ctlfd)
 	outbufid := strings.TrimSpace(ctlln[:11])
+	return outbufid
+}
+
+func main() {
+	outbufid := findWin()
+	ctlfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/ctl"), os.O_WRONLY, 0666)
+	Must(err)
 	bodyfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/body"), os.O_WRONLY, 0666)
 	Must(err)
 	eventfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/event"), os.O_RDWR, 0666)
@@ -327,9 +361,11 @@ func main() {
 
 	_, err = ctlfd.Write([]byte("name +Win\n"))
 	Must(err)
-	_ = outbufid
-	_ = eventfd
-	//_ = addrfd
+	
+	_, err = ctlfd.Write([]byte("dump " + strings.Join(os.Args, " ")))
+	Must(err)
+	wd, _ := os.Getwd()
+	_, err = ctlfd.Write([]byte("dumpdir " + wd))
 
 	var cmd *exec.Cmd
 	if len(os.Args) > 1 {
@@ -350,7 +386,7 @@ func main() {
 	notifyChan := make(chan os.Signal)
 	endChan := make(chan bool)
 	signal.Notify(notifyChan, os.Interrupt, os.Kill)
-	go notifyProc(notifyChan, endChan)
+	go notifyProc(notifyChan, endChan, bodyfd, ctlfd)
 
 	cmd.Wait()
 	endChan <- true
@@ -358,6 +394,5 @@ func main() {
 		log.Printf("Finished")
 	}
 	time.Sleep(1 * time.Second)
-	bodyfd.Write([]byte("~\n"))
-	os.Exit(1)
+	os.Exit(0)
 }

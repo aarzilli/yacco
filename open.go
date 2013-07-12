@@ -16,7 +16,7 @@ func editOpen(path string, create bool) (*Editor, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewEditor(b), nil
+	return NewEditor(b, true), nil
 }
 
 func resolvePath(rel2dir, path string) string {
@@ -79,14 +79,20 @@ func HeuristicOpen(path string, warp bool, create bool) (*Editor, error) {
 	if err != nil {
 		return nil, err
 	}
+	
+	HeuristicPlaceEditor(ed, warp)
 
+	return ed, nil
+}
+
+func HeuristicPlaceEditor(ed *Editor, warp bool) {
 	if len(wnd.cols.cols) == 0 {
 		wnd.cols.AddAfter(-1)
 	}
 
 	var col *Col = nil
 
-	if filepath.Base(path)[0] == '+' {
+	if ed.bodybuf.Name[0] == '+' {
 		col = wnd.cols.cols[len(wnd.cols.cols)-1]
 	} else {
 		if activeEditor != nil {
@@ -119,9 +125,8 @@ func HeuristicOpen(path string, warp bool, create bool) (*Editor, error) {
 	if warp {
 		ed.Warp()
 	}
-
-	return ed, nil
 }
+
 
 func Warnfull(bufname, msg string) {
 	ed, err := EditFind(wnd.tagbuf.Dir, bufname, false, true)

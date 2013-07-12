@@ -41,7 +41,6 @@ var cmds = map[string]Cmd{
 	"Edit": EditCmd,
 	"Exit": ExitCmd,
 	"Kill": KillCmd,
-	"Load": LoadCmd,
 	"Setenv": SetenvCmd,
 	"Look": LookCmd,
 	"New": NewCmd,
@@ -68,7 +67,6 @@ var cmds = map[string]Cmd{
 	"Paste!Primary": func (ec ExecContext, arg string) { PasteCmd(ec, arg, true) },
 	"Paste!Indent": PasteIndentCmd,
 	"Rename": RenameCmd,
-	"LookFile": LookFileCmd,
 }
 
 var spacesRe = regexp.MustCompile("\\s+")
@@ -76,6 +74,8 @@ var exitConfirmed = false
 
 func init() {
 	cmds["Do"] = DoCmd // this would otherwise cause an initialization loop
+	cmds["LookFile"] = LookFileCmd
+	cmds["Load"] = LoadCmd
 }
 
 func IntlCmd(cmd string) (Cmd, string, bool) {
@@ -200,7 +200,30 @@ func DelcolCmd(ec ExecContext, arg string) {
 
 func DumpCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	//TODO: Dump command
+	dumpDest := getDumpPath(arg, true)
+	if DumpTo(dumpDest) {
+		AutoDumpPath = dumpDest
+	}	
+}
+
+func LoadCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	dumpDest := getDumpPath(arg, false)
+	if LoadFrom(dumpDest) {
+		AutoDumpPath = dumpDest
+	}
+}
+
+func getDumpPath(arg string, dodef bool) string {
+	dumpDest := strings.TrimSpace(arg)
+	if dumpDest == "" {
+		if !dodef {
+			return ""
+		}
+		dumpDest = "default"
+	}
+	dumpDest = filepath.Join(os.Getenv("HOME"), ".config", "yacco", dumpDest + ".dump")
+	return dumpDest
 }
 
 func EditCmd(ec ExecContext, arg string) {
@@ -261,11 +284,6 @@ func KillCmd(ec ExecContext, arg string) {
 	}
 }
 
-func LoadCmd(ec ExecContext, arg string) {
-	exitConfirmed = false
-	//TODO Load command
-}
-
 func SetenvCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	v := spacesRe.Split(arg, 2)
@@ -299,7 +317,18 @@ func SpecialSendCmd(ec ExecContext, msg string)  {
 }
 
 func GetCmd(ec ExecContext, arg string) {
-	//TODO: Get command
+	exitConfirmed = false
+	if ec.ed == nil {
+		return
+	}
+	if ec.ed.bodybuf.Modified && !ec.ed.confirmDel {
+		ec.ed.confirmDel = true
+		Warn("File " + ec.ed.bodybuf.ShortName() + " has unsaved changes")
+		return
+	}
+	
+	ec.ed.bodybuf.Reload(ec.ed.sfr.Fr.Sels, true)
+	ec.ed.BufferRefresh(false)
 }
 
 func NewCmd(ec ExecContext, arg string) {
@@ -419,6 +448,9 @@ func PutCmd(ec ExecContext, arg string) {
 		Warn(fmt.Sprintf("Put: Couldn't save %s: %s", ec.ed.bodybuf.ShortName(), err.Error()))
 	}
 	ec.ed.BufferRefresh(false)
+	if AutoDumpPath != "" {
+		DumpTo(AutoDumpPath)
+	}
 }
 
 func PutallCmd(ec ExecContext, arg string) {
@@ -458,7 +490,15 @@ func SendCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	//TODO: Send command
+	txt := []rune{}
+	if ec.ed.sfr.Fr.Sels[0].S != ec.ed.sfr.Fr.Sels[0].E {
+		txt = buf.ToRunes(ec.ed.bodybuf.SelectionX(ec.ed.sfr.Fr.Sels[0]))
+	} else {
+		txt = []rune(wnd.wnd.GetClipboard())
+	}
+	ec.ed.sfr.Fr.Sels[0] = util.Sel{ ec.buf.Size(), ec.buf.Size() }
+	ec.ed.bodybuf.Replace(txt, &ec.ed.sfr.Fr.Sels[0], ec.ed.sfr.Fr.Sels, true, ec.eventChan, util.EO_MOUSE)
+	ec.ed.BufferRefresh(false)
 }
 
 func SortCmd(ec ExecContext, arg string) {
@@ -485,7 +525,13 @@ func UndoCmd(ec ExecContext, arg string) {
 
 func ZeroxCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	//TODO: Zerox command
+	if ec.ed == nil {
+		return
+	}
+	ec.ed.confirmDel = false
+	ec.ed.bodybuf.RefCount++
+	ned := NewEditor(ec.ed.bodybuf, true)
+	HeuristicPlaceEditor(ned, true)
 }
 
 func PipeCmd(ec ExecContext, arg string) {
@@ -534,8 +580,7 @@ func PipeOutCmd(ec ExecContext, arg string) {
 	NewJob(wd, arg, txt, &ec, false, nil)
 }
 
-func CdCmd(ec ExecContext, arg string) {
-	exitConfirmed = false
+func cdIntl(arg string) {
 	os.Chdir(arg)
 	wd, _ := os.Getwd()
 
@@ -547,6 +592,12 @@ func CdCmd(ec ExecContext, arg string) {
 			ed.BufferRefresh(false)
 		}
 	}
+}
+
+func CdCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	arg = strings.TrimSpace(arg)
+	cdIntl(arg)
 
 	wnd.GenTag()
 
@@ -555,8 +606,6 @@ func CdCmd(ec ExecContext, arg string) {
 	wnd.cols.Redraw()
 	wnd.tagfr.Redraw(false)
 	wnd.wnd.FlushImage()
-	
-	//TODO: Change directory of LookFile window
 }
 
 func DoCmd(ec ExecContext, arg string) {

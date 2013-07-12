@@ -8,13 +8,16 @@ import (
 	"unicode"
 	"unicode/utf8"
 	"regexp"
+	"strings"
 	"io/ioutil"
+	"sync"
 	"yacco/util"
 	"yacco/textframe"
 	"path/filepath"
 )
 
 const SLOP = 128
+const SHORT_NAME_LEN = 40
 
 var nonwdRe = regexp.MustCompile(`\W+`)
 
@@ -33,7 +36,14 @@ type Buffer struct {
 
 	ul undoList
 	
+	lock sync.RWMutex
+	ReadersPleaseStop bool
+	
+	RefCount int
+	
 	Words []string
+	
+	DumpCmd, DumpDir string
 }
 
 func NewBuffer(dir, name string, create bool) (b *Buffer, err error) {
@@ -65,43 +75,9 @@ func NewBuffer(dir, name string, create bool) (b *Buffer, err error) {
 	}
 
 	if name[0] != '+' {
-		infile, err := os.Open(filepath.Join(dir, name))
-		if err == nil {
-			defer infile.Close()
-			
-			fi, err := infile.Stat()
-			if err != nil {
-				return nil, fmt.Errorf("Couldn't stat file (after opening it?) %s", filepath.Join(dir, name))
-			}
-			
-			if fi.Size() > 10 * 1024 * 1024 {
-				return nil, fmt.Errorf("Refusing to open files larger than 10MB")
-			}
-			
-			bytes, err := ioutil.ReadAll(infile)
-			testb := bytes
-			if len(testb) > 1024 {
-				testb = testb[:1024]
-			}
-			if !utf8.Valid(testb) {
-				return nil, fmt.Errorf("Can not open binary file")
-			}
-			if err != nil {
-				return nil, err
-			}
-			str := string(bytes)
-			b.Words = util.Dedup(nonwdRe.Split(str, -1))
-			runes := []rune(str)
-			b.Replace(runes, &util.Sel{ 0, 0 }, []util.Sel{}, true, nil, 0)
-			b.Modified = false
-			b.ul.Reset()
-		} else {
-			if create {
-				// doesn't exist, mark as modified
-				b.Modified = true
-			} else {
-				return nil, fmt.Errorf("File doesn't exist: %s", filepath.Join(dir, name))
-			}
+		err := b.Reload([]util.Sel{}, create)
+		if err != nil {
+			return nil, err
 		}
 	}
 	
@@ -112,6 +88,50 @@ func NewBuffer(dir, name string, create bool) (b *Buffer, err error) {
 	b.Props["tab"] = "4"
 
 	return b, nil
+}
+
+// (re)loads buffer from disk
+func (b *Buffer) Reload(sels []util.Sel, create bool) error {
+	infile, err := os.Open(filepath.Join(b.Dir, b.Name))
+	if err == nil {
+		defer infile.Close()
+		
+		fi, err := infile.Stat()
+		if err != nil {
+			return fmt.Errorf("Couldn't stat file (after opening it?) %s", filepath.Join(b.Dir, b.Name))
+		}
+		
+		if fi.Size() > 10 * 1024 * 1024 {
+			return fmt.Errorf("Refusing to open files larger than 10MB")
+		}
+		
+		bytes, err := ioutil.ReadAll(infile)
+		testb := bytes
+		if len(testb) > 1024 {
+			testb = testb[:1024]
+		}
+		if !utf8.Valid(testb) {
+			return fmt.Errorf("Can not open binary file")
+		}
+		if err != nil {
+			return err
+		}
+		str := string(bytes)
+		b.Words = util.Dedup(nonwdRe.Split(str, -1))
+		runes := []rune(str)
+		b.Replace(runes, &util.Sel{ 0, b.Size() }, sels, true, nil, 0)
+		b.Modified = false
+		b.ul.Reset()
+	} else {
+		if create {
+			// doesn't exist, mark as modified
+			b.Modified = true
+		} else {
+			return fmt.Errorf("File doesn't exist: %s", filepath.Join(b.Dir, b.Name))
+		}
+	}
+	
+	return nil
 }
 
 // Replaces text between sel.S and sel.E with text, updates sels AND sel accordingly
@@ -231,23 +251,27 @@ func (b *Buffer) Undo(sels []util.Sel, redo bool) {
 }
 
 func (b *Buffer) Rdlock() {
-	//TODO: Buffer Rdlock
+	b.lock.RLock()
 }
 
 func (b *Buffer) Rdunlock() {
-	//TODO: Buffer Rdunlock
+	b.lock.RUnlock()
 }
 
 func (b *Buffer) wrlock() {
-	//TODO: stop highlighter here, lock buffer
+	b.lock.RLock()
+	b.ReadersPleaseStop = true
+	b.lock.RUnlock()
+	b.lock.Lock()
+	b.ReadersPleaseStop = false
+}
+
+func (b *Buffer) unlock() {
+	b.lock.Unlock()
 }
 
 func (b *Buffer) hlFrom(s int) {
 	//TODO: start highlighter at s (needs how many lines to do?)
-}
-
-func (b *Buffer) unlock() {
-	//TODO: unlock buffer
 }
 
 // Replaces text between sel.S and sel.E with text, updates selections in sels except sel itself
@@ -577,8 +601,27 @@ func (b *Buffer) ShortName() string {
 	if len(ap) < len(p) {
 		p = ap
 	}
-	//TODO: compress like ppwd
-	return p
+	
+	curlen := len(p)
+	pcomps := strings.Split(p, string(filepath.Separator))
+	i := 0
+	
+	for curlen > SHORT_NAME_LEN {
+		if i >= len(pcomps)-2 {
+			break
+		}
+		
+		if (len(pcomps[i])) == 0 || (pcomps[i][0] == '.') || (pcomps[i][0] == '~') {
+			i++
+			continue
+		}
+		
+		curlen -= len(pcomps[i]) - 1
+		pcomps[i] = pcomps[i][:1]
+		i++
+	}
+	
+	return filepath.Join(pcomps...)
 }
 
 func (b *Buffer) FixSel(sel *util.Sel) {

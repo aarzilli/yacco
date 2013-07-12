@@ -94,7 +94,9 @@ func (ul *undoList) Redo() *undoInfo {
 
 // marks first as saved, removes every other saved mark
 func (ul *undoList) SetSaved() {
-	//TODO: disable every other saved
+	for _, uit := range ul.lst {
+		uit.saved = false
+	}
 	if ul.cur > 0 {
 		ul.lst[ul.cur-1].saved = true
 	}

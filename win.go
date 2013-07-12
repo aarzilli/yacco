@@ -698,10 +698,10 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			if lp.ed.specialExitOnReturn {
 				lp.ed.sfr.Fr.VisibleTick = true		
 				lp.ed.ExitSpecial()
-				return
 			} else {
 				lp.ed.specialChan <- "T\n"
 			}
+			return
 		}
 		
 		if lp.tagfr != nil {
@@ -960,8 +960,6 @@ func (w *Window) GenTag() {
 
 	pwd, _ := os.Getwd()
 
-	//TODO: compress like ppwd
-
 	t := pwd + " " + string(config.DefaultWindowTag) + usertext
 	w.tagbuf.EditableStart = -1
 	w.tagbuf.Replace([]rune(t), &w.tagfr.Sels[0], w.tagfr.Sels, true, nil, 0)
@@ -999,3 +997,37 @@ func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, 
 	return nil, true
 	
 }
+
+func (w *Window) Dump() DumpWindow {
+	cols := make([]DumpColumn, len(w.cols.cols))
+	for i := range w.cols.cols {
+		cols[i] = w.cols.cols[i].Dump()
+	}
+	bufs := make([]DumpBuffer, len(buffers))
+	for i := range buffers {
+		if buffers[i] != nil {
+			text := ""
+			if (len(buffers[i].Name) > 0) && (buffers[i].Name[0] == '+') && (buffers[i].DumpCmd == "") {
+				start := 0
+				if buffers[i].Size() > 1024 * 10 {
+					start = buffers[i].Size() - (1024 * 10)
+				}
+				text = string(buf.ToRunes(buffers[i].SelectionX(util.Sel{ start, buffers[i].Size() })))
+			}
+
+			bufs[i] = DumpBuffer{
+				false,
+				buffers[i].Dir,
+				buffers[i].Name,
+				buffers[i].Props,
+				text,
+				buffers[i].DumpCmd,
+				buffers[i].DumpDir,
+			}
+		} else {
+			bufs[i].IsNil = true
+		}
+	}
+	return DumpWindow{ cols, bufs, w.tagbuf.Dir }
+}
+

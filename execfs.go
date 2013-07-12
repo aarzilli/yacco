@@ -54,10 +54,10 @@ func ExecFs(ec *ExecContext, cmd string) {
 		ec.ed.Recenter()
 
 	default:
-		if strings.HasPrefix(cmd, "dump ") {
-			//TODO dump (fs exec)
-		} else if strings.HasPrefix(cmd, "dumpdir ") {
-			//TODO dumpdir (fs exec)
+		if strings.HasPrefix(cmd, "dumpdir") {
+			ec.buf.DumpDir = strings.TrimSpace(cmd[len("dumpdir "):])
+		} else if strings.HasPrefix(cmd, "dump") {
+			ec.buf.DumpCmd = strings.TrimSpace(cmd[len("dump "):])
 		} else if strings.HasPrefix(cmd, "name ") {
 			newName := strings.TrimSpace(cmd[len("name "):])
 			abspath, err := filepath.Abs(newName)

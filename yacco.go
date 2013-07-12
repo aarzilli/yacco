@@ -13,6 +13,7 @@ import (
 var wnd Window
 var buffers []*buf.Buffer = []*buf.Buffer{}
 var sideChan chan interface{}
+var AutoDumpPath string
 
 func realmain() {
 	err := wnd.Init(640, 480)
@@ -52,6 +53,7 @@ func main() {
 }
 
 func bufferAdd(b *buf.Buffer) {
+	b.RefCount++
 	buffers = append(buffers, b)
 	fsNodefs.addBuffer(len(buffers)-1, b)
 }
@@ -68,8 +70,11 @@ func bufferIndex(b *buf.Buffer) int {
 func removeBuffer(b *buf.Buffer) {
 	for i, cb := range buffers {
 		if cb == b {
-			buffers[i] = nil
-			fsNodefs.removeBuffer(i)
+			b.RefCount--
+			if b.RefCount == 0 {
+				buffers[i] = nil
+				fsNodefs.removeBuffer(i)
+			}
 			return
 		}
 	}
