@@ -24,6 +24,7 @@ type Editor struct {
 	top int
 	tagbuf *buf.Buffer
 	confirmDel bool
+	confirmSave bool
 
 	eventChan chan string
 	
@@ -72,7 +73,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	e.confirmDel = false
 
 	e.bodybuf = bodybuf
-	e.tagbuf, _ = buf.NewBuffer(bodybuf.Dir, "+Tag", true)
+	e.tagbuf, _ = buf.NewBuffer(bodybuf.Dir, "+Tag", true, Wnd.Prop["indentchar"])
 
 	if addBuffer {
 		bufferAdd(bodybuf)
@@ -123,6 +124,8 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	util.Must(e.tagfr.Init(5), "Editor initialization failed")
 
 	e.GenTag()
+	e.tagfr.Sels[0].S = e.tagbuf.Size()
+	e.tagfr.Sels[0].E = e.tagbuf.Size()
 
 	e.sfr.Set(0, e.bodybuf.Size())
 
@@ -215,9 +218,6 @@ func (e *Editor) GenTag() {
 		usertext = string(buf.ToRunes(e.tagbuf.SelectionX(util.Sel{ e.tagbuf.EditableStart, e.tagbuf.Size() })))
 	}
 
-	e.tagfr.Sels[0].S = 0
-	e.tagfr.Sels[0].E = e.tagbuf.Size()
-
 	t := e.bodybuf.ShortName()
 
 	if e.sfr.Fr.Sels[0].E <= 10000 {
@@ -244,9 +244,14 @@ func (e *Editor) GenTag() {
 	}
 
 	t += " | " + usertext
+	start := e.tagfr.Sels[0].S - e.tagbuf.EditableStart
+	end := e.tagfr.Sels[0].E - e.tagbuf.EditableStart
 	e.tagbuf.EditableStart = -1
-	e.tagbuf.Replace([]rune(t), &e.tagfr.Sels[0], e.tagfr.Sels, true, nil, 0)
+	e.tagbuf.Replace([]rune(t), &util.Sel{ 0, e.tagbuf.Size() }, e.tagfr.Sels, true, nil, 0)
 	TagSetEditableStart(e.tagbuf)
+	e.tagfr.Sels[0].S = start + e.tagbuf.EditableStart
+	e.tagfr.Sels[0].E = end + e.tagbuf.EditableStart
+	e.tagbuf.FixSel(&e.tagfr.Sels[0])
 }
 
 func (e *Editor) refreshIntl() {
@@ -296,7 +301,7 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur bool) {
 			return
 		}
 		
-		for _, col := range wnd.cols.cols {
+		for _, col := range Wnd.cols.cols {
 			for _, oe := range col.editors {
 				if oe.bodybuf == e.bodybuf {
 					oe.BufferRefreshEx(false, false)
@@ -331,7 +336,7 @@ func findPMatch(b *buf.Buffer, sel0 util.Sel) util.Sel {
 }
 
 func (ed *Editor) Column() *Col {
-	for _, col := range wnd.cols.cols {
+	for _, col := range Wnd.cols.cols {
 		for _, ce := range col.editors {
 			if ce == ed {
 				return col
@@ -372,17 +377,20 @@ func (ed *Editor) Warp() {
 		return
 	}
 	p := ed.sfr.Fr.PointToCoord(ed.sfr.Fr.Sels[0].S)
-	wnd.wnd.WarpMouse(p)
+	Wnd.wnd.WarpMouse(p)
 }
 
-func (ed *Editor) EnterSpecial(specialChan chan string, specialTag string, exitOnReturn bool) {
+func (ed *Editor) EnterSpecial(specialChan chan string, specialTag string, exitOnReturn bool) bool {
+	if ed.specialChan != nil {
+		return false
+	}
 	ed.specialChan = specialChan
 	ed.specialTag = specialTag
 	ed.specialExitOnReturn = exitOnReturn
 	ed.savedTag = string(buf.ToRunes(ed.tagbuf.SelectionX(util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() })))
 	ed.tagbuf.Replace([]rune{}, &util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() }, ed.tagfr.Sels, true, nil, 0)
 	ed.BufferRefresh(false)
-	return
+	return true
 }
 
 func (ed *Editor) ExitSpecial() {

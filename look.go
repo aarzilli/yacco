@@ -58,11 +58,15 @@ func lookfwd(ed *Editor, needle []rune, fromEnd bool) {
 	ed.Warp()
 }
 
+var lastNeedle []rune
+
 func lookproc(ec ExecContext) {
-	ch := make(chan string, 1)
-	wnd.Lock.Lock()
-	ec.ed.EnterSpecial(ch, " Look!Quit Look!Again", true)
-	wnd.Lock.Unlock()
+	ch := make(chan string, 5)
+	Wnd.Lock.Lock()
+	if !ec.ed.EnterSpecial(ch, " Look!Quit Look!Again", true) {
+		return
+	}
+	Wnd.Lock.Unlock()
 	needle := []rune{}
 	for {
 		specialMsg, ok := <- ch
@@ -74,23 +78,24 @@ func lookproc(ec ExecContext) {
 			switch specialMsg[1:] {
 			case "Again":
 				func() {
-					wnd.Lock.Lock()
-					defer wnd.Lock.Unlock()
+					Wnd.Lock.Lock()
+					defer Wnd.Lock.Unlock()
 					lookfwd(ec.ed, needle, true)
 				}()
 			case "Quit":
 				func() {
-					wnd.Lock.Lock()
-					defer wnd.Lock.Unlock()
+					Wnd.Lock.Lock()
+					defer Wnd.Lock.Unlock()
 					ec.ed.ExitSpecial()
 				}()
 			}
 		case 'T':
 			newNeedle := specialMsg[1:]
 			needle := []rune(newNeedle)
+			lastNeedle = needle
 			func() {
-				wnd.Lock.Lock()
-				defer wnd.Lock.Unlock()
+				Wnd.Lock.Lock()
+				defer Wnd.Lock.Unlock()
 				lookfwd(ec.ed, needle, false)
 			}()
 		}

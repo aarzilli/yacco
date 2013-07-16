@@ -35,13 +35,21 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 	//job.ec = ec
 	job.done = make(chan bool, 10)
 
-	//TODO: recognize more types of plain commands to run directly without starting bash
 	if strings.HasPrefix(cmd, "win ") || strings.HasPrefix(cmd, "win\t") {
-		job.descr = cmd[4:]
-		job.cmd = exec.Command("win", cmd[4:])
+		job.descr = cmd
+		vcmd := strings.SplitN(cmd, " ", 2)
+		if len(vcmd) > 1 {
+			job.cmd = exec.Command("win", vcmd[1])
+		} else {
+			job.cmd = exec.Command("win")
+		}
+	} else if easyCommand(cmd) {
+		vcmd := strings.Split(cmd, " ")
+		job.descr = cmd
+		job.cmd = exec.Command(vcmd[0], vcmd[1:]...)
 	} else {
 		job.descr= cmd
-		job.cmd = exec.Command("/bin/bash", "-c", cmd)
+		job.cmd = exec.Command(os.Getenv("SHELL"), "-c", cmd)
 	}
 
 	os.Setenv("yd", fsDir)
@@ -160,6 +168,17 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 		jobs[idx] = nil
 		jobsMutex.Unlock()
 	}()
+}
+
+func easyCommand(cmd string) bool {
+	
+	for _, c := range cmd {
+		switch c {
+		case '#', ';', '&', '|', '^', '$', '=', '\'', '`', '{', '}', '(', ')', '<', '>', '[', ']', '*', '?', '~':
+			return false
+		}
+	}
+	return true
 }
 
 func jobKill(i int) {

@@ -12,8 +12,10 @@ import (
 )
 
 func lookFile(ed *Editor) {
-	ch := make(chan string, 1)
-	ed.EnterSpecial(ch, " LookFile", false)
+	ch := make(chan string, 5)
+	if !ed.EnterSpecial(ch, " LookFile", false) {
+		return
+	}
 	ed.sfr.Fr.Hackflags |= textframe.HF_TRUNCATE
 	go lookFileIntl(ed, ch)
 }
@@ -57,9 +59,6 @@ func lookFileIntl(ed *Editor, ch chan string) {
 					ed.sfr.Fr.Sels[2].E = ed.bodybuf.Tonl(ed.sfr.Fr.Sels[2].S+1, +1)
 					Load(ec, ed.sfr.Fr.Sels[2].S)
 				}
-				
-				resultList = resultList[0:0]
-				displayResults(ed, resultList)
 			} else {
 				needle := specialMsg[1:]
 				displayResults(ed, resultList)
@@ -68,9 +67,9 @@ func lookFileIntl(ed *Editor, ch chan string) {
 					if needle != "" {
 						resultChan = make(chan *lookFileResult, 1)
 						searchDone = make(chan struct{})
-						wnd.Lock.Lock()
+						Wnd.Lock.Lock()
 						edDir := ed.tagbuf.Dir
-						wnd.Lock.Unlock()
+						Wnd.Lock.Unlock()
 						go fileSystemSearch(edDir, resultChan, searchDone, needle)
 						//go openBufferSearch(resultChan, searchDone, needle)
 						go tagsSearch(resultChan, searchDone, needle)
@@ -106,8 +105,8 @@ func lookFileIntl(ed *Editor, ch chan string) {
 }
 
 func displayResults(ed *Editor,  resultList []*lookFileResult) {
-	wnd.Lock.Lock()
-	defer wnd.Lock.Unlock()
+	Wnd.Lock.Lock()
+	defer Wnd.Lock.Unlock()
 	
 	t := ""
 	for _, result := range resultList {
@@ -217,21 +216,21 @@ func countSlash(str string) int {
 }
 
 func openBufferSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string) {
-	wnd.Lock.Lock()
+	Wnd.Lock.Lock()
 	n := len(buffers)
-	wd := wnd.tagbuf.Dir
-	wnd.Lock.Unlock()
+	wd := Wnd.tagbuf.Dir
+	Wnd.Lock.Unlock()
 	
 	sent := 0
 	
 	for i := 0; i < n; i++ {
-		wnd.Lock.Lock()
+		Wnd.Lock.Lock()
 		if i >= len(buffers) {
-			wnd.Lock.Unlock()
+			Wnd.Lock.Unlock()
 			return
 		}
 		b := buffers[i]
-		wnd.Lock.Unlock()
+		Wnd.Lock.Unlock()
 		
 		stillGoing := true
 		select {

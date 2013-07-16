@@ -127,7 +127,6 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 		}
 		newed, err := EditFind(ec.dir, name, false, false)
 		if err != nil {
-			println("error:", err.Error())
 			return false
 		}
 		if newed == nil {
@@ -136,7 +135,13 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 		ec.fr.Sels[2] = util.Sel{ s, e }
 		ec.br.BufferRefresh(ec.ontag)
 		if addrExpr != "" {
-			newed.sfr.Fr.Sels[0] = edit.AddrEval(addrExpr, newed.bodybuf, newed.sfr.Fr.Sels[0])
+			func() {
+				defer func() {
+					recover()
+					// do nothing, doesn't matter anyway
+				}()
+				newed.sfr.Fr.Sels[0] = edit.AddrEval(addrExpr, newed.bodybuf, newed.sfr.Fr.Sels[0])
+			}()
 			newed.BufferRefresh(false)
 		}
 		newed.Warp()

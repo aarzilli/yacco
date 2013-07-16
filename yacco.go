@@ -10,19 +10,19 @@ import (
 	_ "github.com/skelterjohn/go.wde/init"
 )
 
-var wnd Window
+var Wnd Window
 var buffers []*buf.Buffer = []*buf.Buffer{}
 var sideChan chan interface{}
 var AutoDumpPath string
 
 func realmain() {
-	err := wnd.Init(640, 480)
+	err := Wnd.Init(640, 480)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
-	wnd.cols.AddAfter(-1)
-	wnd.cols.AddAfter(-1)
+	Wnd.cols.AddAfter(-1)
+	Wnd.cols.AddAfter(-1)
 	
 	wd, _ := os.Getwd()
 
@@ -30,9 +30,9 @@ func realmain() {
 		EditFind(wd, arg, false, true)
 	}
 
-	wnd.wnd.FlushImage()
+	Wnd.wnd.FlushImage()
 
-	wnd.EventLoop()
+	Wnd.EventLoop()
 }
 
 func main() {
@@ -54,6 +54,13 @@ func main() {
 
 func bufferAdd(b *buf.Buffer) {
 	b.RefCount++
+	for i := range buffers {
+		if buffers[i] == nil {
+			buffers[i] = b
+			fsNodefs.addBuffer(i, b)
+			return
+		}
+	}
 	buffers = append(buffers, b)
 	fsNodefs.addBuffer(len(buffers)-1, b)
 }
@@ -78,18 +85,18 @@ func removeBuffer(b *buf.Buffer) {
 			return
 		}
 	}
-	wnd.Words = util.Dedup(append(wnd.Words, b.Words...))
+	Wnd.Words = util.Dedup(append(Wnd.Words, b.Words...))
 }
 
 func bufferExecContext(i int) *ExecContext {
-	wnd.Lock.Lock()
-	defer wnd.Lock.Unlock()
+	Wnd.Lock.Lock()
+	defer Wnd.Lock.Unlock()
 
 	if buffers[i] == nil {
 		return nil
 	}
 
-	for _, col := range wnd.cols.cols {
+	for _, col := range Wnd.cols.cols {
 		for _, ed := range col.editors {
 			if ed.bodybuf == buffers[i] {
 				return &ExecContext{

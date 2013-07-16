@@ -11,6 +11,7 @@ import (
 	"strings"
 	"io/ioutil"
 	"sync"
+	"time"
 	"yacco/util"
 	"yacco/textframe"
 	"path/filepath"
@@ -27,6 +28,7 @@ type Buffer struct {
 	Editable bool
 	EditableStart int
 	Modified bool
+	ModTime time.Time // time the file was modified on disk
 	
 	Props map[string]string
 
@@ -46,7 +48,7 @@ type Buffer struct {
 	DumpCmd, DumpDir string
 }
 
-func NewBuffer(dir, name string, create bool) (b *Buffer, err error) {
+func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err error) {
 	//println("NewBuffer call:", dir, name)
 	b = &Buffer{
 		Dir: dir,
@@ -82,7 +84,7 @@ func NewBuffer(dir, name string, create bool) (b *Buffer, err error) {
 	}
 	
 	b.Props = map[string]string{}
-	b.Props["indentchar"] = "\t"
+	b.Props["indentchar"] = indentchar
 	b.Props["font"] = "main"
 	b.Props["indent"] = "on"
 	b.Props["tab"] = "4"
@@ -105,6 +107,8 @@ func (b *Buffer) Reload(sels []util.Sel, create bool) error {
 			return fmt.Errorf("Refusing to open files larger than 10MB")
 		}
 		
+		b.ModTime = fi.ModTime()
+		
 		bytes, err := ioutil.ReadAll(infile)
 		testb := bytes
 		if len(testb) > 1024 {
@@ -126,6 +130,7 @@ func (b *Buffer) Reload(sels []util.Sel, create bool) error {
 		if create {
 			// doesn't exist, mark as modified
 			b.Modified = true
+			b.ModTime = time.Now()
 		} else {
 			return fmt.Errorf("File doesn't exist: %s", filepath.Join(b.Dir, b.Name))
 		}
@@ -602,6 +607,10 @@ func (b *Buffer) ShortName() string {
 		p = ap
 	}
 	
+	if len(p) <= 0 {
+		return p
+	}
+	
 	curlen := len(p)
 	pcomps := strings.Split(p, string(filepath.Separator))
 	i := 0
@@ -621,7 +630,12 @@ func (b *Buffer) ShortName() string {
 		i++
 	}
 	
-	return filepath.Join(pcomps...)
+	rp := filepath.Join(pcomps...)
+	if p[0] == '/' {
+		return "/" + rp
+	} else {
+		return rp
+	}
 }
 
 func (b *Buffer) FixSel(sel *util.Sel) {
@@ -663,6 +677,14 @@ func (b *Buffer) Put() error {
 		return err
 	}
 	b.Modified = false
+	
+	fi, err := os.Stat(filepath.Join(b.Dir, b.Name))
+	if err != nil {
+		return err
+	}
+	
+	b.ModTime = fi.ModTime()
+	
 	return nil
 }
 
@@ -710,6 +732,19 @@ func (b *Buffer) GetLine(i int) (int, int) {
 		} else {
 			return na + nb + 1, offb
 		}
+	}
+}
+
+func (b *Buffer) CanSave() bool {
+	fi, err := os.Stat(filepath.Join(b.Dir, b.Name))
+	if err != nil {
+		return true
+	}
+
+	if fi.ModTime().Sub(b.ModTime) > 0 {
+		return false
+	} else {
+		return true
 	}
 }
 

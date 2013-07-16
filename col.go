@@ -37,12 +37,14 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 			config.TheColorScheme.TagPlain,
 			config.TheColorScheme.TagSel1,
 			config.TheColorScheme.TagSel2,
-			config.TheColorScheme.TagSel3 },
+			config.TheColorScheme.TagSel3,
+			config.TheColorScheme.TagPlain,
+			config.TheColorScheme.TagMatchingParenthesis },
 	}
 	util.Must(c.tagfr.Init(5), "Column initialization failed")
 	cwd, _ := os.Getwd()
 	var err error
-	c.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true)
+	c.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true, Wnd.Prop["indentchar"])
 	if err != nil {
 		Warn("Error opening new column: " + err.Error())
 		return c

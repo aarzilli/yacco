@@ -1,0 +1,11 @@
+#!/usr/bin/env python
+
+import os
+import sys
+
+if os.environ["bd"] == "":
+	os.exit(0)
+
+fh = file(os.environ["bd"] + "/prop", "a")
+fh.write("font=" + sys.argv[1])
+fh.close()

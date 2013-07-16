@@ -62,7 +62,7 @@ var cmds = map[string]Cmd{
 	// New
 	"Cd": CdCmd,
 	"Jobs": JobsCmd,
-	"Look!Again": func (ec ExecContext, arg string) { SpecialSendCmd(ec, "!Again") },
+	"Look!Again": LookAgainCmd,
 	"Look!Quit": func (ec ExecContext, arg string) { SpecialSendCmd(ec, "!Quit") },
 	"Paste!Primary": func (ec ExecContext, arg string) { PasteCmd(ec, arg, true) },
 	"Paste!Indent": PasteIndentCmd,
@@ -130,7 +130,7 @@ func execNoDefer(ec ExecContext, cmd string) {
 }
 
 func ExtExec(ec ExecContext, cmd string) {
-	wd := wnd.tagbuf.Dir
+	wd := Wnd.tagbuf.Dir
 	if ec.dir != "" {
 		wd = ec.dir
 	}
@@ -141,6 +141,7 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 	exitConfirmed = false
 	if ec.ed != nil {
 		ec.ed.confirmDel = false
+		ec.ed.confirmSave = false
 	}
 	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
 		return
@@ -155,7 +156,7 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE)
 		ec.br.BufferRefresh(ec.ontag)
 	}
-	wnd.wnd.SetClipboard(s)
+	Wnd.wnd.SetClipboard(s)
 }
 
 func DelCmd(ec ExecContext, arg string, confirmed bool) {
@@ -164,7 +165,7 @@ func DelCmd(ec ExecContext, arg string, confirmed bool) {
 		col := ec.ed.Column()
 		col.Remove(col.IndexOf(ec.ed))
 		removeBuffer(ec.ed.bodybuf)
-		wnd.wnd.FlushImage()
+		Wnd.wnd.FlushImage()
 	} else {
 		ec.ed.confirmDel = true
 		Warn("File " + ec.ed.bodybuf.ShortName() + " has unsaved changes")
@@ -191,8 +192,8 @@ func DelcolCmd(ec ExecContext, arg string) {
 		for _, ed := range ec.col.editors {
 			removeBuffer(ed.bodybuf)
 		}
-		wnd.cols.Remove(wnd.cols.IndexOf(ec.col))
-		wnd.wnd.FlushImage()
+		Wnd.cols.Remove(Wnd.cols.IndexOf(ec.col))
+		Wnd.wnd.FlushImage()
 	} else {
 		Warn(t)
 	}
@@ -230,6 +231,7 @@ func EditCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	if ec.ed != nil {
 		ec.ed.confirmDel = false
+		ec.ed.confirmSave = false
 	}
 	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
 		return
@@ -268,7 +270,7 @@ func JobsCmd(ec ExecContext, arg string) {
 		}
 		t += fmt.Sprintf("%d %s\n", i, job.descr)
 	}
-	Warnfull(filepath.Join(wnd.tagbuf.Dir, "+Jobs"), t)
+	Warnfull(filepath.Join(Wnd.tagbuf.Dir, "+Jobs"), t)
 }
 
 func KillCmd(ec ExecContext, arg string) {
@@ -300,11 +302,24 @@ func LookCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
+	ec.ed.confirmSave =false
 	if arg != "" {
 		lookfwd(ec.ed, []rune(arg), true)
 	} else {
 		go lookproc(ec)
 	}
+}
+
+func LookAgainCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	if ec.ed == nil {
+		return
+	}
+	if ec.ed.specialChan != nil {
+		ec.ed.specialChan <- "!Again"
+		return
+	}
+	lookfwd(ec.ed, lastNeedle, true)
 }
 
 func SpecialSendCmd(ec ExecContext, msg string)  {
@@ -313,6 +328,7 @@ func SpecialSendCmd(ec ExecContext, msg string)  {
 		return
 	}
 	ec.ed.confirmDel = false
+	ec.ed.confirmSave = false
 	ec.ed.specialChan <- msg
 }
 
@@ -347,23 +363,24 @@ func NewCmd(ec ExecContext, arg string) {
 
 func NewcolCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	wnd.cols.AddAfter(-1)
-	wnd.wnd.FlushImage()
+	Wnd.cols.AddAfter(-1)
+	Wnd.wnd.FlushImage()
 }
 
 func PasteCmd(ec ExecContext, arg string, primary bool) {
 	exitConfirmed = false
 	if ec.ed != nil {
 		ec.ed.confirmDel = false
+		ec.ed.confirmSave = false
 	}
 	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
 		return
 	}
 	var cb string
 	if primary {
-		cb = wnd.wnd.GetPrimarySelection()
+		cb = Wnd.wnd.GetPrimarySelection()
 	} else {
-		cb = wnd.wnd.GetClipboard()
+		cb = Wnd.wnd.GetClipboard()
 	}
 	ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE)
 	ec.br.BufferRefresh(ec.ontag)
@@ -373,11 +390,12 @@ func PasteIndentCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	if ec.ed != nil {
 		ec.ed.confirmDel = false
+		ec.ed.confirmSave = false
 	}
 	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
 		return
 	}
-	cb := wnd.wnd.GetClipboard()
+	cb := Wnd.wnd.GetClipboard()
 	
 	if (ec.fr.Sels[0].S == 0) || (ec.fr.Sels[0].S != ec.fr.Sels[0].E) || (ec.ed == nil) || (ec.buf != ec.ed.bodybuf) {
 		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE)
@@ -443,6 +461,14 @@ func PutCmd(ec ExecContext, arg string) {
 	if ec.ed.bodybuf.Name[0] == '+' {
 		return
 	}
+	
+	if !ec.ed.confirmSave {
+		if !ec.ed.bodybuf.CanSave() {
+			ec.ed.confirmSave = true
+			Warn(fmt.Sprintf("Put: %s changed on disk, are you sure you want to overwrite?", ec.ed.bodybuf.ShortName()))
+			return
+		}
+	}
 	err := ec.ed.bodybuf.Put()
 	if err != nil {
 		Warn(fmt.Sprintf("Put: Couldn't save %s: %s", ec.ed.bodybuf.ShortName(), err.Error()))
@@ -457,7 +483,7 @@ func PutallCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	t := "Putall: Saving the following files failed:\n"
 	nerr := 0
-	for _, col := range wnd.cols.cols {
+	for _, col := range Wnd.cols.cols {
 		for _, ed := range col.editors {
 			if (ed.bodybuf.Name[0] != '+') && ed.bodybuf.Modified {
 				err := ed.bodybuf.Put()
@@ -480,6 +506,7 @@ func RedoCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
+	ec.ed.confirmSave = false
 	ec.buf.Undo(ec.fr.Sels, true)
 	ec.br.BufferRefresh(ec.ontag)
 }
@@ -490,11 +517,12 @@ func SendCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
+	ec.ed.confirmSave = false
 	txt := []rune{}
 	if ec.ed.sfr.Fr.Sels[0].S != ec.ed.sfr.Fr.Sels[0].E {
 		txt = buf.ToRunes(ec.ed.bodybuf.SelectionX(ec.ed.sfr.Fr.Sels[0]))
 	} else {
-		txt = []rune(wnd.wnd.GetClipboard())
+		txt = []rune(Wnd.wnd.GetClipboard())
 	}
 	ec.ed.sfr.Fr.Sels[0] = util.Sel{ ec.buf.Size(), ec.buf.Size() }
 	ec.ed.bodybuf.Replace(txt, &ec.ed.sfr.Fr.Sels[0], ec.ed.sfr.Fr.Sels, true, ec.eventChan, util.EO_MOUSE)
@@ -510,7 +538,7 @@ func SortCmd(ec ExecContext, arg string) {
 	sort.Sort((*Editors)(&ec.col.editors))
 	ec.col.RecalcRects()
 	ec.col.Redraw()
-	wnd.wnd.FlushImage()
+	Wnd.wnd.FlushImage()
 }
 
 func UndoCmd(ec ExecContext, arg string) {
@@ -519,6 +547,7 @@ func UndoCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
+	ec.ed.confirmSave = false
 	ec.buf.Undo(ec.fr.Sels, false)
 	ec.br.BufferRefresh(ec.ontag)
 }
@@ -529,6 +558,7 @@ func ZeroxCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
+	ec.ed.confirmSave = false
 	ec.ed.bodybuf.RefCount++
 	ned := NewEditor(ec.ed.bodybuf, true)
 	HeuristicPlaceEditor(ned, true)
@@ -540,7 +570,8 @@ func PipeCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	wd := wnd.tagbuf.Dir
+	ec.ed.confirmSave = false
+	wd := Wnd.tagbuf.Dir
 	if ec.buf != nil {
 		wd = ec.buf.Dir
 	}
@@ -555,8 +586,9 @@ func PipeInCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
+	ec.ed.confirmSave = false
 
-	wd := wnd.tagbuf.Dir
+	wd := Wnd.tagbuf.Dir
 	if ec.buf != nil {
 		wd = ec.buf.Dir
 	}
@@ -570,8 +602,9 @@ func PipeOutCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
+	ec.ed.confirmSave = false
 
-	wd := wnd.tagbuf.Dir
+	wd := Wnd.tagbuf.Dir
 	if ec.buf != nil {
 		wd = ec.buf.Dir
 	}
@@ -584,9 +617,9 @@ func cdIntl(arg string) {
 	os.Chdir(arg)
 	wd, _ := os.Getwd()
 
-	wnd.tagbuf.Dir = wd
+	Wnd.tagbuf.Dir = wd
 
-	for _, col := range wnd.cols.cols {
+	for _, col := range Wnd.cols.cols {
 		col.tagbuf.Dir = wd
 		for _, ed := range col.editors {
 			ed.BufferRefresh(false)
@@ -599,13 +632,13 @@ func CdCmd(ec ExecContext, arg string) {
 	arg = strings.TrimSpace(arg)
 	cdIntl(arg)
 
-	wnd.GenTag()
+	Wnd.GenTag()
 
-	wnd.BufferRefresh(true)
+	Wnd.BufferRefresh(true)
 
-	wnd.cols.Redraw()
-	wnd.tagfr.Redraw(false)
-	wnd.wnd.FlushImage()
+	Wnd.cols.Redraw()
+	Wnd.tagfr.Redraw(false)
+	Wnd.wnd.FlushImage()
 }
 
 func DoCmd(ec ExecContext, arg string) {
@@ -618,10 +651,11 @@ func DoCmd(ec ExecContext, arg string) {
 
 func RenameCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	if ec.ed != nil {
+	if ec.ed == nil {
 		return
 	}
 	ec.ed.confirmDel = false
+	ec.ed.confirmSave = false
 	
 	ec.ed.bodybuf.Name = arg
 	ec.ed.bodybuf.Modified = true
@@ -645,7 +679,7 @@ func (ev *Editors) Swap(i, j int) {
 }
 
 func LookFileCmd(ec ExecContext, arg string) {
-	ed, err := EditFind(wnd.tagbuf.Dir, "+LookFile", true, true)
+	ed, err := EditFind(Wnd.tagbuf.Dir, "+LookFile", true, true)
 	if err != nil {
 		Warn(err.Error())
 		return

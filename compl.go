@@ -211,7 +211,7 @@ func ComplStart(ec ExecContext) {
 		ComplWnd = ComplWndSaved
 		ComplWnd.Move(p, complRect.Max.X, complRect.Max.Y)
 	} else {
-		ComplWnd, _ = wnd.wnd.NewTemp(p, complRect.Max.X, complRect.Max.Y)
+		ComplWnd, _ = Wnd.wnd.NewTemp(p, complRect.Max.X, complRect.Max.Y)
 		ComplWndSaved = ComplWnd
 		if ComplWnd != nil {
 			complEventLoopExit = make(chan struct{})
@@ -268,7 +268,7 @@ func getWordCompls(wd string) []string {
 		}
 		complFilter(wd, buf.Words, &r)
 	}
-	complFilter(wd, wnd.Words, &r)
+	complFilter(wd, Wnd.Words, &r)
 	complFilter(wd, tagWords, &r)
 	r = util.Dedup(r)
 	return r

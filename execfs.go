@@ -55,16 +55,12 @@ func ExecFs(ec *ExecContext, cmd string) {
 
 	default:
 		if strings.HasPrefix(cmd, "dumpdir") {
-			ec.buf.DumpDir = strings.TrimSpace(cmd[len("dumpdir "):])
+			ec.buf.DumpDir = strings.TrimSpace(cmd[len("dumpdir"):])
 		} else if strings.HasPrefix(cmd, "dump") {
-			ec.buf.DumpCmd = strings.TrimSpace(cmd[len("dump "):])
+			ec.buf.DumpCmd = strings.TrimSpace(cmd[len("dump"):])
 		} else if strings.HasPrefix(cmd, "name ") {
-			newName := strings.TrimSpace(cmd[len("name "):])
-			abspath, err := filepath.Abs(newName)
-			if err != nil {
-				Warn("Name error " + err.Error())
-				return
-			}
+			newName := strings.TrimSpace(cmd[len("name"):])
+			abspath := resolvePath(ec.buf.Dir, newName)
 			ec.buf.Name = filepath.Base(abspath)
 			ec.buf.Dir = filepath.Dir(abspath)
 			ec.br.BufferRefresh(false)

@@ -18,6 +18,7 @@ import (
 )
 
 var debug = false
+var prevInput = ""
 
 func Must(err error) {
 	if err != nil {
@@ -52,7 +53,15 @@ const (
 	ANSI_ESCAPE
 )
 
-func outputReader(stdout io.Reader, bodyfd *os.File, outbufid string, ctlfd *os.File, addrfd *os.File, xdatafd *os.File) {
+func updateDir(cmd *exec.Cmd, ctlfd io.ReadWriter) {
+	dest, err := os.Readlink(fmt.Sprintf("/proc/%d/cwd", cmd.Process.Pid))
+	if err != nil {
+		return
+	}
+	ctlfd.Write([]byte(fmt.Sprintf("name %s/+Win\n", dest)))
+}
+
+func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd *os.File, outbufid string, ctlfd *os.File, addrfd *os.File, xdatafd *os.File) {
 	bufout := bufio.NewReader(stdout)
 	bufbody := bufio.NewWriter(bodyfd)
 	escseq := []byte{}
@@ -63,6 +72,7 @@ func outputReader(stdout io.Reader, bodyfd *os.File, outbufid string, ctlfd *os.
 				log.Println("flushing1")
 			}
 			bufbody.Flush()
+			updateDir(cmd, ctlfd)
 		}
 		ch, err := bufout.ReadByte()
 		if err != nil {
@@ -93,6 +103,7 @@ func outputReader(stdout io.Reader, bodyfd *os.File, outbufid string, ctlfd *os.
 						log.Println("flushing2")
 					}
 					bufbody.Flush()
+					updateDir(cmd, ctlfd)
 				}
 			}
 		case ANSI_ESCAPE:
@@ -173,7 +184,7 @@ func readXdata(outbufid string) string {
 	return string(xdata)
 }
 
-func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, pty *os.File, outbufid string) {
+func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, bodyfd *os.File, pty *os.File, outbufid string) {
 	buf := make([]byte, 1024)
 	addrfd.Write([]byte("$"))
 	for {
@@ -202,7 +213,7 @@ func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, pty *os.File
 		Must(err)
 		_, err = strconv.Atoi(v[1])
 		Must(err)
-		_, err = strconv.Atoi(v[2])
+		flags, err := strconv.Atoi(v[2])
 		Must(err)
 		arglen, err := strconv.Atoi(v[3])
 		Must(err)
@@ -226,8 +237,27 @@ func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, pty *os.File
 
 		switch etype {
 		case 'x', 'X':
-			//TODO: look for internal commands (it's for win)
-			_, err := eventfd.Write([]byte(event))
+			if flags != 0 {
+				_, err := eventfd.Write([]byte(event))
+				Must(err)
+			} else {
+				switch arg {
+				case "Term":
+					//TODO: send sigterm
+				case "Prev":
+					if prevInput != "" {
+						bodyfd.Write([]byte(prevInput))
+						prevInput = ""
+					}
+				default:
+					bodyfd.Write([]byte(arg))
+					bodyfd.Write([]byte{ '\n' })
+					prevInput = arg
+					pty.Write([]byte(arg))
+					pty.Write([]byte{ '\n' })
+				}
+			}
+			
 			Must(err)
 		case 'l', 'L':
 			_, err := eventfd.Write([]byte(event))
@@ -253,6 +283,7 @@ func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, pty *os.File
 					if debug {
 						fmt.Printf("Sending: %s", command)
 					}
+					prevInput = command
 					pty.Write([]byte(command))
 				} else {
 					if debug {
@@ -308,12 +339,12 @@ func notifyProc(notifyChan <-chan os.Signal, endChan <-chan bool, bodyfd io.Read
 		fmt.Println("Ending")
 	}
 	bodyfd.Write([]byte("~\n"))
-	ctlfd.Write([]byte("dump "))
-	ctlfd.Write([]byte("dumpdir "))
+	ctlfd.Write([]byte("dump\n"))
+	ctlfd.Write([]byte("dumpdir\n"))
 	os.Exit(0)
 }
 
-func findWin() string {
+func findWin() (string, *os.File, *os.File) {
 	fh, err := os.Open(os.ExpandEnv("$yd/index"))
 	if err != nil {
 		log.Fatalf("Couldn't open index")
@@ -334,25 +365,34 @@ func findWin() string {
 			if err != nil {
 				continue
 			}
-			eventfd.Close()
-			return id
+			ctlfd, err := os.OpenFile(os.ExpandEnv("$yd/" + id + "/ctl"), os.O_WRONLY, 0666)
+			Must(err)
+			return id, ctlfd, eventfd
 		}
 	}
 	ctlfd, err := os.OpenFile(os.ExpandEnv("$yd/new/ctl"), os.O_RDWR, 0666)
 	Must(err)
-	defer ctlfd.Close()
 	ctlln := read(ctlfd)
 	outbufid := strings.TrimSpace(ctlln[:11])
-	return outbufid
+	eventfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/event"), os.O_RDWR, 0666)
+	Must(err)
+	return outbufid, ctlfd, eventfd
+}
+
+func easyCommand(cmd string) bool {
+	
+	for _, c := range cmd {
+		switch c {
+		case '#', ';', '&', '|', '^', '$', '=', '\'', '`', '{', '}', '(', ')', '<', '>', '[', ']', '*', '?', '~':
+			return false
+		}
+	}
+	return true
 }
 
 func main() {
-	outbufid := findWin()
-	ctlfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/ctl"), os.O_WRONLY, 0666)
-	Must(err)
+	outbufid, ctlfd, eventfd := findWin()
 	bodyfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/body"), os.O_WRONLY, 0666)
-	Must(err)
-	eventfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/event"), os.O_RDWR, 0666)
 	Must(err)
 	addrfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/addr"), os.O_WRONLY, 0666)
 	Must(err)
@@ -362,22 +402,37 @@ func main() {
 	_, err = ctlfd.Write([]byte("name +Win\n"))
 	Must(err)
 	
-	_, err = ctlfd.Write([]byte("dump " + strings.Join(os.Args, " ")))
+	_, err = ctlfd.Write([]byte("dump " + strings.Join(os.Args, " ") + "\n"))
 	Must(err)
 	wd, _ := os.Getwd()
-	_, err = ctlfd.Write([]byte("dumpdir " + wd))
-
+	_, err = ctlfd.Write([]byte("dumpdir " + wd + "\n"))
+	
+	
 	var cmd *exec.Cmd
 	if len(os.Args) > 1 {
-		cmd = exec.Command("/bin/bash", "-c", strings.Join(os.Args[1:], " "))
+		cmdstr := strings.Join(os.Args[1:], " ")
+		if easyCommand(cmdstr) {
+			vcmdstr := strings.Split(cmdstr, " ")
+			cmd = exec.Command(vcmdstr[0], vcmdstr[1:]...)
+		} else {
+			cmd = exec.Command("/bin/sh", "-c",  cmdstr)
+		}
 	} else {
-		cmd = exec.Command("/bin/bash")
+		shell := os.Getenv("yaccoshell")
+		if shell == "" {
+			shell = os.Getenv("SHELL")
+		}
+		if shell == "" {
+			shell = "/bin/bash"
+		}
+
+		cmd = exec.Command(shell)
 	}
 
 	pty := run(cmd)
 
-	go eventReader(eventfd, ctlfd, addrfd, pty, outbufid)
-	go outputReader(pty, bodyfd, outbufid, ctlfd, addrfd, xdatafd)
+	go eventReader(eventfd, ctlfd, addrfd, bodyfd, pty, outbufid)
+	go outputReader(cmd, pty, bodyfd, outbufid, ctlfd, addrfd, xdatafd)
 
 	if debug {
 		fmt.Println("Waiting for command to finish")

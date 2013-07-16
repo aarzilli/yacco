@@ -288,6 +288,15 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 // Tracks the mouse position, selecting text, the events channel is from go.wde
 // kind is 1 for character by character selection, 2 for word by word selection, 3 for line by line selection
 func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interface{}) *wde.MouseUpEvent {
+	if (idx < 0) || (idx >= len(fr.Sels)) {
+		for ei := range events {
+			switch e := ei.(type) {
+			case wde.MouseUpEvent:
+				return &e
+			}
+		}
+	}
+
 	fix := fr.Sels[idx].S
 	var autoscrollTicker *time.Ticker
 	var autoscrollChan <-chan time.Time
@@ -368,6 +377,10 @@ func (fr *Frame) setSelectEx(idx, kind, start, end int, disableOther bool) {
 		}
 	}
 
+	if (idx < 0) || (idx >= len(fr.Sels)) {
+		return
+	}
+
 	if start >= end {
 		temp := start
 		start = end
@@ -444,6 +457,7 @@ func (fr *Frame) setSelectEx(idx, kind, start, end int, disableOther bool) {
 		end = e + fr.Top
 	}
 
+	
 	fr.Sels[idx].S = start
 	fr.Sels[idx].E = end
 }
@@ -607,7 +621,13 @@ func (fr *Frame) Redraw(flush bool) {
 		newline = (g.r == '\n')
 
 		// Glyph drawing
-		fr.cs[g.fontIndex].SetSrc(&fr.Colors[ssel][g.color])
+		var color *image.Uniform
+		if ssel >= len(fr.Colors) {
+			color = &fr.Colors[0][g.color]
+		} else {
+			color = &fr.Colors[ssel][g.color]
+		}
+		fr.cs[g.fontIndex].SetSrc(color)
 		mask, offset, err := fr.cs[g.fontIndex].Glyph(g.index, g.p)
 		if err != nil {
 			panic(err)

@@ -46,7 +46,7 @@ func DumpTo(dumpDest string) bool {
 	}
 	defer fh.Close()
 	enc := json.NewEncoder(fh)
-	dw := wnd.Dump()
+	dw := Wnd.Dump()
 	err = enc.Encode(dw)
 	if err != nil {
 		Warn("Could not write to dump file " + dumpDest + " error: " + err.Error())
@@ -75,15 +75,15 @@ func LoadFrom(dumpDest string) bool {
 			fsNodefs.removeBuffer(i)
 		}
 	}
-	wnd.cols.cols = wnd.cols.cols[0:0]
+	Wnd.cols.cols = Wnd.cols.cols[0:0]
 	
 	cdIntl(dw.Wd)
 	
 	buffers = make([]*buf.Buffer, len(dw.Buffers))
 	for i, db := range dw.Buffers {
-		b, err := buf.NewBuffer(db.Dir, db.Name, true)
+		b, err := buf.NewBuffer(db.Dir, db.Name, true, Wnd.Prop["indentchar"])
 		if err != nil {
-			b, _ = buf.NewBuffer(dw.Wd, "+CouldntLoad", true)
+			b, _ = buf.NewBuffer(dw.Wd, "+CouldntLoad", true, Wnd.Prop["indentchar"])
 		}
 		b.Props = db.Props
 		if db.Text != "" {
@@ -94,10 +94,11 @@ func LoadFrom(dumpDest string) bool {
 	}
 	
 	for _, dc := range dw.Columns {
-		col := wnd.cols.AddAfter(-1)
+		col := Wnd.cols.AddAfter(-1)
 		for _, de := range dc.Editors {
 			b := buffers[de.Id]
 			ed := NewEditor(b, false)
+			b.RefCount++
 			switch de.Font {
 			case "main":
 				ed.sfr.Fr.Font = config.MainFont
@@ -116,14 +117,23 @@ func LoadFrom(dumpDest string) bool {
 	}
 	
 	for i, dc := range dw.Columns {
-		wnd.cols.cols[i].frac = dc.Frac
+		Wnd.cols.cols[i].frac = dc.Frac
 	}
 	
-	wnd.Resized()
+	Wnd.Resized()
 	
 	for _, db := range dw.Buffers {
 		if db.DumpCmd != "" {
 			NewJob(db.DumpDir, db.DumpCmd, "", &ExecContext{ }, false, nil)
+		}
+	}
+	
+	for i := range buffers {
+		if buffers[i] == nil {
+			fsNodefs.removeBuffer(i)
+		}
+		if buffers[i].RefCount == 0 {
+			fsNodefs.removeBuffer(i)
 		}
 	}
 	

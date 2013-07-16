@@ -12,7 +12,7 @@ func editOpen(path string, create bool) (*Editor, error) {
 	dir := filepath.Dir(path)
 	name := filepath.Base(path)
 
-	b, err := buf.NewBuffer(dir, name, create)
+	b, err := buf.NewBuffer(dir, name, create, Wnd.Prop["indentchar"])
 	if err != nil {
 		return nil, err
 	}
@@ -57,11 +57,11 @@ func EditFind(rel2dir, path string, warp bool, create bool) (*Editor, error) {
 	dir := filepath.Dir(abspath)
 	name := filepath.Base(abspath)
 
-	for _, col := range wnd.cols.cols {
+	for _, col := range Wnd.cols.cols {
 		for _, ed := range col.editors {
 			if (ed.bodybuf.Name == name) && (ed.bodybuf.Dir == dir) {
 				if ed.frac < 0.5 {
-					wnd.GrowEditor(col, ed, nil)
+					Wnd.GrowEditor(col, ed, nil)
 				}
 				if warp {
 					ed.Warp()
@@ -86,14 +86,14 @@ func HeuristicOpen(path string, warp bool, create bool) (*Editor, error) {
 }
 
 func HeuristicPlaceEditor(ed *Editor, warp bool) {
-	if len(wnd.cols.cols) == 0 {
-		wnd.cols.AddAfter(-1)
+	if len(Wnd.cols.cols) == 0 {
+		Wnd.cols.AddAfter(-1)
 	}
 
 	var col *Col = nil
 
 	if ed.bodybuf.Name[0] == '+' {
-		col = wnd.cols.cols[len(wnd.cols.cols)-1]
+		col = Wnd.cols.cols[len(Wnd.cols.cols)-1]
 	} else {
 		if activeEditor != nil {
 			activeCol := activeEditor.Column()
@@ -103,7 +103,7 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 		}
 
 		if col == nil {
-			col = wnd.cols.cols[0]
+			col = Wnd.cols.cols[0]
 		}
 	}
 
@@ -119,9 +119,9 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 	}
 
 	col.AddAfter(ed, col.IndexOf(ted), 0.5)
-	wnd.cols.RecalcRects()
+	Wnd.cols.RecalcRects()
 	col.Redraw()
-	wnd.wnd.FlushImage()
+	Wnd.wnd.FlushImage()
 	if warp {
 		ed.Warp()
 	}
@@ -129,7 +129,7 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 
 
 func Warnfull(bufname, msg string) {
-	ed, err := EditFind(wnd.tagbuf.Dir, bufname, false, true)
+	ed, err := EditFind(Wnd.tagbuf.Dir, bufname, false, true)
 	if err != nil {
 		fmt.Printf("Warn: %s (additionally error %s while displaying this warning)\n", msg, err.Error())
 	} else {

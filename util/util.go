@@ -156,6 +156,10 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 					scheduleMouseEvent(e)
 
 				case wde.MouseDownEvent:
+					if e.Which == 0 {
+						break
+					}
+
 					fixButton(&e.Which, e.Modifiers)
 					switch e.Which {
 					case wde.WheelUpButton:
@@ -189,6 +193,9 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 					}
 
 				case wde.MouseUpEvent:
+					if e.Which == 0 {
+						break
+					}
 					fixButton(&e.Which, e.Modifiers)
 					out <- e
 

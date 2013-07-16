@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"strconv"
+	"time"
 	"yacco/util"
 	"yacco/buf"
 	"yacco/edit"
@@ -24,6 +25,7 @@ type Window struct {
 	tagbuf *buf.Buffer
 	Lock sync.Mutex // fuck it, we don't need no performance!
 	Words []string
+	Prop map[string]string
 }
 
 type LogicalPos struct {
@@ -76,6 +78,8 @@ var activeEditor *Editor = nil
 var HasFocus = true
 
 func (w *Window) Init(width, height int) (err error) {
+	w.Prop = make(map[string]string)
+	w.Prop["indentchar"] = "\t"
 	w.Words = []string{}
 	w.wnd, err = wde.NewWindow(width, height)
 	if err != nil {
@@ -94,11 +98,13 @@ func (w *Window) Init(width, height int) (err error) {
 			config.TheColorScheme.TagPlain,
 			config.TheColorScheme.TagSel1,
 			config.TheColorScheme.TagSel2,
-			config.TheColorScheme.TagSel3 },
+			config.TheColorScheme.TagSel3,
+			config.TheColorScheme.TagPlain,
+			config.TheColorScheme.TagMatchingParenthesis },
 	}
 
 	cwd, _ := os.Getwd()
-	w.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true)
+	w.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true, Wnd.Prop["indentchar"])
 	util.Must(err, "Editor initialization failed")
 	util.Must(w.tagfr.Init(5), "Editor initialization failed")
 
@@ -136,7 +142,7 @@ func (w *Window) padDraw(screen draw.Image) {
 	drawingFuncs.DrawFillSrc(screen, screen.Bounds().Intersect(pad), &config.TheColorScheme.WindowBG)
 
 	pad.Max.X = SCROLL_WIDTH
-	pad.Max.Y = TagHeight(&wnd.tagfr)
+	pad.Max.Y = TagHeight(&Wnd.tagfr)
 	drawingFuncs.DrawFillSrc(screen, screen.Bounds().Intersect(pad), &config.TheColorScheme.TagPlain[0])
 }
 
@@ -169,11 +175,11 @@ func eventUnion(a <- chan interface{}, b <- chan interface{}) (<- chan interface
 }
 
 func (w *Window) EventLoop() {
-	events := eventUnion(util.FilterEvents(wnd.wnd.EventChan(), config.AltingList, config.KeyConversion), sideChan)
+	events := eventUnion(util.FilterEvents(Wnd.wnd.EventChan(), config.AltingList, config.KeyConversion), sideChan)
 	var lastWhere image.Point
 	for ei := range events {
 		runtime.Gosched()
-		wnd.Lock.Lock()
+		Wnd.Lock.Lock()
 		switch e := ei.(type) {
 		case wde.CloseEvent:
 			HideCompl("close event")
@@ -181,12 +187,12 @@ func (w *Window) EventLoop() {
 
 		case wde.ResizeEvent:
 			HideCompl("resize event")
-			wnd.Resized()
+			Wnd.Resized()
 
 		case wde.MouseMovedEvent:
 			HideCompl("mouse moved")
 			lastWhere = e.Where
-			wnd.SetTick(e.Where)
+			Wnd.SetTick(e.Where)
 
 		case util.MouseDownEvent:
 			HideCompl("mouse down")
@@ -248,16 +254,15 @@ func (w *Window) EventLoop() {
 			}
 
 		case wde.MouseExitedEvent:
-			wnd.HideAllTicks()
+			Wnd.HideAllTicks()
 
 		case wde.MouseEnteredEvent:
 			HideCompl("mouse entered")
 			lastWhere = e.Where
-			wnd.SetTick(e.Where)
+			Wnd.SetTick(e.Where)
 
 		case wde.KeyTypedEvent:
 			lp := w.TranslatePosition(lastWhere, true)
-
 			w.Type(lp, e)
 
 		case WarnMsg:
@@ -295,7 +300,7 @@ func (w *Window) EventLoop() {
 		case ExecFsMsg:
 			ExecFs(e.ec, e.cmd)
 		}
-		wnd.Lock.Unlock()
+		Wnd.Lock.Unlock()
 	}
 }
 
@@ -462,7 +467,7 @@ loop:
 		case wde.MouseDraggedEvent:
 			endPos = e.Where
 
-			if !endPos.In(wnd.cols.r) {
+			if !endPos.In(Wnd.cols.r) {
 				break
 			}
 
@@ -577,9 +582,9 @@ func (w *Window) ColResize(col *Col, e util.MouseDownEvent, events <-chan interf
 	endPos := startPos
 
 	var before *Col
-	bidx := wnd.cols.IndexOf(col)-1
+	bidx := Wnd.cols.IndexOf(col)-1
 	if bidx >= 0 {
-		before = wnd.cols.cols[bidx]
+		before = Wnd.cols.cols[bidx]
 	}
 
 loop:
@@ -612,9 +617,9 @@ loop:
 					col.frac = 0
 				}
 
-				wnd.cols.RecalcRects()
-				wnd.cols.Redraw()
-				wnd.wnd.FlushImage()
+				Wnd.cols.RecalcRects()
+				Wnd.cols.Redraw()
+				Wnd.wnd.FlushImage()
 			}
 		}
 	}
@@ -632,7 +637,7 @@ func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
 		ec.eventChan = ec.ed.eventChan
 		ec.dir = ec.ed.bodybuf.Dir
 	} else {
-		ec.dir = wnd.tagbuf.Dir
+		ec.dir = Wnd.tagbuf.Dir
 	}
 
 	// commands executed with a keybinding always have the focused thing as the context
@@ -678,7 +683,7 @@ func (lp *LogicalPos) bufferRefreshable() BufferRefreshable {
 	} else if lp.col != nil {
 		return lp.col
 	} else {
-		return &wnd
+		return &Wnd
 	}
 }
 
@@ -712,7 +717,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			} else if (lp.col != nil) {
 				lp.col.BufferRefresh(true)
 			} else {
-				wnd.BufferRefresh(true)
+				Wnd.BufferRefresh(true)
 			}
 			cmd := string(lp.tagbuf.SelectionRunes(lp.tagfr.Sels[1]))
 			Exec(ec, cmd)
@@ -817,9 +822,12 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		}
 		if (ec.ed != nil) && (ec.ed.specialChan != nil) {
 			tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size() })))
-			ec.ed.specialChan <- "T" + tagstr
+			select {
+			case ec.ed.specialChan <- "T" + tagstr:
+			case <- time.After(1 * time.Second):
+				Warn("Couldn't send to specialChan")
+			}
 		}
-
 	}
 }
 
@@ -905,6 +913,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 				s := lp.bodybuf.Tonl(sel.S-1, -1)
 				e := lp.bodybuf.Tonl(sel.S, +1)
 				lp.sfr.Fr.SetSelect(idx, 1, s, e)
+				lp.sfr.Fr.Sels[0] = util.Sel{ s, s }
 				lp.sfr.Redraw(true)
 			}
 		}
@@ -930,6 +939,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 				}
 				e := lp.tagbuf.Tospc(sel.S, +1)
 				lp.tagfr.SetSelect(idx, 1, s, e)
+				lp.tagfr.Sels[0] = util.Sel{ s, s }
 				lp.tagfr.Redraw(true)
 			}
 		}
@@ -967,7 +977,7 @@ func (w *Window) GenTag() {
 }
 
 func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, events <-chan interface{}) (*wde.MouseUpEvent, bool) {
-	if (b == nil) || (fr == nil) || (e.Count != 2) {
+	if (b == nil) || (fr == nil) || (e.Count != 2) || (e.Which == 0) {
 		return nil, false
 	}
 	
@@ -980,7 +990,15 @@ func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, 
 	
 	match := b.Topmatch(sel.S, +1)
 	if match < 0 {
-		return nil, false
+		if sel.S > 1 {
+			match = b.Topmatch(sel.S-1, +1)
+			if match < 0 {
+				return nil, false
+			}
+			match -= 1
+		} else {
+			return nil, false
+		}
 	}
 	
 	sel.E = match+1

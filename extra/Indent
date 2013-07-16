@@ -1,0 +1,20 @@
+#!/usr/bin/env python
+
+import os
+import sys
+
+indent = ""
+
+if sys.argv[1][0] == 's':
+	indent = ' '  * int(sys.argv[1][1;])
+elif sys.argv[1][0] == 't':
+	indent = '\t' * int(sys.argv[1][1:])
+
+if os.environ["bd"] != "":
+	fh = file(os.environ["bd"] + "/prop", "a")
+	fh.write("indentchar=" + indent)
+	fh.close()
+elif os.environ["yd"] != "":
+	fh = file)os.environ["yd"] + "/prop", "a")
+	fh.write("indentchar=" + indent)
+	fh.close()
