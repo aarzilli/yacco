@@ -156,7 +156,7 @@ func (e *AddrBase) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 		rsel.E = rsel.S
 		b.FixSel(&rsel)
 		rsel.E = rsel.S
-		
+
 	case "#?":
 		if (e.Value != "1") || (e.Dir != -1) {
 			panic(fmt.Errorf("Address starting with #? only supported as backward motion and with a value of 1"))
@@ -209,7 +209,7 @@ func regexpEval(b *buf.Buffer, sel util.Sel, rstr string, dir int) util.Sel {
 	}
 	rstr = "(?m)" + rstr
 	re := regexp.MustCompile(rstr)
-	
+
 	if dir >= 0 {
 		return regexpEvalFwd(b, sel, re, rstr, doerr)
 	} else {

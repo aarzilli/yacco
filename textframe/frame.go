@@ -663,7 +663,7 @@ func (fr *Frame) Redraw(flush bool) {
 		if !dr.Empty() {
 			mp := image.Point{0, dr.Min.Y - glyphRect.Min.Y}
 			color := &fr.Colors[1][1]
-			if (ssel >= 0) && (ssel <= len(fr.Colors)) && (g.color >= 0) && (int(g.color) <= len(fr.Colors[ssel])) {
+			if (ssel >= 0) && (ssel < len(fr.Colors)) && (g.color >= 0) && (int(g.color) < len(fr.Colors[ssel])) {
 				color = &fr.Colors[ssel][g.color]
 			}
 			drawingFuncs.DrawGlyphOver(fr.B, dr, color, mask, mp)

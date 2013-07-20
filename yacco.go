@@ -24,7 +24,7 @@ func realmain() {
 
 	Wnd.cols.AddAfter(-1)
 	Wnd.cols.AddAfter(-1)
-	
+
 	wd, _ := os.Getwd()
 
 	for _, arg := range os.Args[1:] {
@@ -48,7 +48,7 @@ func main() {
 	sideChan = make(chan interface{}, 5)
 
 	FsInit()
-	
+
 	ec := ExecContext{ }
 	for _, initStr := range config.Initialization {
 		Exec(ec, initStr)

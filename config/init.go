@@ -2,5 +2,5 @@ package config
 
 var Initialization = []string{
 	`Macro Fs
-		Edit ,s/\s+$//g`,
+		Edit ,s/[ \t]+$//g`,
 }
