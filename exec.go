@@ -70,11 +70,15 @@ var cmds = map[string]Cmd{
 	"Rename": RenameCmd,
 }
 
+var macros = map[string]Cmd{ }
+
 var spacesRe = regexp.MustCompile("\\s+")
 var exitConfirmed = false
 
 func init() {
-	cmds["Do"] = DoCmd // this would otherwise cause an initialization loop
+	// this would otherwise cause an initialization loop
+	cmds["Do"] = DoCmd 
+	cmds["Macro"] = MacroCmd
 	cmds["LookFile"] = LookFileCmd
 	cmds["Load"] = LoadCmd
 }
@@ -88,7 +92,13 @@ func IntlCmd(cmd string) (Cmd, string, bool) {
 		return cmds[cmd[:1]], cmd[1:], true
 	} else {
 		v := spacesRe.Split(cmd, 2)
-		if f, ok := cmds[v[0]]; ok {
+		if f, ok := macros[v[0]]; ok {
+			arg := ""
+			if len(v) > 1 {
+				arg = v[1]
+			}
+			return f, arg, true
+		} else if f, ok := cmds[v[0]]; ok {
 			arg := ""
 			if len(v) > 1 {
 				arg = v[1]
@@ -644,9 +654,25 @@ func CdCmd(ec ExecContext, arg string) {
 
 func DoCmd(ec ExecContext, arg string) {
 	cmds := strings.Split(arg, "\n")
-	//TODO: (Do command) check the first line for function definition
 	for _, cmd := range cmds {
 		execNoDefer(ec, cmd)
+	}
+}
+
+func MacroCmd(ec ExecContext, arg string) {
+	cmds := strings.Split(arg, "\n")
+	if len(cmds) <= 0 {
+		return
+	}
+	
+	
+	name := strings.TrimSpace(cmds[0])
+	cmds = cmds[1:]
+	
+	macros[name] = func(ec ExecContext, arg string) {
+		for _, cmd := range cmds {
+			execNoDefer(ec, cmd)
+		}
 	}
 }
 

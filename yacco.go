@@ -6,6 +6,7 @@ import (
 	"yacco/util"
 	"yacco/buf"
 	"yacco/edit"
+	"yacco/config"
 	"github.com/skelterjohn/go.wde"
 	_ "github.com/skelterjohn/go.wde/init"
 )
@@ -47,6 +48,11 @@ func main() {
 	sideChan = make(chan interface{}, 5)
 
 	FsInit()
+	
+	ec := ExecContext{ }
+	for _, initStr := range config.Initialization {
+		Exec(ec, initStr)
+	}
 
 	go realmain()
 	wde.Run()

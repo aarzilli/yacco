@@ -232,7 +232,26 @@ func regexpEvalFwd(b *buf.Buffer, sel util.Sel, re *regexp.Regexp, rstr string, 
 }
 
 func regexpEvalBwd(b *buf.Buffer, sel util.Sel, re *regexp.Regexp, rstr string, doerr bool) util.Sel {
-	panic(fmt.Errorf("Backward search regular expressions not implemented"))
+	// XXX Awfully inefficient but I don't want to implement a regexp engine
+	s := 0
+	p := sel.S
+	found := false
+	for {
+		loc := re.FindReaderIndex(b.ReaderFrom(s, b.Size()))
+		if loc == nil {
+			if !found && doerr {
+				panic(fmt.Errorf("No match found for: %s", rstr))
+			}
+			return sel
+		} else {
+			found = true
+			if loc[0] + s > p {
+				return sel
+			}
+			sel.S = loc[0] + s
+			sel.E = loc[1] + s
+		}
+	}
 }
 
 type AddrList struct {
