@@ -5,6 +5,19 @@ import sys
 
 indent = ""
 
+if sys.argv[1] == "off":
+	fh = file(os.environ["bd"] + "/prop", "a")
+	fh.write("indent=off")
+	fh.close()
+	exit()
+
+fh = file(os.environ["bd"] + "/prop", "a")
+fh.write("indent=on")
+fh.close()
+
+if sys.argv[1] == "on":
+	exit()
+
 if sys.argv[1][0] == 's':
 	indent = ' '  * int(sys.argv[1][1;])
 elif sys.argv[1][0] == 't':

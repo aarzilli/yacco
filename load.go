@@ -51,8 +51,15 @@ func Load(ec ExecContext, origin int) {
 			e := matches[1] + start
 
 			//println("match:", s, e, origin)
+			
+			ok := false
+			if origin < 0 {
+				ok = (s == ec.fr.Sels[2].S) && (e == ec.fr.Sels[2].E)
+			} else {
+				ok = (s <= origin) && (origin <= e)
+			}
 
-			if (s <= origin) && (origin <= e) {
+			if ok {
 				strmatches := []string{}
 				for i := 0; 2*i+1 < len(matches); i++ {
 					s := matches[2*i] + start

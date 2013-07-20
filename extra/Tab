@@ -5,5 +5,5 @@ import sys
 
 if os.environ["bd"] != "":
 	fh = file(os.environ["bd"] + "/prop", "a")
-	fh.write("tab=" + os.argv[1])
+	fh.write("tab=" + sys.argv[1])
 	fh.close()

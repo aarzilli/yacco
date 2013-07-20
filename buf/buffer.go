@@ -39,7 +39,12 @@ type Buffer struct {
 	ul undoList
 	
 	lock sync.RWMutex
+	hlock sync.Mutex
 	ReadersPleaseStop bool
+	
+	DisplayLines int
+	lastCleanHl int
+	HighlightChan chan *Buffer
 	
 	RefCount int
 	
@@ -76,6 +81,8 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 		return nil, fmt.Errorf("Not a directory: %s", dir)
 	}
 
+	b.lastCleanHl = -1
+	
 	if name[0] != '+' {
 		err := b.Reload([]util.Sel{}, create)
 		if err != nil {
@@ -87,7 +94,7 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 	b.Props["indentchar"] = indentchar
 	b.Props["font"] = "main"
 	b.Props["indent"] = "on"
-	b.Props["tab"] = "4"
+	b.Props["tab"] = "8"
 
 	return b, nil
 }
@@ -166,7 +173,7 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel, solid bool
 	b.replaceIntl(text, sel, sels)
 	updateSels(sels, sel, len(text))
 
-	b.hlFrom(sel.S-1)
+	b.Highlight(sel.S-1, false)
 	b.unlock()
 
 	sel.S = sel.S + len(text)
@@ -233,7 +240,7 @@ func (b *Buffer) Undo(sels []util.Sel, redo bool) {
 		b.replaceIntl(text, &ws, sels)
 		updateSels(sels, &ws, len(text))
 
-		b.hlFrom(ws.S-1)
+		b.Highlight(ws.S-1, false)
 
 		b.unlock()
 
@@ -275,8 +282,12 @@ func (b *Buffer) unlock() {
 	b.lock.Unlock()
 }
 
-func (b *Buffer) hlFrom(s int) {
-	//TODO: start highlighter at s (needs how many lines to do?)
+func (b *Buffer) Highlight(start int, full bool) {
+	if (len(b.Name) == 0) || (b.Name[0] == '+') || (b.DisplayLines == 0) {
+		return
+	}
+	
+	go b.highlightIntl(start, full)
 }
 
 // Replaces text between sel.S and sel.E with text, updates selections in sels except sel itself
@@ -789,6 +800,3 @@ func ToRunes(v []textframe.ColorRune) []rune {
 	}
 	return r
 }
-
-
-

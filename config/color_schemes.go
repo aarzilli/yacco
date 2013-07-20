@@ -43,11 +43,11 @@ var acmeColorScheme = ColorScheme{
 	Border: *image.Black,
 	Scrollbar: *image.NewUniform(color.RGBA{ 153, 153, 76, 0xff }),
 
-	EditorPlain: []image.Uniform{ yellowbg, *image.Black },
-	EditorSel1: []image.Uniform{ *DDarkyellow, *image.Black },
-	EditorSel2: []image.Uniform{ col2sel, yellowbg },
-	EditorSel3: []image.Uniform{ col3sel, yellowbg },
-	EditorMatchingParenthesis: []image.Uniform{ *image.Black, yellowbg },
+	EditorPlain: []image.Uniform{ yellowbg, *image.Black, *DDarkgreen, *DDarkblue },
+	EditorSel1: []image.Uniform{ *DDarkyellow, *image.Black, *DDarkgreen, *DDarkblue },
+	EditorSel2: []image.Uniform{ col2sel, yellowbg, yellowbg, yellowbg },
+	EditorSel3: []image.Uniform{ col3sel, yellowbg, yellowbg, yellowbg },
+	EditorMatchingParenthesis: []image.Uniform{ *image.Black, yellowbg, yellowbg, yellowbg },
 	Compl: []image.Uniform{ bluebg, *image.Black },
 
 	TagPlain: []image.Uniform{  bluebg, *image.Black },

@@ -73,6 +73,11 @@ type ExecFsMsg struct {
 	cmd string
 }
 
+type HighlightMsg struct {
+	b *buf.Buffer
+}
+
+var highlightChan = make(chan *buf.Buffer, 10)
 var activeSel string = ""
 var activeEditor *Editor = nil
 var HasFocus = true
@@ -157,7 +162,7 @@ func (w *Window) Resized() {
 	w.wnd.FlushImage()
 }
 
-func eventUnion(a <- chan interface{}, b <- chan interface{}) (<- chan interface{}) {
+func eventUnion(a <- chan interface{}, b <- chan interface{}, hlChan <- chan *buf.Buffer) (<- chan interface{}) {
 	out := make(chan interface{})
 
 	go func() {
@@ -167,6 +172,8 @@ func eventUnion(a <- chan interface{}, b <- chan interface{}) (<- chan interface
 				out <- v
 			case v := <- b:
 				out <- v
+			case v := <- hlChan:
+				out <- HighlightMsg{ v }
 			}
 		}
 	}()
@@ -175,7 +182,7 @@ func eventUnion(a <- chan interface{}, b <- chan interface{}) (<- chan interface
 }
 
 func (w *Window) EventLoop() {
-	events := eventUnion(util.FilterEvents(Wnd.wnd.EventChan(), config.AltingList, config.KeyConversion), sideChan)
+	events := eventUnion(util.FilterEvents(Wnd.wnd.EventChan(), config.AltingList, config.KeyConversion), sideChan, highlightChan)
 	var lastWhere image.Point
 	for ei := range events {
 		runtime.Gosched()
@@ -299,6 +306,19 @@ func (w *Window) EventLoop() {
 
 		case ExecFsMsg:
 			ExecFs(e.ec, e.cmd)
+			
+		case HighlightMsg:
+			//println("Highlight refresh")
+			HlLoop:
+			for _, col := range w.cols.cols {
+				for _, ed := range col.editors {
+					if ed.bodybuf == e.b {
+						ed.refreshIntl()
+						ed.sfr.Redraw(true)
+						break HlLoop
+					}
+				}
+			}
 		}
 		Wnd.Lock.Unlock()
 	}
@@ -825,7 +845,6 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			select {
 			case ec.ed.specialChan <- "T" + tagstr:
 			case <- time.After(1 * time.Second):
-				Warn("Couldn't send to specialChan")
 			}
 		}
 	}

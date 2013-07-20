@@ -61,7 +61,7 @@ func updateDir(cmd *exec.Cmd, ctlfd io.ReadWriter) {
 	ctlfd.Write([]byte(fmt.Sprintf("name %s/+Win\n", dest)))
 }
 
-func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd *os.File, outbufid string, ctlfd *os.File, addrfd *os.File, xdatafd *os.File) {
+func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd *os.File, outbufid string, ctlfd *os.File, addrfd *os.File, xdatafd *os.File, outputReaderDone chan struct{}) {
 	bufout := bufio.NewReader(stdout)
 	bufbody := bufio.NewWriter(bodyfd)
 	escseq := []byte{}
@@ -80,6 +80,7 @@ func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd *os.File, outbufid str
 				fmt.Println("Exit output reader with error: " + err.Error())
 			}
 			bufbody.Flush()
+			close(outputReaderDone)
 			return
 		}
 
@@ -103,7 +104,7 @@ func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd *os.File, outbufid str
 						log.Println("flushing2")
 					}
 					bufbody.Flush()
-					updateDir(cmd, ctlfd)
+					//updateDir(cmd, ctlfd)
 				}
 			}
 		case ANSI_ESCAPE:
@@ -244,7 +245,7 @@ func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, bodyfd *os.F
 				switch arg {
 				case "Term":
 					//TODO: send sigterm
-				case "Prev":
+				case "Win!Prev":
 					if prevInput != "" {
 						bodyfd.Write([]byte(prevInput))
 						prevInput = ""
@@ -344,7 +345,7 @@ func notifyProc(notifyChan <-chan os.Signal, endChan <-chan bool, bodyfd io.Read
 	os.Exit(0)
 }
 
-func findWin() (string, *os.File, *os.File) {
+func findWin() (string, *os.File, *os.File, bool) {
 	fh, err := os.Open(os.ExpandEnv("$yd/index"))
 	if err != nil {
 		log.Fatalf("Couldn't open index")
@@ -367,7 +368,7 @@ func findWin() (string, *os.File, *os.File) {
 			}
 			ctlfd, err := os.OpenFile(os.ExpandEnv("$yd/" + id + "/ctl"), os.O_WRONLY, 0666)
 			Must(err)
-			return id, ctlfd, eventfd
+			return id, ctlfd, eventfd, true
 		}
 	}
 	ctlfd, err := os.OpenFile(os.ExpandEnv("$yd/new/ctl"), os.O_RDWR, 0666)
@@ -376,7 +377,7 @@ func findWin() (string, *os.File, *os.File) {
 	outbufid := strings.TrimSpace(ctlln[:11])
 	eventfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/event"), os.O_RDWR, 0666)
 	Must(err)
-	return outbufid, ctlfd, eventfd
+	return outbufid, ctlfd, eventfd, false
 }
 
 func easyCommand(cmd string) bool {
@@ -391,7 +392,7 @@ func easyCommand(cmd string) bool {
 }
 
 func main() {
-	outbufid, ctlfd, eventfd := findWin()
+	outbufid, ctlfd, eventfd, preexisting := findWin()
 	bodyfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/body"), os.O_WRONLY, 0666)
 	Must(err)
 	addrfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/addr"), os.O_WRONLY, 0666)
@@ -407,6 +408,11 @@ func main() {
 	wd, _ := os.Getwd()
 	_, err = ctlfd.Write([]byte("dumpdir " + wd + "\n"))
 	
+	if preexisting {
+		_, err = addrfd.Write([]byte(","))
+		Must(err)
+		xdatafd.Write([]byte{ 0 })
+	}
 	
 	var cmd *exec.Cmd
 	if len(os.Args) > 1 {
@@ -431,8 +437,9 @@ func main() {
 
 	pty := run(cmd)
 
+	outputReaderDone := make(chan struct{})
 	go eventReader(eventfd, ctlfd, addrfd, bodyfd, pty, outbufid)
-	go outputReader(cmd, pty, bodyfd, outbufid, ctlfd, addrfd, xdatafd)
+	go outputReader(cmd, pty, bodyfd, outbufid, ctlfd, addrfd, xdatafd, outputReaderDone)
 
 	if debug {
 		fmt.Println("Waiting for command to finish")
@@ -444,6 +451,9 @@ func main() {
 	go notifyProc(notifyChan, endChan, bodyfd, ctlfd)
 
 	cmd.Wait()
+	
+	<- outputReaderDone
+	
 	endChan <- true
 	if debug {
 		log.Printf("Finished")

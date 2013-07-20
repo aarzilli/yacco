@@ -34,7 +34,7 @@ func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 		Colors: [][]image.Uniform{ 
 			config.TheColorScheme.Compl,
 			config.TheColorScheme.Compl },
-		TabWidth: 4,
+		TabWidth: 8,
 		Wnd: nil,
 		Scroll: func(sd, n int) { },
 		Top: 0,

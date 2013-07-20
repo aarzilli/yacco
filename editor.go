@@ -50,9 +50,12 @@ func scrollfn(e *Editor, sd int, sl int) {
 	}
 
 	sz := e.bodybuf.Size()
+	
+	e.bodybuf.Rdlock()
+	defer e.bodybuf.Rdunlock()
 	a, b := e.bodybuf.Selection(util.Sel{e.top, sz})
-
-	//TODO: start full hl from the last known clean position
+	
+	e.bodybuf.Highlight(-1, true)
 
 	e.sfr.Set(e.top, sz)
 	e.sfr.Fr.Clear()
@@ -139,6 +142,8 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
 	sfrr.Max.X -= 2
 	//sfrr.Max.Y -= 1
 	e.sfr.SetRects(b, sfrr)
+	
+	e.bodybuf.DisplayLines = int(float64(sfrr.Max.Y - sfrr.Min.Y) / float64(e.sfr.Fr.Font.LineHeight()))
 
 	e.sfr.Fr.Clear()
 	ba, bb := e.bodybuf.Selection(util.Sel{ e.top, e.bodybuf.Size() })
@@ -162,6 +167,8 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
 	e.rhandle.Max.X = e.rhandle.Min.X + SCROLL_WIDTH
 	e.rhandle.Max.Y = e.tagfr.R.Max.Y
 	e.rhandle = e.r.Intersect(e.rhandle)
+	
+	e.bodybuf.Highlight(-1, true)
 }
 
 func (e *Editor) MinHeight() int {
@@ -257,6 +264,9 @@ func (e *Editor) GenTag() {
 func (e *Editor) refreshIntl() {
 	e.sfr.Fr.Clear()
 	e.sfr.Set(e.top, e.bodybuf.Size())
+	
+	e.bodybuf.Rdlock()
+	defer e.bodybuf.Rdunlock()
 	ba, bb := e.bodybuf.Selection(util.Sel{ e.top, e.bodybuf.Size() })
 	e.sfr.Fr.InsertColor(ba)
 	e.sfr.Fr.InsertColor(bb)

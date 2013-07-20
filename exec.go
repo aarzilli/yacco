@@ -64,6 +64,7 @@ var cmds = map[string]Cmd{
 	"Jobs": JobsCmd,
 	"Look!Again": LookAgainCmd,
 	"Look!Quit": func (ec ExecContext, arg string) { SpecialSendCmd(ec, "!Quit") },
+	"Look!Prev": func (ec ExecContext, arg string) { SpecialSendCmd(ec, "!Prev") },
 	"Paste!Primary": func (ec ExecContext, arg string) { PasteCmd(ec, arg, true) },
 	"Paste!Indent": PasteIndentCmd,
 	"Rename": RenameCmd,

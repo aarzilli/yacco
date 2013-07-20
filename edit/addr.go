@@ -202,9 +202,6 @@ func setStartSel(dir int, sel util.Sel) (rsel util.Sel) {
 }
 
 func regexpEval(b *buf.Buffer, sel util.Sel, rstr string, dir int) util.Sel {
-	if dir < 0 {
-		panic(fmt.Errorf("Backward search regular expressions not implemented"))
-	}
 	doerr := true
 	if rstr[0] == '@' {
 		rstr = rstr[1:]
@@ -212,6 +209,16 @@ func regexpEval(b *buf.Buffer, sel util.Sel, rstr string, dir int) util.Sel {
 	}
 	rstr = "(?m)" + rstr
 	re := regexp.MustCompile(rstr)
+	
+	if dir >= 0 {
+		return regexpEvalFwd(b, sel, re, rstr, doerr)
+	} else {
+		return regexpEvalBwd(b, sel, re, rstr, doerr)
+	}
+
+}
+
+func regexpEvalFwd(b *buf.Buffer, sel util.Sel, re *regexp.Regexp, rstr string, doerr bool) util.Sel {
 	loc := re.FindReaderIndex(b.ReaderFrom(sel.E, b.Size()))
 	if loc == nil {
 		if doerr {
@@ -222,6 +229,10 @@ func regexpEval(b *buf.Buffer, sel util.Sel, rstr string, dir int) util.Sel {
 		sel.E = sel.E + loc[1]
 	}
 	return sel
+}
+
+func regexpEvalBwd(b *buf.Buffer, sel util.Sel, re *regexp.Regexp, rstr string, doerr bool) util.Sel {
+	panic(fmt.Errorf("Backward search regular expressions not implemented"))
 }
 
 type AddrList struct {

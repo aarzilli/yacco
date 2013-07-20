@@ -151,7 +151,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	_, xIndex := fr.getIndex('x')
 	spaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, spaceIndex).AdvanceWidth) << 2
 	bigSpaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, xIndex).AdvanceWidth) << 2
-	tabWidth := bigSpaceWidth * raster.Fix32(fr.TabWidth)
+	tabWidth := spaceWidth * raster.Fix32(fr.TabWidth)
 	
 	limit.X = int(fr.ins.X >> 8)
 	limit.Y = int(fr.ins.Y >> 8)
@@ -172,7 +172,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 				fontIndex: 0,
 				index:     spaceIndex,
 				p:         fr.ins,
-				color:     crune.C,
+				color:     crune.C&0x0f,
 				width:     raster.Fix32(fr.R.Max.X<<8) - fr.ins.X - fr.margin,
 				widthy: lh }
 
@@ -192,7 +192,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 				fontIndex: 0,
 				index:     spaceIndex,
 				p:         fr.ins,
-				color:     crune.C,
+				color:     crune.C&0x0f,
 				width:     toNextCell}
 
 			fr.glyphs = append(fr.glyphs, g)
@@ -225,7 +225,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 				fontIndex: 0,
 				index:     spaceIndex,
 				p:         fr.ins,
-				color:     crune.C,
+				color:     crune.C&0x0f,
 				width:     width}
 
 			fr.glyphs = append(fr.glyphs, g)
@@ -261,7 +261,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 				fontIndex: fontIdx,
 				index:     index,
 				p:         fr.ins,
-				color:     crune.C,
+				color:     crune.C&0x0f,
 				width:     width}
 
 			fr.glyphs = append(fr.glyphs, g)
@@ -394,8 +394,11 @@ func (fr *Frame) setSelectEx(idx, kind, start, end int, disableOther bool) {
 	case 2:
 		var s, e int
 		s = start-fr.Top
-		if (s < len(fr.glyphs)) && (s >= 0) {
+		if (s <= len(fr.glyphs)) && (s >= 0) {
 			first := true
+			if s == len(fr.glyphs) {
+				s = s - 1
+			}
 			for ; s >= 0; s-- {
 				g := fr.glyphs[s].r
 				if !(unicode.IsLetter(g) || unicode.IsDigit(g) || (g == '_')) {
@@ -431,8 +434,11 @@ func (fr *Frame) setSelectEx(idx, kind, start, end int, disableOther bool) {
 	case 3:
 		var s, e int
 		s = start-fr.Top
-		if (s < len(fr.glyphs)) && (s >= 0) {
-			for s = s-1; s > 0; s-- {
+		if (s <= len(fr.glyphs)) && (s >= 0) {
+			if s == len(fr.glyphs) {
+				s = s - 1
+			}
+			for ; s > 0; s-- {
 				if fr.glyphs[s].r == '\n' {
 					s++
 					break
@@ -636,7 +642,11 @@ func (fr *Frame) Redraw(flush bool) {
 		dr := fr.R.Intersect(glyphRect)
 		if !dr.Empty() {
 			mp := image.Point{0, dr.Min.Y - glyphRect.Min.Y}
-			drawingFuncs.DrawGlyphOver(fr.B, dr, &fr.Colors[ssel][g.color], mask, mp)
+			color := &fr.Colors[1][1]
+			if (ssel >= 0) && (ssel <= len(fr.Colors)) && (g.color >= 0) && (int(g.color) <= len(fr.Colors[ssel])) {
+				color = &fr.Colors[ssel][g.color]
+			}
+			drawingFuncs.DrawGlyphOver(fr.B, dr, color, mask, mp)
 		}
 	}
 
