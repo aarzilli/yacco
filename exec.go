@@ -164,7 +164,7 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 		return
 	}
 	if del {
-		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE)
+		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE, true)
 		ec.br.BufferRefresh(ec.ontag)
 	}
 	Wnd.wnd.SetClipboard(s)
@@ -393,7 +393,7 @@ func PasteCmd(ec ExecContext, arg string, primary bool) {
 	} else {
 		cb = Wnd.wnd.GetClipboard()
 	}
-	ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE)
+	ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE, true)
 	ec.br.BufferRefresh(ec.ontag)
 }
 
@@ -409,7 +409,7 @@ func PasteIndentCmd(ec ExecContext, arg string) {
 	cb := Wnd.wnd.GetClipboard()
 	
 	if (ec.fr.Sels[0].S == 0) || (ec.fr.Sels[0].S != ec.fr.Sels[0].E) || (ec.ed == nil) || (ec.buf != ec.ed.bodybuf) {
-		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE)
+		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE, true)
 		ec.br.BufferRefresh(ec.ontag)
 		return
 	}
@@ -432,7 +432,7 @@ func PasteIndentCmd(ec ExecContext, arg string) {
 	}
 	
 	if failed {
-		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE)
+		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE, true)
 		ec.br.BufferRefresh(ec.ontag)
 		return
 	}
@@ -459,7 +459,7 @@ func PasteIndentCmd(ec ExecContext, arg string) {
 	}
 	
 	ecb := strings.Join(pasteLines, "\n")
-	ec.buf.Replace([]rune(ecb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE)
+	ec.buf.Replace([]rune(ecb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE, true)
 	ec.br.BufferRefresh(ec.ontag)
 }
 
@@ -536,7 +536,7 @@ func SendCmd(ec ExecContext, arg string) {
 		txt = []rune(Wnd.wnd.GetClipboard())
 	}
 	ec.ed.sfr.Fr.Sels[0] = util.Sel{ ec.buf.Size(), ec.buf.Size() }
-	ec.ed.bodybuf.Replace(txt, &ec.ed.sfr.Fr.Sels[0], ec.ed.sfr.Fr.Sels, true, ec.eventChan, util.EO_MOUSE)
+	ec.ed.bodybuf.Replace(txt, &ec.ed.sfr.Fr.Sels[0], ec.ed.sfr.Fr.Sels, true, ec.eventChan, util.EO_MOUSE, true)
 	ec.ed.BufferRefresh(false)
 }
 

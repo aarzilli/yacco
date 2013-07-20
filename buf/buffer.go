@@ -130,7 +130,7 @@ func (b *Buffer) Reload(sels []util.Sel, create bool) error {
 		str := string(bytes)
 		b.Words = util.Dedup(nonwdRe.Split(str, -1))
 		runes := []rune(str)
-		b.Replace(runes, &util.Sel{ 0, b.Size() }, sels, true, nil, 0)
+		b.Replace(runes, &util.Sel{ 0, b.Size() }, sels, true, nil, 0, false)
 		b.Modified = false
 		b.ul.Reset()
 	} else {
@@ -143,12 +143,13 @@ func (b *Buffer) Reload(sels []util.Sel, create bool) error {
 		}
 	}
 	
+
 	return nil
 }
 
 // Replaces text between sel.S and sel.E with text, updates sels AND sel accordingly
 // After the replacement the highlighter is restarted
-func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel, solid bool, eventChan chan string, origin util.EventOrigin) {
+func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel, solid bool, eventChan chan string, origin util.EventOrigin, dohl bool) {
 	if (!b.Editable) {
 		return
 	}
@@ -173,7 +174,9 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel, solid bool
 	b.replaceIntl(text, sel, sels)
 	updateSels(sels, sel, len(text))
 
-	b.Highlight(sel.S-1, false)
+	if dohl {
+		b.Highlight(sel.S-1, false)
+	}
 	b.unlock()
 
 	sel.S = sel.S + len(text)
@@ -240,8 +243,6 @@ func (b *Buffer) Undo(sels []util.Sel, redo bool) {
 		b.replaceIntl(text, &ws, sels)
 		updateSels(sels, &ws, len(text))
 
-		b.Highlight(ws.S-1, false)
-
 		b.unlock()
 
 		sels[0].S = ws.S
@@ -260,6 +261,7 @@ func (b *Buffer) Undo(sels []util.Sel, redo bool) {
 			}
 		}
 	}
+	b.Highlight(-1, true)
 }
 
 func (b *Buffer) Rdlock() {

@@ -55,9 +55,10 @@ func lookFileIntl(ed *Editor, ch chan string) {
 			if specialMsg == "T\n" {
 				if len(resultList) > 0 {
 					ec := ExecContext{ col: nil, ed: ed, br: ed, ontag: false, fr: &ed.sfr.Fr, buf: ed.bodybuf, eventChan: nil }
-					ed.sfr.Fr.Sels[2].S = 0
-					ed.sfr.Fr.Sels[2].E = ed.bodybuf.Tonl(ed.sfr.Fr.Sels[2].S+1, +1)
-					Load(ec, ed.sfr.Fr.Sels[2].S)
+					sideChan <- LoadMsg{ 
+							ec: &ec, 
+							s: 0, e: ed.bodybuf.Tonl(1, +1),
+							original: 0 }
 				}
 			} else {
 				needle := specialMsg[1:]
@@ -114,7 +115,7 @@ func displayResults(ed *Editor,  resultList []*lookFileResult) {
 	}
 	
 	sel := util.Sel{ 0, ed.bodybuf.Size() }
-	ed.bodybuf.Replace([]rune(t), &sel, ed.sfr.Fr.Sels, true, nil, 0)
+	ed.bodybuf.Replace([]rune(t), &sel, ed.sfr.Fr.Sels, true, nil, 0, true)
 	ed.BufferRefresh(false)
 }
 

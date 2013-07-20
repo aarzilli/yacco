@@ -290,7 +290,7 @@ func (w *Window) EventLoop() {
 				}
 			}
 			oldS := sel.S
-			e.ec.ed.bodybuf.Replace([]rune(e.txt), sel, e.ec.fr.Sels, true, e.ec.eventChan, e.origin)
+			e.ec.ed.bodybuf.Replace([]rune(e.txt), sel, e.ec.fr.Sels, true, e.ec.eventChan, e.origin, true)
 			if e.reselect {
 				sel.S = oldS
 			}
@@ -762,7 +762,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				nl += indent
 			}
 			
-			ec.buf.Replace([]rune(nl), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
+			ec.buf.Replace([]rune(nl), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD, true)
 			ec.br.BufferRefresh(ec.ontag)
 		}
 		if lp.sfr != nil {
@@ -788,7 +788,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		ec := lp.asExecContext(true)
 		if ec.buf != nil {
 			if ComplWnd != nil {
-				ec.buf.Replace([]rune(complPrefixSuffix), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
+				ec.buf.Replace([]rune(complPrefixSuffix), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD, true)
 				ec.br.BufferRefresh(ec.ontag)
 				ComplStart(ec)
 			} else {
@@ -799,7 +799,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 					tch = ec.ed.bodybuf.Props["indentchar"]
 				}
 				
-				ec.buf.Replace([]rune(tch), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
+				ec.buf.Replace([]rune(tch), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD, true)
 				ec.br.BufferRefresh(ec.ontag)
 				if (ec.ed != nil) && (ec.ed.specialChan != nil) {
 					tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size() })))
@@ -835,7 +835,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				activeEditor = ec.ed
 			}
 			if ec.buf != nil {
-				ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD)
+				ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD, true)
 				ec.br.BufferRefresh(ec.ontag)
 				ComplStart(ec)
 			}
@@ -991,7 +991,7 @@ func (w *Window) GenTag() {
 
 	t := pwd + " " + string(config.DefaultWindowTag) + usertext
 	w.tagbuf.EditableStart = -1
-	w.tagbuf.Replace([]rune(t), &w.tagfr.Sels[0], w.tagfr.Sels, true, nil, 0)
+	w.tagbuf.Replace([]rune(t), &w.tagfr.Sels[0], w.tagfr.Sels, true, nil, 0, true)
 	TagSetEditableStart(w.tagbuf)
 }
 

@@ -26,7 +26,7 @@ func inscmdfn(dir int, c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, e
 		sel.E = sel.S
 	}
 
-	b.Replace([]rune(c.txtargs[0]), &sel, sels, true, eventChan, util.EO_MOUSE)
+	b.Replace([]rune(c.txtargs[0]), &sel, sels, true, eventChan, util.EO_MOUSE, false)
 
 	sels[0] = sel
 }
@@ -38,11 +38,11 @@ func mtcmdfn(del bool, c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, e
 	txt := buf.ToRunes(b.SelectionX(selfrom))
 
 	if selto > selfrom.E {
-		b.Replace(txt, &util.Sel{ selto, selto }, sels, true, eventChan, util.EO_MOUSE)
-		b.Replace([]rune{}, &selfrom, sels, false, eventChan, util.EO_MOUSE)
+		b.Replace(txt, &util.Sel{ selto, selto }, sels, true, eventChan, util.EO_MOUSE, false)
+		b.Replace([]rune{}, &selfrom, sels, false, eventChan, util.EO_MOUSE, true)
 	} else {
-		b.Replace([]rune{}, &selfrom, sels, true, eventChan, util.EO_MOUSE)
-		b.Replace(txt, &util.Sel{ selto, selto }, sels, false, eventChan, util.EO_MOUSE)
+		b.Replace([]rune{}, &selfrom, sels, true, eventChan, util.EO_MOUSE, false)
+		b.Replace(txt, &util.Sel{ selto, selto }, sels, false, eventChan, util.EO_MOUSE, true)
 	}
 }
 
@@ -66,25 +66,35 @@ func eqcmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan c
 
 func scmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
 	sel := c.rangeaddr.Eval(b, atsel)
-	re := regexp.MustCompile(c.txtargs[0])
+	re := regexp.MustCompile("(?m)" + c.txtargs[0])
 	subs := []rune(c.txtargs[1])
 	end := sel.E
 	first := true
+	count := 0
 	for {
+		psel := sel.S
 		br := b.ReaderFrom(sel.S, end)
 		loc := re.FindReaderIndex(br)
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}
 		sel = util.Sel{ loc[0] + sel.S, loc[1] + sel.S }
-		b.Replace(subs, &sel, sels, first, eventChan, util.EO_MOUSE)
+		b.Replace(subs, &sel, sels, first, eventChan, util.EO_MOUSE, false)
+		if sel.S != psel {
+			count++
+		} else {
+			count = 0
+		}
+		if count > 100 {
+			panic("s Loop got stuck")
+		}
 		first = false
 	}
 }
 
 func xcmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
 	sel := c.rangeaddr.Eval(b, atsel)
-	re := regexp.MustCompile(c.txtargs[0])
+	re := regexp.MustCompile("(?m)" + c.txtargs[0])
 	end := sel.E
 	count := 0
 	for {
@@ -114,7 +124,7 @@ func xcmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan ch
 
 func ycmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
 	sel := c.rangeaddr.Eval(b, atsel)
-	re := regexp.MustCompile(c.txtargs[0])
+	re := regexp.MustCompile("(?m)" + c.txtargs[0])
 	end := sel.E
 	count := 0
 	for {
@@ -141,7 +151,7 @@ func ycmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan ch
 func gcmdfn(inv bool, c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
 	sel := c.rangeaddr.Eval(b, atsel)
 	rr := b.ReaderFrom(sel.S, sel.E)
-	re := regexp.MustCompile(c.txtargs[0])
+	re := regexp.MustCompile("(?m)" + c.txtargs[0])
 	loc := re.FindReaderIndex(rr)
 	if loc == nil {
 		if inv {
@@ -159,7 +169,7 @@ func pipeincmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventCh
 	NewJob(b.Dir, c.bodytxt, "", resultChan)
 	str := <- resultChan
 	sel := c.rangeaddr.Eval(b, atsel)
-	b.Replace([]rune(str), &sel, sels, true, eventChan, util.EO_MOUSE)
+	b.Replace([]rune(str), &sel, sels, true, eventChan, util.EO_MOUSE, true)
 }
 
 func pipeoutcmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
@@ -174,6 +184,6 @@ func pipecmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan
 	resultChan := make(chan string)
 	NewJob(b.Dir, c.bodytxt, str, resultChan)
 	str = <- resultChan
-	b.Replace([]rune(str), &sel, sels, true, eventChan, util.EO_MOUSE)
+	b.Replace([]rune(str), &sel, sels, true, eventChan, util.EO_MOUSE, true)
 }
 

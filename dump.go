@@ -87,7 +87,7 @@ func LoadFrom(dumpDest string) bool {
 		}
 		b.Props = db.Props
 		if db.Text != "" {
-			b.Replace([]rune(db.Text), &util.Sel{ 0, b.Size() }, []util.Sel{}, true, nil, util.EO_KBD)
+			b.Replace([]rune(db.Text), &util.Sel{ 0, b.Size() }, []util.Sel{}, true, nil, util.EO_KBD, true)
 		}
 		buffers[i] = b
 		fsNodefs.addBuffer(i, b)

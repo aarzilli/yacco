@@ -7,6 +7,7 @@ import (
 	"time"
 	"unicode"
 	"math"
+	"sync"
 	"yacco/util"
 	"github.com/skelterjohn/go.wde"
 	"code.google.com/p/freetype-go/freetype"
@@ -136,8 +137,27 @@ func (fr *Frame) Insert(runes []rune) (limit image.Point) {
 	return fr.InsertColor(cr)
 }
 
+var mu sync.Mutex
+var ccount = 0
+
 // Inserts text into the frame, returns the maximum X and Y used
 func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
+	mu.Lock()
+	if ccount > 0 {
+		panic("Concurrent InsertColor invocation")
+	}
+	ccount++
+	mu.Unlock()
+	defer func() {
+		mu.Lock()
+		ccount--
+		if ccount != 0 {
+			panic("Concurrent InsertColor invocation")
+		}
+		mu.Unlock()
+	}()
+	
+
 	lh := fr.lineHeight()
 
 	_, spaceIndex := fr.getIndex(' ')

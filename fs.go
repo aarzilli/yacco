@@ -531,7 +531,7 @@ func writeTagFn(i int, data []byte, off int64) (written uint32, code fuse.Status
 	Wnd.Lock.Lock()
 	defer Wnd.Lock.Unlock()
 
-	ec.ed.tagbuf.Replace([]rune(string(data)), &util.Sel{ ec.ed.tagbuf.Size(), ec.ed.tagbuf.Size() }, ec.ed.tagfr.Sels, true, ec.eventChan, util.EO_BODYTAG)
+	ec.ed.tagbuf.Replace([]rune(string(data)), &util.Sel{ ec.ed.tagbuf.Size(), ec.ed.tagbuf.Size() }, ec.ed.tagfr.Sels, true, ec.eventChan, util.EO_BODYTAG, false)
 
 	return uint32(len(data)), fuse.OK
 }

@@ -50,7 +50,7 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 		return c
 	}
 
-	c.tagbuf.Replace(config.DefaultColumnTag, &c.tagfr.Sels[0], c.tagfr.Sels, true, nil, 0)
+	c.tagbuf.Replace(config.DefaultColumnTag, &c.tagfr.Sels[0], c.tagfr.Sels, true, nil, 0, false)
 	TagSetEditableStart(c.tagbuf)
 	return c
 }

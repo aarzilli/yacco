@@ -32,8 +32,10 @@ func (ecmd *cmd) Exec(b *buf.Buffer, sels []util.Sel, eventChan chan string) {
 	if ecmd.fn == nil {
 		panic(fmt.Errorf("Command '%c' not implemented", ecmd.cmdch))
 	}
-
-	ecmd.fn(ecmd, b, sels[0], sels, eventChan)
+	
+	func() {
+		ecmd.fn(ecmd, b, sels[0], sels, eventChan)
+	}()
 }
 
 func AddrEval(pgm string, b *buf.Buffer, sel util.Sel) util.Sel{
