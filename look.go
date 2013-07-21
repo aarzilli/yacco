@@ -9,7 +9,7 @@ func lookfwdEx(ed *Editor, needle []rune, start int) bool {
 	if len(needle) <= 0 {
 		return true
 	}
-	
+
 	exact := false
 	for _, r := range needle {
 		if unicode.IsUpper(r) {
@@ -71,7 +71,7 @@ func lookproc(ec ExecContext) {
 	needle := []rune{}
 	matches := []util.Sel{}
 	for {
-		specialMsg, ok := <- ch
+		specialMsg, ok := <-ch
 		if !ok {
 			break
 		}
@@ -126,12 +126,12 @@ func runeEquals(a, b []rune) bool {
 	if len(a) != len(b) {
 		return false
 	}
-	
+
 	for i := range a {
 		if a[i] != b[i] {
 			return false
 		}
 	}
-	
+
 	return true
 }

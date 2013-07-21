@@ -1,83 +1,83 @@
 package main
 
 import (
-	"os"
 	"fmt"
-	"strings"
-	"regexp"
-	"sort"
-	"runtime"
-	"strconv"
+	"os"
 	"path/filepath"
+	"regexp"
+	"runtime"
+	"sort"
+	"strconv"
+	"strings"
 	"yacco/buf"
-	"yacco/util"
+	"yacco/config"
 	"yacco/edit"
 	"yacco/textframe"
-	"yacco/config"
+	"yacco/util"
 )
 
 type ExecContext struct {
 	col *Col
-	ed *Editor
+	ed  *Editor
 
-	br BufferRefreshable
-	ontag bool
-	fr *textframe.Frame
-	buf *buf.Buffer
+	br        BufferRefreshable
+	ontag     bool
+	fr        *textframe.Frame
+	buf       *buf.Buffer
 	eventChan chan string
-	
+
 	dir string
 }
 
 type Cmd func(ec ExecContext, arg string)
 
 var cmds = map[string]Cmd{
-	"Cut": func (ec ExecContext, arg string) { CopyCmd(ec, arg, true) },
-	"Get": GetCmd,
-	"Del": func (ec ExecContext, arg string) { DelCmd(ec, arg, false) },
+	"Cut":    func(ec ExecContext, arg string) { CopyCmd(ec, arg, true) },
+	"Get":    GetCmd,
+	"Del":    func(ec ExecContext, arg string) { DelCmd(ec, arg, false) },
 	"Delcol": DelcolCmd,
-	"Delete": func (ec ExecContext, arg string) { DelCmd(ec, arg, true) },
-	"Dump": DumpCmd,
-	"Edit": EditCmd,
-	"Exit": ExitCmd,
-	"Kill": KillCmd,
+	"Delete": func(ec ExecContext, arg string) { DelCmd(ec, arg, true) },
+	"Dump":   DumpCmd,
+	"Edit":   EditCmd,
+	"Exit":   ExitCmd,
+	"Kill":   KillCmd,
 	"Setenv": SetenvCmd,
-	"Look": LookCmd,
-	"New": NewCmd,
+	"Look":   LookCmd,
+	"New":    NewCmd,
 	"Newcol": NewcolCmd,
-	"Paste": func (ec ExecContext, arg string) { PasteCmd(ec, arg, false) },
-	"Put": PutCmd,
+	"Paste":  func(ec ExecContext, arg string) { PasteCmd(ec, arg, false) },
+	"Put":    PutCmd,
 	"Putall": PutallCmd,
-	"Redo": RedoCmd,
-	"Send": SendCmd,
-	"Snarf": func (ec ExecContext, arg string) { CopyCmd(ec, arg, false) },
-	"Copy": func (ec ExecContext, arg string) { CopyCmd(ec, arg, false) },
-	"Sort": SortCmd,
-	"Undo": UndoCmd,
-	"Zerox": ZeroxCmd,
-	"|": PipeCmd,
-	"<": PipeInCmd,
-	">": PipeOutCmd,
+	"Redo":   RedoCmd,
+	"Send":   SendCmd,
+	"Snarf":  func(ec ExecContext, arg string) { CopyCmd(ec, arg, false) },
+	"Copy":   func(ec ExecContext, arg string) { CopyCmd(ec, arg, false) },
+	"Sort":   SortCmd,
+	"Undo":   UndoCmd,
+	"Zerox":  ZeroxCmd,
+	"|":      PipeCmd,
+	"<":      PipeInCmd,
+	">":      PipeOutCmd,
 
 	// New
-	"Cd": CdCmd,
-	"Jobs": JobsCmd,
-	"Look!Again": LookAgainCmd,
-	"Look!Quit": func (ec ExecContext, arg string) { SpecialSendCmd(ec, "!Quit") },
-	"Look!Prev": func (ec ExecContext, arg string) { SpecialSendCmd(ec, "!Prev") },
-	"Paste!Primary": func (ec ExecContext, arg string) { PasteCmd(ec, arg, true) },
-	"Paste!Indent": PasteIndentCmd,
-	"Rename": RenameCmd,
+	"Cd":            CdCmd,
+	"Jobs":          JobsCmd,
+	"Look!Again":    LookAgainCmd,
+	"Look!Quit":     func(ec ExecContext, arg string) { SpecialSendCmd(ec, "!Quit") },
+	"Look!Prev":     func(ec ExecContext, arg string) { SpecialSendCmd(ec, "!Prev") },
+	"Paste!Primary": func(ec ExecContext, arg string) { PasteCmd(ec, arg, true) },
+	"Paste!Indent":  PasteIndentCmd,
+	"Rename":        RenameCmd,
 }
 
-var macros = map[string]Cmd{ }
+var macros = map[string]Cmd{}
 
 var spacesRe = regexp.MustCompile("\\s+")
 var exitConfirmed = false
 
 func init() {
 	// this would otherwise cause an initialization loop
-	cmds["Do"] = DoCmd 
+	cmds["Do"] = DoCmd
 	cmds["Macro"] = MacroCmd
 	cmds["LookFile"] = LookFileCmd
 	cmds["Load"] = LoadCmd
@@ -117,14 +117,16 @@ func Exec(ec ExecContext, cmd string) {
 			if config.EditErrorTrace {
 				for i := 1; ; i++ {
 					_, file, line, ok := runtime.Caller(i)
-					if !ok { break }
+					if !ok {
+						break
+					}
 					errmsg += fmt.Sprintf("  %s:%d\n", file, line)
 				}
 			}
 			Warn(errmsg)
 		}
 	}()
-	
+
 	execNoDefer(ec, cmd)
 }
 
@@ -215,7 +217,7 @@ func DumpCmd(ec ExecContext, arg string) {
 	dumpDest := getDumpPath(arg, true)
 	if DumpTo(dumpDest) {
 		AutoDumpPath = dumpDest
-	}	
+	}
 }
 
 func LoadCmd(ec ExecContext, arg string) {
@@ -234,7 +236,7 @@ func getDumpPath(arg string, dodef bool) string {
 		}
 		dumpDest = "default"
 	}
-	dumpDest = filepath.Join(os.Getenv("HOME"), ".config", "yacco", dumpDest + ".dump")
+	dumpDest = filepath.Join(os.Getenv("HOME"), ".config", "yacco", dumpDest+".dump")
 	return dumpDest
 }
 
@@ -313,7 +315,7 @@ func LookCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	ec.ed.confirmSave =false
+	ec.ed.confirmSave = false
 	if arg != "" {
 		lookfwd(ec.ed, []rune(arg), true)
 	} else {
@@ -333,7 +335,7 @@ func LookAgainCmd(ec ExecContext, arg string) {
 	lookfwd(ec.ed, lastNeedle, true)
 }
 
-func SpecialSendCmd(ec ExecContext, msg string)  {
+func SpecialSendCmd(ec ExecContext, msg string) {
 	exitConfirmed = false
 	if (ec.ed == nil) || (ec.ed.specialChan == nil) {
 		return
@@ -353,7 +355,7 @@ func GetCmd(ec ExecContext, arg string) {
 		Warn("File " + ec.ed.bodybuf.ShortName() + " has unsaved changes")
 		return
 	}
-	
+
 	ec.ed.bodybuf.Reload(ec.ed.sfr.Fr.Sels, true)
 	ec.ed.BufferRefresh(false)
 }
@@ -407,21 +409,21 @@ func PasteIndentCmd(ec ExecContext, arg string) {
 		return
 	}
 	cb := Wnd.wnd.GetClipboard()
-	
+
 	if (ec.fr.Sels[0].S == 0) || (ec.fr.Sels[0].S != ec.fr.Sels[0].E) || (ec.ed == nil) || (ec.buf != ec.ed.bodybuf) {
 		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE, true)
 		ec.br.BufferRefresh(ec.ontag)
 		return
 	}
-	
+
 	failed := false
 	tgtIndent := ""
-	tgtIndentSearch:
-	for i := ec.fr.Sels[0].S-1; i > 0; i-- {
+tgtIndentSearch:
+	for i := ec.fr.Sels[0].S - 1; i > 0; i-- {
 		r := ec.buf.At(i).R
 		switch r {
 		case '\n':
-			tgtIndent = string(buf.ToRunes(ec.buf.SelectionX(util.Sel{ i+1, ec.fr.Sels[0].S })))
+			tgtIndent = string(buf.ToRunes(ec.buf.SelectionX(util.Sel{i + 1, ec.fr.Sels[0].S})))
 			break tgtIndentSearch
 		case ' ', '\t':
 			// continue
@@ -430,13 +432,13 @@ func PasteIndentCmd(ec ExecContext, arg string) {
 			break tgtIndentSearch
 		}
 	}
-	
+
 	if failed {
 		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE, true)
 		ec.br.BufferRefresh(ec.ontag)
 		return
 	}
-	
+
 	pasteLines := strings.Split(cb, "\n")
 	srcIndent := ""
 	for i := range pasteLines[0] {
@@ -445,7 +447,7 @@ func PasteIndentCmd(ec ExecContext, arg string) {
 			break
 		}
 	}
-	
+
 	for i := range pasteLines {
 		if strings.HasPrefix(pasteLines[i], srcIndent) {
 			if i == 0 {
@@ -457,7 +459,7 @@ func PasteIndentCmd(ec ExecContext, arg string) {
 			pasteLines[i] = pasteLines[i]
 		}
 	}
-	
+
 	ecb := strings.Join(pasteLines, "\n")
 	ec.buf.Replace([]rune(ecb), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_MOUSE, true)
 	ec.br.BufferRefresh(ec.ontag)
@@ -472,7 +474,7 @@ func PutCmd(ec ExecContext, arg string) {
 	if ec.ed.bodybuf.Name[0] == '+' {
 		return
 	}
-	
+
 	if !ec.ed.confirmSave {
 		if !ec.ed.bodybuf.CanSave() {
 			ec.ed.confirmSave = true
@@ -535,7 +537,7 @@ func SendCmd(ec ExecContext, arg string) {
 	} else {
 		txt = []rune(Wnd.wnd.GetClipboard())
 	}
-	ec.ed.sfr.Fr.Sels[0] = util.Sel{ ec.buf.Size(), ec.buf.Size() }
+	ec.ed.sfr.Fr.Sels[0] = util.Sel{ec.buf.Size(), ec.buf.Size()}
 	ec.ed.bodybuf.Replace(txt, &ec.ed.sfr.Fr.Sels[0], ec.ed.sfr.Fr.Sels, true, ec.eventChan, util.EO_MOUSE, true)
 	ec.ed.BufferRefresh(false)
 }
@@ -586,7 +588,7 @@ func PipeCmd(ec ExecContext, arg string) {
 	if ec.buf != nil {
 		wd = ec.buf.Dir
 	}
-	
+
 	txt := string(buf.ToRunes(ec.ed.bodybuf.SelectionX(ec.fr.Sels[0])))
 	NewJob(wd, arg, txt, &ec, true, nil)
 }
@@ -664,11 +666,10 @@ func MacroCmd(ec ExecContext, arg string) {
 	if len(cmds) <= 0 {
 		return
 	}
-	
-	
+
 	name := strings.TrimSpace(cmds[0])
 	cmds = cmds[1:]
-	
+
 	macros[name] = func(ec ExecContext, arg string) {
 		for _, cmd := range cmds {
 			execNoDefer(ec, cmd)
@@ -683,7 +684,7 @@ func RenameCmd(ec ExecContext, arg string) {
 	}
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
-	
+
 	ec.ed.bodybuf.Name = arg
 	ec.ed.bodybuf.Modified = true
 	ec.ed.BufferRefresh(false)
@@ -711,10 +712,10 @@ func LookFileCmd(ec ExecContext, arg string) {
 		Warn(err.Error())
 		return
 	}
-	
-	if ed.specialChan	== nil {
+
+	if ed.specialChan == nil {
 		lookFile(ed)
 	} else {
-		ed.tagfr.Sels[0] = util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() }
+		ed.tagfr.Sels[0] = util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}
 	}
 }

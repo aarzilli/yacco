@@ -2,13 +2,13 @@ package main
 
 import (
 	"os"
-	"strings"
 	"path/filepath"
-	"unicode"
 	"strconv"
-	"yacco/util"
+	"strings"
+	"unicode"
 	"yacco/buf"
 	"yacco/textframe"
+	"yacco/util"
 )
 
 func lookFile(ed *Editor) {
@@ -22,7 +22,7 @@ func lookFile(ed *Editor) {
 
 type lookFileResult struct {
 	score int
-	show string
+	show  string
 }
 
 const MAX_RESULTS = 20
@@ -36,29 +36,29 @@ func lookFileIntl(ed *Editor, ch chan string) {
 	oldNeedle := ""
 	for {
 		select {
-		case specialMsg, ok := <- ch:
+		case specialMsg, ok := <-ch:
 			if !ok {
 				break
 			}
-		
+
 			if specialMsg[0] != 'T' {
 				continue
 			}
-			
+
 			if searchDone != nil {
 				close(searchDone)
 				searchDone = nil
 			}
-			
+
 			//println("Message received", specialMsg)
-			
+
 			if specialMsg == "T\n" {
 				if len(resultList) > 0 {
-					ec := ExecContext{ col: nil, ed: ed, br: ed, ontag: false, fr: &ed.sfr.Fr, buf: ed.bodybuf, eventChan: nil }
-					sideChan <- LoadMsg{ 
-							ec: &ec, 
-							s: 0, e: ed.bodybuf.Tonl(1, +1),
-							original: 0 }
+					ec := ExecContext{col: nil, ed: ed, br: ed, ontag: false, fr: &ed.sfr.Fr, buf: ed.bodybuf, eventChan: nil}
+					sideChan <- LoadMsg{
+						ec: &ec,
+						s:  0, e: ed.bodybuf.Tonl(1, +1),
+						original: 0}
 				}
 			} else {
 				needle := specialMsg[1:]
@@ -79,7 +79,7 @@ func lookFileIntl(ed *Editor, ch chan string) {
 					}
 				}
 			}
-		case result := <- resultChan:
+		case result := <-resultChan:
 			if result.score < 0 {
 				continue
 			}
@@ -99,22 +99,22 @@ func lookFileIntl(ed *Editor, ch chan string) {
 			if len(resultList) > MAX_RESULTS {
 				resultList = resultList[:MAX_RESULTS]
 			}
-			
+
 			displayResults(ed, resultList)
 		}
 	}
 }
 
-func displayResults(ed *Editor,  resultList []*lookFileResult) {
+func displayResults(ed *Editor, resultList []*lookFileResult) {
 	Wnd.Lock.Lock()
 	defer Wnd.Lock.Unlock()
-	
+
 	t := ""
 	for _, result := range resultList {
 		t += result.show + "\n"
 	}
-	
-	sel := util.Sel{ 0, ed.bodybuf.Size() }
+
+	sel := util.Sel{0, ed.bodybuf.Size()}
 	ed.bodybuf.Replace([]rune(t), &sel, ed.sfr.Fr.Sels, true, nil, 0, true)
 	ed.BufferRefresh(false)
 }
@@ -123,17 +123,17 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 	x := resolvePath(edDir, needle)
 	startDir := filepath.Dir(x)
 	needle = filepath.Base(x)
-		
+
 	//println("Searching for", needle, "starting at", queue[0])
-	
+
 	startDepth := countSlash(startDir)
-	queue := []string{ startDir }	
+	queue := []string{startDir}
 	sent := 0
-	
+
 	for len(queue) > 0 {
 		stillGoing := true
 		select {
-		case _, ok := <- searchDone:
+		case _, ok := <-searchDone:
 			stillGoing = ok
 		default:
 		}
@@ -141,31 +141,31 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 			//println("Search channel closed")
 			return
 		}
-		
+
 		dir := queue[0]
 		copy(queue, queue[1:])
 		queue = queue[:len(queue)-1]
-		
+
 		//println("Searching:", dir)
-		
+
 		depth := countSlash(dir) - startDepth + 1
-		
+
 		if depth > MAX_FS_RECUR_DEPTH {
 			//println("Too deep, skipping")
 			continue
 		}
-		
+
 		dh, err := os.Open(dir)
 		if err != nil {
 			return
 		}
-		
+
 		fi, err := dh.Readdir(-1)
 		if err != nil {
 			//println("Couldn't read dir skipping")
 			continue
 		}
-		
+
 		for i := range fi {
 			if (len(fi[i].Name()) == 0) || (fi[i].Name()[0] == '.') {
 				continue
@@ -179,24 +179,24 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 				if fi[i].IsDir() {
 					d++
 				}
-				
-				score := (d * 100) + n * 10 + len(fi[i].Name())
+
+				score := (d * 100) + n*10 + len(fi[i].Name())
 				relPath, err := filepath.Rel(edDir, filepath.Join(dir, fi[i].Name()))
-				
+
 				if fi[i].IsDir() {
 					relPath += "/"
 				}
-				
+
 				if err != nil {
 					continue
 				}
-				
+
 				select {
-					case resultChan <- &lookFileResult{ score, relPath }:
-					case <- searchDone:
-						return
+				case resultChan <- &lookFileResult{score, relPath}:
+				case <-searchDone:
+					return
 				}
-				
+
 				sent++
 				if sent > MAX_RESULTS {
 					return
@@ -221,9 +221,9 @@ func openBufferSearch(resultChan chan<- *lookFileResult, searchDone chan struct{
 	n := len(buffers)
 	wd := Wnd.tagbuf.Dir
 	Wnd.Lock.Unlock()
-	
+
 	sent := 0
-	
+
 	for i := 0; i < n; i++ {
 		Wnd.Lock.Lock()
 		if i >= len(buffers) {
@@ -232,10 +232,10 @@ func openBufferSearch(resultChan chan<- *lookFileResult, searchDone chan struct{
 		}
 		b := buffers[i]
 		Wnd.Lock.Unlock()
-		
+
 		stillGoing := true
 		select {
-		case _, ok := <- searchDone:
+		case _, ok := <-searchDone:
 			stillGoing = ok
 		default:
 		}
@@ -243,28 +243,28 @@ func openBufferSearch(resultChan chan<- *lookFileResult, searchDone chan struct{
 			//println("Search channel closed")
 			return
 		}
-		
+
 		if sent > MAX_RESULTS {
 			return
 		}
-		
+
 		if (b == nil) || (len(b.Name) <= 0) || (b.Name[0] == '+') {
 			continue
 		}
-		
-		func () {
+
+		func() {
 			b.Rdlock()
 			defer b.Rdunlock()
-			
-			ba, bb := b.Selection(util.Sel{ 0, b.Size() })
+
+			ba, bb := b.Selection(util.Sel{0, b.Size()})
 			curb := ba
 			first := true
 			start := 0
-			
+
 			for {
 				stillGoing := true
 				select {
-				case _, ok := <- searchDone:
+				case _, ok := <-searchDone:
 					stillGoing = ok
 				default:
 				}
@@ -287,15 +287,15 @@ func openBufferSearch(resultChan chan<- *lookFileResult, searchDone chan struct{
 						return
 					}
 				}
-				
+
 				i += start
-				start = i+1
+				start = i + 1
 				tabs := 0
 				spaces := 0
 				chars := 0
 				nl := 0
 				var j int
-				startOfLineLoop:
+			startOfLineLoop:
 				for j = i; j >= 0; j-- {
 					switch curb[j].R {
 					case '\n':
@@ -311,31 +311,31 @@ func openBufferSearch(resultChan chan<- *lookFileResult, searchDone chan struct{
 					}
 					chars++
 				}
-				
+
 				lineEnd := b.Tonl(i, +1)
-				
-				theLine := string(buf.ToRunes(b.SelectionX(util.Sel{ j+1, lineEnd })))
-				lineNo, _ := b.GetLine(j+1)
-				
+
+				theLine := string(buf.ToRunes(b.SelectionX(util.Sel{j + 1, lineEnd})))
+				lineNo, _ := b.GetLine(j + 1)
+
 				if ((nl == 0) && !first) || (tabs > 1) || (spaces > 4) {
 					continue
 				}
-				
-				score := 10000 + (tabs + spaces/4) * 100 + chars
-				
+
+				score := 10000 + (tabs+spaces/4)*100 + chars
+
 				path, err := filepath.Rel(wd, filepath.Join(b.Dir, b.Name))
 				if err != nil {
 					continue
 				}
-				
+
 				show := path + ":" + strconv.Itoa(lineNo) + ":\t" + theLine
-				
+
 				select {
-					case resultChan <- &lookFileResult{ score, show }:
-					case <- searchDone:
-						return
+				case resultChan <- &lookFileResult{score, show}:
+				case <-searchDone:
+					return
 				}
-				
+
 				sent++
 				if sent > MAX_RESULTS {
 					return
@@ -366,22 +366,22 @@ func indexOf(b []textframe.ColorRune, needle []rune) int {
 
 func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string) {
 	tagsLoadMaybe()
-	
+
 	tagMu.Lock()
 	defer tagMu.Unlock()
 
 	if len(tags) == 0 {
 		return
 	}
-	
+
 	sent := 0
-	
+
 	needle = strings.ToLower(needle)
-	
+
 	for i := range tags {
 		stillGoing := true
 		select {
-		case _, ok := <- searchDone:
+		case _, ok := <-searchDone:
 			stillGoing = ok
 		default:
 		}
@@ -389,7 +389,7 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 			//println("Search channel closed")
 			return
 		}
-		
+
 		if sent > MAX_RESULTS {
 			return
 		}
@@ -398,24 +398,23 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 		if match < 0 {
 			continue
 		}
-		
-		score := 1000 + match * 10 + len(tags[i].tag)
-		
+
+		score := 1000 + match*10 + len(tags[i].tag)
+
 		x := tags[i].path
 		if tags[i].search != "" {
 			x += ":\t/^" + tags[i].search + "/"
 		}
-				
+
 		select {
-			case resultChan <- &lookFileResult{ score, x }:
-			case <- searchDone:
-				return
+		case resultChan <- &lookFileResult{score, x}:
+		case <-searchDone:
+			return
 		}
-		
+
 		sent++
 		if sent > MAX_RESULTS {
 			return
 		}
 	}
 }
-

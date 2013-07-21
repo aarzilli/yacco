@@ -2,17 +2,17 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"time"
-	"syscall"
-	"strings"
-	"yacco/util"
-	"yacco/config"
-	"yacco/buf"
-	"yacco/edit"
-	"path/filepath"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
+	"os"
+	"path/filepath"
+	"strings"
+	"syscall"
+	"time"
+	"yacco/buf"
+	"yacco/config"
+	"yacco/edit"
+	"yacco/util"
 )
 
 type YaccoFs struct {
@@ -32,16 +32,16 @@ type ReadOnlyFile struct {
 
 type ReadWriteNode struct {
 	nodefs.Node
-	readFileFn func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status)
-	writeFileFn func(dest []byte, off int64) (written uint32, code fuse.Status)
-	openFileFn func() bool
+	readFileFn    func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status)
+	writeFileFn   func(dest []byte, off int64) (written uint32, code fuse.Status)
+	openFileFn    func() bool
 	releaseFileFn func()
 }
 
 type ReadWriteFile struct {
 	nodefs.File
-	readFileFn func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status)
-	writeFileFn func(dest []byte, off int64) (written uint32, code fuse.Status)
+	readFileFn    func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status)
+	writeFileFn   func(dest []byte, off int64) (written uint32, code fuse.Status)
 	releaseFileFn func()
 }
 
@@ -57,7 +57,7 @@ type NewNode struct {
 type NewWrapNode struct {
 	nodefs.Node
 	inner nodefs.Node
-	name string
+	name  string
 }
 
 var fsDir string
@@ -68,12 +68,12 @@ var newDir *NewNode
 
 func FsInit() {
 	fsDir = fmt.Sprintf("/tmp/yacco.%d", os.Getpid())
-	os.MkdirAll(fsDir, os.ModeDir | 0777)
+	os.MkdirAll(fsDir, os.ModeDir|0777)
 
-	fsNodefs = &YaccoFs{ FileSystem: nodefs.NewDefaultFileSystem(), root: nodefs.NewDefaultNode() }
+	fsNodefs = &YaccoFs{FileSystem: nodefs.NewDefaultFileSystem(), root: nodefs.NewDefaultNode()}
 
 	var err error
-	fsServer, fsConnector, err = nodefs.MountFileSystem(fsDir, fsNodefs, &nodefs.Options{ time.Duration(1 * time.Second), time.Duration(1 * time.Second), time.Duration(0), nil, true })
+	fsServer, fsConnector, err = nodefs.MountFileSystem(fsDir, fsNodefs, &nodefs.Options{time.Duration(1 * time.Second), time.Duration(1 * time.Second), time.Duration(0), nil, true})
 	if err != nil {
 		fmt.Printf("Could not mount filesystem")
 		os.Exit(1)
@@ -125,97 +125,97 @@ func (yfs *YaccoFs) removeBuffer(n int) {
 
 func (yfs *YaccoFs) addBuffer(n int, b *buf.Buffer) {
 	name := fmt.Sprintf("%d", n)
-	inode := yfs.addFile(true, name, &BufferNode{ nodefs.NewDefaultNode(), b })
+	inode := yfs.addFile(true, name, &BufferNode{nodefs.NewDefaultNode(), b})
 	inode.AddChild("addr", inode.New(false,
-		&ReadWriteNode{ nodefs.NewDefaultNode(),
-			func (dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
+		&ReadWriteNode{nodefs.NewDefaultNode(),
+			func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
 				return readAddrFn(n, dest, off)
 			},
-			func (data []byte, off int64) (written uint32, code fuse.Status) {
+			func(data []byte, off int64) (written uint32, code fuse.Status) {
 				return writeAddrFn(n, data, off)
-			}, nil, nil }))
+			}, nil, nil}))
 	inode.AddChild("body", inode.New(false,
-		&ReadWriteNode{ nodefs.NewDefaultNode(),
-			func (dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
+		&ReadWriteNode{nodefs.NewDefaultNode(),
+			func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
 				return readBodyFn(n, dest, off)
 			},
-			func (data []byte, off int64) (written uint32, code fuse.Status) {
+			func(data []byte, off int64) (written uint32, code fuse.Status) {
 				return writeBodyFn(n, data, off)
-			}, nil, nil }))
+			}, nil, nil}))
 	inode.AddChild("ctl", inode.New(false,
-		&ReadWriteNode{ nodefs.NewDefaultNode(),
-			func (dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
+		&ReadWriteNode{nodefs.NewDefaultNode(),
+			func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
 				return readCtlFn(n, dest, off)
 			},
-			func (data []byte, off int64) (written uint32, code fuse.Status) {
+			func(data []byte, off int64) (written uint32, code fuse.Status) {
 				return writeCtlFn(n, data, off)
-			}, nil, nil }))
+			}, nil, nil}))
 	inode.AddChild("data", inode.New(false,
-		&ReadWriteNode{ nodefs.NewDefaultNode(),
-			func (dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
+		&ReadWriteNode{nodefs.NewDefaultNode(),
+			func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
 				return readDataFn(n, dest, off, false)
 			},
-			func (data []byte, off int64) (written uint32, code fuse.Status) {
+			func(data []byte, off int64) (written uint32, code fuse.Status) {
 				return writeDataFn(n, data, off)
-			}, nil, nil }))
+			}, nil, nil}))
 	inode.AddChild("xdata", inode.New(false,
-		&ReadWriteNode{ nodefs.NewDefaultNode(),
-			func (dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
+		&ReadWriteNode{nodefs.NewDefaultNode(),
+			func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
 				return readDataFn(n, dest, off, true)
 			},
-			func (data []byte, off int64) (written uint32, code fuse.Status) {
+			func(data []byte, off int64) (written uint32, code fuse.Status) {
 				return writeDataFn(n, data, off)
-			}, nil, nil }))
+			}, nil, nil}))
 	inode.AddChild("errors", inode.New(false,
-		&ReadWriteNode{ nodefs.NewDefaultNode(),
-			func (dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
+		&ReadWriteNode{nodefs.NewDefaultNode(),
+			func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
 				return readErrorsFn(n, dest, off)
 			},
-			func (data []byte, off int64) (written uint32, code fuse.Status) {
+			func(data []byte, off int64) (written uint32, code fuse.Status) {
 				return writeErrorsFn(n, data, off)
-			}, nil, nil }))
+			}, nil, nil}))
 	inode.AddChild("tag", inode.New(false,
-		&ReadWriteNode{ nodefs.NewDefaultNode(),
-			func (dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
+		&ReadWriteNode{nodefs.NewDefaultNode(),
+			func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
 				return readTagFn(n, dest, off)
 			},
-			func (data []byte, off int64) (written uint32, code fuse.Status) {
+			func(data []byte, off int64) (written uint32, code fuse.Status) {
 				return writeTagFn(n, data, off)
-			}, nil, nil }))
+			}, nil, nil}))
 	inode.AddChild("event", inode.New(false,
-		&ReadWriteNode{ nodefs.NewDefaultNode(),
-			func (dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
+		&ReadWriteNode{nodefs.NewDefaultNode(),
+			func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
 				return readEventFn(n, dest, off, context)
 			},
-			func (data []byte, off int64) (written uint32, code fuse.Status) {
+			func(data []byte, off int64) (written uint32, code fuse.Status) {
 				return writeEventFn(n, data, off)
 			},
-			func () bool {
+			func() bool {
 				return openEventsFn(n)
 			},
-			func () {
+			func() {
 				releaseEventsFn(n)
 			}}))
 	inode.AddChild("prop", inode.New(false,
-		&ReadWriteNode{ nodefs.NewDefaultNode(),
+		&ReadWriteNode{nodefs.NewDefaultNode(),
 			func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
 				return readPropFn(n, dest, off, context)
 			},
-			func (data []byte, off int64) (write uint32, code fuse.Status) {
+			func(data []byte, off int64) (write uint32, code fuse.Status) {
 				return writePropFn(n, data, off)
-			}, nil, nil }))
+			}, nil, nil}))
 }
 
 func (yfs *YaccoFs) OnMount(conn *nodefs.FileSystemConnector) {
-	yfs.addFile(false, "index", &ReadOnlyNode{ nodefs.NewDefaultNode(), indexFileFn })
-	yfs.addFile(false, "prop", &ReadWriteNode{ nodefs.NewDefaultNode(),
+	yfs.addFile(false, "index", &ReadOnlyNode{nodefs.NewDefaultNode(), indexFileFn})
+	yfs.addFile(false, "prop", &ReadWriteNode{nodefs.NewDefaultNode(),
 		func(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
 			return readMainPropFn(dest, off, context)
 		},
-		func (data []byte, off int64) (write uint32, code fuse.Status) {
+		func(data []byte, off int64) (write uint32, code fuse.Status) {
 			return writeMainPropFn(data, off)
-		}, nil, nil })
-	newDir = &NewNode{ nodefs.NewDefaultNode() }
+		}, nil, nil})
+	newDir = &NewNode{nodefs.NewDefaultNode()}
 	yfs.addFile(true, "new", newDir)
 }
 
@@ -225,7 +225,7 @@ func (n *ReadOnlyNode) GetAttr(out *fuse.Attr, file nodefs.File, c *fuse.Context
 }
 
 func (n *ReadOnlyNode) Open(flags uint32, context *fuse.Context) (nodefs.File, fuse.Status) {
-	return &nodefs.WithFlags{ &ReadOnlyFile{ nodefs.NewDefaultFile(), n.readFileFn }, "index",  fuse.FOPEN_DIRECT_IO, 0 }, fuse.OK
+	return &nodefs.WithFlags{&ReadOnlyFile{nodefs.NewDefaultFile(), n.readFileFn}, "index", fuse.FOPEN_DIRECT_IO, 0}, fuse.OK
 }
 
 func (fh *ReadOnlyFile) Read(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
@@ -243,7 +243,7 @@ func (n *ReadWriteNode) Open(flags uint32, context *fuse.Context) (nodefs.File, 
 			return nil, fuse.EACCES
 		}
 	}
-	return &nodefs.WithFlags{ &ReadWriteFile{ nodefs.NewDefaultFile(), n.readFileFn, n.writeFileFn, n.releaseFileFn }, "index",  fuse.FOPEN_DIRECT_IO, 0 }, fuse.OK
+	return &nodefs.WithFlags{&ReadWriteFile{nodefs.NewDefaultFile(), n.readFileFn, n.writeFileFn, n.releaseFileFn}, "index", fuse.FOPEN_DIRECT_IO, 0}, fuse.OK
 }
 
 func (fh *ReadWriteFile) Read(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
@@ -270,14 +270,14 @@ func (n *NewNode) Lookup(out *fuse.Attr, name string, context *fuse.Context) (no
 	if file != nil {
 		file.Release()
 	}
-	rn := &NewWrapNode{ node, node, name }
+	rn := &NewWrapNode{node, node, name}
 	n.Inode().AddChild(name, n.Inode().New(false, rn))
 	return rn, status
 }
 
 func (n *NewNode) Create(name string, flags uint32, mode uint32, context *fuse.Context) (nodefs.File, nodefs.Node, fuse.Status) {
 	valid := false
-	for _, vn := range []string{ "addr", "body", "ctl", "data", "errors", "event", "tag", "xdata" } {
+	for _, vn := range []string{"addr", "body", "ctl", "data", "errors", "event", "tag", "xdata"} {
 		if name == vn {
 			valid = true
 			break
@@ -327,7 +327,7 @@ func (n *NewWrapNode) Open(flags uint32, context *fuse.Context) (nodefs.File, fu
 
 func indexFileFn(dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
 	if off > 0 {
-		return fuse.ReadResultData([]byte{ }), fuse.OK
+		return fuse.ReadResultData([]byte{}), fuse.OK
 	}
 	Wnd.Lock.Lock()
 	defer Wnd.Lock.Unlock()
@@ -349,7 +349,7 @@ func indexFileFn(dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
 
 func readAddrFn(i int, dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
 	if off > 0 {
-		return fuse.ReadResultData([]byte{ }), fuse.OK
+		return fuse.ReadResultData([]byte{}), fuse.OK
 	}
 	ec := bufferExecContext(i)
 	if ec == nil {
@@ -391,7 +391,7 @@ func readBodyFn(i int, dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
 	defer ec.buf.Rdunlock()
 
 	//XXX - inefficient
-	body := []byte(string(buf.ToRunes(ec.buf.SelectionX(util.Sel{ 0, ec.buf.Size() }))))
+	body := []byte(string(buf.ToRunes(ec.buf.SelectionX(util.Sel{0, ec.buf.Size()}))))
 	if off < int64(len(body)) {
 		return fuse.ReadResultData(body[off:]), fuse.OK
 	} else {
@@ -408,13 +408,13 @@ func writeBodyFn(i int, data []byte, off int64) (written uint32, code fuse.Statu
 	if (len(data) == 1) && (data[0] == 0) {
 		sdata = ""
 	}
-	sideChan <- ReplaceMsg{ ec, nil, true, sdata, util.EO_BODYTAG, false }
+	sideChan <- ReplaceMsg{ec, nil, true, sdata, util.EO_BODYTAG, false}
 	return uint32(len(data)), fuse.OK
 }
 
 func readCtlFn(i int, dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
 	if off > 0 {
-		return fuse.ReadResultData([]byte{ }), fuse.OK
+		return fuse.ReadResultData([]byte{}), fuse.OK
 	}
 	ec := bufferExecContext(i)
 	if ec == nil {
@@ -448,7 +448,7 @@ func writeCtlFn(i int, data []byte, off int64) (written uint32, code fuse.Status
 		return 0, fuse.ENOENT
 	}
 	cmd := string(data)
-	sideChan <- ExecFsMsg{ ec, cmd }
+	sideChan <- ExecFsMsg{ec, cmd}
 	return uint32(len(data)), fuse.OK
 }
 
@@ -465,7 +465,7 @@ func readDataFn(i int, dest []byte, off int64, stopAtAddrEnd bool) (fuse.ReadRes
 	if stopAtAddrEnd {
 		e = ec.fr.Sels[4].E
 	}
-	data := []byte(string(buf.ToRunes(ec.buf.SelectionX(util.Sel{ ec.fr.Sels[4].S, e }))))
+	data := []byte(string(buf.ToRunes(ec.buf.SelectionX(util.Sel{ec.fr.Sels[4].S, e}))))
 	if off < int64(len(data)) {
 		return fuse.ReadResultData(data[off:]), fuse.OK
 	} else {
@@ -482,7 +482,7 @@ func writeDataFn(i int, data []byte, off int64) (written uint32, code fuse.Statu
 	if (len(data) == 1) && (data[0] == 0) {
 		sdata = ""
 	}
-	sideChan <- ReplaceMsg{ ec, &ec.fr.Sels[4], false, sdata, util.EO_FILES, false }
+	sideChan <- ReplaceMsg{ec, &ec.fr.Sels[4], false, sdata, util.EO_FILES, false}
 	return uint32(len(data)), fuse.OK
 }
 
@@ -513,7 +513,7 @@ func readTagFn(i int, dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
 	Wnd.Lock.Lock()
 	defer Wnd.Lock.Unlock()
 
-	body := []byte(string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ 0, ec.ed.tagbuf.Size() }))))
+	body := []byte(string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{0, ec.ed.tagbuf.Size()}))))
 	if off < int64(len(body)) {
 		return fuse.ReadResultData(body[off:]), fuse.OK
 	} else {
@@ -531,7 +531,7 @@ func writeTagFn(i int, data []byte, off int64) (written uint32, code fuse.Status
 	Wnd.Lock.Lock()
 	defer Wnd.Lock.Unlock()
 
-	ec.ed.tagbuf.Replace([]rune(string(data)), &util.Sel{ ec.ed.tagbuf.Size(), ec.ed.tagbuf.Size() }, ec.ed.tagfr.Sels, true, ec.eventChan, util.EO_BODYTAG, false)
+	ec.ed.tagbuf.Replace([]rune(string(data)), &util.Sel{ec.ed.tagbuf.Size(), ec.ed.tagbuf.Size()}, ec.ed.tagfr.Sels, true, ec.eventChan, util.EO_BODYTAG, false)
 
 	return uint32(len(data)), fuse.OK
 }
@@ -572,9 +572,9 @@ func readEventFn(i int, dest []byte, off int64, context *fuse.Context) (fuse.Rea
 		return nil, fuse.ENOENT
 	}
 	select {
-	case <- context.Interrupted:
+	case <-context.Interrupted:
 		return nil, fuse.Status(syscall.EINTR)
-	case event := <- ec.ed.eventChan:
+	case event := <-ec.ed.eventChan:
 		return fuse.ReadResultData([]byte(event)), fuse.OK
 	}
 }
@@ -591,7 +591,7 @@ func writeEventFn(i int, data []byte, off int64) (written uint32, code fuse.Stat
 
 	switch etype {
 	case util.ET_BODYEXEC:
-		sideChan <- ExecMsg{ ec, s, e, arg }
+		sideChan <- ExecMsg{ec, s, e, arg}
 
 	case util.ET_TAGEXEC:
 		ec2 := *ec
@@ -600,10 +600,10 @@ func writeEventFn(i int, data []byte, off int64) (written uint32, code fuse.Stat
 			ec2.fr = &ec2.ed.tagfr
 			ec2.ontag = true
 		}
-		sideChan <- ExecMsg{ &ec2, s, e, arg }
+		sideChan <- ExecMsg{&ec2, s, e, arg}
 
 	case util.ET_BODYLOAD:
-		sideChan <- LoadMsg{ ec, s, e, int(flags) }
+		sideChan <- LoadMsg{ec, s, e, int(flags)}
 
 	case util.ET_TAGLOAD:
 		ec2 := *ec
@@ -611,7 +611,7 @@ func writeEventFn(i int, data []byte, off int64) (written uint32, code fuse.Stat
 			ec2.buf = ec2.ed.tagbuf
 			ec2.fr = &ec2.ed.tagfr
 		}
-		sideChan <- LoadMsg{ ec, s, e, int(flags) }
+		sideChan <- LoadMsg{ec, s, e, int(flags)}
 
 	default:
 		return 0, fuse.EIO
@@ -621,7 +621,7 @@ func writeEventFn(i int, data []byte, off int64) (written uint32, code fuse.Stat
 
 func readPropFn(i int, dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
 	if off > 0 {
-		return fuse.ReadResultData([]byte{ }), fuse.OK
+		return fuse.ReadResultData([]byte{}), fuse.OK
 	}
 	ec := bufferExecContext(i)
 	if ec == nil {
@@ -655,7 +655,7 @@ func writePropFn(i int, data []byte, off int64) (written uint32, code fuse.Statu
 
 func readMainPropFn(dest []byte, off int64, context *fuse.Context) (fuse.ReadResult, fuse.Status) {
 	if off > 0 {
-		return fuse.ReadResultData([]byte{ }), fuse.OK
+		return fuse.ReadResultData([]byte{}), fuse.OK
 	}
 
 	s := ""
@@ -673,4 +673,3 @@ func writeMainPropFn(data []byte, off int64) (written uint32, code fuse.Status) 
 	}
 	return uint32(len(data)), fuse.OK
 }
-

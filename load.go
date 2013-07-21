@@ -2,18 +2,18 @@ package main
 
 import (
 	"fmt"
+	"path/filepath"
 	"regexp"
 	"strings"
-	"path/filepath"
-	"yacco/util"
-	"yacco/config"
 	"yacco/buf"
+	"yacco/config"
 	"yacco/edit"
+	"yacco/util"
 )
 
 type LoadRule struct {
-	BufRe *regexp.Regexp
-	Re *regexp.Regexp
+	BufRe  *regexp.Regexp
+	Re     *regexp.Regexp
 	Action string
 }
 
@@ -25,7 +25,7 @@ func LoadInit() {
 		if (rule.Action[0] != 'L') && (rule.Action[0] != 'X') {
 			panic(fmt.Errorf("Actions must start with X or L in: %s", rule.Action))
 		}
-		LoadRules = append(LoadRules, LoadRule{ BufRe: regexp.MustCompile(rule.BufRe), Re: regexp.MustCompile(rule.Re), Action: rule.Action })
+		LoadRules = append(LoadRules, LoadRule{BufRe: regexp.MustCompile(rule.BufRe), Re: regexp.MustCompile(rule.Re), Action: rule.Action})
 	}
 }
 
@@ -51,7 +51,7 @@ func Load(ec ExecContext, origin int) {
 			e := matches[1] + start
 
 			//println("match:", s, e, origin)
-			
+
 			ok := false
 			if origin < 0 {
 				ok = (s == ec.fr.Sels[2].S) && (e == ec.fr.Sels[2].E)
@@ -64,7 +64,7 @@ func Load(ec ExecContext, origin int) {
 				for i := 0; 2*i+1 < len(matches); i++ {
 					s := matches[2*i] + start
 					e := matches[2*i+1] + start
-					strmatches = append(strmatches, string(buf.ToRunes(ec.buf.SelectionX(util.Sel{s, e }))))
+					strmatches = append(strmatches, string(buf.ToRunes(ec.buf.SelectionX(util.Sel{s, e}))))
 				}
 				//println("Match:", strmatches[0])
 				if rule.Exec(ec, strmatches, s, e) {
@@ -75,7 +75,7 @@ func Load(ec ExecContext, origin int) {
 				}
 			}
 
-			start = s+1
+			start = s + 1
 			if start > origin {
 				break
 			}
@@ -124,10 +124,10 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 	case 'L':
 		v := strings.SplitN(action, ":", 2)
 		name := expandMatches(v[0], matches)
-		
+
 		if len(name) <= 0 {
 			return false
-		}		
+		}
 		addrExpr := ""
 		if len(v) > 1 {
 			addrExpr = expandMatches(v[1], matches)
@@ -139,7 +139,7 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 		if newed == nil {
 			return false
 		}
-		ec.fr.Sels[2] = util.Sel{ s, e }
+		ec.fr.Sels[2] = util.Sel{s, e}
 		ec.br.BufferRefresh(ec.ontag)
 		if addrExpr != "" {
 			func() {
@@ -156,5 +156,3 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 	}
 	return false
 }
-
-

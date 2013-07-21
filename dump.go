@@ -1,38 +1,38 @@
 package main
 
 import (
-	"os"
 	"encoding/json"
+	"os"
 	"path/filepath"
-	"yacco/config"
 	"yacco/buf"
+	"yacco/config"
 	"yacco/util"
 )
 
 type DumpWindow struct {
 	Columns []DumpColumn
 	Buffers []DumpBuffer
-	Wd string
+	Wd      string
 }
 
 type DumpColumn struct {
-	Frac float64
+	Frac    float64
 	Editors []DumpEditor
 }
 
 type DumpEditor struct {
-	Id int
-	Frac float64
-	Font string
+	Id      int
+	Frac    float64
+	Font    string
 	Special bool
 }
 
 type DumpBuffer struct {
-	IsNil bool
-	Dir string
-	Name string
-	Props map[string]string
-	Text string
+	IsNil   bool
+	Dir     string
+	Name    string
+	Props   map[string]string
+	Text    string
 	DumpCmd string
 	DumpDir string
 }
@@ -69,16 +69,16 @@ func LoadFrom(dumpDest string) bool {
 		Warn("Could not load dump from: " + dumpDest + " error: " + err.Error())
 		return false
 	}
-	
+
 	for i := range buffers {
 		if buffers[i] != nil {
 			fsNodefs.removeBuffer(i)
 		}
 	}
 	Wnd.cols.cols = Wnd.cols.cols[0:0]
-	
+
 	cdIntl(dw.Wd)
-	
+
 	buffers = make([]*buf.Buffer, len(dw.Buffers))
 	for i, db := range dw.Buffers {
 		b, err := buf.NewBuffer(db.Dir, db.Name, true, Wnd.Prop["indentchar"])
@@ -87,12 +87,12 @@ func LoadFrom(dumpDest string) bool {
 		}
 		b.Props = db.Props
 		if db.Text != "" {
-			b.Replace([]rune(db.Text), &util.Sel{ 0, b.Size() }, []util.Sel{}, true, nil, util.EO_KBD, true)
+			b.Replace([]rune(db.Text), &util.Sel{0, b.Size()}, []util.Sel{}, true, nil, util.EO_KBD, true)
 		}
 		buffers[i] = b
 		fsNodefs.addBuffer(i, b)
 	}
-	
+
 	for _, dc := range dw.Columns {
 		col := Wnd.cols.AddAfter(-1)
 		for _, de := range dc.Editors {
@@ -106,7 +106,7 @@ func LoadFrom(dumpDest string) bool {
 				ed.sfr.Fr.Font = config.AltFont
 			}
 			col.AddAfter(ed, -1, 0.5)
-			
+
 			if de.Special && (b.Name == "+LookFile") {
 				lookFile(ed)
 			}
@@ -115,19 +115,19 @@ func LoadFrom(dumpDest string) bool {
 			col.editors[i].frac = de.Frac
 		}
 	}
-	
+
 	for i, dc := range dw.Columns {
 		Wnd.cols.cols[i].frac = dc.Frac
 	}
-	
+
 	Wnd.Resized()
-	
+
 	for _, db := range dw.Buffers {
 		if db.DumpCmd != "" {
-			NewJob(db.DumpDir, db.DumpCmd, "", &ExecContext{ }, false, nil)
+			NewJob(db.DumpDir, db.DumpCmd, "", &ExecContext{}, false, nil)
 		}
 	}
-	
+
 	for i := range buffers {
 		if buffers[i] == nil {
 			fsNodefs.removeBuffer(i)
@@ -136,6 +136,6 @@ func LoadFrom(dumpDest string) bool {
 			fsNodefs.removeBuffer(i)
 		}
 	}
-	
+
 	return true
 }

@@ -1,19 +1,19 @@
 package main
 
 import (
-	"io"
-	"fmt"
-	"time"
-	"os"
-	"sync"
 	"bufio"
-	"strings"
+	"fmt"
+	"io"
+	"os"
 	"regexp"
+	"strings"
+	"sync"
+	"time"
 )
 
 type tagItem struct {
-	tag string
-	path string
+	tag    string
+	path   string
 	search string
 }
 
@@ -27,7 +27,7 @@ var lastWd string = ""
 func tagsLoadMaybe() {
 	wd, _ := os.Getwd()
 	fi, err := os.Stat("tags")
-	
+
 	if err != nil {
 		lastTs = time.Unix(0, 0)
 		lastSz = 0
@@ -47,18 +47,18 @@ func tagsLoadMaybe() {
 
 func tagsLoad() {
 	tags = tags[:0]
-	
+
 	fh, err := os.Open("tags")
 	if err != nil {
 		fmt.Println("Error reading tags file:", err)
 		return
 	}
 	defer fh.Close()
-	
+
 	lscr := bufio.NewReader(fh)
-	
+
 	newTagWords := []string{}
-	
+
 	for {
 		linebytes, isPrefix, err := lscr.ReadLine()
 		if err == io.EOF {
@@ -97,41 +97,41 @@ func tagsLoad() {
 			//println("discarding malformed line", string(linebytes))
 			continue
 		}
-		
+
 		tag := line[0]
 		path := line[1]
 		searchAndRest := line[2]
-		
+
 		v := strings.SplitN(searchAndRest, ";\"\t", 2)
 		search := v[0]
-		
+
 		if len(search) < 4 {
 			//println("discarding short search", string(linebytes))
 			continue
 		}
-		
+
 		if (search[0] != '/') || (search[len(search)-1] != '/') {
 			// don't care about line numbers
 			//println("no search lines specified", search)
 			continue
 		}
-		
-		search = search[1:len(search)-1]
-		
+
+		search = search[1 : len(search)-1]
+
 		if (search[0] != '^') || (search[len(search)-1] != '$') {
 			// don't care about partial searches
 			//println("search didn't start or end with ^ and $", search)
 			continue
 		}
-		
-		search = search[1:len(search)-1]
-		
+
+		search = search[1 : len(search)-1]
+
 		search = regexpEx2Go(search)
-		tags = append(tags, tagItem{ tag, path, search })
-		
+		tags = append(tags, tagItem{tag, path, search})
+
 		newTagWords = append(newTagWords, tag)
 	}
-	
+
 	Wnd.Lock.Lock()
 	tagWords = newTagWords
 	Wnd.Lock.Unlock()
@@ -140,7 +140,7 @@ func tagsLoad() {
 func regexpEx2Go(rx string) string {
 	i := []rune(rx)
 	o := make([]rune, len(i))
-	
+
 	meta := false
 	dst := 0
 	for src := 0; src < len(i); src++ {
@@ -162,10 +162,7 @@ func regexpEx2Go(rx string) string {
 			meta = false
 		}
 	}
-	
+
 	ro := string(o[:dst])
 	return regexp.QuoteMeta(ro)
 }
-
-
-

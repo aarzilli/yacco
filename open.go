@@ -1,8 +1,8 @@
 package main
 
 import (
-	"os"
 	"fmt"
+	"os"
 	"path/filepath"
 	"yacco/buf"
 )
@@ -115,7 +115,7 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 		lh := int(biged.sfr.Fr.Font.LineHeight())
 
 		for _, ced := range col.editors {
-			if ced.Height() >= biged.Height() - lh {
+			if ced.Height() >= biged.Height()-lh {
 				biged = ced
 			}
 
@@ -142,7 +142,6 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 		ed.Warp()
 	}
 }
-
 
 func Warnfull(bufname, msg string) {
 	ed, err := EditFind(Wnd.tagbuf.Dir, bufname, false, true)

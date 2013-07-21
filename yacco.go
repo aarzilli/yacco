@@ -1,14 +1,14 @@
 package main
 
 import (
-	"log"
-	"os"
-	"yacco/util"
-	"yacco/buf"
-	"yacco/edit"
-	"yacco/config"
 	"github.com/skelterjohn/go.wde"
 	_ "github.com/skelterjohn/go.wde/init"
+	"log"
+	"os"
+	"yacco/buf"
+	"yacco/config"
+	"yacco/edit"
+	"yacco/util"
 )
 
 var Wnd Window
@@ -49,7 +49,7 @@ func main() {
 
 	FsInit()
 
-	ec := ExecContext{ }
+	ec := ExecContext{}
 	for _, initStr := range config.Initialization {
 		Exec(ec, initStr)
 	}
@@ -110,14 +110,14 @@ func bufferExecContext(i int) *ExecContext {
 		for _, ed := range col.editors {
 			if ed.bodybuf == buffers[i] {
 				return &ExecContext{
-					col: col,
-					ed: ed,
-					br: ed,
-					ontag: false,
-					fr: &ed.sfr.Fr,
-					buf: ed.bodybuf,
+					col:       col,
+					ed:        ed,
+					br:        ed,
+					ontag:     false,
+					fr:        &ed.sfr.Fr,
+					buf:       ed.bodybuf,
 					eventChan: ed.eventChan,
-					dir: ed.bodybuf.Dir,
+					dir:       ed.bodybuf.Dir,
 				}
 			}
 		}

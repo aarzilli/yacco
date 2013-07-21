@@ -2,35 +2,35 @@ package main
 
 import (
 	"fmt"
+	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
 	"strconv"
-	"yacco/util"
 	"yacco/buf"
 	"yacco/config"
 	"yacco/textframe"
-	"github.com/skelterjohn/go.wde"
+	"yacco/util"
 )
 
 type Editor struct {
-	r image.Rectangle
+	r       image.Rectangle
 	rhandle image.Rectangle
-	frac float64
+	frac    float64
 
-	sfr textframe.ScrollFrame
+	sfr   textframe.ScrollFrame
 	tagfr textframe.Frame
 
-	bodybuf *buf.Buffer
-	top int
-	tagbuf *buf.Buffer
-	confirmDel bool
+	bodybuf     *buf.Buffer
+	top         int
+	tagbuf      *buf.Buffer
+	confirmDel  bool
 	confirmSave bool
 
 	eventChan chan string
-	
-	specialTag string
-	savedTag string
-	specialChan chan string
+
+	specialTag          string
+	savedTag            string
+	specialChan         chan string
 	specialExitOnReturn bool
 }
 
@@ -50,11 +50,11 @@ func scrollfn(e *Editor, sd int, sl int) {
 	}
 
 	sz := e.bodybuf.Size()
-	
+
 	e.bodybuf.Rdlock()
 	defer e.bodybuf.Rdunlock()
 	a, b := e.bodybuf.Selection(util.Sel{e.top, sz})
-	
+
 	e.bodybuf.Highlight(-1, true)
 
 	e.sfr.Set(e.top, sz)
@@ -86,17 +86,17 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 		Width: SCROLL_WIDTH,
 		Color: config.TheColorScheme.Scrollbar,
 		Fr: textframe.Frame{
-			Font: config.MainFont,
-			Hackflags: textframe.HF_MARKSOFTWRAP | textframe.HF_QUOTEHACK,
-			Scroll: func (sd, sl int) { scrollfn(e, sd, sl) },
+			Font:        config.MainFont,
+			Hackflags:   textframe.HF_MARKSOFTWRAP | textframe.HF_QUOTEHACK,
+			Scroll:      func(sd, sl int) { scrollfn(e, sd, sl) },
 			VisibleTick: false,
-			Colors:  [][]image.Uniform{
+			Colors: [][]image.Uniform{
 				config.TheColorScheme.EditorPlain,
-				config.TheColorScheme.EditorSel1, // 0 first button selection
-				config.TheColorScheme.EditorSel2, // 1 second button selection
-				config.TheColorScheme.EditorSel3, // 2 third button selection
-				config.TheColorScheme.EditorPlain, // 3 highlighted parenthesis
-				config.TheColorScheme.EditorPlain, // 4 content of 'addr' file
+				config.TheColorScheme.EditorSel1,                // 0 first button selection
+				config.TheColorScheme.EditorSel2,                // 1 second button selection
+				config.TheColorScheme.EditorSel3,                // 2 third button selection
+				config.TheColorScheme.EditorPlain,               // 3 highlighted parenthesis
+				config.TheColorScheme.EditorPlain,               // 4 content of 'addr' file
 				config.TheColorScheme.EditorMatchingParenthesis, // 5 matching parenthesis
 				/* space for jumps */
 				config.TheColorScheme.EditorPlain,
@@ -105,21 +105,21 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 				config.TheColorScheme.EditorPlain,
 				config.TheColorScheme.EditorPlain,
 				config.TheColorScheme.EditorPlain,
-				config.TheColorScheme.EditorPlain },
+				config.TheColorScheme.EditorPlain},
 		},
 	}
 	e.tagfr = textframe.Frame{
-		Font: config.TagFont,
-		Hackflags: textframe.HF_MARKSOFTWRAP | textframe.HF_QUOTEHACK,
-		Scroll: func (sd, sl int) { },
+		Font:        config.TagFont,
+		Hackflags:   textframe.HF_MARKSOFTWRAP | textframe.HF_QUOTEHACK,
+		Scroll:      func(sd, sl int) {},
 		VisibleTick: false,
-		Colors:  [][]image.Uniform{
+		Colors: [][]image.Uniform{
 			config.TheColorScheme.TagPlain,
 			config.TheColorScheme.TagSel1,
 			config.TheColorScheme.TagSel2,
 			config.TheColorScheme.TagSel3,
 			config.TheColorScheme.TagPlain,
-			config.TheColorScheme.TagMatchingParenthesis },
+			config.TheColorScheme.TagMatchingParenthesis},
 	}
 	e.top = 0
 
@@ -142,11 +142,11 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
 	sfrr.Max.X -= 2
 	//sfrr.Max.Y -= 1
 	e.sfr.SetRects(b, sfrr)
-	
-	e.bodybuf.DisplayLines = int(float64(sfrr.Max.Y - sfrr.Min.Y) / float64(e.sfr.Fr.Font.LineHeight()))
+
+	e.bodybuf.DisplayLines = int(float64(sfrr.Max.Y-sfrr.Min.Y) / float64(e.sfr.Fr.Font.LineHeight()))
 
 	e.sfr.Fr.Clear()
-	ba, bb := e.bodybuf.Selection(util.Sel{ e.top, e.bodybuf.Size() })
+	ba, bb := e.bodybuf.Selection(util.Sel{e.top, e.bodybuf.Size()})
 	e.sfr.Fr.InsertColor(ba)
 	e.sfr.Fr.InsertColor(bb)
 
@@ -158,7 +158,7 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
 	e.tagfr.R = e.r.Intersect(e.tagfr.R)
 	e.tagfr.B = b
 	e.tagfr.Clear()
-	ta, tb := e.tagbuf.Selection(util.Sel{ 0, e.tagbuf.Size() })
+	ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
 	e.tagfr.InsertColor(ta)
 	e.tagfr.InsertColor(tb)
 
@@ -167,7 +167,7 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
 	e.rhandle.Max.X = e.rhandle.Min.X + SCROLL_WIDTH
 	e.rhandle.Max.Y = e.tagfr.R.Max.Y
 	e.rhandle = e.r.Intersect(e.rhandle)
-	
+
 	e.bodybuf.Highlight(-1, true)
 }
 
@@ -222,7 +222,7 @@ func (e *Editor) Redraw() {
 func (e *Editor) GenTag() {
 	usertext := ""
 	if e.tagbuf.EditableStart >= 0 {
-		usertext = string(buf.ToRunes(e.tagbuf.SelectionX(util.Sel{ e.tagbuf.EditableStart, e.tagbuf.Size() })))
+		usertext = string(buf.ToRunes(e.tagbuf.SelectionX(util.Sel{e.tagbuf.EditableStart, e.tagbuf.Size()})))
 	}
 
 	t := e.bodybuf.ShortName()
@@ -233,7 +233,7 @@ func (e *Editor) GenTag() {
 		_ = col
 		t += fmt.Sprintf(":%d", line)
 	}
-	
+
 	if e.specialChan == nil {
 		t += config.DefaultEditorTag
 		if e.bodybuf.Modified {
@@ -254,7 +254,7 @@ func (e *Editor) GenTag() {
 	start := e.tagfr.Sels[0].S - e.tagbuf.EditableStart
 	end := e.tagfr.Sels[0].E - e.tagbuf.EditableStart
 	e.tagbuf.EditableStart = -1
-	e.tagbuf.Replace([]rune(t), &util.Sel{ 0, e.tagbuf.Size() }, e.tagfr.Sels, true, nil, 0, false)
+	e.tagbuf.Replace([]rune(t), &util.Sel{0, e.tagbuf.Size()}, e.tagfr.Sels, true, nil, 0, false)
 	TagSetEditableStart(e.tagbuf)
 	e.tagfr.Sels[0].S = start + e.tagbuf.EditableStart
 	e.tagfr.Sels[0].E = end + e.tagbuf.EditableStart
@@ -264,10 +264,10 @@ func (e *Editor) GenTag() {
 func (e *Editor) refreshIntl() {
 	e.sfr.Fr.Clear()
 	e.sfr.Set(e.top, e.bodybuf.Size())
-	
+
 	e.bodybuf.Rdlock()
 	defer e.bodybuf.Rdunlock()
-	ba, bb := e.bodybuf.Selection(util.Sel{ e.top, e.bodybuf.Size() })
+	ba, bb := e.bodybuf.Selection(util.Sel{e.top, e.bodybuf.Size()})
 	e.sfr.Fr.InsertColor(ba)
 	e.sfr.Fr.InsertColor(bb)
 }
@@ -285,10 +285,10 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur bool) {
 	} else {
 		e.sfr.Fr.Sels[5].S = e.sfr.Fr.Sels[5].E
 	}
-	
+
 	if ontag {
 		e.tagfr.Clear()
-		ta, tb := e.tagbuf.Selection(util.Sel{ 0, e.tagbuf.Size() })
+		ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
 		e.tagfr.InsertColor(ta)
 		e.tagfr.InsertColor(tb)
 		e.tagfr.Redraw(true)
@@ -300,17 +300,17 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur bool) {
 
 		e.GenTag()
 		e.tagfr.Clear()
-		ta, tb := e.tagbuf.Selection(util.Sel{ 0, e.tagbuf.Size() })
+		ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
 		e.tagfr.InsertColor(ta)
 		e.tagfr.InsertColor(tb)
 
 		e.Redraw()
 		e.sfr.Wnd.FlushImage()
-		
-		if (e.bodybuf.RefCount <= 1) || !recur{
+
+		if (e.bodybuf.RefCount <= 1) || !recur {
 			return
 		}
-		
+
 		for _, col := range Wnd.cols.cols {
 			for _, oe := range col.editors {
 				if oe.bodybuf == e.bodybuf {
@@ -327,22 +327,22 @@ func (e *Editor) BufferRefresh(ontag bool) {
 
 func findPMatch(b *buf.Buffer, sel0 util.Sel) util.Sel {
 	if sel0.S != sel0.E {
-		return util.Sel{ -1, -1 }
+		return util.Sel{-1, -1}
 	}
-	
+
 	match := b.Topmatch(sel0.S, +1)
 	if match >= 0 {
-		return util.Sel{ match, match+1 }
+		return util.Sel{match, match + 1}
 	}
-	
+
 	if sel0.S > 0 {
 		match = b.Topmatch(sel0.S-1, -1)
 		if match >= 0 {
-			return util.Sel{ match, match+1 }
+			return util.Sel{match, match + 1}
 		}
 	}
-	
-	return util.Sel{ -1, -1 }	
+
+	return util.Sel{-1, -1}
 }
 
 func (ed *Editor) Column() *Col {
@@ -401,8 +401,8 @@ func (ed *Editor) EnterSpecial(specialChan chan string, specialTag string, exitO
 	ed.specialChan = specialChan
 	ed.specialTag = specialTag
 	ed.specialExitOnReturn = exitOnReturn
-	ed.savedTag = string(buf.ToRunes(ed.tagbuf.SelectionX(util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() })))
-	ed.tagbuf.Replace([]rune{}, &util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() }, ed.tagfr.Sels, true, nil, 0, false)
+	ed.savedTag = string(buf.ToRunes(ed.tagbuf.SelectionX(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()})))
+	ed.tagbuf.Replace([]rune{}, &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, ed.tagfr.Sels, true, nil, 0, false)
 	ed.BufferRefresh(false)
 	return true
 }
@@ -411,7 +411,7 @@ func (ed *Editor) ExitSpecial() {
 	close(ed.specialChan)
 	ed.specialChan = nil
 	ed.specialTag = ""
-	ed.tagbuf.Replace([]rune(ed.savedTag), &util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() }, ed.tagfr.Sels, true, nil, 0, false)
+	ed.tagbuf.Replace([]rune(ed.savedTag), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, ed.tagfr.Sels, true, nil, 0, false)
 	ed.BufferRefresh(false)
 }
 
@@ -429,20 +429,21 @@ func (ed *Editor) PropTrigger() {
 	if oldFont != ed.sfr.Fr.Font {
 		ed.sfr.Fr.ReinitFont()
 	}
-	
+
 	ed.BufferRefresh(false)
 }
 
 func (ed *Editor) Dump() DumpEditor {
 	fontName := ""
 	switch ed.sfr.Fr.Font {
-	default: fallthrough
+	default:
+		fallthrough
 	case config.MainFont:
 		fontName = "main"
 	case config.AltFont:
 		fontName = "alt"
 	}
-	
+
 	return DumpEditor{
 		bufferIndex(ed.bodybuf),
 		ed.frac,

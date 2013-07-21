@@ -1,45 +1,45 @@
 package main
 
 import (
-	"os"
+	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
-	"yacco/util"
+	"os"
 	"yacco/buf"
-	"yacco/textframe"
 	"yacco/config"
-	"github.com/skelterjohn/go.wde"
+	"yacco/textframe"
+	"yacco/util"
 )
 
 type Col struct {
 	editors []*Editor
-	wnd wde.Window
-	r image.Rectangle
-	b draw.Image
-	frac float64
+	wnd     wde.Window
+	r       image.Rectangle
+	b       draw.Image
+	frac    float64
 
-	tagfr textframe.Frame
+	tagfr  textframe.Frame
 	tagbuf *buf.Buffer
 }
 
 func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 	c := &Col{}
-	c.editors =  []*Editor{}
+	c.editors = []*Editor{}
 	c.wnd = wnd
 	c.r = r
 	c.frac = 10.0
 	c.tagfr = textframe.Frame{
-		Font: config.TagFont,
-		Hackflags: textframe.HF_MARKSOFTWRAP | textframe.HF_BOLSPACES | textframe.HF_QUOTEHACK,
-		Scroll: func (sd, sl int) { },
+		Font:        config.TagFont,
+		Hackflags:   textframe.HF_MARKSOFTWRAP | textframe.HF_BOLSPACES | textframe.HF_QUOTEHACK,
+		Scroll:      func(sd, sl int) {},
 		VisibleTick: false,
-		Colors:  [][]image.Uniform{
+		Colors: [][]image.Uniform{
 			config.TheColorScheme.TagPlain,
 			config.TheColorScheme.TagSel1,
 			config.TheColorScheme.TagSel2,
 			config.TheColorScheme.TagSel3,
 			config.TheColorScheme.TagPlain,
-			config.TheColorScheme.TagMatchingParenthesis },
+			config.TheColorScheme.TagMatchingParenthesis},
 	}
 	util.Must(c.tagfr.Init(5), "Column initialization failed")
 	cwd, _ := os.Getwd()
@@ -77,12 +77,12 @@ func (c *Col) AddAfter(ed *Editor, n int, h float32) {
 		}
 
 		ed.SetWnd(c.wnd)
-		ed.frac = c.editors[n].frac * float64(1 - h)
+		ed.frac = c.editors[n].frac * float64(1-h)
 		c.editors[n].frac -= ed.frac
 
 		c.editors = append(c.editors, nil)
 		copy(c.editors[n+2:], c.editors[n+1:])
-		c.editors[n + 1] = ed
+		c.editors[n+1] = ed
 	}
 
 	c.RecalcRects()
@@ -98,7 +98,7 @@ func (c *Col) RecalcRects() {
 	c.tagfr.R.Max.Y = c.tagfr.R.Min.Y + TagHeight(&c.tagfr)
 	c.tagfr.R = screen.Bounds().Intersect(c.tagfr.R)
 	c.tagfr.B = screen
-	ta, tb := c.tagbuf.Selection(util.Sel{ 0, c.tagbuf.Size() })
+	ta, tb := c.tagbuf.Selection(util.Sel{0, c.tagbuf.Size()})
 	c.tagfr.Clear()
 	c.tagfr.InsertColor(ta)
 	c.tagfr.InsertColor(tb)
@@ -173,7 +173,7 @@ func (c *Col) Redraw() {
 
 func (c *Col) BufferRefresh(ontag bool) {
 	c.tagfr.Clear()
-	ta, tb := c.tagbuf.Selection(util.Sel{ 0, c.tagbuf.Size() })
+	ta, tb := c.tagbuf.Selection(util.Sel{0, c.tagbuf.Size()})
 	c.tagfr.InsertColor(ta)
 	c.tagfr.InsertColor(tb)
 	c.tagfr.Redraw(true)
@@ -210,5 +210,5 @@ func (c *Col) Dump() DumpColumn {
 	for i := range c.editors {
 		editors[i] = c.editors[i].Dump()
 	}
-	return DumpColumn{ c.frac, editors }
+	return DumpColumn{c.frac, editors}
 }

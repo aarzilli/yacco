@@ -1,20 +1,20 @@
 package main
 
 import (
-	"os"
 	"fmt"
+	"io/ioutil"
+	"os"
+	"os/exec"
 	"strings"
 	"sync"
-	"io/ioutil"
-	"os/exec"
 	"yacco/util"
 )
 
 type jobrec struct {
 	descr string
 	//ec *ExecContext
-	cmd *exec.Cmd
-	outstr string
+	cmd        *exec.Cmd
+	outstr     string
 	writeToBuf bool
 
 	done chan bool
@@ -48,7 +48,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 		job.descr = cmd
 		job.cmd = exec.Command(vcmd[0], vcmd[1:]...)
 	} else {
-		job.descr= cmd
+		job.descr = cmd
 		job.cmd = exec.Command(os.Getenv("SHELL"), "-c", cmd)
 	}
 
@@ -110,7 +110,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 			for {
 				n, err := stdout.Read(buf)
 				if n > 0 {
-					sideChan <- WarnMsg{ job.cmd.Dir, string(buf[:n]) }
+					sideChan <- WarnMsg{job.cmd.Dir, string(buf[:n])}
 				}
 				if err != nil {
 					return
@@ -126,7 +126,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 		for {
 			n, err := stderr.Read(buf)
 			if n > 0 {
-				sideChan <- WarnMsg{ job.cmd.Dir, string(buf[:n]) }
+				sideChan <- WarnMsg{job.cmd.Dir, string(buf[:n])}
 			}
 			if err != nil {
 				return
@@ -149,21 +149,21 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 		// Waits for all three goroutines to terminate before continuing
 		for count := 0; count < 3; count++ {
 			select {
-			case <- job.done:
+			case <-job.done:
 			}
 		}
 
 		err := job.cmd.Wait()
 		if err != nil {
-			sideChan <- WarnMsg{ job.cmd.Dir, "Error executing command: " + job.descr }
+			sideChan <- WarnMsg{job.cmd.Dir, "Error executing command: " + job.descr}
 		}
 
 		if (ec != nil) && job.writeToBuf {
-			sideChan <- ReplaceMsg{ ec, nil, false, job.outstr, util.EO_BODYTAG, true }
+			sideChan <- ReplaceMsg{ec, nil, false, job.outstr, util.EO_BODYTAG, true}
 		} else if resultChan != nil {
 			resultChan <- job.outstr
 		}
-		
+
 		jobsMutex.Lock()
 		jobs[idx] = nil
 		jobsMutex.Unlock()
@@ -171,7 +171,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 }
 
 func easyCommand(cmd string) bool {
-	
+
 	for _, c := range cmd {
 		switch c {
 		case '#', ';', '&', '|', '^', '$', '=', '\'', '`', '{', '}', '(', ')', '<', '>', '[', ']', '*', '?', '~':

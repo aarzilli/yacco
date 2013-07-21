@@ -1,40 +1,40 @@
 package main
 
 import (
-	"os"
+	"github.com/skelterjohn/go.wde"
 	"image"
-	"runtime"
 	"image/draw"
 	"math"
+	"os"
+	"runtime"
+	"strconv"
 	"strings"
 	"sync"
-	"strconv"
 	"time"
-	"yacco/util"
 	"yacco/buf"
-	"yacco/edit"
 	"yacco/config"
+	"yacco/edit"
 	"yacco/textframe"
-	"github.com/skelterjohn/go.wde"
+	"yacco/util"
 )
 
 type Window struct {
-	wnd wde.Window
-	cols *Cols
-	tagfr textframe.Frame
+	wnd    wde.Window
+	cols   *Cols
+	tagfr  textframe.Frame
 	tagbuf *buf.Buffer
-	Lock sync.Mutex // fuck it, we don't need no performance!
-	Words []string
-	Prop map[string]string
+	Lock   sync.Mutex // fuck it, we don't need no performance!
+	Words  []string
+	Prop   map[string]string
 }
 
 type LogicalPos struct {
-	col *Col
-	ed *Editor
-	tagfr *textframe.Frame
-	tagbuf *buf.Buffer
-	sfr *textframe.ScrollFrame
-	bodybuf *buf.Buffer
+	col            *Col
+	ed             *Editor
+	tagfr          *textframe.Frame
+	tagbuf         *buf.Buffer
+	sfr            *textframe.ScrollFrame
+	bodybuf        *buf.Buffer
 	notReallyOnTag bool
 }
 
@@ -48,28 +48,28 @@ type WarnMsg struct {
 }
 
 type ReplaceMsg struct {
-	ec *ExecContext
-	sel *util.Sel
-	append bool
-	txt string
-	origin util.EventOrigin
+	ec       *ExecContext
+	sel      *util.Sel
+	append   bool
+	txt      string
+	origin   util.EventOrigin
 	reselect bool
 }
 
 type ExecMsg struct {
-	ec *ExecContext
+	ec   *ExecContext
 	s, e int
-	cmd string
+	cmd  string
 }
 
 type LoadMsg struct {
-	ec *ExecContext
-	s, e int
+	ec       *ExecContext
+	s, e     int
 	original int
 }
 
 type ExecFsMsg struct {
-	ec *ExecContext
+	ec  *ExecContext
 	cmd string
 }
 
@@ -95,17 +95,17 @@ func (w *Window) Init(width, height int) (err error) {
 	w.wnd.Show()
 	w.cols = NewCols(w.wnd, screen.Bounds())
 	w.tagfr = textframe.Frame{
-		Font: config.TagFont,
-		Scroll: func(sd, sl int) { },
+		Font:        config.TagFont,
+		Scroll:      func(sd, sl int) {},
 		VisibleTick: false,
-		Wnd: w.wnd,
-		Colors:  [][]image.Uniform{
+		Wnd:         w.wnd,
+		Colors: [][]image.Uniform{
 			config.TheColorScheme.TagPlain,
 			config.TheColorScheme.TagSel1,
 			config.TheColorScheme.TagSel2,
 			config.TheColorScheme.TagSel3,
 			config.TheColorScheme.TagPlain,
-			config.TheColorScheme.TagMatchingParenthesis },
+			config.TheColorScheme.TagMatchingParenthesis},
 	}
 
 	cwd, _ := os.Getwd()
@@ -162,18 +162,18 @@ func (w *Window) Resized() {
 	w.wnd.FlushImage()
 }
 
-func eventUnion(a <- chan interface{}, b <- chan interface{}, hlChan <- chan *buf.Buffer) (<- chan interface{}) {
+func eventUnion(a <-chan interface{}, b <-chan interface{}, hlChan <-chan *buf.Buffer) <-chan interface{} {
 	out := make(chan interface{})
 
 	go func() {
 		for {
 			select {
-			case v := <- a:
+			case v := <-a:
 				out <- v
-			case v := <- b:
+			case v := <-b:
 				out <- v
-			case v := <- hlChan:
-				out <- HighlightMsg{ v }
+			case v := <-hlChan:
+				out <- HighlightMsg{v}
 			}
 		}
 	}()
@@ -205,7 +205,7 @@ func (w *Window) EventLoop() {
 			HideCompl("mouse down")
 			lastWhere = e.Where
 			lp := w.TranslatePosition(e.Where, true)
-			
+
 			if (lp.tagfr != nil) && lp.notReallyOnTag && (lp.ed != nil) {
 				if lp.ed.specialExitOnReturn {
 					lp.ed.ExitSpecial()
@@ -284,7 +284,7 @@ func (w *Window) EventLoop() {
 			sel := e.sel
 			if sel == nil {
 				if e.append {
-					sel = &util.Sel{ e.ec.ed.bodybuf.Size(), e.ec.ed.bodybuf.Size() }
+					sel = &util.Sel{e.ec.ed.bodybuf.Size(), e.ec.ed.bodybuf.Size()}
 				} else {
 					sel = &e.ec.fr.Sels[0]
 				}
@@ -297,19 +297,19 @@ func (w *Window) EventLoop() {
 			e.ec.br.BufferRefresh(false)
 
 		case LoadMsg:
-			e.ec.fr.Sels[2] = util.Sel{ e.s, e.e }
+			e.ec.fr.Sels[2] = util.Sel{e.s, e.e}
 			Load(*e.ec, e.original)
 
 		case ExecMsg:
-			e.ec.fr.Sels[0] = util.Sel{ e.s, e.e }
+			e.ec.fr.Sels[0] = util.Sel{e.s, e.e}
 			Exec(*e.ec, e.cmd)
 
 		case ExecFsMsg:
 			ExecFs(e.ec, e.cmd)
-			
+
 		case HighlightMsg:
 			//println("Highlight refresh")
-			HlLoop:
+		HlLoop:
 			for _, col := range w.cols.cols {
 				for _, ed := range col.editors {
 					if ed.bodybuf == e.b {
@@ -325,14 +325,14 @@ func (w *Window) EventLoop() {
 }
 
 func TagHeight(tagfr *textframe.Frame) int {
-	return int(float64(tagfr.Font.LineHeight()) * tagfr.Font.Spacing) + 1
+	return int(float64(tagfr.Font.LineHeight())*tagfr.Font.Spacing) + 1
 }
 
 func TagSetEditableStart(tagbuf *buf.Buffer) {
-	c := string(tagbuf.SelectionRunes(util.Sel{ 0, tagbuf.Size() }))
+	c := string(tagbuf.SelectionRunes(util.Sel{0, tagbuf.Size()}))
 	idx := strings.Index(c, " | ")
 	if idx >= 0 {
-		tagbuf.EditableStart = idx+3
+		tagbuf.EditableStart = idx + 3
 	}
 }
 
@@ -516,7 +516,7 @@ loop:
 				if dsth < 0 {
 					dsth = 0
 				}
-				dstcol.AddAfter(ed, dstcol.IndexOf(dsted), float32(dsth) / float32(dsted.Height()))
+				dstcol.AddAfter(ed, dstcol.IndexOf(dsted), float32(dsth)/float32(dsted.Height()))
 				col = dstcol
 			}
 			w.wnd.FlushImage()
@@ -551,9 +551,15 @@ loop:
 
 func shrinkEditor(ed *Editor, maxFraction float64) float64 {
 	s := ed.frac / 2
-	if s < 0.25 { s = 0.25 }
-	if s > maxFraction { s = maxFraction }
-	if s > ed.frac { s = ed.frac }
+	if s < 0.25 {
+		s = 0.25
+	}
+	if s > maxFraction {
+		s = maxFraction
+	}
+	if s > ed.frac {
+		s = ed.frac
+	}
 	ed.frac -= s
 	return s
 }
@@ -563,7 +569,7 @@ func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
 	if wantFraction < 1.0 {
 		wantFraction = 1.0
 	}
-	
+
 	idx := col.IndexOf(ed)
 	for off := 1; off < len(col.editors); off++ {
 		i := idx + off
@@ -572,25 +578,25 @@ func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
 			wantFraction -= s
 			ed.frac += s
 		}
-		
+
 		i = idx - off
 		if i >= 0 {
 			s := shrinkEditor(col.editors[i], wantFraction)
 			wantFraction -= s
 			ed.frac += s
 		}
-		
+
 		if wantFraction < 0.001 {
 			break
 		}
 	}
-	
+
 	col.RecalcRects()
 	col.Redraw()
 	w.wnd.FlushImage()
-	if d != nil { 
+	if d != nil {
 		p := ed.r.Min
-		p = p.Add(image.Point { SCROLL_WIDTH / 2, int(ed.tagfr.Font.LineHeight() / 2) })
+		p = p.Add(image.Point{SCROLL_WIDTH / 2, int(ed.tagfr.Font.LineHeight() / 2)})
 		w.wnd.WarpMouse(p)
 	}
 }
@@ -602,7 +608,7 @@ func (w *Window) ColResize(col *Col, e util.MouseDownEvent, events <-chan interf
 	endPos := startPos
 
 	var before *Col
-	bidx := Wnd.cols.IndexOf(col)-1
+	bidx := Wnd.cols.IndexOf(col) - 1
 	if bidx >= 0 {
 		before = Wnd.cols.cols[bidx]
 	}
@@ -650,7 +656,7 @@ loop:
 func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
 	var ec = ExecContext{
 		col: lp.col,
-		ed: lp.ed,
+		ed:  lp.ed,
 	}
 
 	if ec.ed != nil {
@@ -686,7 +692,7 @@ func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
 			ec.fr = &lp.ed.sfr.Fr
 			ec.buf = lp.ed.bodybuf
 		} else {
-			ec.br  = activeEditor
+			ec.br = activeEditor
 			if activeEditor != nil {
 				ec.fr = &activeEditor.sfr.Fr
 				ec.buf = activeEditor.bodybuf
@@ -712,29 +718,29 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 	case "escape":
 		HideCompl("keytype")
 		if (lp.ed != nil) && (lp.ed.specialChan != nil) && lp.ed.specialExitOnReturn {
-			lp.ed.sfr.Fr.VisibleTick = true			
+			lp.ed.sfr.Fr.VisibleTick = true
 			lp.ed.ExitSpecial()
 			return
 		}
 
 	case "return":
-		HideCompl("keytype")	
+		HideCompl("keytype")
 		if (lp.ed != nil) && (lp.ed.specialChan != nil) {
 			if lp.ed.specialExitOnReturn {
-				lp.ed.sfr.Fr.VisibleTick = true		
+				lp.ed.sfr.Fr.VisibleTick = true
 				lp.ed.ExitSpecial()
 			} else {
 				lp.ed.specialChan <- "T\n"
 			}
 			return
 		}
-		
+
 		if lp.tagfr != nil {
 			ec := lp.asExecContext(false)
 			lp.tagfr.SetSelect(1, 1, lp.tagbuf.EditableStart, lp.tagbuf.Size())
 			if lp.ed != nil {
 				lp.ed.BufferRefresh(true)
-			} else if (lp.col != nil) {
+			} else if lp.col != nil {
 				lp.col.BufferRefresh(true)
 			} else {
 				Wnd.BufferRefresh(true)
@@ -758,28 +764,28 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 					}
 					ie++
 				}
-				indent := string(ec.buf.SelectionRunes(util.Sel{ is, ie }))
+				indent := string(ec.buf.SelectionRunes(util.Sel{is, ie}))
 				nl += indent
 			}
-			
+
 			ec.buf.Replace([]rune(nl), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD, true)
 			ec.br.BufferRefresh(ec.ontag)
 		}
 		if lp.sfr != nil {
 			lp.ed.Recenter()
 		}
-		
-	case "next","prior":
-		HideCompl("keytype")	
+
+	case "next", "prior":
+		HideCompl("keytype")
 		dir := +1
 		if e.Chord == "prior" {
 			dir = -1
 		}
 		if lp.ed != nil {
-			n := int(float32(lp.ed.sfr.Fr.R.Max.Y - lp.ed.sfr.Fr.R.Min.Y) / (2 * float32(lp.ed.sfr.Fr.Font.LineHeight()))) + 1
-			addr := edit.AddrList{ 
-				[]edit.Addr{ &edit.AddrBase{ "", strconv.Itoa(n), dir }, 
-				&edit.AddrBase{ "#", "0", -1 } } }
+			n := int(float32(lp.ed.sfr.Fr.R.Max.Y-lp.ed.sfr.Fr.R.Min.Y)/(2*float32(lp.ed.sfr.Fr.Font.LineHeight()))) + 1
+			addr := edit.AddrList{
+				[]edit.Addr{&edit.AddrBase{"", strconv.Itoa(n), dir},
+					&edit.AddrBase{"#", "0", -1}}}
 			lp.ed.sfr.Fr.Sels[0] = addr.Eval(lp.ed.bodybuf, lp.ed.sfr.Fr.Sels[0])
 			lp.ed.BufferRefresh(false)
 		}
@@ -794,20 +800,20 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			} else {
 				HideCompl("")
 				tch := "\t"
-				
+
 				if (ec.ed != nil) && (ec.ed.bodybuf == ec.buf) {
 					tch = ec.ed.bodybuf.Props["indentchar"]
 				}
-				
+
 				ec.buf.Replace([]rune(tch), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD, true)
 				ec.br.BufferRefresh(ec.ontag)
 				if (ec.ed != nil) && (ec.ed.specialChan != nil) {
-					tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size() })))
+					tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()})))
 					ec.ed.specialChan <- "T" + tagstr
 				}
 			}
 		}
-		
+
 	case "insert":
 		if ComplWnd == nil {
 			ec := lp.asExecContext(true)
@@ -841,10 +847,10 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			}
 		}
 		if (ec.ed != nil) && (ec.ed.specialChan != nil) {
-			tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size() })))
+			tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()})))
 			select {
 			case ec.ed.specialChan <- "T" + tagstr:
-			case <- time.After(1 * time.Second):
+			case <-time.After(1 * time.Second):
 			}
 		}
 	}
@@ -932,7 +938,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 				s := lp.bodybuf.Tonl(sel.S-1, -1)
 				e := lp.bodybuf.Tonl(sel.S, +1)
 				lp.sfr.Fr.SetSelect(idx, 1, s, e)
-				lp.sfr.Fr.Sels[0] = util.Sel{ s, s }
+				lp.sfr.Fr.Sels[0] = util.Sel{s, s}
 				lp.sfr.Redraw(true)
 			}
 		}
@@ -958,7 +964,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 				}
 				e := lp.tagbuf.Tospc(sel.S, +1)
 				lp.tagfr.SetSelect(idx, 1, s, e)
-				lp.tagfr.Sels[0] = util.Sel{ s, s }
+				lp.tagfr.Sels[0] = util.Sel{s, s}
 				lp.tagfr.Redraw(true)
 			}
 		}
@@ -972,7 +978,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 
 func (w *Window) BufferRefresh(ontag bool) {
 	w.tagfr.Clear()
-	ta, tb := w.tagbuf.Selection(util.Sel{ 0, w.tagbuf.Size() })
+	ta, tb := w.tagbuf.Selection(util.Sel{0, w.tagbuf.Size()})
 	w.tagfr.InsertColor(ta)
 	w.tagfr.InsertColor(tb)
 	w.tagfr.Redraw(true)
@@ -981,7 +987,7 @@ func (w *Window) BufferRefresh(ontag bool) {
 func (w *Window) GenTag() {
 	usertext := ""
 	if w.tagbuf.EditableStart >= 0 {
-		usertext = string(buf.ToRunes(w.tagbuf.SelectionX(util.Sel{ w.tagbuf.EditableStart, w.tagbuf.Size() })))
+		usertext = string(buf.ToRunes(w.tagbuf.SelectionX(util.Sel{w.tagbuf.EditableStart, w.tagbuf.Size()})))
 	}
 
 	w.tagfr.Sels[0].S = 0
@@ -999,14 +1005,14 @@ func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, 
 	if (b == nil) || (fr == nil) || (e.Count != 2) || (e.Which == 0) {
 		return nil, false
 	}
-	
+
 	selIdx := int(math.Log2(float64(e.Which)))
 	if selIdx >= len(fr.Sels) {
 		return nil, false
 	}
 
 	sel := &fr.Sels[selIdx]
-	
+
 	match := b.Topmatch(sel.S, +1)
 	if match < 0 {
 		if sel.S > 1 {
@@ -1019,20 +1025,20 @@ func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, 
 			return nil, false
 		}
 	}
-	
-	sel.E = match+1
-	
+
+	sel.E = match + 1
+
 	fr.Redraw(true)
-	
+
 	for ee := range events {
 		switch eei := ee.(type) {
 		case wde.MouseUpEvent:
 			return &eei, true
 		}
 	}
-	
+
 	return nil, true
-	
+
 }
 
 func (w *Window) Dump() DumpWindow {
@@ -1046,10 +1052,10 @@ func (w *Window) Dump() DumpWindow {
 			text := ""
 			if (len(buffers[i].Name) > 0) && (buffers[i].Name[0] == '+') && (buffers[i].DumpCmd == "") {
 				start := 0
-				if buffers[i].Size() > 1024 * 10 {
+				if buffers[i].Size() > 1024*10 {
 					start = buffers[i].Size() - (1024 * 10)
 				}
-				text = string(buf.ToRunes(buffers[i].SelectionX(util.Sel{ start, buffers[i].Size() })))
+				text = string(buf.ToRunes(buffers[i].SelectionX(util.Sel{start, buffers[i].Size()})))
 			}
 
 			bufs[i] = DumpBuffer{
@@ -1065,6 +1071,5 @@ func (w *Window) Dump() DumpWindow {
 			bufs[i].IsNil = true
 		}
 	}
-	return DumpWindow{ cols, bufs, w.tagbuf.Dir }
+	return DumpWindow{cols, bufs, w.tagbuf.Dir}
 }
-
