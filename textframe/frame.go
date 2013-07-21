@@ -49,6 +49,8 @@ type Frame struct {
 	Scroll FrameScrollFn
 	Top int
 
+	Limit image.Point
+
 	margin raster.Fix32
 
 	Sels []util.Sel
@@ -156,7 +158,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 		}
 		mu.Unlock()
 	}()
-	
+
 
 	lh := fr.lineHeight()
 
@@ -172,12 +174,13 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	spaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, spaceIndex).AdvanceWidth) << 2
 	bigSpaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, xIndex).AdvanceWidth) << 2
 	tabWidth := spaceWidth * raster.Fix32(fr.TabWidth)
-	
+
 	limit.X = int(fr.ins.X >> 8)
 	limit.Y = int(fr.ins.Y >> 8)
 
 	for i, crune := range runes {
 		if fr.ins.Y > bottom {
+			fr.Limit = limit
 			return
 		}
 
@@ -185,7 +188,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 			//println("lastFull is: ", len(fr.glyphs), fr.ins.Y + lh, raster.Fix32(fr.R.Max.Y << 8))
 			fr.lastFull = len(fr.glyphs)
 		}
-		
+
 		if crune.R == '\n' {
 			g := glyph{
 				r:         crune.R,
@@ -289,11 +292,11 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 			fr.ins.X += width
 			prev, prevFontIdx, hasPrev = index, fontIdx, true
 		}
-		
+
 		if int(fr.ins.X >> 8) > limit.X {
 			limit.X = int(fr.ins.X >> 8)
 		}
-		
+
 		if int(fr.ins.Y >> 8) > limit.Y {
 			limit.Y = int(fr.ins.Y >> 8)
 		}
@@ -302,6 +305,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 		//println("lastFull is: ", len(fr.glyphs), fr.ins.Y + lh, raster.Fix32(fr.R.Max.Y << 8))
 		fr.lastFull = len(fr.glyphs)
 	}
+	fr.Limit = limit
 	return
 }
 
@@ -483,7 +487,7 @@ func (fr *Frame) setSelectEx(idx, kind, start, end int, disableOther bool) {
 		end = e + fr.Top
 	}
 
-	
+
 	fr.Sels[idx].S = start
 	fr.Sels[idx].E = end
 }
@@ -756,7 +760,7 @@ func (f *Frame) OnClick(e util.MouseDownEvent, events <- chan interface{}) *wde.
 	}
 
 	p := f.CoordToPoint(e.Where)
-	
+
 	sel := int(math.Log2(float64(e.Which)))
 	if sel >= len(f.Sels) {
 		return nil

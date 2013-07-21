@@ -46,13 +46,13 @@ func resolvePath(rel2dir, path string) string {
 			}
 		}
 	}
-	
+
 	return abspath
 }
 
 func EditFind(rel2dir, path string, warp bool, create bool) (*Editor, error) {
 	abspath := resolvePath(rel2dir, path)
-	
+
 	//println("Relative", abspath, rel2dir)
 	dir := filepath.Dir(abspath)
 	name := filepath.Base(abspath)
@@ -79,7 +79,7 @@ func HeuristicOpen(path string, warp bool, create bool) (*Editor, error) {
 	if err != nil {
 		return nil, err
 	}
-	
+
 	HeuristicPlaceEditor(ed, warp)
 
 	return ed, nil
@@ -107,18 +107,34 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 		}
 	}
 
-	var ted *Editor = nil
-	for _, ced := range col.editors {
-		if ted == nil {
-			ted = ced
-		} else {
-			if ced.Height() >= ted.Height() - int(ted.sfr.Fr.Font.LineHeight()) {
-				ted = ced
+	if len(col.editors) <= 0 {
+		col.AddAfter(ed, -1, 0.5)
+	} else {
+		emptyed := col.editors[0]
+		biged := col.editors[0]
+		lh := int(biged.sfr.Fr.Font.LineHeight())
+
+		for _, ced := range col.editors {
+			if ced.Height() >= biged.Height() - lh {
+				biged = ced
+			}
+
+			if (ced.Height() - ced.UsedHeight()) >= (emptyed.Height() - emptyed.UsedHeight() - lh) {
+				emptyed = ced
 			}
 		}
+
+		el := (emptyed.Height() - emptyed.UsedHeight()) / lh
+		bl := (biged.Height() / lh)
+		if (el > 15) || ((el > 3) && (el > bl/2)) {
+			f := float32(emptyed.UsedHeight()) / float32(emptyed.Height())
+			col.AddAfter(ed, col.IndexOf(emptyed), f)
+		} else {
+			col.AddAfter(ed, col.IndexOf(biged), 0.5)
+		}
+
 	}
 
-	col.AddAfter(ed, col.IndexOf(ted), 0.5)
 	Wnd.cols.RecalcRects()
 	col.Redraw()
 	Wnd.wnd.FlushImage()

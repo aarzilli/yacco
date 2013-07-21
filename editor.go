@@ -361,6 +361,10 @@ func (ed *Editor) Height() int {
 	return ed.r.Max.Y - ed.r.Min.Y
 }
 
+func (e *Editor) UsedHeight() int {
+	return e.sfr.Fr.Limit.Y - e.r.Min.Y + int(e.sfr.Fr.Font.LineHeight())
+}
+
 func (ed *Editor) recenterIntl(refresh bool) bool {
 	if ed.sfr.Fr.Inside(ed.sfr.Fr.Sels[0].E) {
 		return false

@@ -52,11 +52,13 @@ func (b *Buffer) highlightIntl(start int, full bool) {
 	status := uint8(0)
 	if start >= 0 {
 		status = b.At(start).C >> 4
+	} else {
+		start = 0
 	}
 	
 	escaping := false
 	nlcount := 0
-	for i := start+1; i < b.Size(); i++ {
+	for i := start; i < b.Size(); i++ {
 		if b.At(i).R == '\n' {
 			nlcount++
 		}
