@@ -148,6 +148,7 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 					// do nothing, doesn't matter anyway
 				}()
 				newed.sfr.Fr.Sels[0] = edit.AddrEval(addrExpr, newed.bodybuf, newed.sfr.Fr.Sels[0])
+				newed.PushJump()
 			}()
 			newed.BufferRefresh(false)
 		}

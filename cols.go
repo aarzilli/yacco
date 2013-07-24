@@ -29,8 +29,8 @@ func (cs *Cols) SetRects(wnd wde.Window, b draw.Image, r image.Rectangle) {
 }
 
 // Create a new column after the specified one, specify -1 to create a new column at the end
-func (cs *Cols) AddAfter(n int) *Col {
-	c := NewCol(cs.wnd, cs.r)
+func (cs *Cols) AddAfter(c *Col, n int, f float64) *Col {
+	//c := NewCol(cs.wnd, cs.r)
 	if len(cs.cols) == 0 {
 		cs.cols = append(cs.cols, c)
 	} else {
@@ -38,8 +38,8 @@ func (cs *Cols) AddAfter(n int) *Col {
 			n = len(cs.cols) - 1
 		}
 
-		c.frac = cs.cols[n].frac * 0.4
-		cs.cols[n].frac *= 0.6
+		c.frac = cs.cols[n].frac * f
+		cs.cols[n].frac -= c.frac
 
 		cs.cols = append(cs.cols, nil)
 		copy(cs.cols[n+2:], cs.cols[n+1:])

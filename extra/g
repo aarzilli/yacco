@@ -6,6 +6,7 @@ if [ "x$yd" != "x" ]; then
 	echo -n , >> "$bd/addr"
 	echo -ne '\0000' >> "$bd/data"
 	exec >> "$bd/body" 2>&1
+	echo $ grep -in $1
 	find ./ -name '*.c' -or -name '*.cc' -or -name '*.cpp' -or -name '*.h' -or -name '*.py' -or -name '*.txt' -or -name '*.pl' -or -name '*.tcl' -or -name '*.java' -or -name '*.js' -or -name '*.html' -or -name '*.go' -or -name '*.clj' | xargs grep -in $1
 	exit 0
 else

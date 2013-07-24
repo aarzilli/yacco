@@ -94,7 +94,7 @@ func LoadFrom(dumpDest string) bool {
 	}
 
 	for _, dc := range dw.Columns {
-		col := Wnd.cols.AddAfter(-1)
+		col := Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
 		for _, de := range dc.Editors {
 			b := buffers[de.Id]
 			ed := NewEditor(b, false)
@@ -120,6 +120,9 @@ func LoadFrom(dumpDest string) bool {
 		Wnd.cols.cols[i].frac = dc.Frac
 	}
 
+	Wnd.GenTag()
+	Wnd.BufferRefresh(true)
+	Wnd.tagfr.Redraw(true)
 	Wnd.Resized()
 
 	for _, db := range dw.Buffers {

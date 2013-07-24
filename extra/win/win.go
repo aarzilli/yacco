@@ -362,7 +362,7 @@ func findWin() (string, *os.File, *os.File, bool) {
 		line = strings.TrimSuffix(line, "\n")
 		if strings.HasSuffix(line, "+Win") {
 			id := strings.TrimSpace(line[:11])
-			eventfd, err := os.Open(os.ExpandEnv("$yd/" + id + "/event"))
+			eventfd, err := os.OpenFile(os.ExpandEnv("$yd/" + id + "/event"), os.O_RDWR, 0666)
 			if err != nil {
 				continue
 			}
@@ -400,7 +400,7 @@ func main() {
 	xdatafd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/xdata"), os.O_WRONLY, 0666)
 	Must(err)
 
-	_, err = ctlfd.Write([]byte("name +Win\n"))
+	_, err = ctlfd.Write([]byte("name +Win"))
 	Must(err)
 	
 	_, err = ctlfd.Write([]byte("dump " + strings.Join(os.Args, " ") + "\n"))
@@ -434,7 +434,12 @@ func main() {
 
 		cmd = exec.Command(shell)
 	}
-
+	
+	os.Setenv("TERM", "ansi")
+	os.Setenv("PAGER", "")
+	os.Setenv("EDITOR", "")
+	os.Setenv("VISUAL", "")
+	
 	pty := run(cmd)
 
 	outputReaderDone := make(chan struct{})

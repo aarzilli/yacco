@@ -36,8 +36,8 @@ var KeyBindings  = map[string]string{
 	"control+left_arrow": "Edit -#w1-#0",
 	"control+shift+left_arrow": "Edit .,+#0-#w1-#0",
 	"control+backspace": "Edit -#w1,. c//",
-	"control+home": "Edit #0",
-	"control+end": "Edit $",
+	"control+home": "Edit #0 k",
+	"control+end": "Edit $ k",
 	"home": "Edit +--#0",
 	"control+a": HOME_CMD,
 	"end": END_CMD,
@@ -61,8 +61,8 @@ var KeyBindings  = map[string]string{
 	"control+,": "|a-",
 	
 	"control+q": "LookFile",
-	
 	"control+p": "Win!Prev",
+	"control+b": "Jump",
 	
 	"backspace": "Do\nEdit v/./ -#1,.\nEdit c//",
 	"control+w": "Do\nEdit v/./ -#1,.\nEdit c//",

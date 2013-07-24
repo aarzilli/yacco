@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"unicode"
 	"yacco/util"
-	"yacco/buf"
 )
 
 type cmdDef struct {
@@ -16,26 +15,27 @@ type cmdDef struct {
 	bodyarg bool
 	optxtarg bool
 	restargs bool
-	fn func(c *cmd, buf *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string)
+	fn func(c *cmd, atsel util.Sel, ec EditContext)
 }
 
 var commands = map[rune]cmdDef{
-	'a': cmdDef{ txtargs: 1, fn: func(c *cmd, buf *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) { inscmdfn(+1, c, buf, atsel, sels, eventChan) } },
-	'c': cmdDef{ txtargs: 1, fn: func(c *cmd, buf *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) { inscmdfn(0, c, buf, atsel, sels, eventChan)  } },
-	'i': cmdDef{ txtargs: 1, fn: func(c *cmd, buf *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) { inscmdfn(-1, c, buf, atsel, sels, eventChan) } },
-	'd': cmdDef{ txtargs: 0, fn: func(c *cmd, buf *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) { c.txtargs = []string{ "" }; inscmdfn(0, c, buf, atsel, sels, eventChan) } },
+	'a': cmdDef{ txtargs: 1, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(+1, c, atsel, ec) } },
+	'c': cmdDef{ txtargs: 1, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(0, c, atsel, ec)  } },
+	'i': cmdDef{ txtargs: 1, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(-1, c, atsel, ec) } },
+	'd': cmdDef{ txtargs: 0, fn: func(c *cmd, atsel util.Sel, ec EditContext) { c.txtargs = []string{ "" }; inscmdfn(0, c, atsel, ec) } },
 	's': cmdDef{ txtargs: 2, sarg: true, fn: scmdfn },
-	'm': cmdDef{ txtargs: 0, addrarg: true, fn: func(c *cmd, buf *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) { mtcmdfn(true, c, buf, atsel, sels, eventChan) } },
-	't': cmdDef{ txtargs: 0, addrarg: true, fn: func(c *cmd, buf *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) { mtcmdfn(false, c, buf, atsel, sels, eventChan) } },
+	'm': cmdDef{ txtargs: 0, addrarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { mtcmdfn(true, c, atsel, ec) } },
+	't': cmdDef{ txtargs: 0, addrarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { mtcmdfn(false, c, atsel, ec) } },
 	'p': cmdDef{ txtargs: 0, fn: pcmdfn },
 	'=': cmdDef{ txtargs: 0, fn: eqcmdfn },
 	'x': cmdDef{ txtargs: 1, bodyarg: true, optxtarg: true, fn: xcmdfn},
 	'y': cmdDef{ txtargs: 1, bodyarg: true, fn: ycmdfn },
-	'g': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, buf *buf.Buffer, atsel util.Sel, sels[]util.Sel, eventChan chan string) { gcmdfn(false, c, buf, atsel, sels, eventChan) } },
-	'v': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, buf *buf.Buffer, atsel util.Sel, sels[]util.Sel, eventChan chan string) { gcmdfn(true, c, buf, atsel, sels, eventChan) }  },
+	'g': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { gcmdfn(false, c, atsel, ec) } },
+	'v': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { gcmdfn(true, c, atsel, ec) }  },
 	'<': cmdDef{ restargs: true, fn: pipeincmdfn },
 	'>': cmdDef{ restargs: true, fn: pipeoutcmdfn },
 	'|': cmdDef{ restargs: true, fn: pipecmdfn },
+	'k': cmdDef{ restargs: false, fn: kcmdfn },
 }
 
 type addrTok string

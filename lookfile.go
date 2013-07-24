@@ -120,7 +120,7 @@ func displayResults(ed *Editor, resultList []*lookFileResult) {
 }
 
 func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string) {
-	x := resolvePath(edDir, needle)
+	x := ResolvePath(edDir, needle)
 	startDir := filepath.Dir(x)
 	needle = filepath.Base(x)
 

@@ -20,21 +20,28 @@ type cmd struct {
 	argaddr Addr
 	body *cmd
 	bodytxt string
-	fn func(c *cmd, buf *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string)
+	fn func(c *cmd, atsel util.Sel, ec EditContext)
 }
 
-func Edit(pgm string, b *buf.Buffer, sels []util.Sel, eventChan chan string) {
+type EditContext struct {
+	Buf *buf.Buffer
+	Sels []util.Sel
+	EventChan chan string
+	PushJump func()
+}
+
+func Edit(pgm string, ec EditContext) {
 	ppgm := parse([]rune(pgm))
-	ppgm.Exec(b, sels, eventChan)
+	ppgm.Exec(ec)
 }
 
-func (ecmd *cmd) Exec(b *buf.Buffer, sels []util.Sel, eventChan chan string) {
+func (ecmd *cmd) Exec(ec EditContext) {
 	if ecmd.fn == nil {
 		panic(fmt.Errorf("Command '%c' not implemented", ecmd.cmdch))
 	}
 	
 	func() {
-		ecmd.fn(ecmd, b, sels[0], sels, eventChan)
+		ecmd.fn(ecmd, ec.Sels[0], ec)
 	}()
 }
 

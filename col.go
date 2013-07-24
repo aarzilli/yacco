@@ -212,3 +212,7 @@ func (c *Col) Dump() DumpColumn {
 	}
 	return DumpColumn{c.frac, editors}
 }
+
+func (c *Col) Width() int {
+	return c.r.Max.X - c.r.Min.X
+}

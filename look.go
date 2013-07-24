@@ -46,7 +46,7 @@ func lookfwdEx(ed *Editor, needle []rune, start int) bool {
 	return false
 }
 
-func lookfwd(ed *Editor, needle []rune, fromEnd bool) {
+func lookfwd(ed *Editor, needle []rune, fromEnd bool, setJump bool) {
 	start := ed.sfr.Fr.Sels[0].S
 	if fromEnd {
 		start = ed.sfr.Fr.Sels[0].E
@@ -57,6 +57,9 @@ func lookfwd(ed *Editor, needle []rune, fromEnd bool) {
 	}
 	ed.BufferRefresh(false)
 	ed.Warp()
+	if setJump {
+		ed.PushJump()
+	}
 }
 
 var lastNeedle []rune
@@ -73,6 +76,7 @@ func lookproc(ec ExecContext) {
 	for {
 		specialMsg, ok := <-ch
 		if !ok {
+			ec.ed.PushJump()
 			break
 		}
 		switch specialMsg[0] {
@@ -82,7 +86,7 @@ func lookproc(ec ExecContext) {
 				func() {
 					Wnd.Lock.Lock()
 					defer Wnd.Lock.Unlock()
-					lookfwd(ec.ed, needle, true)
+					lookfwd(ec.ed, needle, true, false)
 					if ec.fr.Sels[0].S != ec.fr.Sels[0].E {
 						matches = append(matches, ec.fr.Sels[0])
 					}
@@ -92,6 +96,7 @@ func lookproc(ec ExecContext) {
 					Wnd.Lock.Lock()
 					defer Wnd.Lock.Unlock()
 					ec.ed.ExitSpecial()
+					ec.ed.PushJump()
 				}()
 			case "Prev":
 				if len(matches) > 1 {
@@ -113,7 +118,7 @@ func lookproc(ec ExecContext) {
 			func() {
 				Wnd.Lock.Lock()
 				defer Wnd.Lock.Unlock()
-				lookfwd(ec.ed, needle, false)
+				lookfwd(ec.ed, needle, false, false)
 				if doAppend && (ec.fr.Sels[0].S != ec.fr.Sels[0].E) {
 					matches = append(matches, ec.fr.Sels[0])
 				}

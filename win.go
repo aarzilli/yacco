@@ -92,6 +92,7 @@ func (w *Window) Init(width, height int) (err error) {
 	}
 	screen := w.wnd.Screen()
 	w.wnd.SetTitle("Yacco")
+	w.wnd.SetClass("yacco", "Yacco")
 	w.wnd.Show()
 	w.cols = NewCols(w.wnd, screen.Bounds())
 	w.tagfr = textframe.Frame{
@@ -607,11 +608,11 @@ func (w *Window) ColResize(col *Col, e util.MouseDownEvent, events <-chan interf
 	startPos := e.Where
 	endPos := startPos
 
-	var before *Col
+	/*var before *Col
 	bidx := Wnd.cols.IndexOf(col) - 1
 	if bidx >= 0 {
 		before = Wnd.cols.cols[bidx]
-	}
+	}*/
 
 loop:
 	for ei := range events {
@@ -626,27 +627,27 @@ loop:
 
 		case wde.MouseDraggedEvent:
 			endPos = e.Where
-
-			if before != nil {
-				w := endPos.X - before.r.Min.X
-				if w < 0 {
-					w = 0
-				}
-				tw := col.r.Max.X - before.r.Min.X
-				tf := col.frac + before.frac
-				if w < tw {
-					r := float64(w) / float64(tw)
-					col.frac = tf * (1 - r)
-					before.frac = tf * r
-				} else {
-					before.frac += col.frac
-					col.frac = 0
-				}
-
-				Wnd.cols.RecalcRects()
-				Wnd.cols.Redraw()
-				Wnd.wnd.FlushImage()
+			
+			if !endPos.In(Wnd.cols.r) {
+				break
 			}
+			
+			w.cols.Remove(w.cols.IndexOf(col))
+			w.cols.RecalcRects()
+			
+			mlp := w.TranslatePosition(endPos, true)
+			dstcol := mlp.col
+			
+			if dstcol == nil {
+				w.cols.AddAfter(col, -1, 0.5)
+			} else {
+				dstw := endPos.X - dstcol.r.Min.X
+				if dstw < 0 {
+					dstw = 0
+				}
+				w.cols.AddAfter(col, w.cols.IndexOf(dstcol), 1-float64(dstw)/float64(dstcol.Width()))
+			}
+			w.wnd.FlushImage()
 		}
 	}
 
@@ -915,6 +916,14 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent) {
 			lp.sfr.Fr.DisableOtherSelections(0)
 			activeSel = string(buf.ToRunes(lp.bodybuf.SelectionX(lp.sfr.Fr.Sels[0])))
 			br.BufferRefresh(false)
+			
+			d := lp.ed.LastJump() - lp.sfr.Fr.Sels[0].S
+			if d < 0 {
+				d *= -1
+			}
+			if d > JUMP_THRESHOLD {
+				lp.ed.PushJump()
+			}
 		}
 		if lp.tagfr != nil {
 			lp.tagfr.DisableOtherSelections(0)

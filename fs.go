@@ -204,6 +204,11 @@ func (yfs *YaccoFs) addBuffer(n int, b *buf.Buffer) {
 			func(data []byte, off int64) (write uint32, code fuse.Status) {
 				return writePropFn(n, data, off)
 			}, nil, nil}))
+	inode.AddChild("jumps", inode.New(false,
+		&ReadOnlyNode{nodefs.NewDefaultNode(), 
+			func(dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
+				return jumpFileFn(n, dest, off)
+			}, }))
 }
 
 func (yfs *YaccoFs) OnMount(conn *nodefs.FileSystemConnector) {
@@ -673,3 +678,23 @@ func writeMainPropFn(data []byte, off int64) (written uint32, code fuse.Status) 
 	}
 	return uint32(len(data)), fuse.OK
 }
+
+func jumpFileFn(i int, dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
+	if off > 0 {
+		return fuse.ReadResultData([]byte{}), fuse.OK
+	}
+	ec := bufferExecContext(i)
+	if ec == nil {
+		return nil, fuse.ENOENT
+	}
+	if ec.fr == nil {
+		return nil, fuse.EIO
+	}
+	s := ""
+
+	for _, sel := range ec.fr.Sels {
+		s += fmt.Sprintf("#%d\n", sel.S)
+	}
+	return fuse.ReadResultData([]byte(s)), fuse.OK
+}
+

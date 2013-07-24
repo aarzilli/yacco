@@ -60,7 +60,7 @@ func ExecFs(ec *ExecContext, cmd string) {
 			ec.buf.DumpCmd = strings.TrimSpace(cmd[len("dump"):])
 		} else if strings.HasPrefix(cmd, "name ") {
 			newName := strings.TrimSpace(cmd[len("name"):])
-			abspath := resolvePath(ec.buf.Dir, newName)
+			abspath := ResolvePath(ec.buf.Dir, newName)
 			ec.buf.Name = filepath.Base(abspath)
 			ec.buf.Dir = filepath.Dir(abspath)
 			ec.br.BufferRefresh(false)

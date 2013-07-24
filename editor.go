@@ -32,9 +32,14 @@ type Editor struct {
 	savedTag            string
 	specialChan         chan string
 	specialExitOnReturn bool
+	
+	restoredJump int
+	jumpCount int
 }
 
 const SCROLL_WIDTH = 10
+const NUM_JUMPS = 7
+const JUMP_THRESHOLD = 100
 
 func scrollfn(e *Editor, sd int, sl int) {
 	if sd < 0 {
@@ -98,7 +103,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 				config.TheColorScheme.EditorPlain,               // 3 highlighted parenthesis
 				config.TheColorScheme.EditorPlain,               // 4 content of 'addr' file
 				config.TheColorScheme.EditorMatchingParenthesis, // 5 matching parenthesis
-				/* space for jumps */
+				/* space for jumps - 6 through 12 */
 				config.TheColorScheme.EditorPlain,
 				config.TheColorScheme.EditorPlain,
 				config.TheColorScheme.EditorPlain,
@@ -450,4 +455,51 @@ func (ed *Editor) Dump() DumpEditor {
 		fontName,
 		ed.specialChan != nil,
 	}
+}
+
+func (ed *Editor) PushJump() {
+	jb := len(ed.sfr.Fr.Sels) - NUM_JUMPS
+	for i := len(ed.sfr.Fr.Sels)-2; i >= jb; i-- {
+		ed.sfr.Fr.Sels[i+1] = ed.sfr.Fr.Sels[i]
+	}
+	ed.sfr.Fr.Sels[jb].S = ed.sfr.Fr.Sels[0].S
+	ed.restoredJump = 0
+	ed.jumpCount++
+}
+
+func (ed *Editor) RestoreJump() {
+	if ed.jumpCount == 0 {
+		return
+	}
+	
+	jb := len(ed.sfr.Fr.Sels) - NUM_JUMPS
+	
+	// if we haven't recently restored a jump since the last push, refer to the last pushed jump
+	if ed.restoredJump < jb {
+		ed.restoredJump = jb
+	}
+	
+	// if we moved since the last restored (or pushed jump)
+	if ed.sfr.Fr.Sels[0].S != ed.sfr.Fr.Sels[ed.restoredJump].S {
+		// we push the current position, then restore the previously last jump done
+		ed.PushJump()
+		ed.sfr.Fr.Sels[0].S = ed.sfr.Fr.Sels[jb+1].S
+		ed.sfr.Fr.Sels[0].E = ed.sfr.Fr.Sels[jb+1].S
+		ed.restoredJump = jb+1
+		return
+	}
+	
+	// we are on the last restored jump, cycle through jump
+	ed.restoredJump++
+	if (ed.restoredJump >= len(ed.sfr.Fr.Sels)) || (ed.restoredJump >= jb + ed.jumpCount) {
+		ed.restoredJump = jb
+	}
+	
+	ed.sfr.Fr.Sels[0].S = ed.sfr.Fr.Sels[ed.restoredJump].S
+	ed.sfr.Fr.Sels[0].E = ed.sfr.Fr.Sels[ed.restoredJump].S
+}
+
+func (ed *Editor) LastJump() int {	
+	jb := len(ed.sfr.Fr.Sels) - NUM_JUMPS
+	return ed.sfr.Fr.Sels[jb].S
 }

@@ -12,12 +12,12 @@ var NewJob func (wd, cmd, input string, resultChan chan<- string)
 
 const LOOP_LIMIT = 200
 
-func nilcmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
-	sels[0] = c.rangeaddr.Eval(b, atsel)
+func nilcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
+	ec.Sels[0] = c.rangeaddr.Eval(ec.Buf, atsel)
 }
 
-func inscmdfn(dir int, c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
-	sel := c.rangeaddr.Eval(b, atsel)
+func inscmdfn(dir int, c *cmd, atsel util.Sel, ec EditContext) {
+	sel := c.rangeaddr.Eval(ec.Buf, atsel)
 
 	switch c.cmdch {
 	case 'a':
@@ -26,37 +26,37 @@ func inscmdfn(dir int, c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, e
 		sel.E = sel.S
 	}
 
-	b.Replace([]rune(c.txtargs[0]), &sel, sels, true, eventChan, util.EO_MOUSE, false)
+	ec.Buf.Replace([]rune(c.txtargs[0]), &sel, ec.Sels, true, ec.EventChan, util.EO_MOUSE, false)
 
-	sels[0] = sel
+	ec.Sels[0] = sel
 }
 
-func mtcmdfn(del bool, c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
-	selfrom := c.rangeaddr.Eval(b, atsel)
-	selto := c.argaddr.Eval(b, atsel).E
+func mtcmdfn(del bool, c *cmd, atsel util.Sel, ec EditContext) {
+	selfrom := c.rangeaddr.Eval(ec.Buf, atsel)
+	selto := c.argaddr.Eval(ec.Buf, atsel).E
 
-	txt := buf.ToRunes(b.SelectionX(selfrom))
+	txt := buf.ToRunes(ec.Buf.SelectionX(selfrom))
 
 	if selto > selfrom.E {
-		b.Replace(txt, &util.Sel{ selto, selto }, sels, true, eventChan, util.EO_MOUSE, false)
-		b.Replace([]rune{}, &selfrom, sels, false, eventChan, util.EO_MOUSE, true)
+		ec.Buf.Replace(txt, &util.Sel{ selto, selto }, ec.Sels, true, ec.EventChan, util.EO_MOUSE, false)
+		ec.Buf.Replace([]rune{}, &selfrom, ec.Sels, false, ec.EventChan, util.EO_MOUSE, true)
 	} else {
-		b.Replace([]rune{}, &selfrom, sels, true, eventChan, util.EO_MOUSE, false)
-		b.Replace(txt, &util.Sel{ selto, selto }, sels, false, eventChan, util.EO_MOUSE, true)
+		ec.Buf.Replace([]rune{}, &selfrom, ec.Sels, true, ec.EventChan, util.EO_MOUSE, false)
+		ec.Buf.Replace(txt, &util.Sel{ selto, selto }, ec.Sels, false, ec.EventChan, util.EO_MOUSE, true)
 	}
 }
 
-func pcmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
-	sel := c.rangeaddr.Eval(b, atsel)
-	txt := b.SelectionX(sel)
-	sels[0] = sel
+func pcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
+	sel := c.rangeaddr.Eval(ec.Buf, atsel)
+	txt := ec.Buf.SelectionX(sel)
+	ec.Sels[0] = sel
 	Warnfn(string(buf.ToRunes(txt)))
 }
 
-func eqcmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
-	sel := c.rangeaddr.Eval(b, atsel)
-	sline, scol := b.GetLine(sel.S)
-	eline, ecol := b.GetLine(sel.E)
+func eqcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
+	sel := c.rangeaddr.Eval(ec.Buf, atsel)
+	sline, scol := ec.Buf.GetLine(sel.S)
+	eline, ecol := ec.Buf.GetLine(sel.E)
 	if (sline == eline) && (scol == ecol) {
 		Warnfn(fmt.Sprintf("%d:%d", sline, scol))
 	} else {
@@ -64,8 +64,8 @@ func eqcmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan c
 	}
 }
 
-func scmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
-	sel := c.rangeaddr.Eval(b, atsel)
+func scmdfn(c *cmd, atsel util.Sel, ec EditContext) {
+	sel := c.rangeaddr.Eval(ec.Buf, atsel)
 	re := regexp.MustCompile("(?m)" + c.txtargs[0])
 	subs := []rune(c.txtargs[1])
 	end := sel.E
@@ -73,13 +73,13 @@ func scmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan ch
 	count := 0
 	for {
 		psel := sel.S
-		br := b.ReaderFrom(sel.S, end)
+		br := ec.Buf.ReaderFrom(sel.S, end)
 		loc := re.FindReaderIndex(br)
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}
 		sel = util.Sel{ loc[0] + sel.S, loc[1] + sel.S }
-		b.Replace(subs, &sel, sels, first, eventChan, util.EO_MOUSE, false)
+		ec.Buf.Replace(subs, &sel, ec.Sels, first, ec.EventChan, util.EO_MOUSE, false)
 		if sel.S != psel {
 			count++
 		} else {
@@ -92,25 +92,25 @@ func scmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan ch
 	}
 }
 
-func xcmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
-	sel := c.rangeaddr.Eval(b, atsel)
+func xcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
+	sel := c.rangeaddr.Eval(ec.Buf, atsel)
 	re := regexp.MustCompile("(?m)" + c.txtargs[0])
 	end := sel.E
 	count := 0
 	for {
 		oldS := sel.S
-		br := b.ReaderFrom(sel.S, end)
+		br := ec.Buf.ReaderFrom(sel.S, end)
 		loc := re.FindReaderIndex(br)
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}
 		sel = util.Sel{ loc[0] + sel.S, loc[1] + sel.S }
-		sels[0] = sel
-		c.body.fn(c.body, b, sel, sels, eventChan)
-		if (sels[0].S == sel.S) && (sels[0].E == sel.E) {
+		ec.Sels[0] = sel
+		c.body.fn(c.body, sel, ec)
+		if (ec.Sels[0].S == sel.S) && (ec.Sels[0].E == sel.E) {
 			sel.S = sel.E
 		} else {
-			sel.S = sels[0].E
+			sel.S = ec.Sels[0].E
 		}
 		if sel.S <= oldS {
 			count++
@@ -122,21 +122,21 @@ func xcmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan ch
 	}
 }
 
-func ycmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
-	sel := c.rangeaddr.Eval(b, atsel)
+func ycmdfn(c *cmd, atsel util.Sel, ec EditContext) {
+	sel := c.rangeaddr.Eval(ec.Buf, atsel)
 	re := regexp.MustCompile("(?m)" + c.txtargs[0])
 	end := sel.E
 	count := 0
 	for {
 		oldS := sel.S
-		br := b.ReaderFrom(sel.S, end)
+		br := ec.Buf.ReaderFrom(sel.S, end)
 		loc := re.FindReaderIndex(br)
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}
 		sel.E = loc[0] + sel.S
-		sels[0] = sel
-		c.body.fn(c.body, b, sel, sels, eventChan)
+		ec.Sels[0] = sel
+		c.body.fn(c.body, sel, ec)
 		sel.S = sel.E
 		if sel.S <= oldS {
 			count++
@@ -148,42 +148,47 @@ func ycmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan ch
 	}
 }
 
-func gcmdfn(inv bool, c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
-	sel := c.rangeaddr.Eval(b, atsel)
-	rr := b.ReaderFrom(sel.S, sel.E)
+func gcmdfn(inv bool, c *cmd, atsel util.Sel, ec EditContext) {
+	sel := c.rangeaddr.Eval(ec.Buf, atsel)
+	rr := ec.Buf.ReaderFrom(sel.S, sel.E)
 	re := regexp.MustCompile("(?m)" + c.txtargs[0])
 	loc := re.FindReaderIndex(rr)
 	if loc == nil {
 		if inv {
-			c.body.fn(c.body, b, sel, sels, eventChan)
+			c.body.fn(c.body, sel, ec)
 		}
 	} else {
 		if !inv {
-			c.body.fn(c.body, b, sel, sels, eventChan)
+			c.body.fn(c.body, sel, ec)
 		}
 	}
 }
 
-func pipeincmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
+func pipeincmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	resultChan := make(chan string)
-	NewJob(b.Dir, c.bodytxt, "", resultChan)
+	NewJob(ec.Buf.Dir, c.bodytxt, "", resultChan)
 	str := <- resultChan
-	sel := c.rangeaddr.Eval(b, atsel)
-	b.Replace([]rune(str), &sel, sels, true, eventChan, util.EO_MOUSE, true)
+	sel := c.rangeaddr.Eval(ec.Buf, atsel)
+	ec.Buf.Replace([]rune(str), &sel, ec.Sels, true, ec.EventChan, util.EO_MOUSE, true)
 }
 
-func pipeoutcmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
-	sel := c.rangeaddr.Eval(b, atsel)
-	str := string(buf.ToRunes(b.SelectionX(sel)))
-	NewJob(b.Dir, c.bodytxt, str, nil)
+func pipeoutcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
+	sel := c.rangeaddr.Eval(ec.Buf, atsel)
+	str := string(buf.ToRunes(ec.Buf.SelectionX(sel)))
+	NewJob(ec.Buf.Dir, c.bodytxt, str, nil)
 }
 
-func pipecmdfn(c *cmd, b *buf.Buffer, atsel util.Sel, sels []util.Sel, eventChan chan string) {
-	sel := c.rangeaddr.Eval(b, atsel)
-	str := string(buf.ToRunes(b.SelectionX(sel)))
+func pipecmdfn(c *cmd, atsel util.Sel, ec EditContext) {
+	sel := c.rangeaddr.Eval(ec.Buf, atsel)
+	str := string(buf.ToRunes(ec.Buf.SelectionX(sel)))
 	resultChan := make(chan string)
-	NewJob(b.Dir, c.bodytxt, str, resultChan)
+	NewJob(ec.Buf.Dir, c.bodytxt, str, resultChan)
 	str = <- resultChan
-	b.Replace([]rune(str), &sel, sels, true, eventChan, util.EO_MOUSE, true)
+	ec.Buf.Replace([]rune(str), &sel, ec.Sels, true, ec.EventChan, util.EO_MOUSE, true)
 }
 
+func kcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
+	sel := c.rangeaddr.Eval(ec.Buf, atsel)
+	ec.Sels[0] = sel
+	ec.PushJump()
+}

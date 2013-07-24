@@ -68,6 +68,7 @@ var cmds = map[string]Cmd{
 	"Paste!Primary": func(ec ExecContext, arg string) { PasteCmd(ec, arg, true) },
 	"Paste!Indent":  PasteIndentCmd,
 	"Rename":        RenameCmd,
+	"Jump": JumpCmd,
 }
 
 var macros = map[string]Cmd{}
@@ -216,6 +217,7 @@ func DumpCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	dumpDest := getDumpPath(arg, true)
 	if DumpTo(dumpDest) {
+		Wnd.wnd.SetTitle("Yacco " + dumpDest)
 		AutoDumpPath = dumpDest
 	}
 }
@@ -224,6 +226,7 @@ func LoadCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	dumpDest := getDumpPath(arg, false)
 	if LoadFrom(dumpDest) {
+		Wnd.wnd.SetTitle("Yacco " + dumpDest)
 		AutoDumpPath = dumpDest
 	}
 }
@@ -249,8 +252,15 @@ func EditCmd(ec ExecContext, arg string) {
 	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
 		return
 	}
+	
+	edc := edit.EditContext{
+		Buf: ec.buf,
+		Sels: ec.fr.Sels,
+		EventChan: ec.eventChan,
+		PushJump: ec.ed.PushJump,
+	}
 
-	edit.Edit(arg, ec.buf, ec.fr.Sels, ec.eventChan)
+	edit.Edit(arg, edc)
 	ec.br.BufferRefresh(ec.ontag)
 }
 
@@ -317,7 +327,7 @@ func LookCmd(ec ExecContext, arg string) {
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
 	if arg != "" {
-		lookfwd(ec.ed, []rune(arg), true)
+		lookfwd(ec.ed, []rune(arg), true, true)
 	} else {
 		go lookproc(ec)
 	}
@@ -330,9 +340,9 @@ func LookAgainCmd(ec ExecContext, arg string) {
 	}
 	if ec.ed.specialChan != nil {
 		ec.ed.specialChan <- "!Again"
-		return
+	} else {
+		lookfwd(ec.ed, lastNeedle, true, true)
 	}
-	lookfwd(ec.ed, lastNeedle, true)
 }
 
 func SpecialSendCmd(ec ExecContext, msg string) {
@@ -367,7 +377,7 @@ func NewCmd(ec ExecContext, arg string) {
 		Warn("New: must specify argument")
 		return
 	}
-	path := resolvePath(ec.dir, arg)
+	path := ResolvePath(ec.dir, arg)
 	_, err := HeuristicOpen(path, true, true)
 	if err != nil {
 		Warn("New: " + err.Error())
@@ -376,7 +386,7 @@ func NewCmd(ec ExecContext, arg string) {
 
 func NewcolCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	Wnd.cols.AddAfter(-1)
+	Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
 	Wnd.wnd.FlushImage()
 }
 
@@ -718,4 +728,14 @@ func LookFileCmd(ec ExecContext, arg string) {
 	} else {
 		ed.tagfr.Sels[0] = util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}
 	}
+}
+
+func JumpCmd(ec ExecContext, arg string) {
+	if ec.ed == nil {
+		return
+	}
+	ec.ed.confirmDel = false
+	ec.ed.confirmSave = false
+	ec.ed.RestoreJump()
+	ec.ed.BufferRefresh(false)
 }

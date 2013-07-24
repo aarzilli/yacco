@@ -19,10 +19,10 @@ index 1af1cb2..fd5dd6b 100644
  
  type MouseEnteredEvent MouseMovedEvent
 diff --git a/keys.go b/keys.go
-index 897f1f6..82d1c57 100644
+index d743a9c..9bbb70b 100644
 --- a/keys.go
 +++ b/keys.go
-@@ -164,10 +164,10 @@ func (c ChordSorter) Less(i, j int) (less bool) {
+@@ -173,10 +173,10 @@ func (c ChordSorter) Less(i, j int) (less bool) {
  func ConstructChord(keys map[string]bool) (chord string) {
  	unikeys := map[string]bool{}
  	for key := range keys {
@@ -36,10 +36,18 @@ index 897f1f6..82d1c57 100644
  		}
  		unikeys[key] = true
 diff --git a/wde.go b/wde.go
-index fbb6aed..22847cb 100644
+index fbb6aed..9c7efcc 100644
 --- a/wde.go
 +++ b/wde.go
-@@ -31,6 +31,14 @@ type Window interface {
+@@ -23,6 +23,7 @@ import (
+ 
+ type Window interface {
+ 	SetTitle(title string)
++	SetClass(instance, class string)
+ 	SetSize(width, height int)
+ 	Size() (width, height int)
+ 	LockSize(lock bool)
+@@ -31,6 +32,14 @@ type Window interface {
  	FlushImage(bounds ...image.Rectangle)
  	EventChan() (events <-chan interface{})
  	Close() (err error)
@@ -54,7 +62,7 @@ index fbb6aed..22847cb 100644
  }
  
  type Image interface {
-@@ -40,11 +48,26 @@ type Image interface {
+@@ -40,11 +49,26 @@ type Image interface {
  	CopyRGBA(src *image.RGBA, bounds image.Rectangle)
  }
  
@@ -83,7 +91,7 @@ index fbb6aed..22847cb 100644
  recommended that your main function look like the the code below.
  
 diff --git a/xgb/events.go b/xgb/events.go
-index 5a66a25..3906b6d 100644
+index 5a66a25..0a9caa3 100644
 --- a/xgb/events.go
 +++ b/xgb/events.go
 @@ -18,13 +18,15 @@ package xgb
@@ -178,10 +186,15 @@ index 5a66a25..3906b6d 100644
  			}
  			w.events <- kpe
  
-@@ -176,6 +200,47 @@ func (w *Window) handleEvents() {
+@@ -173,8 +197,51 @@ func (w *Window) handleEvents() {
+ 		case xproto.DestroyNotifyEvent:
+ 		case xproto.ReparentNotifyEvent:
+ 		case xproto.MapNotifyEvent:
++		case xproto.MappingNotifyEvent:
  		case xproto.UnmapNotifyEvent:
  		case xproto.PropertyNotifyEvent:
- 
++		case xproto.SelectionClearEvent:
++
 +		case xproto.SelectionRequestEvent:
 +			//tgtname, _ := xprop.AtomName(w.xu, e.Target)
 +			//fmt.Println("SelectionRequest", e, textAtom, tgtname)
@@ -222,12 +235,11 @@ index 5a66a25..3906b6d 100644
 +
 +		case xproto.SelectionNotifyEvent:
 +			w.selnotify <- (e.Property == clipboardAtom) || (e.Property == primaryAtom)
-+
+ 
  		default:
  			fmt.Printf("unhandled event: type %T\n%+v\n", e, e)
- 		}
 diff --git a/xgb/xgb.go b/xgb/xgb.go
-index 08cc732..ee5a260 100644
+index 08cc732..5e6557e 100644
 --- a/xgb/xgb.go
 +++ b/xgb/xgb.go
 @@ -18,19 +18,39 @@ package xgb
@@ -323,7 +335,7 @@ index 08cc732..ee5a260 100644
  
  	w.xu, err = xgbutil.NewConn()
  	if err != nil {
-@@ -116,6 +159,80 @@ func NewWindow(width, height int) (w *Window, err error) {
+@@ -116,6 +159,79 @@ func NewWindow(width, height int) (w *Window, err error) {
  	return
  }
  
@@ -400,11 +412,22 @@ index 08cc732..ee5a260 100644
 +	return
 +}
 +
-+
  func (w *Window) SetTitle(title string) {
  	if w.closed {
  		return
-@@ -172,6 +289,13 @@ func (w *Window) Show() {
+@@ -127,6 +243,11 @@ func (w *Window) SetTitle(title string) {
+ 	return
+ }
+ 
++func (w *Window) SetClass(instance, class string) {
++	c := icccm.WmClass{ instance, class }
++	icccm.WmClassSet(w.xu, w.win.Id, &c)
++}
++
+ func (w *Window) SetSize(width, height int) {
+ 	if w.closed {
+ 		return
+@@ -172,6 +293,13 @@ func (w *Window) Show() {
  	w.win.Map()
  }
  
@@ -418,7 +441,7 @@ index 08cc732..ee5a260 100644
  func (w *Window) Screen() (im wde.Image) {
  	if w.closed {
  		return
-@@ -239,3 +363,97 @@ func (buffer Image) CopyRGBA(src *image.RGBA, r image.Rectangle) {
+@@ -239,3 +367,97 @@ func (buffer Image) CopyRGBA(src *image.RGBA, r image.Rectangle) {
  		}
  	}
  }

@@ -11,4 +11,8 @@ mv yacco bin
 cd extra/win
 go build
 cd -
-mv extra/win/win bin
+
+# building E
+cd extra/E
+go build
+cd -

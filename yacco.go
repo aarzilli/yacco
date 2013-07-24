@@ -22,8 +22,8 @@ func realmain() {
 		log.Fatalf(err.Error())
 	}
 
-	Wnd.cols.AddAfter(-1)
-	Wnd.cols.AddAfter(-1)
+	Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
+	Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
 
 	wd, _ := os.Getwd()
 

@@ -13,6 +13,10 @@ var RegionMatches = []util.RegionMatch{
 	// C / C++ / Java / Go
 	util.RegionMatch{
 		NameRe: regexp.MustCompile(`\.(?:c|java|cpp|h|go)$`),
+		StartDelim: []rune{ '`' }, EndDelim: []rune{ '`' }, Escape: '\\', Type: util.RMT_STRING,
+	},
+	util.RegionMatch{
+		NameRe: regexp.MustCompile(`\.(?:c|java|cpp|h|go)$`),
 		StartDelim: []rune{ '"' }, EndDelim: []rune{ '"' }, Escape: '\\', Type: util.RMT_STRING,
 	},
 	util.RegionMatch{

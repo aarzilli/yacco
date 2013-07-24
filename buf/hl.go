@@ -92,7 +92,8 @@ func (b *Buffer) highlightIntl(start int, full bool) {
 				}
 				i += len(config.RegionMatches[status].EndDelim)-1
 				status = 0
-			} else if b.At(i).R == config.RegionMatches[status].Escape {
+			} else if !escaping && (b.At(i).R == config.RegionMatches[status].Escape) {
+				b.At(i).C = (status << 4) + uint8(config.RegionMatches[status].Type)
 				escaping = true
 			} else {
 				escaping = false

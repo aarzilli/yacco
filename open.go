@@ -19,7 +19,7 @@ func editOpen(path string, create bool) (*Editor, error) {
 	return NewEditor(b, true), nil
 }
 
-func resolvePath(rel2dir, path string) string {
+func ResolvePath(rel2dir, path string) string {
 	var abspath = path
 	if len(path) > 0 {
 		switch path[0] {
@@ -51,7 +51,7 @@ func resolvePath(rel2dir, path string) string {
 }
 
 func EditFind(rel2dir, path string, warp bool, create bool) (*Editor, error) {
-	abspath := resolvePath(rel2dir, path)
+	abspath := ResolvePath(rel2dir, path)
 
 	//println("Relative", abspath, rel2dir)
 	dir := filepath.Dir(abspath)
@@ -87,7 +87,7 @@ func HeuristicOpen(path string, warp bool, create bool) (*Editor, error) {
 
 func HeuristicPlaceEditor(ed *Editor, warp bool) {
 	if len(Wnd.cols.cols) == 0 {
-		Wnd.cols.AddAfter(-1)
+		Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
 	}
 
 	var col *Col = nil
