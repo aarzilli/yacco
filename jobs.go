@@ -29,6 +29,8 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 	i := -1
 	if ec.ed != nil {
 		i = bufferIndex(ec.ed.bodybuf)
+	} else {
+		i = bufferIndex(ec.buf)
 	}
 
 	job.writeToBuf = writeToBuf

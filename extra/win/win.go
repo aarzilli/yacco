@@ -258,7 +258,7 @@ func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, bodyfd *os.F
 					pty.Write([]byte{ '\n' })
 				}
 			}
-			
+
 			Must(err)
 		case 'l', 'L':
 			_, err := eventfd.Write([]byte(event))
@@ -345,15 +345,45 @@ func notifyProc(notifyChan <-chan os.Signal, endChan <-chan bool, bodyfd io.Read
 	os.Exit(0)
 }
 
+func findWinRestored() (bool, string, *os.File, *os.File, bool) {
+	if os.Getenv("bd") == "" {
+		return false, "", nil, nil, false
+	}
+
+	ctlfd, err := os.OpenFile(os.ExpandEnv("$yd/index"), os.O_RDWR, 0666)
+	if err != nil {
+		return false, "", nil, nil, false
+	}
+
+	ctlln := read(ctlfd)
+	if !strings.HasSuffix(strings.TrimSpace(ctlln), "+Win") {
+		return false, "", nil, nil, false
+	}
+
+	outbufid := strings.TrimSpace(ctlln[:11])
+
+	eventfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/event"), os.O_RDWR, 0666)
+	if err != nil {
+		ctlfd.Close()
+		return false, "", nil, nil, false
+	}
+
+	return true, outbufid, ctlfd, eventfd, true
+}
+
 func findWin() (string, *os.File, *os.File, bool) {
+	if ok, outbufid, ctlfd, eventfd, preexisting := findWinRestored(); ok {
+		return outbufid, ctlfd, eventfd, preexisting
+	}
+
 	fh, err := os.Open(os.ExpandEnv("$yd/index"))
 	if err != nil {
 		log.Fatalf("Couldn't open index")
 	}
 	defer fh.Close()
-	
+
 	bin := bufio.NewReader(fh)
-	
+
 	for {
 		line, err := bin.ReadString('\n')
 		if err != nil {
@@ -381,7 +411,7 @@ func findWin() (string, *os.File, *os.File, bool) {
 }
 
 func easyCommand(cmd string) bool {
-	
+
 	for _, c := range cmd {
 		switch c {
 		case '#', ';', '&', '|', '^', '$', '=', '\'', '`', '{', '}', '(', ')', '<', '>', '[', ']', '*', '?', '~':
@@ -402,18 +432,18 @@ func main() {
 
 	_, err = ctlfd.Write([]byte("name +Win"))
 	Must(err)
-	
+
 	_, err = ctlfd.Write([]byte("dump " + strings.Join(os.Args, " ") + "\n"))
 	Must(err)
 	wd, _ := os.Getwd()
 	_, err = ctlfd.Write([]byte("dumpdir " + wd + "\n"))
-	
+
 	if preexisting {
 		_, err = addrfd.Write([]byte(","))
 		Must(err)
 		xdatafd.Write([]byte{ 0 })
 	}
-	
+
 	var cmd *exec.Cmd
 	if len(os.Args) > 1 {
 		cmdstr := strings.Join(os.Args[1:], " ")
@@ -434,12 +464,12 @@ func main() {
 
 		cmd = exec.Command(shell)
 	}
-	
+
 	os.Setenv("TERM", "ansi")
 	os.Setenv("PAGER", "")
 	os.Setenv("EDITOR", "")
 	os.Setenv("VISUAL", "")
-	
+
 	pty := run(cmd)
 
 	outputReaderDone := make(chan struct{})
@@ -456,9 +486,9 @@ func main() {
 	go notifyProc(notifyChan, endChan, bodyfd, ctlfd)
 
 	cmd.Wait()
-	
+
 	<- outputReaderDone
-	
+
 	endChan <- true
 	if debug {
 		log.Printf("Finished")

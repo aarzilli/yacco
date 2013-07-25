@@ -217,7 +217,7 @@ func DumpCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	dumpDest := getDumpPath(arg, true)
 	if DumpTo(dumpDest) {
-		Wnd.wnd.SetTitle("Yacco " + dumpDest)
+		Wnd.wnd.SetTitle("Yacco " + filepath.Base(dumpDest))
 		AutoDumpPath = dumpDest
 	}
 }

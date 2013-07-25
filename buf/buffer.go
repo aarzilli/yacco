@@ -29,7 +29,7 @@ type Buffer struct {
 	EditableStart int
 	Modified bool
 	ModTime time.Time // time the file was modified on disk
-	
+
 	Props map[string]string
 
 	// gap buffer implementation
@@ -37,19 +37,19 @@ type Buffer struct {
 	gap, gapsz int
 
 	ul undoList
-	
+
 	lock sync.RWMutex
 	hlock sync.Mutex
 	ReadersPleaseStop bool
-	
+
 	DisplayLines int
 	lastCleanHl int
 	HighlightChan chan *Buffer
-	
+
 	RefCount int
-	
+
 	Words []string
-	
+
 	DumpCmd, DumpDir string
 }
 
@@ -82,14 +82,14 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 	}
 
 	b.lastCleanHl = -1
-	
+
 	if name[0] != '+' {
 		err := b.Reload([]util.Sel{}, create)
 		if err != nil {
 			return nil, err
 		}
 	}
-	
+
 	b.Props = map[string]string{}
 	b.Props["indentchar"] = indentchar
 	b.Props["font"] = "main"
@@ -104,18 +104,18 @@ func (b *Buffer) Reload(sels []util.Sel, create bool) error {
 	infile, err := os.Open(filepath.Join(b.Dir, b.Name))
 	if err == nil {
 		defer infile.Close()
-		
+
 		fi, err := infile.Stat()
 		if err != nil {
 			return fmt.Errorf("Couldn't stat file (after opening it?) %s", filepath.Join(b.Dir, b.Name))
 		}
-		
+
 		if fi.Size() > 10 * 1024 * 1024 {
 			return fmt.Errorf("Refusing to open files larger than 10MB")
 		}
-		
+
 		b.ModTime = fi.ModTime()
-		
+
 		bytes, err := ioutil.ReadAll(infile)
 		testb := bytes
 		if len(testb) > 1024 {
@@ -142,7 +142,7 @@ func (b *Buffer) Reload(sels []util.Sel, create bool) error {
 			return fmt.Errorf("File doesn't exist: %s", filepath.Join(b.Dir, b.Name))
 		}
 	}
-	
+
 
 	return nil
 }
@@ -288,7 +288,7 @@ func (b *Buffer) Highlight(start int, full bool) {
 	if (len(b.Name) == 0) || (b.Name[0] == '+') || (b.DisplayLines == 0) {
 		return
 	}
-	
+
 	go b.highlightIntl(start, full)
 }
 
@@ -567,7 +567,7 @@ func (b *Buffer) Topmatch(start int, dir int) int {
 	if g == nil {
 		return -1
 	}
-	
+
 	var open rune = 0
 	var close rune = 0
 	if dir > 0 {
@@ -578,7 +578,7 @@ func (b *Buffer) Topmatch(start int, dir int) int {
 				break
 			}
 		}
-		
+
 	} else {
 		for i := range CLOSED_PARENTHESIS {
 			if g.R == rune(CLOSED_PARENTHESIS[i]) {
@@ -588,11 +588,11 @@ func (b *Buffer) Topmatch(start int, dir int) int {
 			}
 		}
 	}
-	
+
 	if (open == 0) || (close == 0) {
 		return -1
 	}
-	
+
 	depth := 0
 	for i := start; i < b.Size(); i += dir {
 		g := b.At(i)
@@ -612,6 +612,26 @@ func (b *Buffer) Topmatch(start int, dir int) int {
 	return -1
 }
 
+func (b *Buffer) Toregend(start int) int {
+	c := b.At(start).C & 0x0f
+	if c <= 1 {
+		return -1
+	}
+
+	if (start != 0) && (b.At(start-1).C & 0x0f) > 1 {
+		return -1
+	}
+
+	var i int
+	for i = start+1; i < b.Size(); i++ {
+		if (b.At(i).C & 0x0f) != c {
+			break
+		}
+	}
+
+	return i-1
+}
+
 func (b *Buffer) ShortName() string {
 	ap := filepath.Clean(filepath.Join(b.Dir, b.Name))
 	wd, _ := os.Getwd()
@@ -619,30 +639,30 @@ func (b *Buffer) ShortName() string {
 	if len(ap) < len(p) {
 		p = ap
 	}
-	
+
 	if len(p) <= 0 {
 		return p
 	}
-	
+
 	curlen := len(p)
 	pcomps := strings.Split(p, string(filepath.Separator))
 	i := 0
-	
+
 	for curlen > SHORT_NAME_LEN {
 		if i >= len(pcomps)-2 {
 			break
 		}
-		
+
 		if (len(pcomps[i])) == 0 || (pcomps[i][0] == '.') || (pcomps[i][0] == '~') {
 			i++
 			continue
 		}
-		
+
 		curlen -= len(pcomps[i]) - 1
 		pcomps[i] = pcomps[i][:1]
 		i++
 	}
-	
+
 	rp := filepath.Join(pcomps...)
 	if p[0] == '/' {
 		return "/" + rp
@@ -690,14 +710,14 @@ func (b *Buffer) Put() error {
 		return err
 	}
 	b.Modified = false
-	
+
 	fi, err := os.Stat(filepath.Join(b.Dir, b.Name))
 	if err != nil {
 		return err
 	}
-	
+
 	b.ModTime = fi.ModTime()
-	
+
 	return nil
 }
 

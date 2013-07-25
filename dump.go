@@ -125,9 +125,9 @@ func LoadFrom(dumpDest string) bool {
 	Wnd.tagfr.Redraw(true)
 	Wnd.Resized()
 
-	for _, db := range dw.Buffers {
+	for i, db := range dw.Buffers {
 		if db.DumpCmd != "" {
-			NewJob(db.DumpDir, db.DumpCmd, "", &ExecContext{}, false, nil)
+			NewJob(db.DumpDir, db.DumpCmd, "", &ExecContext{buf: buffers[i]}, false, nil)
 		}
 	}
 

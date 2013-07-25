@@ -627,17 +627,17 @@ loop:
 
 		case wde.MouseDraggedEvent:
 			endPos = e.Where
-			
+
 			if !endPos.In(Wnd.cols.r) {
 				break
 			}
-			
+
 			w.cols.Remove(w.cols.IndexOf(col))
 			w.cols.RecalcRects()
-			
+
 			mlp := w.TranslatePosition(endPos, true)
 			dstcol := mlp.col
-			
+
 			if dstcol == nil {
 				w.cols.AddAfter(col, -1, 0.5)
 			} else {
@@ -916,7 +916,7 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent) {
 			lp.sfr.Fr.DisableOtherSelections(0)
 			activeSel = string(buf.ToRunes(lp.bodybuf.SelectionX(lp.sfr.Fr.Sels[0])))
 			br.BufferRefresh(false)
-			
+
 			d := lp.ed.LastJump() - lp.sfr.Fr.Sels[0].S
 			if d < 0 {
 				d *= -1
@@ -1022,32 +1022,41 @@ func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, 
 
 	sel := &fr.Sels[selIdx]
 
-	match := b.Topmatch(sel.S, +1)
-	if match < 0 {
-		if sel.S > 1 {
-			match = b.Topmatch(sel.S-1, +1)
-			if match < 0 {
-				return nil, false
+	endfn := func(match int) (*wde.MouseUpEvent, bool) {
+		sel.E = match + 1
+
+		fr.Redraw(true)
+
+		for ee := range events {
+			switch eei := ee.(type) {
+			case wde.MouseUpEvent:
+				return &eei, true
 			}
+		}
+
+		return nil, true
+	}
+
+	match := b.Topmatch(sel.S, +1)
+	if match >= 0 {
+		return endfn(match)
+	}
+
+	if sel.S > 1 {
+		match = b.Topmatch(sel.S-1, +1)
+		if match >= 0 {
 			match -= 1
-		} else {
-			return nil, false
+
+			return endfn(match)
 		}
 	}
 
-	sel.E = match + 1
-
-	fr.Redraw(true)
-
-	for ee := range events {
-		switch eei := ee.(type) {
-		case wde.MouseUpEvent:
-			return &eei, true
-		}
+	match = b.Toregend(sel.S)
+	if match >= 0 {
+		return endfn(match)
 	}
 
-	return nil, true
-
+	return nil, false
 }
 
 func (w *Window) Dump() DumpWindow {
