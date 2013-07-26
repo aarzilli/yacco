@@ -613,6 +613,10 @@ func (b *Buffer) Topmatch(start int, dir int) int {
 }
 
 func (b *Buffer) Toregend(start int) int {
+	if start >= b.Size() {
+		return -1
+	}
+
 	c := b.At(start).C & 0x0f
 	if c <= 1 {
 		return -1
