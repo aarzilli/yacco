@@ -8,7 +8,13 @@ import (
 	"image"
 	"sort"
 	"math"
+	"os"
+	"io"
+	"bufio"
+	"path/filepath"
 	"github.com/skelterjohn/go.wde"
+	"code.google.com/p/go9p/p/clnt"
+	"code.google.com/p/go9p/p"
 )
 
 type Sel struct {
@@ -253,3 +259,154 @@ func Dedup(v []string) []string {
 	return v[:dst]
 }
 
+func ResolvePath(rel2dir, path string) string {
+	var abspath = path
+	if len(path) > 0 {
+		switch path[0] {
+		case '/':
+			var err error
+			abspath, err = filepath.Abs(path)
+			if err != nil {
+				return path
+			}
+		case '~':
+			var err error
+			home := os.Getenv("HOME")
+			abspath = filepath.Join(home, path[1:])
+			abspath, err = filepath.Abs(abspath)
+			if err != nil {
+				return path
+			}
+		default:
+			var err error
+			abspath = filepath.Join(rel2dir, path)
+			abspath, err = filepath.Abs(abspath)
+			if err != nil {
+				return path
+			}
+		}
+	}
+
+	return abspath
+}
+
+func Allergic(debug bool, err error) {
+	if err != nil {
+		if !debug {
+			_, file, line, _ := runtime.Caller(1)
+			fmt.Fprintf(os.Stderr, "%s:%d: %s\n", file, line, err.Error())
+			os.Exit(1)
+		} else {
+			i := 1
+			fmt.Println("Error" + err.Error() + " at:")
+			for {
+				_, file, line, ok := runtime.Caller(i)
+				if !ok {
+					break
+				}
+				fmt.Printf("\t %s:%d\n", file, line)
+				i++
+			}
+		}
+	}
+}
+
+func read(fd io.Reader) (string, error) {
+	b := make([]byte, 1024)
+	n, err := fd.Read(b)
+	if err != nil {
+		return "", err
+	}
+	return string(b[:n]), nil
+}
+
+func findWinRestored(name string, p9clnt *clnt.Clnt) (bool, string, io.ReadWriteCloser, io.ReadWriteCloser) {
+	if os.Getenv("bd") == "" {
+		return false, "", nil, nil
+	}
+
+	ctlfd, err := p9clnt.FOpen(os.ExpandEnv("/$bd/index"), p.ORDWR)
+	if err != nil {
+		return false, "", nil, nil
+	}
+
+	ctlln, err := read(ctlfd)
+	if err != nil {
+		ctlfd.Close()
+		return false, "", nil, nil
+	}
+	if !strings.HasSuffix(strings.TrimSpace(ctlln), "+" + name) {
+		return false, "", nil, nil
+	}
+
+	outbufid := strings.TrimSpace(ctlln[:11])
+
+	eventfd, err := p9clnt.FOpen("/" + outbufid + "/event", p.ORDWR)
+	if err != nil {
+		ctlfd.Close()
+		return false, "", nil, nil
+	}
+
+	return true, outbufid, ctlfd, eventfd
+}
+
+func FindWin(name string, p9clnt *clnt.Clnt) (string, io.ReadWriteCloser, io.ReadWriteCloser, error) {
+	if ok, outbufid, ctlfd, eventfd := findWinRestored(name, p9clnt); ok {
+		return outbufid, ctlfd, eventfd, nil
+	}
+
+	fh, err := p9clnt.FOpen("/index", p.OREAD)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	defer fh.Close()
+
+	bin := bufio.NewReader(fh)
+
+	for {
+		line, err := bin.ReadString('\n')
+		if err != nil {
+			break
+		}
+		line = strings.TrimSuffix(line, "\n")
+		if strings.HasSuffix(line, "+" + name) {
+			id := strings.TrimSpace(line[:11])
+			eventfd, err := p9clnt.FOpen("/" + id + "/event", p.ORDWR)
+			if err != nil {
+				continue
+			}
+			ctlfd, err := p9clnt.FOpen("/" + id + "/ctl", p.OWRITE)
+			if err != nil {
+				return "", nil, nil, err
+			}
+			return id, ctlfd, eventfd, nil
+		}
+	}
+	ctlfd, err := p9clnt.FCreate("/new/ctl", 0666, p.ORDWR)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	ctlln, err := read(ctlfd)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	outbufid := strings.TrimSpace(ctlln[:11])
+	eventfd, err := p9clnt.FOpen("/" + outbufid + "/event", p.ORDWR)
+	if err != nil {
+		return "", nil, nil, err
+	}
+	return outbufid, ctlfd, eventfd, nil
+}
+
+func YaccoConnect() (*clnt.Clnt, error) {
+	if os.Getenv("yp9") == "" {
+		return nil, fmt.Errorf("Must be called with active instance of Yacco")
+	}
+
+	user := p.OsUsers.Uid2User(os.Geteuid())
+	p9clnt, err := clnt.Mount("tcp", os.Getenv("yp9"), "", user)
+	if err != nil {
+		return nil, fmt.Errorf("Error connecting to yacco: %v\n", err)
+	}
+	return p9clnt, nil
+}

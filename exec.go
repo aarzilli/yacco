@@ -176,6 +176,10 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 func DelCmd(ec ExecContext, arg string, confirmed bool) {
 	exitConfirmed = false
 	if !ec.ed.bodybuf.Modified || (ec.ed.bodybuf.Name[0] == '+') || confirmed || ec.ed.confirmDel {
+		if ec.ed.eventChan != nil {
+			close(ec.ed.eventChan)
+			ec.ed.eventChan = nil
+		}
 		col := ec.ed.Column()
 		col.Remove(col.IndexOf(ec.ed))
 		removeBuffer(ec.ed.bodybuf)
@@ -377,7 +381,7 @@ func NewCmd(ec ExecContext, arg string) {
 		Warn("New: must specify argument")
 		return
 	}
-	path := ResolvePath(ec.dir, arg)
+	path := util.ResolvePath(ec.dir, arg)
 	_, err := HeuristicOpen(path, true, true)
 	if err != nil {
 		Warn("New: " + err.Error())

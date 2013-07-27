@@ -138,7 +138,7 @@ func ComplStart(ec ExecContext) {
 	hasFp := false
 	var resDir, resName string
 	if fpwd != "" {
-		resPath := ResolvePath(ec.dir, fpwd)
+		resPath := util.ResolvePath(ec.dir, fpwd)
 		if fpwd[len(fpwd)-1] == '/' {
 			resDir = resPath
 			resName = ""

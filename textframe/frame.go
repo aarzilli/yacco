@@ -386,6 +386,9 @@ func (fr *Frame) SetSelect(idx, kind, start, end int) {
 
 func (fr *Frame) DisableOtherSelections(idx int) {
 	for i := range fr.Sels {
+		if i > 3 {
+			break
+		}
 		if i != idx {
 			fr.Sels[i].E = fr.Sels[i].S
 		}
@@ -612,6 +615,9 @@ func (fr *Frame) Redraw(flush bool) {
 			}
 		} else {
 			for j := range fr.Sels {
+				if j > 5 {
+					break
+				}
 				if (i+fr.Top >= fr.Sels[j].S) && (i+fr.Top < fr.Sels[j].E) {
 					ssel = j + 1
 					var color *image.Uniform

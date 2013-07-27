@@ -16,3 +16,8 @@ cd -
 cd extra/E
 go build
 cd -
+
+# building Watch
+cd extra/Watch
+go build
+cd -

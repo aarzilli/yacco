@@ -13,37 +13,17 @@ import (
 	"time"
 	"syscall"
 	"strconv"
-	"runtime"
 	"github.com/kr/pty"
+	"code.google.com/p/go9p/p"
+	"yacco/util"
 )
 
 var debug = false
-var prevInput = ""
-
-func Must(err error) {
-	if err != nil {
-		if !debug {
-			_, file, line, _ := runtime.Caller(2)
-			log.Fatalf("%s:%d: %s", file, line, err.Error())
-		} else {
-			i := 1
-			fmt.Println("Error" + err.Error() + " at:")
-			for {
-				_, file, line, ok := runtime.Caller(i)
-				if !ok {
-					break
-				}
-				fmt.Printf("\t %s:%d\n", file, line)
-				i++
-			}
-		}
-	}
-}
 
 func read(fd *os.File) string {
 	b := make([]byte, 1024)
 	n, err := fd.Read(b)
-	Must(err)
+	util.Allergic(debug, err)
 	return string(b[:n])
 }
 
@@ -53,7 +33,7 @@ const (
 	ANSI_ESCAPE
 )
 
-func updateDir(cmd *exec.Cmd, ctlfd io.ReadWriter) {
+func updateDir(cmd *exec.Cmd, ctlfd io.Writer) {
 	dest, err := os.Readlink(fmt.Sprintf("/proc/%d/cwd", cmd.Process.Pid))
 	if err != nil {
 		return
@@ -61,7 +41,7 @@ func updateDir(cmd *exec.Cmd, ctlfd io.ReadWriter) {
 	ctlfd.Write([]byte(fmt.Sprintf("name %s/+Win\n", dest)))
 }
 
-func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd *os.File, outbufid string, ctlfd *os.File, addrfd *os.File, xdatafd *os.File, outputReaderDone chan struct{}) {
+func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd io.Writer, outbufid string, ctlfd io.Writer, addrfd io.Writer, xdatafd io.Writer, outputReaderDone chan struct{}) {
 	bufout := bufio.NewReader(stdout)
 	bufbody := bufio.NewWriter(bodyfd)
 	escseq := []byte{}
@@ -92,13 +72,13 @@ func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd *os.File, outbufid str
 			case 0x08:
 				bufbody.Flush()
 				_, err = addrfd.Write([]byte("-#1"))
-				Must(err)
+				util.Allergic(debug, err)
 				xdatafd.Write([]byte{ 0 })
 			case 0x1b:
 				escseq = []byte{}
 				state = ANSI_ESCAPE
 			default:
-				Must(bufbody.WriteByte(ch))
+				util.Allergic(debug, bufbody.WriteByte(ch))
 				if ch == '\n' {
 					if debug {
 						log.Println("flushing2")
@@ -118,7 +98,7 @@ func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd *os.File, outbufid str
 					}
 					bufbody.Flush()
 					_, err = addrfd.Write([]byte(","))
-					Must(err)
+					util.Allergic(debug, err)
 					xdatafd.Write([]byte{ 0 })
 				case 'H':
 					if debug {
@@ -129,9 +109,9 @@ func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd *os.File, outbufid str
 					time.Sleep(500 * time.Millisecond)
 					addr := readAddr(outbufid)
 					_, err = addrfd.Write([]byte("#0"))
-					Must(err)
+					util.Allergic(debug, err)
 					ctlfd.Write([]byte("dot=addr\n"))
-					Must(err)
+					util.Allergic(debug, err)
 					fmt.Fprintf(addrfd, "#%d,#%d", addr[0], addr[1])
 				}
 			}
@@ -140,7 +120,7 @@ func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd *os.File, outbufid str
 			state = ANSI_NORMAL
 			switch ch {
 			case 0x0a:
-				Must(bufbody.WriteByte(ch))
+				util.Allergic(debug, bufbody.WriteByte(ch))
 				bufbody.Flush()
 			default:
 				if debug {
@@ -148,9 +128,9 @@ func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd *os.File, outbufid str
 				}
 				bufbody.Flush()
 				_, err = addrfd.Write([]byte("-+"))
-				Must(err)
+				util.Allergic(debug, err)
 				xdatafd.Write([]byte{ 0 })
-				Must(bufbody.WriteByte(ch))
+				util.Allergic(debug, bufbody.WriteByte(ch))
 			}
 		}
 	}
@@ -164,28 +144,28 @@ func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd *os.File, outbufid str
 
 func readAddr(outbufid string) []int {
 	addrfd, err := os.Open(os.ExpandEnv("$yd/" + outbufid + "/addr"))
-	Must(err)
+	util.Allergic(debug, err)
 	defer addrfd.Close()
 	str := read(addrfd)
 	v := strings.Split(str, ",")
 	iv := []int{ 0, 0 }
 	iv[0], err = strconv.Atoi(v[0])
-	Must(err)
+	util.Allergic(debug, err)
 	iv[1], err = strconv.Atoi(v[1])
-	Must(err)
+	util.Allergic(debug, err)
 	return iv
 }
 
 func readXdata(outbufid string) string {
 	xdatafd, err := os.Open(os.ExpandEnv("$yd/" + outbufid + "/xdata"))
-	Must(err)
+	util.Allergic(debug, err)
 	defer xdatafd.Close()
 	xdata, err := ioutil.ReadAll(xdatafd)
-	Must(err)
+	util.Allergic(debug, err)
 	return string(xdata)
 }
 
-func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, bodyfd *os.File, pty *os.File, outbufid string) {
+func eventReader(eventfd io.ReadWriter, ctlfd io.ReadWriter, addrfd io.Writer, bodyfd io.ReadWriter, pty io.Writer, outbufid string) {
 	buf := make([]byte, 1024)
 	addrfd.Write([]byte("$"))
 	for {
@@ -196,7 +176,7 @@ func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, bodyfd *os.F
 		if err == io.EOF {
 			break
 		}
-		Must(err)
+		util.Allergic(debug, err)
 		if n < 2 {
 			log.Fatalf("Not enough read from event file")
 		}
@@ -211,19 +191,19 @@ func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, bodyfd *os.F
 		}
 
 		s, err:= strconv.Atoi(v[0])
-		Must(err)
+		util.Allergic(debug, err)
 		_, err = strconv.Atoi(v[1])
-		Must(err)
+		util.Allergic(debug, err)
 		flags, err := strconv.Atoi(v[2])
-		Must(err)
+		util.Allergic(debug, err)
 		arglen, err := strconv.Atoi(v[3])
-		Must(err)
+		util.Allergic(debug, err)
 
 		arg := v[4]
 
 		for len(arg) < arglen {
 			n, err := eventfd.Read(buf)
-			Must(err)
+			util.Allergic(debug, err)
 			arg += string(buf[:n])
 			event += string(buf[:n])
 		}
@@ -240,29 +220,23 @@ func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, bodyfd *os.F
 		case 'x', 'X':
 			if flags != 0 {
 				_, err := eventfd.Write([]byte(event))
-				Must(err)
+				util.Allergic(debug, err)
 			} else {
 				switch arg {
 				case "Term":
 					//TODO: send sigterm
-				case "Win!Prev":
-					if prevInput != "" {
-						bodyfd.Write([]byte(prevInput))
-						prevInput = ""
-					}
 				default:
 					bodyfd.Write([]byte(arg))
 					bodyfd.Write([]byte{ '\n' })
-					prevInput = arg
 					pty.Write([]byte(arg))
 					pty.Write([]byte{ '\n' })
 				}
 			}
 
-			Must(err)
+			util.Allergic(debug, err)
 		case 'l', 'L':
 			_, err := eventfd.Write([]byte(event))
-			Must(err)
+			util.Allergic(debug, err)
 
 		case 'I':
 			if (origin == 'E') || (origin == 'F') {
@@ -270,9 +244,9 @@ func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, bodyfd *os.F
 					fmt.Println("Moving address forward")
 				}
 				_, err = addrfd.Write([]byte("$"))
-				Must(err)
+				util.Allergic(debug, err)
 				_, err = ctlfd.Write([]byte("dot=addr\n"))
-				Must(err)
+				util.Allergic(debug, err)
 			} else {
 				addr := readAddr(outbufid)
 				if (addr[0] <= s) && (len(arg) > 0) && (arg[len(arg)-1] == '\n') {
@@ -284,7 +258,6 @@ func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, bodyfd *os.F
 					if debug {
 						fmt.Printf("Sending: %s", command)
 					}
-					prevInput = command
 					pty.Write([]byte(command))
 				} else {
 					if debug {
@@ -302,18 +275,18 @@ func eventReader(eventfd *os.File, ctlfd *os.File, addrfd *os.File, bodyfd *os.F
 
 func run(c *exec.Cmd) *os.File {
 	pty, tty, err := pty.Open()
-	Must(err)
+	util.Allergic(debug, err)
 	defer tty.Close()
 
 	termios, err := TcGetAttr(tty)
-	Must(err)
+	util.Allergic(debug, err)
 	termios.SetIFlags(ICRNL|IUTF8)
 	termios.SetOFlags(ONLRET)
 	termios.SetCFlags(CS8|CREAD)
 	termios.SetLFlags(ICANON)
 	termios.SetSpeed(38400)
 	err = TcSetAttr(tty, TCSANOW, termios)
-	Must(err)
+	util.Allergic(debug, err)
 	err = TcSetAttr(pty, TCSANOW, termios)
 
 	c.Stdout = tty
@@ -323,12 +296,12 @@ func run(c *exec.Cmd) *os.File {
 	err = c.Start()
 	if err != nil {
 		pty.Close()
-		Must(err)
+		util.Allergic(debug, err)
 	}
 	return pty
 }
 
-func notifyProc(notifyChan <-chan os.Signal, endChan <-chan bool, bodyfd io.ReadWriter, ctlfd io.ReadWriter) {
+func notifyProc(notifyChan <-chan os.Signal, endChan <-chan bool, bodyfd io.ReadWriter, ctlfd io.ReadWriter, eventfd io.Closer) {
 	if debug {
 		fmt.Println("Waiting for signal")
 	}
@@ -342,72 +315,8 @@ func notifyProc(notifyChan <-chan os.Signal, endChan <-chan bool, bodyfd io.Read
 	bodyfd.Write([]byte("~\n"))
 	ctlfd.Write([]byte("dump\n"))
 	ctlfd.Write([]byte("dumpdir\n"))
+	eventfd.Close()
 	os.Exit(0)
-}
-
-func findWinRestored() (bool, string, *os.File, *os.File, bool) {
-	if os.Getenv("bd") == "" {
-		return false, "", nil, nil, false
-	}
-
-	ctlfd, err := os.OpenFile(os.ExpandEnv("$yd/index"), os.O_RDWR, 0666)
-	if err != nil {
-		return false, "", nil, nil, false
-	}
-
-	ctlln := read(ctlfd)
-	if !strings.HasSuffix(strings.TrimSpace(ctlln), "+Win") {
-		return false, "", nil, nil, false
-	}
-
-	outbufid := strings.TrimSpace(ctlln[:11])
-
-	eventfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/event"), os.O_RDWR, 0666)
-	if err != nil {
-		ctlfd.Close()
-		return false, "", nil, nil, false
-	}
-
-	return true, outbufid, ctlfd, eventfd, true
-}
-
-func findWin() (string, *os.File, *os.File, bool) {
-	if ok, outbufid, ctlfd, eventfd, preexisting := findWinRestored(); ok {
-		return outbufid, ctlfd, eventfd, preexisting
-	}
-
-	fh, err := os.Open(os.ExpandEnv("$yd/index"))
-	if err != nil {
-		log.Fatalf("Couldn't open index")
-	}
-	defer fh.Close()
-
-	bin := bufio.NewReader(fh)
-
-	for {
-		line, err := bin.ReadString('\n')
-		if err != nil {
-			break
-		}
-		line = strings.TrimSuffix(line, "\n")
-		if strings.HasSuffix(line, "+Win") {
-			id := strings.TrimSpace(line[:11])
-			eventfd, err := os.OpenFile(os.ExpandEnv("$yd/" + id + "/event"), os.O_RDWR, 0666)
-			if err != nil {
-				continue
-			}
-			ctlfd, err := os.OpenFile(os.ExpandEnv("$yd/" + id + "/ctl"), os.O_WRONLY, 0666)
-			Must(err)
-			return id, ctlfd, eventfd, true
-		}
-	}
-	ctlfd, err := os.OpenFile(os.ExpandEnv("$yd/new/ctl"), os.O_RDWR, 0666)
-	Must(err)
-	ctlln := read(ctlfd)
-	outbufid := strings.TrimSpace(ctlln[:11])
-	eventfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/event"), os.O_RDWR, 0666)
-	Must(err)
-	return outbufid, ctlfd, eventfd, false
 }
 
 func easyCommand(cmd string) bool {
@@ -422,27 +331,32 @@ func easyCommand(cmd string) bool {
 }
 
 func main() {
-	outbufid, ctlfd, eventfd, preexisting := findWin()
-	bodyfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/body"), os.O_WRONLY, 0666)
-	Must(err)
-	addrfd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/addr"), os.O_WRONLY, 0666)
-	Must(err)
-	xdatafd, err := os.OpenFile(os.ExpandEnv("$yd/" + outbufid + "/xdata"), os.O_WRONLY, 0666)
-	Must(err)
+	p9clnt, err := util.YaccoConnect()
+	util.Allergic(debug, err)
+
+	outbufid, ctlfd, eventfd, err := util.FindWin("Win", p9clnt)
+	util.Allergic(debug, err)
+
+	bodyfd, err := p9clnt.FOpen("/" + outbufid + "/body", p.OWRITE)
+	util.Allergic(debug, err)
+	addrfd, err := p9clnt.FOpen("/" + outbufid + "/addr", p.OWRITE)
+	util.Allergic(debug, err)
+	xdatafd, err := p9clnt.FOpen("/" + outbufid + "/xdata", p.OWRITE)
+	util.Allergic(debug, err)
 
 	_, err = ctlfd.Write([]byte("name +Win"))
-	Must(err)
+	util.Allergic(debug, err)
 
 	_, err = ctlfd.Write([]byte("dump " + strings.Join(os.Args, " ") + "\n"))
-	Must(err)
+	util.Allergic(debug, err)
 	wd, _ := os.Getwd()
 	_, err = ctlfd.Write([]byte("dumpdir " + wd + "\n"))
 
-	if preexisting {
-		_, err = addrfd.Write([]byte(","))
-		Must(err)
-		xdatafd.Write([]byte{ 0 })
-	}
+	//TODO: add Term, Jobs, Kill commands to tag
+
+	_, err = addrfd.Write([]byte(","))
+	util.Allergic(debug, err)
+	xdatafd.Write([]byte{ 0 })
 
 	var cmd *exec.Cmd
 	if len(os.Args) > 1 {
@@ -483,7 +397,7 @@ func main() {
 	notifyChan := make(chan os.Signal)
 	endChan := make(chan bool)
 	signal.Notify(notifyChan, os.Interrupt, os.Kill)
-	go notifyProc(notifyChan, endChan, bodyfd, ctlfd)
+	go notifyProc(notifyChan, endChan, bodyfd, ctlfd, eventfd)
 
 	cmd.Wait()
 
@@ -494,5 +408,6 @@ func main() {
 		log.Printf("Finished")
 	}
 	time.Sleep(1 * time.Second)
+	eventfd.Close()
 	os.Exit(0)
 }

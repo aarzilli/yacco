@@ -55,10 +55,13 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 	}
 
 	os.Setenv("yd", fsDir)
+	os.Setenv("yp9", p9ListenAddr)
 	if i < 0 {
 		os.Setenv("bd", "")
+		os.Setenv("bi", "")
 	} else {
 		os.Setenv("bd", fmt.Sprintf("%s/%d", fsDir, i))
+		os.Setenv("bi", fmt.Sprintf("%d", i))
 	}
 
 	job.cmd.Dir = wd
@@ -157,10 +160,13 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 
 		err := job.cmd.Wait()
 		if err != nil {
-			sideChan <- WarnMsg{job.cmd.Dir, "Error executing command: " + job.descr}
+			sideChan <- WarnMsg{job.cmd.Dir, "Error executing command: " + job.descr + "\n" }
 		}
 
 		if (ec != nil) && job.writeToBuf {
+			if job.outstr[len(job.outstr)-1] != '\n' {
+				job.outstr = job.outstr + "\n"
+			}
 			sideChan <- ReplaceMsg{ec, nil, false, job.outstr, util.EO_BODYTAG, true}
 		} else if resultChan != nil {
 			resultChan <- job.outstr

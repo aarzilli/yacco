@@ -6,41 +6,10 @@ import (
 	"log"
 	"os"
 	"strings"
-	"path/filepath"
+	"yacco/util"
 )
 
 var debug = false
-
-func ResolvePath(rel2dir, path string) string {
-	var abspath = path
-	if len(path) > 0 {
-		switch path[0] {
-		case '/':
-			var err error
-			abspath, err = filepath.Abs(path)
-			if err != nil {
-				return path
-			}
-		case '~':
-			var err error
-			home := os.Getenv("HOME")
-			abspath = filepath.Join(home, path[1:])
-			abspath, err = filepath.Abs(abspath)
-			if err != nil {
-				return path
-			}
-		default:
-			var err error
-			abspath = filepath.Join(rel2dir, path)
-			abspath, err = filepath.Abs(abspath)
-			if err != nil {
-				return path
-			}
-		}
-	}
-
-	return abspath
-}
 
 func Must(err error) {
 	if err != nil {
@@ -80,7 +49,7 @@ func main() {
 	
 	wd, _ := os.Getwd()
 	path := os.Args[1]
-	abspath := ResolvePath(wd, path)
+	abspath := util.ResolvePath(wd, path)
 	
 	ctlfd, err := os.OpenFile(os.ExpandEnv("$yd/new/ctl"), os.O_RDWR, 0666)
 	Must(err)

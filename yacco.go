@@ -67,12 +67,12 @@ func bufferAdd(b *buf.Buffer) {
 	for i := range buffers {
 		if buffers[i] == nil {
 			buffers[i] = b
-			fsNodefs.addBuffer(i, b)
+			FsAddBuffer(i, b)
 			return
 		}
 	}
 	buffers = append(buffers, b)
-	fsNodefs.addBuffer(len(buffers)-1, b)
+	FsAddBuffer(len(buffers)-1, b)
 }
 
 func bufferIndex(b *buf.Buffer) int {
@@ -90,7 +90,7 @@ func removeBuffer(b *buf.Buffer) {
 			b.RefCount--
 			if b.RefCount == 0 {
 				buffers[i] = nil
-				fsNodefs.removeBuffer(i)
+				FsRemoveBuffer(i)
 			}
 			return
 		}

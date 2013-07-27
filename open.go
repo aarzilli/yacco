@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"yacco/buf"
+	"yacco/util"
 )
 
 func editOpen(path string, create bool) (*Editor, error) {
@@ -19,39 +19,8 @@ func editOpen(path string, create bool) (*Editor, error) {
 	return NewEditor(b, true), nil
 }
 
-func ResolvePath(rel2dir, path string) string {
-	var abspath = path
-	if len(path) > 0 {
-		switch path[0] {
-		case '/':
-			var err error
-			abspath, err = filepath.Abs(path)
-			if err != nil {
-				return path
-			}
-		case '~':
-			var err error
-			home := os.Getenv("HOME")
-			abspath = filepath.Join(home, path[1:])
-			abspath, err = filepath.Abs(abspath)
-			if err != nil {
-				return path
-			}
-		default:
-			var err error
-			abspath = filepath.Join(rel2dir, path)
-			abspath, err = filepath.Abs(abspath)
-			if err != nil {
-				return path
-			}
-		}
-	}
-
-	return abspath
-}
-
 func EditFind(rel2dir, path string, warp bool, create bool) (*Editor, error) {
-	abspath := ResolvePath(rel2dir, path)
+	abspath := util.ResolvePath(rel2dir, path)
 
 	//println("Relative", abspath, rel2dir)
 	dir := filepath.Dir(abspath)

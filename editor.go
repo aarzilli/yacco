@@ -100,7 +100,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 				config.TheColorScheme.EditorSel1,                // 0 first button selection
 				config.TheColorScheme.EditorSel2,                // 1 second button selection
 				config.TheColorScheme.EditorSel3,                // 2 third button selection
-				config.TheColorScheme.EditorPlain,               // 3 highlighted parenthesis
+				config.TheColorScheme.EditorPlain,               // 3 highlighted parenthesis?
 				config.TheColorScheme.EditorPlain,               // 4 content of 'addr' file
 				config.TheColorScheme.EditorMatchingParenthesis, // 5 matching parenthesis
 				/* space for jumps - 6 through 12 */
@@ -396,6 +396,7 @@ func (ed *Editor) Warp() {
 		return
 	}
 	p := ed.sfr.Fr.PointToCoord(ed.sfr.Fr.Sels[0].S)
+	ed.sfr.Fr.VisibleTick = true
 	Wnd.wnd.WarpMouse(p)
 }
 

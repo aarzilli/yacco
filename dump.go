@@ -72,7 +72,7 @@ func LoadFrom(dumpDest string) bool {
 
 	for i := range buffers {
 		if buffers[i] != nil {
-			fsNodefs.removeBuffer(i)
+			FsRemoveBuffer(i)
 		}
 	}
 	Wnd.cols.cols = Wnd.cols.cols[0:0]
@@ -90,7 +90,7 @@ func LoadFrom(dumpDest string) bool {
 			b.Replace([]rune(db.Text), &util.Sel{0, b.Size()}, []util.Sel{}, true, nil, util.EO_KBD, true)
 		}
 		buffers[i] = b
-		fsNodefs.addBuffer(i, b)
+		FsAddBuffer(i, b)
 	}
 
 	for _, dc := range dw.Columns {
@@ -133,10 +133,10 @@ func LoadFrom(dumpDest string) bool {
 
 	for i := range buffers {
 		if buffers[i] == nil {
-			fsNodefs.removeBuffer(i)
+			FsRemoveBuffer(i)
 		}
 		if buffers[i].RefCount == 0 {
-			fsNodefs.removeBuffer(i)
+			FsRemoveBuffer(i)
 		}
 	}
 

@@ -826,7 +826,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		if cmd, ok := config.KeyBindings[e.Chord]; ok {
 			HideCompl("keytype")
 			//println("Execute command: <" + cmd + ">")
-			if ec.eventChan == nil {
+			if (ec.eventChan == nil) || (cmd == "Delete") {
 				Exec(ec, cmd)
 			} else {
 				cmd = strings.TrimSpace(cmd)
@@ -868,7 +868,7 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent) {
 			extraArg = true
 			c += " " + activeSel
 		}
-		if ec.eventChan == nil {
+		if (ec.eventChan == nil) || (cmd == "Delete") {
 			Exec(ec, cmd)
 		} else {
 			_, _, isintl := IntlCmd(cmd)
