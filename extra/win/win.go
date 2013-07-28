@@ -352,7 +352,7 @@ func main() {
 	wd, _ := os.Getwd()
 	_, err = ctlfd.Write([]byte("dumpdir " + wd + "\n"))
 
-	//TODO: add Term, Jobs, Kill commands to tag
+	util.SetTag(p9clnt, outbufid, "Jobs Kill Delete Term ")
 
 	_, err = addrfd.Write([]byte(","))
 	util.Allergic(debug, err)

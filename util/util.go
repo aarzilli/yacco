@@ -410,3 +410,16 @@ func YaccoConnect() (*clnt.Clnt, error) {
 	}
 	return p9clnt, nil
 }
+
+func SetTag(p9clnt *clnt.Clnt, outbufid string, tagstr string) error {
+	fh, err := p9clnt.FOpen("/" + outbufid + "/tag", p.OWRITE)
+	if err != nil {
+		return err
+	}
+	defer fh.Close()
+	_, err = fh.Write([]byte(tagstr))
+	if err != nil {
+		return err
+	}
+	return nil
+}

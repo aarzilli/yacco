@@ -109,12 +109,13 @@ func (b *Buffer) equalAt(start int, needle []rune) bool {
 	if needle == nil {
 		return false
 	}
-	for i := 0; (i < start + b.Size()) && (i < len(needle)); i++ {
+	var i int
+	for i = 0; (i+start < b.Size()) && (i < len(needle)); i++ {
 		if b.At(i+start).R != needle[i] {
 			return false
 		}
 	}
 
-	return true
+	return i >= len(needle)
 }
 

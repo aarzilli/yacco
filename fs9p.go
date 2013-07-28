@@ -116,7 +116,7 @@ func fs9PAddBuffer(n int, b *buf.Buffer) {
 	tag := &ReadWriteP9{ srv.File{}, bwr(readTagFn), bww(writeTagFn) }
 	tag.Add(bufdir, "tag", user, nil, 0660, tag)
 	event := &ReadWriteExclP9{ srv.File{},
-		nil,
+		nil, "",
 		func (off int64, interrupted chan struct{}) ([]byte, syscall.Errno) {
 			return readEventFn(n, off, interrupted)
 		},
@@ -167,7 +167,7 @@ func (fh *NewP9) Create(fid *srv.FFid, name string, perm uint32) (*srv.File, err
 	}
 
 	if !valid {
-		return nil, syscall.EACCES
+		return nil, p.EPERM
 	}
 
 	Wnd.Lock.Lock()
@@ -176,14 +176,14 @@ func (fh *NewP9) Create(fid *srv.FFid, name string, perm uint32) (*srv.File, err
 	ed, err := HeuristicOpen("+New", false, true)
 	if err != nil {
 		fmt.Println("Error creating new editor: ", err)
-		return nil, syscall.EIO
+		return nil, p.EIO
 	}
 
 	bufn := fmt.Sprintf("%d", bufferIndex(ed.bodybuf))
 	bufdir := p9root.Find(bufn)
 	if bufdir == nil {
 		fmt.Println("Error creating new editor (could not find buffer", bufn, ": ", err)
-		return nil, syscall.EIO
+		return nil, p.EIO
 	}
 
 	file := bufdir.Find(name)
@@ -218,6 +218,7 @@ func (fh *ReadWriteP9) Write(fid *srv.FFid, data []byte, offset uint64) (int, er
 type ReadWriteExclP9 struct {
 	srv.File
 	interrupted chan struct{}
+	owner string
 	readFn func(off int64, interrupted chan struct{}) ([]byte, syscall.Errno)
 	writeFn func(data []byte, off int64) syscall.Errno
 	openFn func() bool
@@ -226,17 +227,20 @@ type ReadWriteExclP9 struct {
 
 func (fh *ReadWriteExclP9) Open(fid *srv.FFid, mode uint8) error {
 	if !fh.openFn() {
-		return syscall.EACCES
+		return p.EIO
 	}
 
+	fh.owner = fid.Fid.Fconn.Id
 	fh.interrupted = make(chan struct{})
 
 	return nil
 }
 
 func (fh *ReadWriteExclP9) Clunk(fid *srv.FFid) error {
-	close(fh.interrupted)
-	fh.closeFn()
+	if fh.owner == fid.Fid.Fconn.Id {
+		close(fh.interrupted)
+		fh.closeFn()
+	}
 	return nil
 }
 

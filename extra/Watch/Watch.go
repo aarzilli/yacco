@@ -203,7 +203,7 @@ func readEvents(eventfd io.ReadWriteCloser, addrfd io.Writer, xdatafd io.Writer,
 
 		switch etype {
 		case 'x', 'X':
-			if arg == "Compile" {
+			if arg == "Rerun" {
 				if canExecute() {
 					startCommand(true, addrfd, xdatafd, bodyfd)
 				}
@@ -251,7 +251,7 @@ func main() {
 	wd, _ := os.Getwd()
 	_, err = ctlfd.Write([]byte("dumpdir " + wd + "\n"))
 
-	//TODO: add Compile command to tag
+	util.SetTag(p9clnt, outbufid, "Jobs Kill Delete Rerun ")
 
 	_, err = addrfd.Write([]byte(","))
 	util.Allergic(debug, err)
