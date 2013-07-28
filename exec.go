@@ -69,6 +69,7 @@ var cmds = map[string]Cmd{
 	"Paste!Indent":  PasteIndentCmd,
 	"Rename":        RenameCmd,
 	"Jump": JumpCmd,
+	"Getall": GetallCmd,
 }
 
 var macros = map[string]Cmd{}
@@ -171,6 +172,7 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 		ec.br.BufferRefresh(ec.ontag)
 	}
 	Wnd.wnd.SetClipboard(s)
+	Wnd.wnd.SetPrimarySelection(s)
 }
 
 func DelCmd(ec ExecContext, arg string, confirmed bool) {
@@ -519,6 +521,28 @@ func PutallCmd(ec ExecContext, arg string) {
 					nerr++
 				}
 				ed.BufferRefresh(false)
+			}
+		}
+	}
+	if nerr != 0 {
+		Warn(t)
+	}
+}
+
+func GetallCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	t := "Getall: Not reloading the following modified buffers:\n"
+	nerr := 0
+	for _, col := range Wnd.cols.cols {
+		for _, ed := range col.editors {
+			if (ed.bodybuf.Name[0] != '+') && ed.bodybuf.Modified {
+				if ed.bodybuf.Modified {
+					t += ed.bodybuf.ShortName() + "\n"
+					nerr++
+				} else {
+					ec.ed.bodybuf.Reload(ec.ed.sfr.Fr.Sels, true)
+					ec.ed.BufferRefresh(false)
+				}
 			}
 		}
 	}
