@@ -455,6 +455,7 @@ func (ed *Editor) Dump() DumpEditor {
 		ed.frac,
 		fontName,
 		ed.specialChan != nil,
+		string(buf.ToRunes(ed.tagbuf.SelectionX(util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() }))),
 	}
 }
 

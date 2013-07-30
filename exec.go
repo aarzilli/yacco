@@ -605,7 +605,11 @@ func UndoCmd(ec ExecContext, arg string) {
 
 func ZeroxCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	if ec.ed == nil {
+	ed := ec.ed
+	if ed == nil {
+		ed = activeEditor
+	}
+	if ed == nil {
 		return
 	}
 	ec.ed.confirmDel = false

@@ -13,11 +13,13 @@ type DumpWindow struct {
 	Columns []DumpColumn
 	Buffers []DumpBuffer
 	Wd      string
+	TagText string
 }
 
 type DumpColumn struct {
 	Frac    float64
 	Editors []DumpEditor
+	TagText string
 }
 
 type DumpEditor struct {
@@ -25,6 +27,7 @@ type DumpEditor struct {
 	Frac    float64
 	Font    string
 	Special bool
+	TagText string
 }
 
 type DumpBuffer struct {
@@ -95,6 +98,9 @@ func LoadFrom(dumpDest string) bool {
 
 	for _, dc := range dw.Columns {
 		col := Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
+
+		col.tagbuf.Replace([]rune(dc.TagText), &util.Sel{col.tagbuf.EditableStart, col.tagbuf.EditableStart}, col.tagfr.Sels, true, nil, util.EO_MOUSE, true)
+
 		for _, de := range dc.Editors {
 			b := buffers[de.Id]
 			ed := NewEditor(b, false)
@@ -110,6 +116,9 @@ func LoadFrom(dumpDest string) bool {
 			if de.Special && (b.Name == "+LookFile") {
 				lookFile(ed)
 			}
+
+			ed.tagbuf.Replace([]rune(de.TagText), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.EditableStart}, ed.tagfr.Sels, true, nil, util.EO_MOUSE, true)
+
 		}
 		for i, de := range dc.Editors {
 			col.editors[i].frac = de.Frac
@@ -121,6 +130,7 @@ func LoadFrom(dumpDest string) bool {
 	}
 
 	Wnd.GenTag()
+	Wnd.tagbuf.Replace([]rune(dw.TagText), &util.Sel{Wnd.tagbuf.EditableStart, Wnd.tagbuf.EditableStart}, Wnd.tagfr.Sels, true, nil, util.EO_MOUSE, true)
 	Wnd.BufferRefresh(true)
 	Wnd.tagfr.Redraw(true)
 	Wnd.Resized()
