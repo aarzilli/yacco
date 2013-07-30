@@ -5,39 +5,39 @@ import (
 	"yacco/config"
 )
 
-func (b *Buffer) highlightIntl(start int, full bool) {
+func (b *Buffer) highlightIntl(start int, full bool, pinc int) {
 	b.Rdlock()
 	defer b.Rdunlock()
 	b.hlock.Lock()
 	defer b.hlock.Unlock()
-	
+
 	if start < 0 {
 		start = b.lastCleanHl
 	}
-	
+
 	if start > 0 {
 		start = b.Tonl(start, -1)
 		if start >= 1 {
 			start--
 		}
 	}
-	
+
 	size := b.DisplayLines
 	if full {
 		size = -1
 	}
-	
+
 	//println("Highlight start", start, size)
-	
+
 	if start >= b.Size() {
 		//println("Quick exit")
 		return
 	}
-	
+
 	if b.HighlightChan != nil {
 		defer func() { b.HighlightChan <- b }()
 	}
-	
+
 	path := filepath.Join(b.Dir, b.Name)
 	amis := []int{}
 	for i, regionMatch := range config.RegionMatches {
@@ -48,24 +48,24 @@ func (b *Buffer) highlightIntl(start int, full bool) {
 			amis = append(amis, i)
 		}
 	}
-	
+
 	status := uint8(0)
 	if start >= 0 {
 		status = b.At(start).C >> 4
 	} else {
 		start = 0
 	}
-	
+
 	escaping := false
 	nlcount := 0
 	for i := start; i < b.Size(); i++ {
-		if b.At(i).R == '\n' {
+		if (i > pinc) && (b.At(i).R == '\n') {
 			nlcount++
 		}
 		if ((size > 0) && (nlcount > size)) || (b.ReadersPleaseStop) {
 			//println("Exiting", nlcount, b.ReadersPleaseStop)
 			if b.lastCleanHl >= i {
-				b.lastCleanHl = i-1
+				b.lastCleanHl = i - 1
 			}
 			return
 		}
@@ -76,12 +76,12 @@ func (b *Buffer) highlightIntl(start int, full bool) {
 					break
 				}
 			}
-			
+
 			if status != 0 {
-				for j := i; j < i + len(config.RegionMatches[status].StartDelim); j++ {
+				for j := i; j < i+len(config.RegionMatches[status].StartDelim); j++ {
 					b.At(j).C = (status << 4) + uint8(config.RegionMatches[status].Type)
 				}
-				i += len(config.RegionMatches[status].StartDelim)-1
+				i += len(config.RegionMatches[status].StartDelim) - 1
 			} else {
 				b.At(i).C = 0x01
 			}
@@ -90,7 +90,7 @@ func (b *Buffer) highlightIntl(start int, full bool) {
 				for j := i; j < i+len(config.RegionMatches[status].EndDelim); j++ {
 					b.At(j).C = (status << 4) + uint8(config.RegionMatches[status].Type)
 				}
-				i += len(config.RegionMatches[status].EndDelim)-1
+				i += len(config.RegionMatches[status].EndDelim) - 1
 				status = 0
 			} else if !escaping && (b.At(i).R == config.RegionMatches[status].Escape) {
 				b.At(i).C = (status << 4) + uint8(config.RegionMatches[status].Type)
@@ -118,4 +118,3 @@ func (b *Buffer) equalAt(start int, needle []rune) bool {
 
 	return i >= len(needle)
 }
-

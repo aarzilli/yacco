@@ -1,20 +1,20 @@
 package buf
 
 import (
-	"os"
-	"io"
 	"bufio"
 	"fmt"
-	"unicode"
-	"unicode/utf8"
+	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
-	"io/ioutil"
 	"sync"
 	"time"
-	"yacco/util"
+	"unicode"
+	"unicode/utf8"
 	"yacco/textframe"
-	"path/filepath"
+	"yacco/util"
 )
 
 const SLOP = 128
@@ -23,27 +23,27 @@ const SHORT_NAME_LEN = 40
 var nonwdRe = regexp.MustCompile(`\W+`)
 
 type Buffer struct {
-	Dir string
-	Name string
-	Editable bool
+	Dir           string
+	Name          string
+	Editable      bool
 	EditableStart int
-	Modified bool
-	ModTime time.Time // time the file was modified on disk
+	Modified      bool
+	ModTime       time.Time // time the file was modified on disk
 
 	Props map[string]string
 
 	// gap buffer implementation
-	buf []textframe.ColorRune
+	buf        []textframe.ColorRune
 	gap, gapsz int
 
 	ul undoList
 
-	lock sync.RWMutex
-	hlock sync.Mutex
+	lock              sync.RWMutex
+	hlock             sync.Mutex
 	ReadersPleaseStop bool
 
-	DisplayLines int
-	lastCleanHl int
+	DisplayLines  int
+	lastCleanHl   int
 	HighlightChan chan *Buffer
 
 	RefCount int
@@ -56,17 +56,17 @@ type Buffer struct {
 func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err error) {
 	//println("NewBuffer call:", dir, name)
 	b = &Buffer{
-		Dir: dir,
-		Name: name,
-		Editable: true,
+		Dir:           dir,
+		Name:          name,
+		Editable:      true,
 		EditableStart: -1,
-		Modified: false,
+		Modified:      false,
 
-		buf: make([]textframe.ColorRune, SLOP),
-		gap: 0,
+		buf:   make([]textframe.ColorRune, SLOP),
+		gap:   0,
 		gapsz: SLOP,
 
-		ul: undoList{ 0, []undoInfo{} }, }
+		ul: undoList{0, []undoInfo{}}}
 
 	dirfile, err := os.Open(dir)
 	if err != nil {
@@ -110,7 +110,7 @@ func (b *Buffer) Reload(sels []util.Sel, create bool) error {
 			return fmt.Errorf("Couldn't stat file (after opening it?) %s", filepath.Join(b.Dir, b.Name))
 		}
 
-		if fi.Size() > 10 * 1024 * 1024 {
+		if fi.Size() > 10*1024*1024 {
 			return fmt.Errorf("Refusing to open files larger than 10MB")
 		}
 
@@ -130,7 +130,7 @@ func (b *Buffer) Reload(sels []util.Sel, create bool) error {
 		str := string(bytes)
 		b.Words = util.Dedup(nonwdRe.Split(str, -1))
 		runes := []rune(str)
-		b.Replace(runes, &util.Sel{ 0, b.Size() }, sels, true, nil, 0, false)
+		b.Replace(runes, &util.Sel{0, b.Size()}, sels, true, nil, 0, false)
 		b.Modified = false
 		b.ul.Reset()
 	} else {
@@ -143,14 +143,13 @@ func (b *Buffer) Reload(sels []util.Sel, create bool) error {
 		}
 	}
 
-
 	return nil
 }
 
 // Replaces text between sel.S and sel.E with text, updates sels AND sel accordingly
 // After the replacement the highlighter is restarted
 func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel, solid bool, eventChan chan string, origin util.EventOrigin, dohl bool) {
-	if (!b.Editable) {
+	if !b.Editable {
 		return
 	}
 
@@ -175,8 +174,11 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel, solid bool
 	updateSels(sels, sel, len(text))
 
 	if dohl {
-		b.Highlight(sel.S-1, false)
+		b.Highlight(sel.S-1, false, -1)
+	} else {
+		b.lastCleanHl = sel.S - 1
 	}
+
 	b.unlock()
 
 	sel.S = sel.S + len(text)
@@ -204,7 +206,7 @@ func (b *Buffer) generateEvent(text []rune, sel util.Sel, eventChan chan string,
 
 // Undo last change. Redoes last undo if redo == true
 func (b *Buffer) Undo(sels []util.Sel, redo bool) {
-	if (!b.Editable) {
+	if !b.Editable {
 		return
 	}
 
@@ -239,7 +241,7 @@ func (b *Buffer) Undo(sels []util.Sel, redo bool) {
 			us = ui.after
 			text = []rune(ui.before.text)
 		}
-		ws := util.Sel{ us.S, us.E }
+		ws := util.Sel{us.S, us.E}
 		b.replaceIntl(text, &ws, sels)
 		updateSels(sels, &ws, len(text))
 
@@ -261,7 +263,7 @@ func (b *Buffer) Undo(sels []util.Sel, redo bool) {
 			}
 		}
 	}
-	b.Highlight(-1, true)
+	b.Highlight(-1, true, -1)
 }
 
 func (b *Buffer) Rdlock() {
@@ -284,12 +286,19 @@ func (b *Buffer) unlock() {
 	b.lock.Unlock()
 }
 
-func (b *Buffer) Highlight(start int, full bool) {
+// Highlights buffers starting at "start"
+// If full is specified the highlighting will continue until the end of the buffer,
+// otherwise it will continue until after DisplayLines lines after pinc
+func (b *Buffer) Highlight(start int, full bool, pinc int) {
 	if (len(b.Name) == 0) || (b.Name[0] == '+') || (b.DisplayLines == 0) {
 		return
 	}
 
-	go b.highlightIntl(start, full)
+	if (start < 0) && (pinc >= 0) && ((pinc + 50*b.DisplayLines) < b.lastCleanHl) {
+		return
+	}
+
+	go b.highlightIntl(start, full, pinc)
 }
 
 // Replaces text between sel.S and sel.E with text, updates selections in sels except sel itself
@@ -297,7 +306,7 @@ func (b *Buffer) Highlight(start int, full bool) {
 func (b *Buffer) replaceIntl(text []rune, sel *util.Sel, sels []util.Sel) {
 	regionSize := sel.E - sel.S
 
-	if (sel.S != sel.E) {
+	if sel.S != sel.E {
 		updateSels(sels, sel, -regionSize)
 		b.MoveGap(sel.S)
 		b.gapsz += regionSize // this effectively deletes the current selection
@@ -307,8 +316,8 @@ func (b *Buffer) replaceIntl(text []rune, sel *util.Sel, sels []util.Sel) {
 
 	b.IncGap(len(text))
 	for i, r := range text {
-		b.buf[b.gap + i].C = 1
-		b.buf[b.gap + i].R = r
+		b.buf[b.gap+i].C = 1
+		b.buf[b.gap+i].R = r
 	}
 	b.gap += len(text)
 	b.gapsz -= len(text)
@@ -347,13 +356,13 @@ func updateSels(sels []util.Sel, sel *util.Sel, delta int) {
 
 		if (sels[i].S >= sel.S) && (sels[i].S < end) {
 			sels[i].S = sel.S
-		} else if (sels[i].S > sel.S) {
+		} else if sels[i].S > sel.S {
 			sels[i].S += delta
 		}
 
 		if (sels[i].E >= sel.S) && (sels[i].E < end) {
 			sels[i].E = sel.S
-		} else if (sels[i].E > sel.S) {
+		} else if sels[i].E > sel.S {
 			sels[i].E += delta
 		}
 	}
@@ -365,12 +374,12 @@ func (b *Buffer) IncGap(delta int) {
 		return
 	}
 
-	ngapsz := (delta / SLOP + 1) * SLOP
+	ngapsz := (delta/SLOP + 1) * SLOP
 
-	nbuf := make([]textframe.ColorRune, len(b.buf) - b.gapsz + ngapsz)
+	nbuf := make([]textframe.ColorRune, len(b.buf)-b.gapsz+ngapsz)
 
 	copy(nbuf, b.buf[:b.gap])
-	copy(nbuf[b.gap + ngapsz:], b.buf[b.gap+b.gapsz:])
+	copy(nbuf[b.gap+ngapsz:], b.buf[b.gap+b.gapsz:])
 
 	b.buf = nbuf
 	b.gapsz = ngapsz
@@ -384,17 +393,17 @@ func (b *Buffer) MoveGap(p int) {
 	}
 
 	if pp < b.gap {
-		if b.gap - pp > 0 {
+		if b.gap-pp > 0 {
 			//size =  b.gap - pp
 			//memmove(buffer->buf + pp + buffer->gapsz, buffer->buf + pp, sizeof(my_glyph_info_t) * size);
-			copy(b.buf[ pp + b.gapsz : ], b.buf[pp : b.gap])
+			copy(b.buf[pp+b.gapsz:], b.buf[pp:b.gap])
 		}
 		b.gap = pp
 	} else if pp > b.gap {
-		if pp - b.gap - b.gapsz > 0 {
+		if pp-b.gap-b.gapsz > 0 {
 			//size = pp - b.gap - b.gapsz
 			//memmove(buffer->buf + buffer->gap, buffer->buf + buffer->gap + buffer->gapsz, sizeof(my_glyph_info_t) * size);
-			copy(b.buf[b.gap:], b.buf[b.gap + b.gapsz : pp])
+			copy(b.buf[b.gap:], b.buf[b.gap+b.gapsz:pp])
 		}
 		b.gap = pp - b.gapsz
 	}
@@ -424,7 +433,7 @@ func (b *Buffer) Selection(sel util.Sel) ([]textframe.ColorRune, []textframe.Col
 
 	if (ps < b.gap) && (pe >= b.gap) {
 		//println(len(b.buf), b.gap, b.gapsz, ps, pe)
-		return b.buf[ps:b.gap], b.buf[b.gap+b.gapsz:pe]
+		return b.buf[ps:b.gap], b.buf[b.gap+b.gapsz : pe]
 	} else {
 		if pe <= ps {
 			return []textframe.ColorRune{}, []textframe.ColorRune{}
@@ -466,14 +475,14 @@ func (b *Buffer) Size() int {
 // Moves to the beginning or end of a line
 func (b *Buffer) Tonl(start int, dir int) int {
 	sz := b.Size()
-	ba, bb := b.Selection(util.Sel{ 0, sz })
+	ba, bb := b.Selection(util.Sel{0, sz})
 
 	i := start
 	if i < 0 {
 		i = 0
 	}
 	if i >= sz {
-		i = sz-1
+		i = sz - 1
 	}
 	for ; (i >= 0) && (i < sz); i += dir {
 		var c rune
@@ -481,7 +490,7 @@ func (b *Buffer) Tonl(start int, dir int) int {
 		if i < len(ba) {
 			c = ba[i].R
 		} else {
-			c = bb[i - len(ba)].R
+			c = bb[i-len(ba)].R
 		}
 
 		if c == '\n' {
@@ -561,6 +570,7 @@ func (b *Buffer) Tofp(start int, dir int) int {
 
 const OPEN_PARENTHESIS = "([{<"
 const CLOSED_PARENTHESIS = ")]}>"
+
 // Moves to the matching parenthesis of the one at 'start' in the specified direction
 func (b *Buffer) Topmatch(start int, dir int) int {
 	g := b.At(start)
@@ -622,18 +632,18 @@ func (b *Buffer) Toregend(start int) int {
 		return -1
 	}
 
-	if (start != 0) && (b.At(start-1).C & 0x0f) > 1 {
+	if (start != 0) && (b.At(start-1).C&0x0f) > 1 {
 		return -1
 	}
 
 	var i int
-	for i = start+1; i < b.Size(); i++ {
+	for i = start + 1; i < b.Size(); i++ {
 		if (b.At(i).C & 0x0f) != c {
 			break
 		}
 	}
 
-	return i-1
+	return i - 1
 }
 
 func (b *Buffer) ShortName() string {
@@ -695,7 +705,7 @@ func (b *Buffer) Put() error {
 	}
 	defer out.Close()
 	bout := bufio.NewWriter(out)
-	ba, bb := b.Selection(util.Sel{ 0, b.Size() })
+	ba, bb := b.Selection(util.Sel{0, b.Size()})
 	sa := string(ToRunes(ba))
 	newWordsA := nonwdRe.Split(sa, -1)
 	_, err = bout.Write([]byte(sa))
@@ -734,11 +744,11 @@ func (b *Buffer) HasRedo() bool {
 }
 
 func (b *Buffer) ReaderFrom(s, e int) io.RuneReader {
-	return &runeReader{ b, s, e }
+	return &runeReader{b, s, e}
 }
 
 type runeReader struct {
-	b *Buffer
+	b    *Buffer
 	s, e int
 }
 
@@ -756,10 +766,10 @@ func (rr *runeReader) ReadRune() (r rune, size int, err error) {
 }
 
 func (b *Buffer) GetLine(i int) (int, int) {
-	ba, bb := b.Selection(util.Sel{ 0, b.Size() })
+	ba, bb := b.Selection(util.Sel{0, b.Size()})
 	if i < len(ba) {
 		n, c := countNl(ba[:i])
-		return n+1, c
+		return n + 1, c
 	} else {
 		di := i - len(ba)
 		na, offa := countNl(ba)

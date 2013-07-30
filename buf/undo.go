@@ -12,10 +12,10 @@ type undoSel struct {
 
 type undoInfo struct {
 	before undoSel
-	after undoSel
-	ts time.Time
-	saved bool
-	solid bool
+	after  undoSel
+	ts     time.Time
+	saved  bool
+	solid  bool
 }
 
 type undoList struct {
