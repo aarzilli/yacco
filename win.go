@@ -1089,5 +1089,5 @@ func (w *Window) Dump() DumpWindow {
 			bufs[i].IsNil = true
 		}
 	}
-	return DumpWindow{cols, bufs, w.tagbuf.Dir, string(buf.ToRunes(w.tagbuf.SelectionX(util.Sel{ w.tagbuf.EditableStart, w.tagbuf.Size() })))}
+	return DumpWindow{cols, bufs, w.tagbuf.Dir, string(buf.ToRunes(w.tagbuf.SelectionX(util.Sel{w.tagbuf.EditableStart, w.tagbuf.Size()})))}
 }

@@ -1,14 +1,14 @@
 package main
 
 import (
-	"os"
+	"code.google.com/p/go9p/p"
+	"code.google.com/p/go9p/p/srv"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"syscall"
 	"yacco/buf"
-	"code.google.com/p/go9p/p/srv"
-	"code.google.com/p/go9p/p"
 )
 
 var p9ListenAddr string
@@ -32,9 +32,9 @@ func fs9PInit() {
 		os.Exit(1)
 	}
 
-	index := &ReadOnlyP9{ srv.File{}, indexFileFn }
+	index := &ReadOnlyP9{srv.File{}, indexFileFn}
 	index.Add(p9root, "index", user, nil, 0444, index)
-	prop := &ReadWriteP9{ srv.File{}, readMainPropFn, writeMainPropFn }
+	prop := &ReadWriteP9{srv.File{}, readMainPropFn, writeMainPropFn}
 	prop.Add(p9root, "prop", user, nil, 0666, prop)
 	newdir := &NewP9{}
 	newdir.Add(p9root, "new", user, nil, p.DMDIR|0770, newdir)
@@ -90,43 +90,43 @@ func fs9PAddBuffer(n int, b *buf.Buffer) {
 	bufdir.Add(p9root, name, user, nil, p.DMDIR|0777, bufdir)
 
 	bwr := func(f func(idx int, off int64) ([]byte, syscall.Errno)) func(off int64) ([]byte, syscall.Errno) {
-		return func (off int64) ([]byte, syscall.Errno) {
+		return func(off int64) ([]byte, syscall.Errno) {
 			return f(n, off)
 		}
 	}
 
 	bww := func(f func(idx int, data []byte, off int64) syscall.Errno) func(data []byte, off int64) syscall.Errno {
-		return func (data []byte, off int64) syscall.Errno {
+		return func(data []byte, off int64) syscall.Errno {
 			return f(n, data, off)
 		}
 	}
 
-	addr := &ReadWriteP9{ srv.File{}, bwr(readAddrFn), bww(writeAddrFn) }
+	addr := &ReadWriteP9{srv.File{}, bwr(readAddrFn), bww(writeAddrFn)}
 	addr.Add(bufdir, "addr", user, nil, 0660, addr)
-	body := &ReadWriteP9{ srv.File{}, bwr(readBodyFn), bww(writeBodyFn) }
+	body := &ReadWriteP9{srv.File{}, bwr(readBodyFn), bww(writeBodyFn)}
 	body.Add(bufdir, "body", user, nil, 0660, body)
-	ctl := &ReadWriteP9{ srv.File{}, bwr(readCtlFn), bww(writeCtlFn) }
+	ctl := &ReadWriteP9{srv.File{}, bwr(readCtlFn), bww(writeCtlFn)}
 	ctl.Add(bufdir, "ctl", user, nil, 0660, ctl)
-	data := &ReadWriteP9{ srv.File{}, func(off int64) ([]byte, syscall.Errno) { return readDataFn(n, off, false) }, bww(writeDataFn) }
+	data := &ReadWriteP9{srv.File{}, func(off int64) ([]byte, syscall.Errno) { return readDataFn(n, off, false) }, bww(writeDataFn)}
 	data.Add(bufdir, "data", user, nil, 0660, data)
-	xdata := &ReadWriteP9{ srv.File{}, func(off int64) ([]byte, syscall.Errno) { return readDataFn(n, off, true) }, bww(writeDataFn) }
+	xdata := &ReadWriteP9{srv.File{}, func(off int64) ([]byte, syscall.Errno) { return readDataFn(n, off, true) }, bww(writeDataFn)}
 	xdata.Add(bufdir, "xdata", user, nil, 0660, xdata)
-	errors := &ReadWriteP9{ srv.File{}, bwr(readErrorsFn), bww(writeErrorsFn) }
+	errors := &ReadWriteP9{srv.File{}, bwr(readErrorsFn), bww(writeErrorsFn)}
 	errors.Add(bufdir, "errors", user, nil, 0660, errors)
-	tag := &ReadWriteP9{ srv.File{}, bwr(readTagFn), bww(writeTagFn) }
+	tag := &ReadWriteP9{srv.File{}, bwr(readTagFn), bww(writeTagFn)}
 	tag.Add(bufdir, "tag", user, nil, 0660, tag)
-	event := &ReadWriteExclP9{ srv.File{},
+	event := &ReadWriteExclP9{srv.File{},
 		nil, "",
-		func (off int64, interrupted chan struct{}) ([]byte, syscall.Errno) {
+		func(off int64, interrupted chan struct{}) ([]byte, syscall.Errno) {
 			return readEventFn(n, off, interrupted)
 		},
 		bww(writeEventFn),
-		func () bool { return openEventsFn(n) },
-		func() { releaseEventsFn(n) } }
+		func() bool { return openEventsFn(n) },
+		func() { releaseEventsFn(n) }}
 	event.Add(bufdir, "event", user, nil, p.DMEXCL|0660, event)
-	prop := &ReadWriteP9{ srv.File{}, bwr(readPropFn), bww(writePropFn) }
+	prop := &ReadWriteP9{srv.File{}, bwr(readPropFn), bww(writePropFn)}
 	prop.Add(bufdir, "prop", user, nil, 0660, prop)
-	jumps := &ReadOnlyP9{ srv.File{}, bwr(jumpFileFn) }
+	jumps := &ReadOnlyP9{srv.File{}, bwr(jumpFileFn)}
 	jumps.Add(bufdir, "jumps", user, nil, 0440, jumps)
 }
 
@@ -192,7 +192,7 @@ func (fh *NewP9) Create(fid *srv.FFid, name string, perm uint32) (*srv.File, err
 
 type ReadWriteP9 struct {
 	srv.File
-	readFn func(off int64) ([]byte, syscall.Errno)
+	readFn  func(off int64) ([]byte, syscall.Errno)
 	writeFn func(data []byte, off int64) syscall.Errno
 }
 
@@ -218,11 +218,11 @@ func (fh *ReadWriteP9) Write(fid *srv.FFid, data []byte, offset uint64) (int, er
 type ReadWriteExclP9 struct {
 	srv.File
 	interrupted chan struct{}
-	owner string
-	readFn func(off int64, interrupted chan struct{}) ([]byte, syscall.Errno)
-	writeFn func(data []byte, off int64) syscall.Errno
-	openFn func() bool
-	closeFn func()
+	owner       string
+	readFn      func(off int64, interrupted chan struct{}) ([]byte, syscall.Errno)
+	writeFn     func(data []byte, off int64) syscall.Errno
+	openFn      func() bool
+	closeFn     func()
 }
 
 func (fh *ReadWriteExclP9) Open(fid *srv.FFid, mode uint8) error {
@@ -262,4 +262,3 @@ func (fh *ReadWriteExclP9) Write(fid *srv.FFid, data []byte, offset uint64) (int
 		return 0, r
 	}
 }
-

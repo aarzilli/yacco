@@ -68,8 +68,8 @@ var cmds = map[string]Cmd{
 	"Paste!Primary": func(ec ExecContext, arg string) { PasteCmd(ec, arg, true) },
 	"Paste!Indent":  PasteIndentCmd,
 	"Rename":        RenameCmd,
-	"Jump": JumpCmd,
-	"Getall": GetallCmd,
+	"Jump":          JumpCmd,
+	"Getall":        GetallCmd,
 }
 
 var macros = map[string]Cmd{}
@@ -258,12 +258,12 @@ func EditCmd(ec ExecContext, arg string) {
 	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
 		return
 	}
-	
+
 	edc := edit.EditContext{
-		Buf: ec.buf,
-		Sels: ec.fr.Sels,
+		Buf:       ec.buf,
+		Sels:      ec.fr.Sels,
 		EventChan: ec.eventChan,
-		PushJump: ec.ed.PushJump,
+		PushJump:  ec.ed.PushJump,
 	}
 
 	edit.Edit(arg, edc)

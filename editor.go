@@ -32,9 +32,9 @@ type Editor struct {
 	savedTag            string
 	specialChan         chan string
 	specialExitOnReturn bool
-	
+
 	restoredJump int
-	jumpCount int
+	jumpCount    int
 }
 
 const SCROLL_WIDTH = 10
@@ -455,13 +455,13 @@ func (ed *Editor) Dump() DumpEditor {
 		ed.frac,
 		fontName,
 		ed.specialChan != nil,
-		string(buf.ToRunes(ed.tagbuf.SelectionX(util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() }))),
+		string(buf.ToRunes(ed.tagbuf.SelectionX(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}))),
 	}
 }
 
 func (ed *Editor) PushJump() {
 	jb := len(ed.sfr.Fr.Sels) - NUM_JUMPS
-	for i := len(ed.sfr.Fr.Sels)-2; i >= jb; i-- {
+	for i := len(ed.sfr.Fr.Sels) - 2; i >= jb; i-- {
 		ed.sfr.Fr.Sels[i+1] = ed.sfr.Fr.Sels[i]
 	}
 	ed.sfr.Fr.Sels[jb].S = ed.sfr.Fr.Sels[0].S
@@ -473,35 +473,35 @@ func (ed *Editor) RestoreJump() {
 	if ed.jumpCount == 0 {
 		return
 	}
-	
+
 	jb := len(ed.sfr.Fr.Sels) - NUM_JUMPS
-	
+
 	// if we haven't recently restored a jump since the last push, refer to the last pushed jump
 	if ed.restoredJump < jb {
 		ed.restoredJump = jb
 	}
-	
+
 	// if we moved since the last restored (or pushed jump)
 	if ed.sfr.Fr.Sels[0].S != ed.sfr.Fr.Sels[ed.restoredJump].S {
 		// we push the current position, then restore the previously last jump done
 		ed.PushJump()
 		ed.sfr.Fr.Sels[0].S = ed.sfr.Fr.Sels[jb+1].S
 		ed.sfr.Fr.Sels[0].E = ed.sfr.Fr.Sels[jb+1].S
-		ed.restoredJump = jb+1
+		ed.restoredJump = jb + 1
 		return
 	}
-	
+
 	// we are on the last restored jump, cycle through jump
 	ed.restoredJump++
-	if (ed.restoredJump >= len(ed.sfr.Fr.Sels)) || (ed.restoredJump >= jb + ed.jumpCount) {
+	if (ed.restoredJump >= len(ed.sfr.Fr.Sels)) || (ed.restoredJump >= jb+ed.jumpCount) {
 		ed.restoredJump = jb
 	}
-	
+
 	ed.sfr.Fr.Sels[0].S = ed.sfr.Fr.Sels[ed.restoredJump].S
 	ed.sfr.Fr.Sels[0].E = ed.sfr.Fr.Sels[ed.restoredJump].S
 }
 
-func (ed *Editor) LastJump() int {	
+func (ed *Editor) LastJump() int {
 	jb := len(ed.sfr.Fr.Sels) - NUM_JUMPS
 	return ed.sfr.Fr.Sels[jb].S
 }

@@ -2,13 +2,13 @@ package main
 
 import (
 	"fmt"
-	"syscall"
 	"path/filepath"
 	"strings"
-	"yacco/edit"
+	"syscall"
 	"yacco/buf"
-	"yacco/util"
 	"yacco/config"
+	"yacco/edit"
+	"yacco/util"
 )
 
 func indexFileFn(off int64) ([]byte, syscall.Errno) {

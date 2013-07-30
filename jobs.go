@@ -160,7 +160,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 
 		err := job.cmd.Wait()
 		if err != nil {
-			sideChan <- WarnMsg{job.cmd.Dir, "Error executing command: " + job.descr + "\n" }
+			sideChan <- WarnMsg{job.cmd.Dir, "Error executing command: " + job.descr + "\n"}
 		}
 
 		if (ec != nil) && job.writeToBuf {

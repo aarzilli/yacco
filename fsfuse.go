@@ -1,10 +1,10 @@
 package main
 
 import (
+	"fmt"
 	"github.com/hanwen/go-fuse/fuse"
 	"github.com/hanwen/go-fuse/fuse/nodefs"
 	"os"
-	"fmt"
 	"syscall"
 	"time"
 	"yacco/buf"
@@ -149,7 +149,7 @@ func (yfs *YaccoFs) addFuseBuffer(n int, b *buf.Buffer) {
 		&ReadOnlyNode{nodefs.NewDefaultNode(),
 			func(off int64) ([]byte, syscall.Errno) {
 				return jumpFileFn(n, off)
-			} }))
+			}}))
 }
 
 func (yfs *YaccoFs) OnMount(conn *nodefs.FileSystemConnector) {
@@ -277,5 +277,3 @@ func (n *NewWrapNode) Open(flags uint32, context *fuse.Context) (nodefs.File, fu
 	newDir.Inode().RmChild(n.name)
 	return n.inner.Open(flags, context)
 }
-
-
