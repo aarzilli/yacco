@@ -207,8 +207,6 @@ func readEvents(eventfd io.ReadWriteCloser, addrfd io.Writer, xdatafd io.Writer,
 				if canExecute() {
 					startCommand(true, addrfd, xdatafd, bodyfd)
 				}
-
-				//TODO: ask for command execution
 			} else {
 				_, err := eventfd.Write([]byte(event))
 				util.Allergic(debug, err)

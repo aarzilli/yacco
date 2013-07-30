@@ -1,20 +1,20 @@
 package main
 
 import (
-	"os"
-	"os/signal"
-	"log"
-	"strings"
 	"bufio"
+	"code.google.com/p/go9p/p"
+	"fmt"
+	"github.com/kr/pty"
 	"io"
 	"io/ioutil"
+	"log"
+	"os"
 	"os/exec"
-	"fmt"
-	"time"
-	"syscall"
+	"os/signal"
 	"strconv"
-	"github.com/kr/pty"
-	"code.google.com/p/go9p/p"
+	"strings"
+	"syscall"
+	"time"
 	"yacco/util"
 )
 
@@ -73,7 +73,7 @@ func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd io.Writer, outbufid st
 				bufbody.Flush()
 				_, err = addrfd.Write([]byte("-#1"))
 				util.Allergic(debug, err)
-				xdatafd.Write([]byte{ 0 })
+				xdatafd.Write([]byte{0})
 			case 0x1b:
 				escseq = []byte{}
 				state = ANSI_ESCAPE
@@ -99,7 +99,7 @@ func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd io.Writer, outbufid st
 					bufbody.Flush()
 					_, err = addrfd.Write([]byte(","))
 					util.Allergic(debug, err)
-					xdatafd.Write([]byte{ 0 })
+					xdatafd.Write([]byte{0})
 				case 'H':
 					if debug {
 						fmt.Println("Requesting back to home")
@@ -129,7 +129,7 @@ func outputReader(cmd *exec.Cmd, stdout io.Reader, bodyfd io.Writer, outbufid st
 				bufbody.Flush()
 				_, err = addrfd.Write([]byte("-+"))
 				util.Allergic(debug, err)
-				xdatafd.Write([]byte{ 0 })
+				xdatafd.Write([]byte{0})
 				util.Allergic(debug, bufbody.WriteByte(ch))
 			}
 		}
@@ -148,7 +148,7 @@ func readAddr(outbufid string) []int {
 	defer addrfd.Close()
 	str := read(addrfd)
 	v := strings.Split(str, ",")
-	iv := []int{ 0, 0 }
+	iv := []int{0, 0}
 	iv[0], err = strconv.Atoi(v[0])
 	util.Allergic(debug, err)
 	iv[1], err = strconv.Atoi(v[1])
@@ -165,7 +165,14 @@ func readXdata(outbufid string) string {
 	return string(xdata)
 }
 
-func eventReader(eventfd io.ReadWriter, ctlfd io.ReadWriter, addrfd io.Writer, bodyfd io.ReadWriter, pty io.Writer, outbufid string) {
+var signalCommands = map[string]syscall.Signal{
+	"Sigint":  syscall.SIGINT,
+	"Sigkill": syscall.SIGKILL,
+	"Sigterm": syscall.SIGTERM,
+	"Sigusr1": syscall.SIGUSR1,
+}
+
+func eventReader(eventfd io.ReadWriter, ctlfd io.ReadWriter, addrfd io.Writer, bodyfd io.ReadWriter, pty *os.File, outbufid string, startPid int) {
 	buf := make([]byte, 1024)
 	addrfd.Write([]byte("$"))
 	for {
@@ -185,12 +192,12 @@ func eventReader(eventfd io.ReadWriter, ctlfd io.ReadWriter, addrfd io.Writer, b
 
 		origin := event[0]
 		etype := event[1]
-		v := strings.SplitN(event[2:], " ",  5)
+		v := strings.SplitN(event[2:], " ", 5)
 		if len(v) != 5 {
 			log.Fatalf("Wrong number of arguments from split: %d", len(v))
 		}
 
-		s, err:= strconv.Atoi(v[0])
+		s, err := strconv.Atoi(v[0])
 		util.Allergic(debug, err)
 		_, err = strconv.Atoi(v[1])
 		util.Allergic(debug, err)
@@ -212,7 +219,7 @@ func eventReader(eventfd io.ReadWriter, ctlfd io.ReadWriter, addrfd io.Writer, b
 			arg = arg[:len(arg)-1]
 		}
 
-		if (debug) {
+		if debug {
 			fmt.Printf("event <%s>\n", event)
 		}
 
@@ -222,14 +229,26 @@ func eventReader(eventfd io.ReadWriter, ctlfd io.ReadWriter, addrfd io.Writer, b
 				_, err := eventfd.Write([]byte(event))
 				util.Allergic(debug, err)
 			} else {
-				switch arg {
-				case "Term":
-					//TODO: send sigterm
-				default:
+				if signal, ok := signalCommands[arg]; ok {
+					pid := TcGetPGrp(pty)
+					if pid < 0 {
+						pid = startPid
+					}
+
+					proc, err := os.FindProcess(pid)
+					if err == nil {
+						err = proc.Signal(signal)
+						if err != nil {
+							fmt.Fprintf(os.Stderr, "Error signaling process %d: %v\n", pid, err)
+						}
+					} else {
+						fmt.Fprintf(os.Stderr, "Error finding process %d: %v\n", pid, err)
+					}
+				} else {
 					bodyfd.Write([]byte(arg))
-					bodyfd.Write([]byte{ '\n' })
+					bodyfd.Write([]byte{'\n'})
 					pty.Write([]byte(arg))
-					pty.Write([]byte{ '\n' })
+					pty.Write([]byte{'\n'})
 				}
 			}
 
@@ -280,9 +299,9 @@ func run(c *exec.Cmd) *os.File {
 
 	termios, err := TcGetAttr(tty)
 	util.Allergic(debug, err)
-	termios.SetIFlags(ICRNL|IUTF8)
+	termios.SetIFlags(ICRNL | IUTF8)
 	termios.SetOFlags(ONLRET)
-	termios.SetCFlags(CS8|CREAD)
+	termios.SetCFlags(CS8 | CREAD)
 	termios.SetLFlags(ICANON)
 	termios.SetSpeed(38400)
 	err = TcSetAttr(tty, TCSANOW, termios)
@@ -306,8 +325,8 @@ func notifyProc(notifyChan <-chan os.Signal, endChan <-chan bool, bodyfd io.Read
 		fmt.Println("Waiting for signal")
 	}
 	select {
-	case <- notifyChan:
-	case <- endChan:
+	case <-notifyChan:
+	case <-endChan:
 	}
 	if debug {
 		fmt.Println("Ending")
@@ -337,11 +356,11 @@ func main() {
 	outbufid, ctlfd, eventfd, err := util.FindWin("Win", p9clnt)
 	util.Allergic(debug, err)
 
-	bodyfd, err := p9clnt.FOpen("/" + outbufid + "/body", p.OWRITE)
+	bodyfd, err := p9clnt.FOpen("/"+outbufid+"/body", p.OWRITE)
 	util.Allergic(debug, err)
-	addrfd, err := p9clnt.FOpen("/" + outbufid + "/addr", p.OWRITE)
+	addrfd, err := p9clnt.FOpen("/"+outbufid+"/addr", p.OWRITE)
 	util.Allergic(debug, err)
-	xdatafd, err := p9clnt.FOpen("/" + outbufid + "/xdata", p.OWRITE)
+	xdatafd, err := p9clnt.FOpen("/"+outbufid+"/xdata", p.OWRITE)
 	util.Allergic(debug, err)
 
 	_, err = ctlfd.Write([]byte("name +Win"))
@@ -352,11 +371,11 @@ func main() {
 	wd, _ := os.Getwd()
 	_, err = ctlfd.Write([]byte("dumpdir " + wd + "\n"))
 
-	util.SetTag(p9clnt, outbufid, "Jobs Kill Delete Term ")
+	util.SetTag(p9clnt, outbufid, "Jobs Kill Delete Sigkill Sigint Sigterm ")
 
 	_, err = addrfd.Write([]byte(","))
 	util.Allergic(debug, err)
-	xdatafd.Write([]byte{ 0 })
+	xdatafd.Write([]byte{0})
 
 	var cmd *exec.Cmd
 	if len(os.Args) > 1 {
@@ -365,7 +384,7 @@ func main() {
 			vcmdstr := strings.Split(cmdstr, " ")
 			cmd = exec.Command(vcmdstr[0], vcmdstr[1:]...)
 		} else {
-			cmd = exec.Command("/bin/sh", "-c",  cmdstr)
+			cmd = exec.Command("/bin/sh", "-c", cmdstr)
 		}
 	} else {
 		shell := os.Getenv("yaccoshell")
@@ -387,7 +406,7 @@ func main() {
 	pty := run(cmd)
 
 	outputReaderDone := make(chan struct{})
-	go eventReader(eventfd, ctlfd, addrfd, bodyfd, pty, outbufid)
+	go eventReader(eventfd, ctlfd, addrfd, bodyfd, pty, outbufid, cmd.Process.Pid)
 	go outputReader(cmd, pty, bodyfd, outbufid, ctlfd, addrfd, xdatafd, outputReaderDone)
 
 	if debug {
@@ -401,7 +420,7 @@ func main() {
 
 	cmd.Wait()
 
-	<- outputReaderDone
+	<-outputReaderDone
 
 	endChan <- true
 	if debug {
