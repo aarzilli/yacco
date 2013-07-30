@@ -3,12 +3,12 @@ package edit
 import (
 	"fmt"
 	"regexp"
-	"yacco/util"
 	"yacco/buf"
+	"yacco/util"
 )
 
 var Warnfn func(msg string)
-var NewJob func (wd, cmd, input string, resultChan chan<- string)
+var NewJob func(wd, cmd, input string, resultChan chan<- string)
 
 const LOOP_LIMIT = 200
 
@@ -38,11 +38,11 @@ func mtcmdfn(del bool, c *cmd, atsel util.Sel, ec EditContext) {
 	txt := buf.ToRunes(ec.Buf.SelectionX(selfrom))
 
 	if selto > selfrom.E {
-		ec.Buf.Replace(txt, &util.Sel{ selto, selto }, ec.Sels, true, ec.EventChan, util.EO_MOUSE, false)
+		ec.Buf.Replace(txt, &util.Sel{selto, selto}, ec.Sels, true, ec.EventChan, util.EO_MOUSE, false)
 		ec.Buf.Replace([]rune{}, &selfrom, ec.Sels, false, ec.EventChan, util.EO_MOUSE, true)
 	} else {
 		ec.Buf.Replace([]rune{}, &selfrom, ec.Sels, true, ec.EventChan, util.EO_MOUSE, false)
-		ec.Buf.Replace(txt, &util.Sel{ selto, selto }, ec.Sels, false, ec.EventChan, util.EO_MOUSE, true)
+		ec.Buf.Replace(txt, &util.Sel{selto, selto}, ec.Sels, false, ec.EventChan, util.EO_MOUSE, true)
 	}
 }
 
@@ -78,7 +78,7 @@ func scmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}
-		sel = util.Sel{ loc[0] + sel.S, loc[1] + sel.S }
+		sel = util.Sel{loc[0] + sel.S, loc[1] + sel.S}
 		ec.Buf.Replace(subs, &sel, ec.Sels, first, ec.EventChan, util.EO_MOUSE, false)
 		if sel.S != psel {
 			count++
@@ -104,7 +104,7 @@ func xcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}
-		sel = util.Sel{ loc[0] + sel.S, loc[1] + sel.S }
+		sel = util.Sel{loc[0] + sel.S, loc[1] + sel.S}
 		ec.Sels[0] = sel
 		c.body.fn(c.body, sel, ec)
 		if (ec.Sels[0].S == sel.S) && (ec.Sels[0].E == sel.E) {
@@ -167,7 +167,7 @@ func gcmdfn(inv bool, c *cmd, atsel util.Sel, ec EditContext) {
 func pipeincmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	resultChan := make(chan string)
 	NewJob(ec.Buf.Dir, c.bodytxt, "", resultChan)
-	str := <- resultChan
+	str := <-resultChan
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
 	ec.Buf.Replace([]rune(str), &sel, ec.Sels, true, ec.EventChan, util.EO_MOUSE, true)
 }
@@ -183,7 +183,7 @@ func pipecmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	str := string(buf.ToRunes(ec.Buf.SelectionX(sel)))
 	resultChan := make(chan string)
 	NewJob(ec.Buf.Dir, c.bodytxt, str, resultChan)
-	str = <- resultChan
+	str = <-resultChan
 	ec.Buf.Replace([]rune(str), &sel, ec.Sels, true, ec.EventChan, util.EO_MOUSE, true)
 }
 

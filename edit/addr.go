@@ -2,10 +2,10 @@ package edit
 
 import (
 	"fmt"
-	"strconv"
 	"regexp"
-	"yacco/util"
+	"strconv"
 	"yacco/buf"
+	"yacco/util"
 )
 
 type Addr interface {
@@ -30,11 +30,12 @@ func (e *AddrOp) String() string {
 
 func (e *AddrOp) Eval(b *buf.Buffer, sel util.Sel) util.Sel {
 	switch e.Op {
-	default: fallthrough
+	default:
+		fallthrough
 	case ",":
 		slh := e.Lh.Eval(b, sel)
 		srh := e.Rh.Eval(b, sel)
-		return util.Sel{ slh.S, srh.E }
+		return util.Sel{slh.S, srh.E}
 	case ";":
 		slh := e.Lh.Eval(b, sel)
 		return e.Rh.Eval(b, slh)
@@ -58,15 +59,15 @@ func (e *addrEmpty) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 
 type AddrBase struct {
 	Batype string
-	Value string
-	Dir int
+	Value  string
+	Dir    int
 }
 
 func (e *AddrBase) Empty() bool {
 	return false
 }
 
-func (e *AddrBase) String() string{
+func (e *AddrBase) String() string {
 	dirch := ""
 	if e.Dir > 0 {
 		dirch = "+"
@@ -245,7 +246,7 @@ func regexpEvalBwd(b *buf.Buffer, sel util.Sel, re *regexp.Regexp, rstr string, 
 			return sel
 		} else {
 			found = true
-			if loc[0] + s > p {
+			if loc[0]+s > p {
 				return sel
 			}
 			sel.S = loc[0] + s
@@ -262,7 +263,7 @@ func (e *AddrList) Empty() bool {
 	return false
 }
 
-func (e *AddrList) String() string{
+func (e *AddrList) String() string {
 	s := "List<"
 	for _, addr := range e.Addrs {
 		s += addr.String() + " "

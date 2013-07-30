@@ -2,32 +2,33 @@ package edit
 
 import (
 	"fmt"
-	"yacco/util"
 	"yacco/buf"
+	"yacco/util"
 )
 
 type commandFlag uint16
+
 const (
 	G_FLAG = 1 << iota
 )
 
 type cmd struct {
-	cmdch rune
+	cmdch     rune
 	rangeaddr Addr
-	txtargs []string
-	numarg int
-	flags commandFlag
-	argaddr Addr
-	body *cmd
-	bodytxt string
-	fn func(c *cmd, atsel util.Sel, ec EditContext)
+	txtargs   []string
+	numarg    int
+	flags     commandFlag
+	argaddr   Addr
+	body      *cmd
+	bodytxt   string
+	fn        func(c *cmd, atsel util.Sel, ec EditContext)
 }
 
 type EditContext struct {
-	Buf *buf.Buffer
-	Sels []util.Sel
+	Buf       *buf.Buffer
+	Sels      []util.Sel
 	EventChan chan string
-	PushJump func()
+	PushJump  func()
 }
 
 func Edit(pgm string, ec EditContext) {
@@ -39,13 +40,13 @@ func (ecmd *cmd) Exec(ec EditContext) {
 	if ecmd.fn == nil {
 		panic(fmt.Errorf("Command '%c' not implemented", ecmd.cmdch))
 	}
-	
+
 	func() {
 		ecmd.fn(ecmd, ec.Sels[0], ec)
 	}()
 }
 
-func AddrEval(pgm string, b *buf.Buffer, sel util.Sel) util.Sel{
+func AddrEval(pgm string, b *buf.Buffer, sel util.Sel) util.Sel {
 	rest := []rune(pgm)
 	toks := []addrTok{}
 	for {
@@ -91,4 +92,3 @@ func (ecmd *cmd) String() string {
 
 	return s
 }
-

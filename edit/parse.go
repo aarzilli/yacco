@@ -2,40 +2,40 @@ package edit
 
 import (
 	"fmt"
-	"strings"
 	"strconv"
+	"strings"
 	"unicode"
 	"yacco/util"
 )
 
 type cmdDef struct {
-	txtargs int
-	sarg bool
-	addrarg bool
-	bodyarg bool
+	txtargs  int
+	sarg     bool
+	addrarg  bool
+	bodyarg  bool
 	optxtarg bool
 	restargs bool
-	fn func(c *cmd, atsel util.Sel, ec EditContext)
+	fn       func(c *cmd, atsel util.Sel, ec EditContext)
 }
 
 var commands = map[rune]cmdDef{
-	'a': cmdDef{ txtargs: 1, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(+1, c, atsel, ec) } },
-	'c': cmdDef{ txtargs: 1, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(0, c, atsel, ec)  } },
-	'i': cmdDef{ txtargs: 1, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(-1, c, atsel, ec) } },
-	'd': cmdDef{ txtargs: 0, fn: func(c *cmd, atsel util.Sel, ec EditContext) { c.txtargs = []string{ "" }; inscmdfn(0, c, atsel, ec) } },
-	's': cmdDef{ txtargs: 2, sarg: true, fn: scmdfn },
-	'm': cmdDef{ txtargs: 0, addrarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { mtcmdfn(true, c, atsel, ec) } },
-	't': cmdDef{ txtargs: 0, addrarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { mtcmdfn(false, c, atsel, ec) } },
-	'p': cmdDef{ txtargs: 0, fn: pcmdfn },
-	'=': cmdDef{ txtargs: 0, fn: eqcmdfn },
-	'x': cmdDef{ txtargs: 1, bodyarg: true, optxtarg: true, fn: xcmdfn},
-	'y': cmdDef{ txtargs: 1, bodyarg: true, fn: ycmdfn },
-	'g': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { gcmdfn(false, c, atsel, ec) } },
-	'v': cmdDef{ txtargs: 1, bodyarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { gcmdfn(true, c, atsel, ec) }  },
-	'<': cmdDef{ restargs: true, fn: pipeincmdfn },
-	'>': cmdDef{ restargs: true, fn: pipeoutcmdfn },
-	'|': cmdDef{ restargs: true, fn: pipecmdfn },
-	'k': cmdDef{ restargs: false, fn: kcmdfn },
+	'a': cmdDef{txtargs: 1, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(+1, c, atsel, ec) }},
+	'c': cmdDef{txtargs: 1, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(0, c, atsel, ec) }},
+	'i': cmdDef{txtargs: 1, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(-1, c, atsel, ec) }},
+	'd': cmdDef{txtargs: 0, fn: func(c *cmd, atsel util.Sel, ec EditContext) { c.txtargs = []string{""}; inscmdfn(0, c, atsel, ec) }},
+	's': cmdDef{txtargs: 2, sarg: true, fn: scmdfn},
+	'm': cmdDef{txtargs: 0, addrarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { mtcmdfn(true, c, atsel, ec) }},
+	't': cmdDef{txtargs: 0, addrarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { mtcmdfn(false, c, atsel, ec) }},
+	'p': cmdDef{txtargs: 0, fn: pcmdfn},
+	'=': cmdDef{txtargs: 0, fn: eqcmdfn},
+	'x': cmdDef{txtargs: 1, bodyarg: true, optxtarg: true, fn: xcmdfn},
+	'y': cmdDef{txtargs: 1, bodyarg: true, fn: ycmdfn},
+	'g': cmdDef{txtargs: 1, bodyarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { gcmdfn(false, c, atsel, ec) }},
+	'v': cmdDef{txtargs: 1, bodyarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { gcmdfn(true, c, atsel, ec) }},
+	'<': cmdDef{restargs: true, fn: pipeincmdfn},
+	'>': cmdDef{restargs: true, fn: pipeoutcmdfn},
+	'|': cmdDef{restargs: true, fn: pipecmdfn},
+	'k': cmdDef{restargs: false, fn: kcmdfn},
 }
 
 type addrTok string
@@ -55,7 +55,7 @@ func parseEx(pgm []rune) (*cmd, []rune) {
 	for {
 		if len(rest) == 0 {
 			addr := parseAddr(addrs)
-			r, rest = parseCmd(' ', cmdDef{txtargs: 0, fn: nilcmdfn }, addr, []rune{})
+			r, rest = parseCmd(' ', cmdDef{txtargs: 0, fn: nilcmdfn}, addr, []rune{})
 			break
 		}
 
@@ -64,20 +64,20 @@ func parseEx(pgm []rune) (*cmd, []rune) {
 			continue
 		}
 
-    	if cmdDef, ok := commands[rest[0]]; ok {
-    		addr := parseAddr(addrs)
-    		r, rest = parseCmd(rest[0], cmdDef, addr, rest[1:])
-    		break
-    	} else {
-    		var addr addrTok
-    		addr, rest = readAddressTok(rest)
-    		addrs = append(addrs, addr)
-    	}
-    }
+		if cmdDef, ok := commands[rest[0]]; ok {
+			addr := parseAddr(addrs)
+			r, rest = parseCmd(rest[0], cmdDef, addr, rest[1:])
+			break
+		} else {
+			var addr addrTok
+			addr, rest = readAddressTok(rest)
+			addrs = append(addrs, addr)
+		}
+	}
 
-    if r == nil {
-    	panic(fmt.Errorf("Could not parse <%s>, nothing found (internal error?)", string(pgm)))
-    }
+	if r == nil {
+		panic(fmt.Errorf("Could not parse <%s>, nothing found (internal error?)", string(pgm)))
+	}
 
 	return r, rest
 }
@@ -102,7 +102,7 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*cmd, []run
 			util.Must(err, "Number format exception parsing Edit program")
 		}
 
-    	rest = skipSpaces(rest)
+		rest = skipSpaces(rest)
 	}
 
 	r.txtargs = []string{}
@@ -125,7 +125,8 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*cmd, []run
 	}
 
 	if theCmdDef.sarg {
-		loop: for {
+	loop:
+		for {
 			if len(rest) <= 0 {
 				break
 			}
@@ -178,7 +179,7 @@ func skipSpaces(rest []rune) []rune {
 func readAddressTok(pgm []rune) (addrTok, []rune) {
 	switch pgm[0] {
 	case '+', '-', ',', ';', '.', '$': // operators and special stuff
-		return addrTok(string([]rune{ pgm[0] })), pgm[1:]
+		return addrTok(string([]rune{pgm[0]})), pgm[1:]
 
 	case '/', '?': // regexp
 		rx, rest := readDelim(pgm[1:], pgm[0])
@@ -246,7 +247,7 @@ func parseAddrHigh(addrs []addrTok) Addr {
 	for {
 		if len(rest) <= 0 {
 			if r.Empty() {
-				r = &AddrBase{ ".", "", 0 }
+				r = &AddrBase{".", "", 0}
 			}
 			return r
 		}
@@ -259,14 +260,14 @@ func parseAddrHigh(addrs []addrTok) Addr {
 			lh := r
 
 			if lh.Empty() {
-				lh = &AddrBase{ "", "0", 0 }
+				lh = &AddrBase{"", "0", 0}
 			}
 
 			if rh.Empty() {
-				rh = &AddrBase{ "$", "", 0 }
+				rh = &AddrBase{"$", "", 0}
 			}
 
-			r = &AddrOp{ op, lh, rh }
+			r = &AddrOp{op, lh, rh}
 		default:
 			panic(fmt.Errorf("Unexpected address token <%s> while parsing address", rest[0]))
 		}
@@ -302,7 +303,7 @@ func parseAddrLow(addrs []addrTok) (Addr, []addrTok) {
 
 		if rh.Empty() {
 			if opfound {
-				rh = &AddrBase{ "", "1", dir }
+				rh = &AddrBase{"", "1", dir}
 			} else {
 				break
 			}
@@ -326,9 +327,9 @@ func parseAddrLow(addrs []addrTok) (Addr, []addrTok) {
 		return r[0], rest
 	} else {
 		if r[0].Empty() {
-			r[0] = &AddrBase{ ".", "", 0 }
+			r[0] = &AddrBase{".", "", 0}
 		}
-		return &AddrList{ r }, rest
+		return &AddrList{r}, rest
 	}
 }
 
@@ -338,30 +339,31 @@ func parseAddrBase(addrs []addrTok) (Addr, []addrTok) {
 	}
 
 	switch addrs[0] {
-	case "$": return &AddrBase{ "$", "", 0 }, addrs[1:]
-	case ".": return &AddrBase{ ".", "", 0 }, addrs[1:]
+	case "$":
+		return &AddrBase{"$", "", 0}, addrs[1:]
+	case ".":
+		return &AddrBase{".", "", 0}, addrs[1:]
 	default:
 		f := string(addrs[0])
 		if strings.HasPrefix(f, "#w") {
-			return &AddrBase{ "#w", f[2:], 0 }, addrs[1:]
+			return &AddrBase{"#w", f[2:], 0}, addrs[1:]
 		}
 		if strings.HasPrefix(f, "#?") {
-			return &AddrBase{ "#?", f[2:], 0 }, addrs[1:]
+			return &AddrBase{"#?", f[2:], 0}, addrs[1:]
 		}
 
 		if strings.HasPrefix(f, "#") {
-			return &AddrBase{ "#", f[1:], 0 }, addrs[1:]
+			return &AddrBase{"#", f[1:], 0}, addrs[1:]
 		}
 
 		if (f[0] >= '0') && (f[0] <= '9') {
-			return &AddrBase{ "", f, 0 }, addrs[1:]
+			return &AddrBase{"", f, 0}, addrs[1:]
 		}
 
 		if (f[0] == '/') || (f[0] == '?') {
-			return &AddrBase{ string(f[0]), f[1:len(f)-1], 0 }, addrs[1:]
+			return &AddrBase{string(f[0]), f[1 : len(f)-1], 0}, addrs[1:]
 		}
 
 		return &addrEmpty{}, addrs
 	}
 }
-
