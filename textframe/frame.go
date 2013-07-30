@@ -773,7 +773,16 @@ func (f *Frame) OnClick(e util.MouseDownEvent, events <- chan interface{}) *wde.
 	}
 
 	if p >= 0 {
-		f.setSelectEx(sel, e.Count, p, p, false)
+		if (sel == 0) && (e.Count == 1) && (e.Modifiers == "shift+") {
+			// shift-click extends selection, but only for the first selection
+			if p < f.Sels[0].S {
+				f.setSelectEx(sel, e.Count, p, f.Sels[0].E, false)
+			} else {
+				f.setSelectEx(sel, e.Count, f.Sels[0].S, p, false)
+			}
+		} else {
+			f.setSelectEx(sel, e.Count, p, p, false)
+		}
 		if e.Count > 1 {
 			f.Redraw(true)
 		}

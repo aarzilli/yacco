@@ -60,7 +60,7 @@ func scrollfn(e *Editor, sd int, sl int) {
 	defer e.bodybuf.Rdunlock()
 	a, b := e.bodybuf.Selection(util.Sel{e.top, sz})
 
-	e.bodybuf.Highlight(-1, true)
+	e.bodybuf.Highlight(e.top, false)
 
 	e.sfr.Set(e.top, sz)
 	e.sfr.Fr.Clear()

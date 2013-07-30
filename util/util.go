@@ -34,6 +34,7 @@ type WheelEvent struct {
 type MouseDownEvent struct {
 	Where image.Point
 	Which wde.Button
+	Modifiers string
 	Count int
 }
 
@@ -195,6 +196,7 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 							Where: e.Where,
 							Which: e.Which,
 							Count: dblclickc,
+							Modifiers: e.Modifiers,
 						}
 					}
 
