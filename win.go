@@ -828,6 +828,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			//println("Execute command: <" + cmd + ">")
 			if (ec.eventChan == nil) || (cmd == "Delete") {
 				Exec(ec, cmd)
+				ec.ed.bodybuf.Highlight(-1, false, ec.ed.top)
 			} else {
 				cmd = strings.TrimSpace(cmd)
 				_, _, isintl := IntlCmd(cmd)

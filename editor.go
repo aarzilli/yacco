@@ -60,7 +60,7 @@ func scrollfn(e *Editor, sd int, sl int) {
 	defer e.bodybuf.Rdunlock()
 	a, b := e.bodybuf.Selection(util.Sel{e.top, sz})
 
-	e.bodybuf.Highlight(e.top, false)
+	e.bodybuf.Highlight(-1, false, e.top)
 
 	e.sfr.Set(e.top, sz)
 	e.sfr.Fr.Clear()
@@ -173,7 +173,7 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
 	e.rhandle.Max.Y = e.tagfr.R.Max.Y
 	e.rhandle = e.r.Intersect(e.rhandle)
 
-	e.bodybuf.Highlight(-1, true)
+	e.bodybuf.Highlight(-1, false, e.top)
 }
 
 func (e *Editor) MinHeight() int {
@@ -383,7 +383,7 @@ func (ed *Editor) recenterIntl(refresh bool) bool {
 	if refresh {
 		ed.BufferRefresh(false)
 	}
-	//TODO: start full hl from the last known clean position
+	ed.bodybuf.Highlight(-1, false, ed.top)
 	return true
 }
 
