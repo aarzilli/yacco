@@ -50,6 +50,8 @@ type Buffer struct {
 
 	Words []string
 
+	EditMark, EditMarkNext bool
+
 	DumpCmd, DumpDir string
 }
 
@@ -95,6 +97,9 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 	b.Props["font"] = "main"
 	b.Props["indent"] = "on"
 	b.Props["tab"] = "8"
+
+	b.EditMarkNext = true
+	b.EditMark = true
 
 	return b, nil
 }

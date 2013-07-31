@@ -39,13 +39,13 @@ func ExecFs(ec *ExecContext, cmd string) {
 		GetCmd(*ec, "")
 
 	case "limit=addr":
-		//TODO limit=addr (fs exec)
+		//XXX limit=addr not implemented
 
 	case "mark":
-		//TODO mark (fs exec)
+		ec.buf.EditMarkNext = true
 
 	case "nomark":
-		//TODO nomark (fs exec)
+		ec.buf.EditMarkNext = false
 
 	case "put":
 		PutCmd(*ec, "")
