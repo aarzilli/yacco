@@ -16,3 +16,5 @@ var AltFont = util.MustNewFontFromBytes(72, 16, 1.0, [][]byte{ luximonobytes })
 var ComplFont = util.MustNewFontFromBytes(72, 14, 1.0, [][]byte{ luxibytes })
 
 var EditErrorTrace = false
+
+var TabElasticity = 4

@@ -35,6 +35,7 @@ const (
 	HF_MARKSOFTWRAP
 	HF_QUOTEHACK
 	HF_TRUNCATE // truncates instead of softwrapping
+	HF_ELASTICTABS
 )
 
 type Frame struct {
@@ -77,6 +78,7 @@ type glyph struct {
 	fontIndex int
 	index     truetype.Index
 	width     raster.Fix32
+	kerning raster.Fix32
 	widthy raster.Fix32
 	p         raster.Point
 	color     uint8
@@ -122,9 +124,13 @@ func (fr *Frame) lineHeight() raster.Fix32 {
 	return fr.cs[0].PointToFix32(float64(lh) * fr.Font.Spacing)
 }
 
-func (fr *Frame) Clear() {
+func (fr *Frame) initialInsPoint() raster.Point{
 	gb := fr.Font.Bounds()
-	fr.ins = raster.Point{raster.Fix32(fr.R.Min.X<<8) + fr.margin, raster.Fix32(fr.R.Min.Y << 8) + raster.Fix32(gb.YMax << 8)}
+	return raster.Point{raster.Fix32(fr.R.Min.X<<8) + fr.margin, raster.Fix32(fr.R.Min.Y << 8) + raster.Fix32(gb.YMax << 8)}
+}
+
+func (fr *Frame) Clear() {
+	fr.ins = fr.initialInsPoint() 
 	fr.glyphs = fr.glyphs[:0]
 	fr.lastFull = 0
 }
@@ -144,6 +150,8 @@ var ccount = 0
 
 // Inserts text into the frame, returns the maximum X and Y used
 func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
+	println("InsertColor call:", fr)
+	
 	mu.Lock()
 	if ccount > 0 {
 		panic("Concurrent InsertColor invocation")
@@ -158,8 +166,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 		}
 		mu.Unlock()
 	}()
-
-
+	
 	lh := fr.lineHeight()
 
 	_, spaceIndex := fr.getIndex(' ')
@@ -174,6 +181,13 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	spaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, spaceIndex).AdvanceWidth) << 2
 	bigSpaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, xIndex).AdvanceWidth) << 2
 	tabWidth := spaceWidth * raster.Fix32(fr.TabWidth)
+	
+	if fr.Hackflags&HF_ELASTICTABS != 0 {
+		defer func() {
+			println("Running elastic tabs")
+			limit = fr.elasticTabs(bigSpaceWidth, tabWidth, bottom, leftMargin, rightMargin, lh)
+		}()
+	}
 
 	limit.X = int(fr.ins.X >> 8)
 	limit.Y = int(fr.ins.Y >> 8)
@@ -266,11 +280,12 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 			}
 
 			fontIdx, index := fr.getIndex(lur)
-			if hasPrev && (fontIdx == prevFontIdx) {
-				fr.ins.X += raster.Fix32(fr.Font.Fonts[fontIdx].Kerning(fr.cs[fontIdx].Scale, prev, index)) << 2
-			}
-
 			width := raster.Fix32(fr.Font.Fonts[fontIdx].HMetric(fr.cs[fontIdx].Scale, index).AdvanceWidth) << 2
+			kerning := raster.Fix32(0)
+			if hasPrev && (fontIdx == prevFontIdx) {
+				kerning = raster.Fix32(fr.Font.Fonts[fontIdx].Kerning(fr.cs[fontIdx].Scale, prev, index)) << 2
+				fr.ins.X += kerning
+			}
 
 			if fr.Hackflags&HF_TRUNCATE == 0 {
 				if fr.ins.X+width > rightMargin {
@@ -285,6 +300,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 				index:     index,
 				p:         fr.ins,
 				color:     crune.C&0x0f,
+				kerning: kerning,
 				width:     width}
 
 			fr.glyphs = append(fr.glyphs, g)
@@ -655,6 +671,10 @@ func (fr *Frame) Redraw(flush bool) {
 			}
 		}
 		newline = (g.r == '\n')
+		
+		/*if g.r == '\t' {
+			println("Width of tab is", g.width)
+		}*/
 
 		// Glyph drawing
 		var color *image.Uniform
