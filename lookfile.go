@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-	"yacco/buf"
 	"yacco/textframe"
 	"yacco/util"
 )
@@ -314,7 +313,7 @@ func openBufferSearch(resultChan chan<- *lookFileResult, searchDone chan struct{
 
 				lineEnd := b.Tonl(i, +1)
 
-				theLine := string(buf.ToRunes(b.SelectionX(util.Sel{j + 1, lineEnd})))
+				theLine := string(b.SelectionRunes(util.Sel{j + 1, lineEnd}))
 				lineNo, _ := b.GetLine(j + 1)
 
 				if ((nl == 0) && !first) || (tabs > 1) || (spaces > 4) {

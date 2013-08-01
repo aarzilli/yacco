@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"yacco/buf"
 	"yacco/config"
 	"yacco/textframe"
 	"yacco/util"
@@ -228,12 +227,12 @@ func ComplStart(ec ExecContext) {
 func getComplWords(ec ExecContext) (fpwd, wdwd string) {
 	fs := ec.buf.Tofp(ec.fr.Sels[0].S-1, -1)
 	if ec.fr.Sels[0].S-fs >= 2 {
-		fpwd = string(buf.ToRunes(ec.buf.SelectionX(util.Sel{fs, ec.fr.Sels[0].S})))
+		fpwd = string(ec.buf.SelectionRunes(util.Sel{fs, ec.fr.Sels[0].S}))
 	}
 
 	ws := ec.buf.Towd(ec.fr.Sels[0].S-1, -1)
 	if ec.fr.Sels[0].S-ws >= 2 {
-		wdwd = string(buf.ToRunes(ec.buf.SelectionX(util.Sel{ws, ec.fr.Sels[0].S})))
+		wdwd = string(ec.buf.SelectionRunes(util.Sel{ws, ec.fr.Sels[0].S}))
 	}
 
 	return

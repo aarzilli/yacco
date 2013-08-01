@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"strings"
 	"syscall"
-	"yacco/buf"
 	"yacco/config"
 	"yacco/edit"
 	"yacco/util"
@@ -77,7 +76,7 @@ func readBodyFn(i int, off int64) ([]byte, syscall.Errno) {
 	defer ec.buf.Rdunlock()
 
 	//XXX - inefficient
-	body := []byte(string(buf.ToRunes(ec.buf.SelectionX(util.Sel{0, ec.buf.Size()}))))
+	body := []byte(string(ec.buf.SelectionRunes(util.Sel{0, ec.buf.Size()})))
 	if off < int64(len(body)) {
 		return body[off:], 0
 	} else {
@@ -151,7 +150,7 @@ func readDataFn(i int, off int64, stopAtAddrEnd bool) ([]byte, syscall.Errno) {
 	if stopAtAddrEnd {
 		e = ec.fr.Sels[4].E
 	}
-	data := []byte(string(buf.ToRunes(ec.buf.SelectionX(util.Sel{ec.fr.Sels[4].S, e}))))
+	data := []byte(string(ec.buf.SelectionRunes(util.Sel{ec.fr.Sels[4].S, e})))
 	if off < int64(len(data)) {
 		return data[off:], 0
 	} else {
@@ -199,7 +198,7 @@ func readTagFn(i int, off int64) ([]byte, syscall.Errno) {
 	Wnd.Lock.Lock()
 	defer Wnd.Lock.Unlock()
 
-	body := []byte(string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{0, ec.ed.tagbuf.Size()}))))
+	body := []byte(string(ec.ed.tagbuf.SelectionRunes(util.Sel{0, ec.ed.tagbuf.Size()})))
 	if off < int64(len(body)) {
 		return body[off:], 0
 	} else {

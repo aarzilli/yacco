@@ -3,7 +3,6 @@ package edit
 import (
 	"fmt"
 	"regexp"
-	"yacco/buf"
 	"yacco/util"
 )
 
@@ -36,7 +35,7 @@ func mtcmdfn(del bool, c *cmd, atsel util.Sel, ec EditContext) {
 	selfrom := c.rangeaddr.Eval(ec.Buf, atsel)
 	selto := c.argaddr.Eval(ec.Buf, atsel).E
 
-	txt := buf.ToRunes(ec.Buf.SelectionX(selfrom))
+	txt := ec.Buf.SelectionRunes(selfrom)
 
 	if selto > selfrom.E {
 		ec.Buf.Replace(txt, &util.Sel{selto, selto}, ec.Sels, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE, false)
@@ -51,9 +50,9 @@ func mtcmdfn(del bool, c *cmd, atsel util.Sel, ec EditContext) {
 
 func pcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
-	txt := ec.Buf.SelectionX(sel)
+	txt := ec.Buf.SelectionRunes(sel)
 	ec.Sels[0] = sel
-	Warnfn(string(buf.ToRunes(txt)))
+	Warnfn(string(txt))
 }
 
 func eqcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
@@ -183,13 +182,13 @@ func pipeincmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 
 func pipeoutcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
-	str := string(buf.ToRunes(ec.Buf.SelectionX(sel)))
+	str := string(ec.Buf.SelectionRunes(sel))
 	NewJob(ec.Buf.Dir, c.bodytxt, str, nil)
 }
 
 func pipecmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
-	str := string(buf.ToRunes(ec.Buf.SelectionX(sel)))
+	str := string(ec.Buf.SelectionRunes(sel))
 	resultChan := make(chan string)
 	NewJob(ec.Buf.Dir, c.bodytxt, str, resultChan)
 	str = <-resultChan

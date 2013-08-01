@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"yacco/buf"
 	"yacco/config"
 	"yacco/edit"
 	"yacco/util"
@@ -64,7 +63,7 @@ func Load(ec ExecContext, origin int) {
 				for i := 0; 2*i+1 < len(matches); i++ {
 					s := matches[2*i] + start
 					e := matches[2*i+1] + start
-					strmatches = append(strmatches, string(buf.ToRunes(ec.buf.SelectionX(util.Sel{s, e}))))
+					strmatches = append(strmatches, string(ec.buf.SelectionRunes(util.Sel{s, e})))
 				}
 				//println("Match:", strmatches[0])
 				if rule.Exec(ec, strmatches, s, e) {

@@ -29,6 +29,8 @@ type ExecContext struct {
 	dir string
 }
 
+var KeyBindings = map[string]func(ec ExecContext){}
+
 type Cmd func(ec ExecContext, arg string)
 
 var cmds = map[string]Cmd{
@@ -85,13 +87,13 @@ func init() {
 	cmds["Load"] = LoadCmd
 }
 
-func IntlCmd(cmd string) (Cmd, string, bool) {
+func IntlCmd(cmd string) (Cmd, string, string, bool) {
 	if len(cmd) <= 0 {
-		return nil, "", true
+		return nil, "", "", true
 	}
 
 	if (cmd[0] == '<') || (cmd[0] == '>') || (cmd[0] == '|') {
-		return cmds[cmd[:1]], cmd[1:], true
+		return cmds[cmd[:1]], cmd[1:], cmd[:1], true
 	} else {
 		v := spacesRe.Split(cmd, 2)
 		if f, ok := macros[v[0]]; ok {
@@ -99,42 +101,43 @@ func IntlCmd(cmd string) (Cmd, string, bool) {
 			if len(v) > 1 {
 				arg = v[1]
 			}
-			return f, arg, true
+			return f, arg, v[0], true
 		} else if f, ok := cmds[v[0]]; ok {
 			arg := ""
 			if len(v) > 1 {
 				arg = v[1]
 			}
-			return f, arg, true
+			return f, arg, v[0], true
 		} else {
-			return nil, "", false
+			return nil, "", "", false
 		}
 	}
 }
 
-func Exec(ec ExecContext, cmd string) {
-	defer func() {
-		if r := recover(); r != nil {
-			errmsg := fmt.Sprintf("%v\n", r)
-			if config.EditErrorTrace {
-				for i := 1; ; i++ {
-					_, file, line, ok := runtime.Caller(i)
-					if !ok {
-						break
-					}
-					errmsg += fmt.Sprintf("  %s:%d\n", file, line)
+func execGuard() {
+	if r := recover(); r != nil {
+		errmsg := fmt.Sprintf("%v\n", r)
+		if config.EditErrorTrace {
+			for i := 1; ; i++ {
+				_, file, line, ok := runtime.Caller(i)
+				if !ok {
+					break
 				}
+				errmsg += fmt.Sprintf("  %s:%d\n", file, line)
 			}
-			Warn(errmsg)
 		}
-	}()
+		Warn(errmsg)
+	}
+}
 
+func Exec(ec ExecContext, cmd string) {
+	defer execGuard()
 	execNoDefer(ec, cmd)
 }
 
 func execNoDefer(ec ExecContext, cmd string) {
 	cmd = strings.TrimSpace(cmd)
-	xcmd, arg, isintl := IntlCmd(cmd)
+	xcmd, arg, _, isintl := IntlCmd(cmd)
 	if isintl {
 		if xcmd != nil {
 			xcmd(ec, arg)
@@ -162,7 +165,7 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 		return
 	}
 
-	s := string(buf.ToRunes(ec.buf.SelectionX(ec.fr.Sels[0])))
+	s := string(ec.buf.SelectionRunes(ec.fr.Sels[0]))
 	if s == "" {
 		// Does not trash clipboard when accidentally copying nil text
 		return
@@ -439,7 +442,7 @@ tgtIndentSearch:
 		r := ec.buf.At(i).R
 		switch r {
 		case '\n':
-			tgtIndent = string(buf.ToRunes(ec.buf.SelectionX(util.Sel{i + 1, ec.fr.Sels[0].S})))
+			tgtIndent = string(ec.buf.SelectionRunes(util.Sel{i + 1, ec.fr.Sels[0].S}))
 			break tgtIndentSearch
 		case ' ', '\t':
 			// continue
@@ -571,7 +574,7 @@ func SendCmd(ec ExecContext, arg string) {
 	ec.ed.confirmSave = false
 	txt := []rune{}
 	if ec.ed.sfr.Fr.Sels[0].S != ec.ed.sfr.Fr.Sels[0].E {
-		txt = buf.ToRunes(ec.ed.bodybuf.SelectionX(ec.ed.sfr.Fr.Sels[0]))
+		txt = ec.ed.bodybuf.SelectionRunes(ec.ed.sfr.Fr.Sels[0])
 	} else {
 		txt = []rune(Wnd.wnd.GetClipboard())
 	}
@@ -631,7 +634,7 @@ func PipeCmd(ec ExecContext, arg string) {
 		wd = ec.buf.Dir
 	}
 
-	txt := string(buf.ToRunes(ec.ed.bodybuf.SelectionX(ec.fr.Sels[0])))
+	txt := string(ec.ed.bodybuf.SelectionRunes(ec.fr.Sels[0]))
 	NewJob(wd, arg, txt, &ec, true, nil)
 }
 
@@ -664,7 +667,7 @@ func PipeOutCmd(ec ExecContext, arg string) {
 		wd = ec.buf.Dir
 	}
 
-	txt := string(buf.ToRunes(ec.ed.bodybuf.SelectionX(ec.fr.Sels[0])))
+	txt := string(ec.ed.bodybuf.SelectionRunes(ec.fr.Sels[0]))
 	NewJob(wd, arg, txt, &ec, false, nil)
 }
 
@@ -770,4 +773,51 @@ func JumpCmd(ec ExecContext, arg string) {
 	ec.ed.confirmSave = false
 	ec.ed.RestoreJump()
 	ec.ed.BufferRefresh(false)
+}
+
+func KeysInit() {
+	for k := range config.KeyBindings {
+		KeyBindings[k] = CompileCmd(config.KeyBindings[k])
+	}
+}
+
+func CompileCmd(cmdstr string) func(ec ExecContext) {
+	xcmd, arg, cmdname, isintl := IntlCmd(cmdstr)
+	if !isintl {
+		return func(ec ExecContext) {
+			defer execGuard()
+			ExtExec(ec, cmdstr)
+		}
+	} else if cmdname == "Edit" {
+		pgm := edit.Parse([]rune(arg))
+		return func(ec ExecContext) {
+			defer execGuard()
+			edc := edit.EditContext{
+				Buf:       ec.buf,
+				Sels:      ec.fr.Sels,
+				EventChan: ec.eventChan,
+				PushJump:  ec.ed.PushJump,
+			}
+			pgm.Exec(edc)
+			ec.br.BufferRefresh(ec.ontag)
+		}
+	} else if cmdname == "Do" {
+		cmds := strings.Split(arg, "\n")
+		fcmds := make([]func(ec ExecContext), len(cmds))
+		for i := range cmds {
+			fcmds[i] = CompileCmd(cmds[i])
+		}
+		return func(ec ExecContext) {
+			for _, fcmd := range fcmds {
+				fcmd(ec)
+			}
+		}
+	} else if xcmd == nil {
+		return func(ec ExecContext) {}
+	} else {
+		return func(ec ExecContext) {
+			defer execGuard()
+			xcmd(ec, arg)
+		}
+	}
 }

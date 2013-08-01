@@ -210,7 +210,7 @@ func (c *Col) Dump() DumpColumn {
 	for i := range c.editors {
 		editors[i] = c.editors[i].Dump()
 	}
-	return DumpColumn{c.frac, editors, string(buf.ToRunes(c.tagbuf.SelectionX(util.Sel{c.tagbuf.EditableStart, c.tagbuf.Size()})))}
+	return DumpColumn{c.frac, editors, string(c.tagbuf.SelectionRunes(util.Sel{c.tagbuf.EditableStart, c.tagbuf.Size()}))}
 }
 
 func (c *Col) Width() int {

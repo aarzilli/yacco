@@ -809,7 +809,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				ec.buf.Replace([]rune(tch), &ec.fr.Sels[0], ec.fr.Sels, true, ec.eventChan, util.EO_KBD, true)
 				ec.br.BufferRefresh(ec.ontag)
 				if (ec.ed != nil) && (ec.ed.specialChan != nil) {
-					tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()})))
+					tagstr := string(ec.ed.tagbuf.SelectionRunes(util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}))
 					ec.ed.specialChan <- "T" + tagstr
 				}
 			}
@@ -823,17 +823,25 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 
 	default:
 		ec := lp.asExecContext(true)
-		if cmd, ok := config.KeyBindings[e.Chord]; ok {
+		if fcmd, ok := KeyBindings[e.Chord]; ok {
+			cmd := config.KeyBindings[e.Chord]
 			HideCompl("keytype")
 			//println("Execute command: <" + cmd + ">")
 			if (ec.eventChan == nil) || (cmd == "Delete") {
-				Exec(ec, cmd)
+				up := -1
 				if ec.ed != nil {
-					ec.ed.bodybuf.Highlight(-1, false, ec.ed.top)
+					up = ec.ed.bodybuf.UndoWhere()
+				}
+				fcmd(ec)
+				if ec.ed != nil {
+					if up != ec.ed.bodybuf.UndoWhere() {
+						ec.ed.bodybuf.Highlight(-1, false, ec.ed.top)
+					}
 				}
 			} else {
+				cmd := config.KeyBindings[e.Chord]
 				cmd = strings.TrimSpace(cmd)
-				_, _, isintl := IntlCmd(cmd)
+				_, _, _, isintl := IntlCmd(cmd)
 				flags := util.EventFlag(0)
 				if isintl {
 					flags = util.EFX_BUILTIN
@@ -851,7 +859,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			}
 		}
 		if (ec.ed != nil) && (ec.ed.specialChan != nil) {
-			tagstr := string(buf.ToRunes(ec.ed.tagbuf.SelectionX(util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()})))
+			tagstr := string(ec.ed.tagbuf.SelectionRunes(util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}))
 			select {
 			case ec.ed.specialChan <- "T" + tagstr:
 			case <-time.After(1 * time.Second):
@@ -874,7 +882,7 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent) {
 		if (ec.eventChan == nil) || (cmd == "Delete") {
 			Exec(ec, cmd)
 		} else {
-			_, _, isintl := IntlCmd(cmd)
+			_, _, _, isintl := IntlCmd(cmd)
 			flags := util.EventFlag(0)
 			if isintl {
 				flags = util.EFX_BUILTIN
@@ -892,7 +900,7 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent) {
 		if ec.eventChan == nil {
 			Exec(ec, cmd)
 		} else {
-			_, _, isintl := IntlCmd(cmd)
+			_, _, _, isintl := IntlCmd(cmd)
 			flags := util.EventFlag(0)
 			if isintl {
 				flags = util.EFX_BUILTIN
@@ -917,7 +925,7 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent) {
 		br := lp.bufferRefreshable()
 		if lp.sfr != nil {
 			lp.sfr.Fr.DisableOtherSelections(0)
-			activeSel = string(buf.ToRunes(lp.bodybuf.SelectionX(lp.sfr.Fr.Sels[0])))
+			activeSel = string(lp.bodybuf.SelectionRunes(lp.sfr.Fr.Sels[0]))
 			br.BufferRefresh(false)
 
 			d := lp.ed.LastJump() - lp.sfr.Fr.Sels[0].S
@@ -930,7 +938,7 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent) {
 		}
 		if lp.tagfr != nil {
 			lp.tagfr.DisableOtherSelections(0)
-			activeSel = string(buf.ToRunes(lp.tagbuf.SelectionX(lp.tagfr.Sels[0])))
+			activeSel = string(lp.tagbuf.SelectionRunes(lp.tagfr.Sels[0]))
 			br.BufferRefresh(true)
 		}
 	}
@@ -955,7 +963,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 			}
 		}
 
-		return string(buf.ToRunes(lp.bodybuf.SelectionX(*sel))), original
+		return string(lp.bodybuf.SelectionRunes(*sel)), original
 	}
 
 	if lp.tagfr != nil {
@@ -981,7 +989,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 			}
 		}
 
-		return string(buf.ToRunes(lp.tagbuf.SelectionX(*sel))), original
+		return string(lp.tagbuf.SelectionRunes(*sel)), original
 
 	}
 
@@ -999,7 +1007,7 @@ func (w *Window) BufferRefresh(ontag bool) {
 func (w *Window) GenTag() {
 	usertext := ""
 	if w.tagbuf.EditableStart >= 0 {
-		usertext = string(buf.ToRunes(w.tagbuf.SelectionX(util.Sel{w.tagbuf.EditableStart, w.tagbuf.Size()})))
+		usertext = string(w.tagbuf.SelectionRunes(util.Sel{w.tagbuf.EditableStart, w.tagbuf.Size()}))
 	}
 
 	w.tagfr.Sels[0].S = 0
@@ -1076,7 +1084,7 @@ func (w *Window) Dump() DumpWindow {
 				if buffers[i].Size() > 1024*10 {
 					start = buffers[i].Size() - (1024 * 10)
 				}
-				text = string(buf.ToRunes(buffers[i].SelectionX(util.Sel{start, buffers[i].Size()})))
+				text = string(buffers[i].SelectionRunes(util.Sel{start, buffers[i].Size()}))
 			}
 
 			bufs[i] = DumpBuffer{
@@ -1092,5 +1100,5 @@ func (w *Window) Dump() DumpWindow {
 			bufs[i].IsNil = true
 		}
 	}
-	return DumpWindow{cols, bufs, w.tagbuf.Dir, string(buf.ToRunes(w.tagbuf.SelectionX(util.Sel{w.tagbuf.EditableStart, w.tagbuf.Size()})))}
+	return DumpWindow{cols, bufs, w.tagbuf.Dir, string(w.tagbuf.SelectionRunes(util.Sel{w.tagbuf.EditableStart, w.tagbuf.Size()}))}
 }
