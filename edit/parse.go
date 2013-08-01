@@ -40,7 +40,7 @@ var commands = map[rune]cmdDef{
 
 type addrTok string
 
-func parse(pgm []rune) *cmd {
+func Parse(pgm []rune) *cmd {
 	r, rest := parseEx(pgm)
 	if len(rest) != 0 {
 		panic(fmt.Errorf("Error while parsing <%s> spurious characters <%s>\n", string(pgm), string(rest)))

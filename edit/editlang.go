@@ -32,7 +32,7 @@ type EditContext struct {
 }
 
 func Edit(pgm string, ec EditContext) {
-	ppgm := parse([]rune(pgm))
+	ppgm := Parse([]rune(pgm))
 	ppgm.Exec(ec)
 }
 

@@ -164,8 +164,12 @@ func readEvents(eventfd io.ReadWriteCloser, addrfd io.Writer, xdatafd io.Writer,
 			fmt.Fprintf(os.Stderr, "Not enough read from event file\n")
 			os.Exit(1)
 		}
-
-		event := string(buf[:n])
+		var event string
+		if n < 1024 {
+			event = string(buf[:n])
+		} else {
+			event = string(buf)
+		}
 
 		//origin := event[0]
 		etype := event[1]

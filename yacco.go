@@ -39,6 +39,7 @@ func realmain() {
 func main() {
 	PlatformInit()
 	LoadInit()
+	KeysInit()
 
 	edit.Warnfn = Warn
 	edit.NewJob = func(wd, cmd, input string, resultChan chan<- string) {

@@ -336,7 +336,7 @@ func (b *Buffer) pushUndo(sel util.Sel, text []rune, solid bool) {
 	var ui undoInfo
 	ui.before.S = sel.S
 	ui.before.E = sel.E
-	ui.before.text = string(ToRunes(b.SelectionX(sel)))
+	ui.before.text = string(b.SelectionRunes(sel))
 	ui.after.S = sel.S
 	ui.after.E = sel.S + len(text)
 	ui.after.text = string(text)
@@ -449,26 +449,14 @@ func (b *Buffer) Selection(sel util.Sel) ([]textframe.ColorRune, []textframe.Col
 }
 
 // Returns the specified selection as single slice of ColorRunes (will allocate)
-func (b *Buffer) SelectionX(sel util.Sel) []textframe.ColorRune {
-	ba, bb := b.Selection(sel)
-	r := make([]textframe.ColorRune, len(ba)+len(bb))
-	copy(r, ba)
-	copy(r[len(ba):], bb)
-	return r
-}
-
-// Returns the specified selection as single slice of runes (will allocate)
 func (b *Buffer) SelectionRunes(sel util.Sel) []rune {
 	ba, bb := b.Selection(sel)
 	r := make([]rune, len(ba)+len(bb))
-	j := 0
 	for i := range ba {
-		r[j] = ba[i].R
-		j++
+		r[i] = ba[i].R
 	}
 	for i := range bb {
-		r[j] = bb[i].R
-		j++
+		r[i+len(ba)] = bb[i].R
 	}
 	return r
 }
@@ -840,4 +828,8 @@ func ToRunes(v []textframe.ColorRune) []rune {
 		r[i] = v[i].R
 	}
 	return r
+}
+
+func (b *Buffer) UndoWhere() int {
+	return b.ul.cur
 }

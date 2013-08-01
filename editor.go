@@ -227,7 +227,7 @@ func (e *Editor) Redraw() {
 func (e *Editor) GenTag() {
 	usertext := ""
 	if e.tagbuf.EditableStart >= 0 {
-		usertext = string(buf.ToRunes(e.tagbuf.SelectionX(util.Sel{e.tagbuf.EditableStart, e.tagbuf.Size()})))
+		usertext = string(e.tagbuf.SelectionRunes(util.Sel{e.tagbuf.EditableStart, e.tagbuf.Size()}))
 	}
 
 	t := e.bodybuf.ShortName()
@@ -407,7 +407,7 @@ func (ed *Editor) EnterSpecial(specialChan chan string, specialTag string, exitO
 	ed.specialChan = specialChan
 	ed.specialTag = specialTag
 	ed.specialExitOnReturn = exitOnReturn
-	ed.savedTag = string(buf.ToRunes(ed.tagbuf.SelectionX(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()})))
+	ed.savedTag = string(ed.tagbuf.SelectionRunes(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}))
 	ed.tagbuf.Replace([]rune{}, &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, ed.tagfr.Sels, true, nil, 0, false)
 	ed.BufferRefresh(false)
 	return true
@@ -455,7 +455,7 @@ func (ed *Editor) Dump() DumpEditor {
 		ed.frac,
 		fontName,
 		ed.specialChan != nil,
-		string(buf.ToRunes(ed.tagbuf.SelectionX(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}))),
+		string(ed.tagbuf.SelectionRunes(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()})),
 	}
 }
 
