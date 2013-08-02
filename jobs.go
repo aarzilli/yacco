@@ -164,7 +164,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 		}
 
 		if (ec != nil) && job.writeToBuf {
-			if job.outstr[len(job.outstr)-1] != '\n' {
+			if (len(job.outstr) > 0) && (job.outstr[len(job.outstr)-1] != '\n') {
 				job.outstr = job.outstr + "\n"
 			}
 			sideChan <- ReplaceMsg{ec, nil, false, job.outstr, util.EO_BODYTAG, true}
