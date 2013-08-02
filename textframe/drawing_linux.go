@@ -3,9 +3,9 @@
 package textframe
 
 import (
+	"github.com/skelterjohn/go.wde/xgb"
 	"image"
 	"image/draw"
-	"github.com/skelterjohn/go.wde/xgb"
 )
 
 func GetOptimizedDrawing(img draw.Image) DrawingFuncs {

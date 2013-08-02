@@ -1,21 +1,21 @@
 package textframe
 
 import (
-	"image/draw"
-	"image"
-	"time"
-	"runtime"
-	"yacco/util"
 	"github.com/skelterjohn/go.wde"
+	"image"
+	"image/draw"
+	"runtime"
+	"time"
+	"yacco/util"
 )
 
 type ScrollFrame struct {
-	b draw.Image // where the scrollbar and textframe will be displayed
-	r image.Rectangle // the rectangle that should be occupied by the scrollbar and textframe
-	Wnd wde.Window
+	b     draw.Image      // where the scrollbar and textframe will be displayed
+	r     image.Rectangle // the rectangle that should be occupied by the scrollbar and textframe
+	Wnd   wde.Window
 	Color image.Uniform // color for the scrollbar
-	Width int // horizontal width of the scrollbar
-	Fr Frame // text frame
+	Width int           // horizontal width of the scrollbar
+	Fr    Frame         // text frame
 
 	bodyLen int
 }
@@ -81,7 +81,7 @@ func (sfr *ScrollFrame) scrollSetClick(event util.MouseDownEvent, events <-chan 
 	scrollr.Max.X = scrollr.Min.X + sfr.Width
 
 	set := func(where image.Point) {
-		p := int(float32(where.Y - sfr.r.Min.Y) / float32(sfr.r.Max.Y - sfr.r.Min.Y) * float32(sfr.bodyLen))
+		p := int(float32(where.Y-sfr.r.Min.Y) / float32(sfr.r.Max.Y-sfr.r.Min.Y) * float32(sfr.bodyLen))
 		sfr.Fr.Scroll(0, p)
 		sfr.Redraw(true)
 	}
@@ -123,7 +123,7 @@ func (sfr *ScrollFrame) ScrollClick(e util.MouseDownEvent, events <-chan interfa
 	autoscrollTicker := time.NewTicker(100 * time.Millisecond)
 
 	scroll := func() {
-		c := int(float32(where.Y - sfr.r.Min.Y) / float32(sfr.Fr.lineHeight() >> 8))
+		c := int(float32(where.Y-sfr.r.Min.Y) / float32(sfr.Fr.lineHeight()>>8))
 
 		switch which {
 		case wde.LeftButton:
@@ -136,11 +136,11 @@ func (sfr *ScrollFrame) ScrollClick(e util.MouseDownEvent, events <-chan interfa
 
 	scroll()
 
-	loop:
+loop:
 	for {
 		runtime.Gosched()
 		select {
-		case ei := <- events:
+		case ei := <-events:
 			switch e := ei.(type) {
 			case wde.MouseUpEvent:
 				break loop
@@ -148,7 +148,7 @@ func (sfr *ScrollFrame) ScrollClick(e util.MouseDownEvent, events <-chan interfa
 				where = e.Where
 			}
 
-		case <- autoscrollTicker.C:
+		case <-autoscrollTicker.C:
 			scroll()
 		}
 	}
@@ -156,7 +156,7 @@ func (sfr *ScrollFrame) ScrollClick(e util.MouseDownEvent, events <-chan interfa
 	return true
 }
 
-func (sfr *ScrollFrame) OnClick(e util.MouseDownEvent, events <- chan interface{}) (bool, *wde.MouseUpEvent) {
+func (sfr *ScrollFrame) OnClick(e util.MouseDownEvent, events <-chan interface{}) (bool, *wde.MouseUpEvent) {
 	if sfr.ScrollClick(e, events) {
 		return false, nil
 	}

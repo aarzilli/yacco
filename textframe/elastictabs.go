@@ -1,128 +1,153 @@
 package textframe
 
 import (
+	"code.google.com/p/freetype-go/freetype/raster"
 	"image"
 	"yacco/config"
-	"code.google.com/p/freetype-go/freetype/raster"
 )
 
 func (fr *Frame) elasticTabs(padding, tabWidth, bottom, leftMargin, rightMargin, lh raster.Fix32) (limit image.Point) {
 	minTabWidth := tabWidth
 	maxTabWidth := tabWidth * raster.Fix32(config.TabElasticity)
-	
-	fieldWidths := []raster.Fix32{}
-	
+
+	fieldWidths := [][]raster.Fix32{}
+
 	/* Calculating field widths */
 	curField := 0
+	curIndent := 0
+	bol := true
 	fieldWidth := raster.Fix32(0)
-	
+	invln := false
+
 	set := func() {
-		if curField >= len(fieldWidths) {
-			fieldWidths = append(fieldWidths, minTabWidth)
+		for curIndent >= len(fieldWidths) {
+			fieldWidths = append(fieldWidths, make([]raster.Fix32, 0))
 		}
-		
+
+		if curField >= len(fieldWidths[curIndent]) {
+			fieldWidths[curIndent] = append(fieldWidths[curIndent], minTabWidth)
+		}
+
 		fieldWidth += padding
 
-		if (fieldWidth < maxTabWidth) && (fieldWidth > fieldWidths[curField]) {
-			fieldWidths[curField] = fieldWidth
+		if fieldWidth > maxTabWidth {
+			invln = true
+		}
+
+		if !invln && (fieldWidth > fieldWidths[curIndent][curField]) {
+			fieldWidths[curIndent][curField] = fieldWidth
 		}
 	}
-	
+
 	for _, g := range fr.glyphs {
 		switch g.r {
 		case '\t':
-			set()
-			fieldWidth = 0
-			curField++
-			
+			if bol {
+				curIndent++
+				fieldWidth = 0
+			} else {
+				set()
+				fieldWidth = 0
+				curField++
+			}
+
 		case '\n':
 			set()
 			fieldWidth = 0
 			curField = 0
-		
+			curIndent = 0
+			bol = true
+			invln = false
+
 		default:
+			bol = false
 			fieldWidth += g.kerning + g.width
 		}
 	}
-	
+
 	set()
-	
-	print("Widths:")
-	for _, w := range fieldWidths {
-		print(" ", w)
-	}
-	println()
-		
+
 	fr.ins = fr.initialInsPoint()
-	
+
 	/* Reflowing glyphs to respect new field widths */
-	for _, g := range fr.glyphs {
-		if fr.ins.Y < raster.Fix32(fr.R.Max.Y << 8) {
-			//println("lastFull is: ", len(fr.glyphs), fr.ins.Y + lh, raster.Fix32(fr.R.Max.Y << 8))
-			fr.lastFull = len(fr.glyphs)
-		}
+	bol = true
+	curIndent = 0
+	curField = 0
+	margin := leftMargin
+	for i := range fr.glyphs {
+		g := &fr.glyphs[i]
 
 		switch g.r {
 		case '\n':
-			println("Newline")
 			g.p = fr.ins
 			g.width = raster.Fix32(fr.R.Max.X<<8) - fr.ins.X - fr.margin
 			fr.ins.X = leftMargin
 			fr.ins.Y += lh
 			curField = 0
-			
+			curIndent = 0
+			bol = true
+			margin = leftMargin
+
 		case '\t':
 			g.p = fr.ins
-			ts := raster.Fix32(0)
+			if bol {
+				curIndent++
+				fr.ins.X += g.width
+				margin = fr.ins.X
+				break
+			}
+			if curIndent >= len(fieldWidths) {
+				curField++
+				fr.ins.X += g.width
+				break
+			}
+
+			ts := margin
 			found := false
-			println("Finding next tab for:", fr.ins.X + padding)
-			for i := range fieldWidths {
-				ts += fieldWidths[i]
-				if ts > fr.ins.X + padding {
-					println("Width change from", g.width, "to", ts-fr.ins.X)
+			for i := range fieldWidths[curIndent] {
+				ts += fieldWidths[curIndent][i]
+				if ts >= fr.ins.X+padding {
 					g.width = ts - fr.ins.X
-					println("Advancing to", ts)
 					fr.ins.X = ts
 					found = true
 					break
 				}
 			}
 			if !found {
-				println("Not found")
-				g.width = tabWidth
+				toNextCell := tabWidth - ((fr.ins.X - leftMargin) % tabWidth)
+				if toNextCell <= padding/2 {
+					toNextCell += tabWidth
+				}
+
+				g.width = toNextCell
 				fr.ins.X += g.width
 			}
 			curField++
-			
+
 		default:
 			fr.ins.X += g.kerning
-			
-			if fr.Hackflags & HF_TRUNCATE == 0 {
-				if fr.ins.X + g.width > rightMargin {
+
+			if fr.Hackflags&HF_TRUNCATE == 0 {
+				if fr.ins.X+g.width > rightMargin {
 					fr.ins.X = leftMargin
 					fr.ins.Y += lh
 				}
 			}
-			
+
 			g.p = fr.ins
 			fr.ins.X += g.width
+			bol = false
 		}
-		
-		if int(fr.ins.X >> 8) > limit.X {
+
+		if int(fr.ins.X>>8) > limit.X {
 			limit.X = int(fr.ins.X >> 8)
 		}
 
-		if int(fr.ins.Y >> 8) > limit.Y {
+		if int(fr.ins.Y>>8) > limit.Y {
 			limit.Y = int(fr.ins.Y >> 8)
 		}
 	}
-	
-	println("Done")
-	
-	if fr.ins.Y < raster.Fix32(fr.R.Max.Y << 8) {
-		//println("lastFull is: ", len(fr.glyphs), fr.ins.Y + lh, raster.Fix32(fr.R.Max.Y << 8))
-		fr.lastFull = len(fr.glyphs)
-	}
+
 	fr.Limit = limit
 	return
 }

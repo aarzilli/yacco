@@ -6,8 +6,8 @@ import (
 )
 
 type DrawingFuncs struct {
-	DrawFillSrc func(draw.Image, image.Rectangle, *image.Uniform);
-	DrawGlyphOver func(draw.Image, image.Rectangle, *image.Uniform, *image.Alpha, image.Point);
+	DrawFillSrc   func(draw.Image, image.Rectangle, *image.Uniform)
+	DrawGlyphOver func(draw.Image, image.Rectangle, *image.Uniform, *image.Alpha, image.Point)
 }
 
 var defaultDrawingFuncs = DrawingFuncs{

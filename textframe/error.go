@@ -17,7 +17,7 @@ const (
 )
 
 var FrameErrorNotEnoughColorLines = &FrameError{FE_NOT_ENOUGH_COLOR_LINES, "Not enough color lines", -1}
-var ScrollFrameErrorNotWideEnough = &FrameError{FE_NOT_WIDE_ENOUGH, "Scrollbar not wide enough", -1 }
+var ScrollFrameErrorNotWideEnough = &FrameError{FE_NOT_WIDE_ENOUGH, "Scrollbar not wide enough", -1}
 
 func FrameErrorNotEnoughColors(n int) *FrameError {
 	return &FrameError{FE_NOT_ENOUGH_COLORS, fmt.Sprintf("Not enough colors in row %d", n), n}
