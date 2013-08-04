@@ -13,6 +13,7 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
+	"yacco/config"
 	"yacco/textframe"
 	"yacco/util"
 )
@@ -295,11 +296,19 @@ func (b *Buffer) unlock() {
 // If full is specified the highlighting will continue until the end of the buffer,
 // otherwise it will continue until after DisplayLines lines after pinc
 func (b *Buffer) Highlight(start int, full bool, pinc int) {
+	if !config.EnableHighlighting {
+		return
+	}
+
 	if (len(b.Name) == 0) || (b.Name[0] == '+') || (b.DisplayLines == 0) {
 		return
 	}
 
-	if (start < 0) && (pinc >= 0) && ((pinc + 50*b.DisplayLines) < b.lastCleanHl) {
+	if (start < 0) && !full && (pinc >= 0) && ((pinc + 50*b.DisplayLines) < b.lastCleanHl) {
+		return
+	}
+
+	if (start < 0) && (b.lastCleanHl >= b.Size()) {
 		return
 	}
 

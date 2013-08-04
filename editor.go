@@ -42,31 +42,51 @@ const NUM_JUMPS = 7
 const JUMP_THRESHOLD = 100
 
 func scrollfn(e *Editor, sd int, sl int) {
-	if sd < 0 {
-		for i := 0; i < sl; i++ {
-			e.top = e.bodybuf.Tonl(e.top-2, -1)
-		}
-	} else if sd > 0 {
-		for i := 0; i < sl; i++ {
-			e.top = e.bodybuf.Tonl(e.top, +1)
-		}
-	} else if sd == 0 {
-		e.top = e.bodybuf.Tonl(sl, -1)
-	}
+	e.bodybuf.Rdlock()
+	defer e.bodybuf.Rdunlock()
 
 	sz := e.bodybuf.Size()
 
-	e.bodybuf.Rdlock()
-	defer e.bodybuf.Rdunlock()
-	a, b := e.bodybuf.Selection(util.Sel{e.top, sz})
+	switch {
+	case sd == 0:
+		e.top = e.bodybuf.Tonl(sl, -1)
 
-	e.bodybuf.Highlight(-1, false, e.top)
+		sz := e.bodybuf.Size()
+
+		e.bodybuf.Rdlock()
+		defer e.bodybuf.Rdunlock()
+		a, b := e.bodybuf.Selection(util.Sel{e.top, sz})
+		e.sfr.Fr.Clear()
+		e.sfr.Fr.InsertColor(a)
+		e.sfr.Fr.InsertColor(b)
+
+	case sd > 0:
+		n := e.sfr.Fr.PushUp(sl)
+		e.top = e.sfr.Fr.Top
+		e.bodybuf.Highlight(-1, false, e.top)
+		a, b := e.bodybuf.Selection(util.Sel{e.top + n, sz})
+		e.sfr.Fr.InsertColor(a)
+		e.sfr.Fr.InsertColor(b)
+
+	case sd < 0:
+		nt := e.top
+		for i := 0; i < sl; i++ {
+			nt = e.bodybuf.Tonl(nt-2, -1)
+		}
+
+		a, b := e.bodybuf.Selection(util.Sel{nt, e.top})
+
+		if len(a)+len(b) == 0 {
+			return
+		}
+
+		e.sfr.Fr.PushDown(sl, a, b)
+		e.top = e.sfr.Fr.Top
+	}
 
 	e.sfr.Set(e.top, sz)
-	e.sfr.Fr.Clear()
-	e.sfr.Fr.InsertColor(a)
-	e.sfr.Fr.InsertColor(b)
 	e.sfr.Redraw(true)
+	e.bodybuf.Highlight(-1, true, e.top)
 }
 
 func (e *Editor) SetWnd(wnd wde.Window) {

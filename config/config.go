@@ -18,3 +18,4 @@ var ComplFont = util.MustNewFontFromBytes(72, 14, 1.0, [][]byte{ luxibytes })
 var EditErrorTrace = false
 
 var TabElasticity = 4
+var EnableHighlighting = true

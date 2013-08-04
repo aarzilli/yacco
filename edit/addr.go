@@ -35,6 +35,9 @@ func (e *AddrOp) Eval(b *buf.Buffer, sel util.Sel) util.Sel {
 	case ",":
 		slh := e.Lh.Eval(b, sel)
 		srh := e.Rh.Eval(b, sel)
+		if slh.S > srh.E {
+			panic(fmt.Errorf("Invalid address will result from expression <%d,%d>,<%d,%d>", slh.S, slh.E, srh.S, srh.E))
+		}
 		return util.Sel{slh.S, srh.E}
 	case ";":
 		slh := e.Lh.Eval(b, sel)

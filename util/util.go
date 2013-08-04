@@ -76,7 +76,7 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 			if wheelTotal == 0 {
 				wheelEvent = e
 				go func() {
-					time.Sleep(20 * time.Millisecond)
+					time.Sleep(40 * time.Millisecond)
 					wheelChan <- true
 				}()
 			}

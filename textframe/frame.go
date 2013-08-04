@@ -9,7 +9,6 @@ import (
 	"image/draw"
 	"math"
 	"runtime"
-	"sync"
 	"time"
 	"unicode"
 	"yacco/util"
@@ -130,6 +129,12 @@ func (fr *Frame) initialInsPoint() raster.Point {
 }
 
 func (fr *Frame) Clear() {
+	/*println("Frame", fr, "cleared")
+	_, file, line, _ := runtime.Caller(1)
+	println("\t", file, ":", line, "")
+	_, file, line, _ = runtime.Caller(2)
+	println("\t", file, ":", line, "\n")*/
+
 	fr.ins = fr.initialInsPoint()
 	fr.glyphs = fr.glyphs[:0]
 	fr.lastFull = 0
@@ -145,26 +150,8 @@ func (fr *Frame) Insert(runes []rune) (limit image.Point) {
 	return fr.InsertColor(cr)
 }
 
-var mu sync.Mutex
-var ccount = 0
-
 // Inserts text into the frame, returns the maximum X and Y used
 func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
-	mu.Lock()
-	if ccount > 0 {
-		panic("Concurrent InsertColor invocation")
-	}
-	ccount++
-	mu.Unlock()
-	defer func() {
-		mu.Lock()
-		ccount--
-		if ccount != 0 {
-			panic("Concurrent InsertColor invocation")
-		}
-		mu.Unlock()
-	}()
-
 	lh := fr.lineHeight()
 
 	_, spaceIndex := fr.getIndex(' ')
@@ -824,4 +811,155 @@ func (fr *Frame) Inside(p int) bool {
 		return false
 	}
 	return true
+}
+
+// Returns a slice of addresses of the starting characters of each phisical line
+// Phisical lines are distinct lines on the screen, ie a softwrap generates a new phisical line
+func (fr *Frame) phisicalLines() []int {
+	r := []int{}
+	y := raster.Fix32(0)
+	for i := range fr.glyphs {
+		if fr.glyphs[i].p.Y != y {
+			r = append(r, i)
+			y = fr.glyphs[i].p.Y
+		}
+	}
+	return r
+}
+
+// Pushes text graphically up by "ln" phisical lines
+// Returns the number of glyphs left in the frame
+func (fr *Frame) PushUp(ln int) (newsize int) {
+	fr.ins = fr.initialInsPoint()
+
+	lh := fr.lineHeight()
+	_, spaceIndex := fr.getIndex(' ')
+
+	rightMargin := raster.Fix32(fr.R.Max.X<<8) - fr.margin
+	leftMargin := raster.Fix32(fr.R.Min.X<<8) + fr.margin
+	bottom := raster.Fix32(fr.R.Max.Y<<8) + lh
+
+	_, xIndex := fr.getIndex('x')
+	spaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, spaceIndex).AdvanceWidth) << 2
+	bigSpaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, xIndex).AdvanceWidth) << 2
+	tabWidth := spaceWidth * raster.Fix32(fr.TabWidth)
+
+	fr.Limit.X = int(fr.ins.X >> 8)
+	fr.Limit.Y = int(fr.ins.Y >> 8)
+
+	if fr.Hackflags&HF_ELASTICTABS != 0 {
+		defer func() {
+			fr.Limit = fr.elasticTabs(bigSpaceWidth, tabWidth, bottom, leftMargin, rightMargin, lh)
+		}()
+	}
+
+	off := -1
+	for i := range fr.glyphs {
+		fr.glyphs[i].p.Y -= raster.Fix32(ln) * lh
+		if (off < 0) && (fr.glyphs[i].p.Y >= fr.ins.Y) {
+			off = i
+		}
+
+		if int(fr.glyphs[i].p.Y>>8) > fr.Limit.Y {
+			fr.Limit.Y = int(fr.glyphs[i].p.Y >> 8)
+		}
+		if int(fr.glyphs[i].p.X>>8) > fr.Limit.X {
+			fr.Limit.X = int(fr.glyphs[i].p.X >> 8)
+		}
+	}
+
+	if off >= 0 {
+		fr.Top += off
+		copy(fr.glyphs, fr.glyphs[off:])
+		fr.glyphs = fr.glyphs[:len(fr.glyphs)-off]
+	} else {
+		fr.glyphs = []glyph{}
+	}
+
+	if len(fr.glyphs) > 0 {
+		g := &fr.glyphs[len(fr.glyphs)-1]
+		fr.ins.X = g.p.X
+		fr.ins.Y = g.p.Y
+	}
+
+	fr.lastFull = len(fr.glyphs)
+	return len(fr.glyphs)
+}
+
+func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
+	oldglyphs := make([]glyph, len(fr.glyphs))
+	copy(oldglyphs, fr.glyphs)
+
+	fr.Top -= len(a) + len(b)
+	fr.Clear()
+	fr.InsertColor(a)
+	fr.InsertColor(b)
+
+	limit = fr.Limit
+
+	pl := fr.phisicalLines()
+
+	if len(pl) > ln {
+		fr.PushUp(len(pl) - ln)
+	}
+
+	lh := fr.lineHeight()
+
+	_, spaceIndex := fr.getIndex(' ')
+
+	rightMargin := raster.Fix32(fr.R.Max.X<<8) - fr.margin
+	leftMargin := raster.Fix32(fr.R.Min.X<<8) + fr.margin
+	bottom := raster.Fix32(fr.R.Max.Y<<8) + lh
+
+	_, xIndex := fr.getIndex('x')
+	spaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, spaceIndex).AdvanceWidth) << 2
+	bigSpaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, xIndex).AdvanceWidth) << 2
+	tabWidth := spaceWidth * raster.Fix32(fr.TabWidth)
+
+	if fr.ins.X != leftMargin {
+		fr.ins.X = leftMargin
+		fr.ins.Y += lh
+	}
+
+	if fr.Hackflags&HF_ELASTICTABS != 0 {
+		defer func() {
+			fr.Limit = fr.elasticTabs(bigSpaceWidth, tabWidth, bottom, leftMargin, rightMargin, lh)
+		}()
+	}
+
+	for i := range oldglyphs {
+		if fr.ins.Y > bottom {
+			fr.Limit = limit
+			return
+		}
+
+		if fr.ins.Y < raster.Fix32(fr.R.Max.Y<<8) {
+			//println("lastFull is: ", len(fr.glyphs), fr.ins.Y + lh, raster.Fix32(fr.R.Max.Y << 8))
+			fr.lastFull = len(fr.glyphs)
+		}
+
+		if oldglyphs[i].r == '\n' {
+			fr.ins.Y += lh
+		} else {
+			oldglyphs[i].p.Y = fr.ins.Y
+			fr.ins.X = oldglyphs[i].p.X
+		}
+
+		fr.glyphs = append(fr.glyphs, oldglyphs[i])
+
+		if int(fr.glyphs[i].p.Y>>8) > fr.Limit.Y {
+			fr.Limit.Y = int(fr.glyphs[i].p.Y >> 8)
+		}
+		if int(fr.glyphs[i].p.X>>8) > fr.Limit.X {
+			fr.Limit.X = int(fr.glyphs[i].p.X >> 8)
+		}
+	}
+
+	if fr.ins.Y < raster.Fix32(fr.R.Max.Y<<8) {
+		//println("lastFull is: ", len(fr.glyphs), fr.ins.Y + lh, raster.Fix32(fr.R.Max.Y << 8))
+		fr.lastFull = len(fr.glyphs)
+	}
+	fr.Limit = limit
+
+	return
 }
