@@ -36,6 +36,7 @@ var col2sel = *image.NewUniform(color.RGBA{0xAA, 0x00, 0x00, 0xFF})
 var col3sel = *image.NewUniform(color.RGBA{0x00, 0x66, 0x00, 0xFF})
 var bluebg = *image.NewUniform(color.RGBA{234, 0xff, 0xff, 0xff})
 var yellowbg = *image.NewUniform(color.RGBA{0xff, 0xff, 234, 0xff})
+var darkergreen = *image.NewUniform(color.RGBA{0x24, 0x49, 0x24, 0xff})
 
 var acmeColorScheme = ColorScheme{
 	WindowBG: *image.White,
@@ -43,8 +44,8 @@ var acmeColorScheme = ColorScheme{
 	Border: *image.Black,
 	Scrollbar: *image.NewUniform(color.RGBA{ 153, 153, 76, 0xff }),
 
-	EditorPlain: []image.Uniform{ yellowbg, *image.Black, *DDarkgreen, *DDarkblue },
-	EditorSel1: []image.Uniform{ *DDarkyellow, *image.Black, *DDarkgreen, *DDarkblue },
+	EditorPlain: []image.Uniform{ yellowbg, *image.Black, darkergreen, *DDarkblue },
+	EditorSel1: []image.Uniform{ *DDarkyellow, *image.Black, darkergreen, *DDarkblue },
 	EditorSel2: []image.Uniform{ col2sel, yellowbg, yellowbg, yellowbg },
 	EditorSel3: []image.Uniform{ col3sel, yellowbg, yellowbg, yellowbg },
 	EditorMatchingParenthesis: []image.Uniform{ *image.Black, yellowbg, yellowbg, yellowbg },
