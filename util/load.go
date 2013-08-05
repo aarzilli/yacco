@@ -1,8 +1,8 @@
 package util
 
 type LoadRule struct {
-	BufRe string // only apply to buffers matching this regular expression
-	Re string // apply when this regular expression is matched
+	BufRe  string // only apply to buffers matching this regular expression
+	Re     string // apply when this regular expression is matched
 	Action string // action to execute
 }
 

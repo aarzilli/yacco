@@ -6,6 +6,7 @@ import (
 	"image/draw"
 	"math"
 	"os"
+	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -77,10 +78,32 @@ type HighlightMsg struct {
 	b *buf.Buffer
 }
 
+type EventMsg struct {
+	ec ExecContext
+	er util.EventReader
+}
+
+type activeSelStruct struct {
+	path string
+	s, e int
+	txt  string
+}
+
 var highlightChan = make(chan *buf.Buffer, 10)
-var activeSel string = ""
+var activeSel activeSelStruct
 var activeEditor *Editor = nil
 var HasFocus = true
+
+func (as *activeSelStruct) Set(lp LogicalPos) {
+	if (lp.bodybuf == nil) || (lp.sfr == nil) {
+		return
+	}
+
+	as.path = filepath.Join(lp.bodybuf.Dir, lp.bodybuf.Name)
+	as.s = lp.sfr.Fr.Sels[0].S
+	as.e = lp.sfr.Fr.Sels[0].E
+	as.txt = string(lp.bodybuf.SelectionRunes(lp.sfr.Fr.Sels[0]))
+}
 
 func (w *Window) Init(width, height int) (err error) {
 	w.Prop = make(map[string]string)
@@ -319,6 +342,40 @@ func (w *Window) EventLoop() {
 						break HlLoop
 					}
 				}
+			}
+
+		case EventMsg:
+			if e.ec.ed == nil {
+				break
+			}
+
+			switch e.er.Type() {
+			case util.ET_BODYDEL, util.ET_TAGDEL, util.ET_BODYINS, util.ET_TAGINS:
+				// Nothing
+
+			case util.ET_BODYEXEC, util.ET_TAGEXEC:
+				if e.er.ShouldFetchText() {
+					_, sp, ep := e.er.Points()
+					e.er.SetText(string(e.ec.ed.bodybuf.SelectionRunes(util.Sel{sp, ep})))
+				}
+				if e.er.MissingExtraArg() {
+					xpath, xs, xe, _ := e.er.ExtraArg()
+					for _, buf := range buffers {
+						p := filepath.Join(buf.Dir, buf.Name)
+						if p == xpath {
+							e.er.SetExtraArg(string(buf.SelectionRunes(util.Sel{xs, xe})))
+							break
+						}
+					}
+				}
+				txt, _ := e.er.Text(nil, nil, nil)
+				_, _, _, xtxt := e.er.ExtraArg()
+				Exec(e.ec, txt+" "+xtxt)
+
+			case util.ET_BODYLOAD, util.ET_TAGLOAD:
+				pp, sp, ep := e.er.Points()
+				e.ec.fr.Sels[2] = util.Sel{sp, ep}
+				Load(e.ec, pp)
 			}
 		}
 		Wnd.Lock.Unlock()
@@ -842,11 +899,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				cmd := config.KeyBindings[e.Chord]
 				cmd = strings.TrimSpace(cmd)
 				_, _, _, isintl := IntlCmd(cmd)
-				flags := util.EventFlag(0)
-				if isintl {
-					flags = util.EFX_BUILTIN
-				}
-				util.Fmtevent(ec.eventChan, util.EO_KBD, ec.ontag, util.ET_BODYEXEC, ec.fr.Sels[0].S, ec.fr.Sels[0].E, flags, cmd)
+				util.Fmtevent2(ec.eventChan, util.EO_KBD, ec.ontag, isintl, false, -1, ec.fr.Sels[0].S, ec.fr.Sels[0].E, cmd)
 			}
 		} else if e.Glyph != "" {
 			if !ec.ontag && ec.ed != nil {
@@ -871,76 +924,82 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent) {
 	switch e.Which {
 	case wde.MiddleButton:
-		cmd, _ := expandedSelection(lp, 1)
-		ec := lp.asExecContext(false)
-		c := cmd
-		extraArg := false
 		if (ee != nil) && (ee.Which == wde.LeftButton) {
-			extraArg = true
-			c += " " + activeSel
-		}
-		if (ec.eventChan == nil) || (cmd == "Delete") {
-			Exec(ec, cmd)
+			clickExec2extra(lp, e)
 		} else {
-			_, _, _, isintl := IntlCmd(cmd)
-			flags := util.EventFlag(0)
-			if isintl {
-				flags = util.EFX_BUILTIN
-			}
-			if extraArg {
-				flags |= util.EFX_EXTRAARG
-			}
-			util.Fmtevent(ec.eventChan, util.EO_MOUSE, ec.ontag, util.ET_BODYEXEC, ec.fr.Sels[1].S, ec.fr.Sels[1].E, flags, cmd)
+			clickExec2(lp, e)
 		}
 
 	case wde.MiddleButton | wde.LeftButton:
-		cmd, _ := expandedSelection(lp, 1)
-		ec := lp.asExecContext(false)
-		cmd = cmd + " " + activeSel
-		if ec.eventChan == nil {
-			Exec(ec, cmd)
-		} else {
-			_, _, _, isintl := IntlCmd(cmd)
-			flags := util.EventFlag(0)
-			if isintl {
-				flags = util.EFX_BUILTIN
-			}
-			util.Fmtevent(ec.eventChan, util.EO_MOUSE, ec.ontag, util.ET_BODYEXEC, ec.fr.Sels[1].S, ec.fr.Sels[1].E, flags, cmd)
-		}
+		clickExec2extra(lp, e)
 
 	case wde.RightButton:
-		ec := lp.asExecContext(true)
-		s, original := expandedSelection(lp, 2)
-		if (lp.ed == nil) || (lp.ed.eventChan == nil) {
-			Load(ec, original)
-		} else {
-			fr := lp.tagfr
-			if fr == nil {
-				fr = &lp.sfr.Fr
-			}
-			util.Fmtevent(lp.ed.eventChan, util.EO_MOUSE, lp.tagfr != nil, util.ET_BODYLOAD, fr.Sels[2].S, fr.Sels[2].E, util.EventFlag(original), s)
-		}
+		clickExec3(lp, e)
 
 	case wde.LeftButton:
-		br := lp.bufferRefreshable()
-		if lp.sfr != nil {
-			lp.sfr.Fr.DisableOtherSelections(0)
-			activeSel = string(lp.bodybuf.SelectionRunes(lp.sfr.Fr.Sels[0]))
-			br.BufferRefresh(false)
+		clickExec1(lp, e)
+	}
+}
 
-			d := lp.ed.LastJump() - lp.sfr.Fr.Sels[0].S
-			if d < 0 {
-				d *= -1
-			}
-			if d > JUMP_THRESHOLD {
-				lp.ed.PushJump()
-			}
+func clickExec1(lp LogicalPos, e util.MouseDownEvent) {
+	br := lp.bufferRefreshable()
+	if lp.sfr != nil {
+		lp.sfr.Fr.DisableOtherSelections(0)
+		activeSel.Set(lp)
+		br.BufferRefresh(false)
+
+		d := lp.ed.LastJump() - lp.sfr.Fr.Sels[0].S
+		if d < 0 {
+			d *= -1
 		}
-		if lp.tagfr != nil {
-			lp.tagfr.DisableOtherSelections(0)
-			activeSel = string(lp.tagbuf.SelectionRunes(lp.tagfr.Sels[0]))
-			br.BufferRefresh(true)
+		if d > JUMP_THRESHOLD {
+			lp.ed.PushJump()
 		}
+	}
+	if lp.tagfr != nil {
+		lp.tagfr.DisableOtherSelections(0)
+		br.BufferRefresh(true)
+	}
+}
+
+// Simple execute without extra arguments
+func clickExec2(lp LogicalPos, e util.MouseDownEvent) {
+	cmd, original := expandedSelection(lp, 1)
+	ec := lp.asExecContext(false)
+	if (ec.eventChan == nil) || (cmd == "Delete") {
+		Exec(ec, cmd)
+	} else {
+		_, _, _, isintl := IntlCmd(cmd)
+		util.Fmtevent2(ec.eventChan, util.EO_MOUSE, ec.ontag, isintl, false, original, ec.fr.Sels[1].S, ec.fr.Sels[1].E, cmd)
+	}
+}
+
+// Execute with extra argument
+func clickExec2extra(lp LogicalPos, e util.MouseDownEvent) {
+	cmd, original := expandedSelection(lp, 1)
+	ec := lp.asExecContext(false)
+	cmd = cmd
+	if ec.eventChan == nil {
+		Exec(ec, cmd+" "+activeSel.txt)
+	} else {
+		_, _, _, isintl := IntlCmd(cmd)
+		util.Fmtevent2(ec.eventChan, util.EO_MOUSE, ec.ontag, isintl, true, original, ec.fr.Sels[1].S, ec.fr.Sels[1].E, cmd)
+		util.Fmtevent2extra(ec.eventChan, util.EO_MOUSE, ec.ontag, activeSel.s, activeSel.e, activeSel.path, activeSel.txt)
+	}
+}
+
+// Load click
+func clickExec3(lp LogicalPos, e util.MouseDownEvent) {
+	ec := lp.asExecContext(true)
+	s, original := expandedSelection(lp, 2)
+	if (lp.ed == nil) || (lp.ed.eventChan == nil) {
+		Load(ec, original)
+	} else {
+		fr := lp.tagfr
+		if fr == nil {
+			fr = &lp.sfr.Fr
+		}
+		util.Fmtevent3(lp.ed.eventChan, util.EO_MOUSE, lp.tagfr != nil, original, fr.Sels[2].S, fr.Sels[2].E, s)
 	}
 }
 
@@ -950,7 +1009,8 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 		sel := &lp.sfr.Fr.Sels[idx]
 		if sel.S == sel.E {
 			if (lp.sfr.Fr.Sels[0].S != lp.sfr.Fr.Sels[0].E) && (lp.sfr.Fr.Sels[0].S-1 <= sel.S) && (sel.S <= lp.sfr.Fr.Sels[0].E+1) {
-				original = lp.sfr.Fr.Sels[0].S
+				//original = lp.sfr.Fr.Sels[0].S
+				original = -1
 				lp.sfr.Fr.SetSelect(idx, 1, lp.sfr.Fr.Sels[0].S, lp.sfr.Fr.Sels[0].E)
 				lp.sfr.Redraw(true)
 			} else {
@@ -971,7 +1031,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 		if sel.S == sel.E {
 			if (lp.tagfr.Sels[0].S != lp.tagfr.Sels[0].E) && (lp.tagfr.Sels[0].S-1 <= sel.S) && (sel.S <= lp.tagfr.Sels[0].E+1) {
 				*sel = lp.tagfr.Sels[0]
-				original = lp.tagfr.Sels[0].S
+				//original = lp.tagfr.Sels[0].S
 				lp.tagfr.Sels[0].S = lp.tagfr.Sels[0].E
 				lp.tagfr.Redraw(true)
 			} else {

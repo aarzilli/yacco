@@ -10,7 +10,6 @@ import (
 	"os/exec"
 	"time"
 	"sync"
-	"strconv"
 	"code.google.com/p/go9p/p"
 	"yacco/util"
 )
@@ -152,8 +151,11 @@ func registerDirectory(inotifyFd int, dirname string, recurse int) {
 	}
 }
 
+const BUFSIZE = 2*util.MAX_EVENT_TEXT_LENGTH
+
 func readEvents(eventfd io.ReadWriteCloser, addrfd io.Writer, xdatafd io.Writer, bodyfd io.Writer) {
-	buf := make([]byte, 1024)
+	var er util.EventReader
+	buf := make([]byte, BUFSIZE)
 	for {
 		n, err := eventfd.Read(buf)
 		if err != nil {
@@ -164,59 +166,34 @@ func readEvents(eventfd io.ReadWriteCloser, addrfd io.Writer, xdatafd io.Writer,
 			fmt.Fprintf(os.Stderr, "Not enough read from event file\n")
 			os.Exit(1)
 		}
-		var event string
-		if n < 1024 {
-			event = string(buf[:n])
-		} else {
-			event = string(buf)
-		}
-
-		//origin := event[0]
-		etype := event[1]
-		v := strings.SplitN(event[2:], " ",  5)
-		if len(v) != 5 {
-			fmt.Fprintf(os.Stderr, "Wrong number of arguments from split: %d", len(v))
-			os.Exit(1)
-		}
-
-		/*s, err:= strconv.Atoi(v[0])
-		util.Allergic(debug, err)*/
-		_, err = strconv.Atoi(v[1])
-		util.Allergic(debug, err)
-		/*flags, err := strconv.Atoi(v[2])
-		util.Allergic(debug, err)*/
-		arglen, err := strconv.Atoi(v[3])
-		util.Allergic(debug, err)
-
-		arg := v[4]
-
-		for len(arg) < arglen {
+		
+		er.Reset()
+		er.Insert(string(buf[:n]))
+		
+		for !er.Done() {
 			n, err := eventfd.Read(buf)
 			util.Allergic(debug, err)
-			arg += string(buf[:n])
-			event += string(buf[:n])
+			er.Insert(string(buf[:n]))
+		}
+		
+		if ok, perr := er.Valid(); !ok {
+			fmt.Fprintf(os.Stderr, "Error parsing event message(s): %s", perr)
+			continue
 		}
 
-		if arg[len(arg)-1] == '\n' {
-			arg = arg[:len(arg)-1]
-		}
-
-		if (debug) {
-			fmt.Printf("event <%s>\n", event)
-		}
-
-		switch etype {
-		case 'x', 'X':
+		switch er.Type() {
+		case util.ET_TAGEXEC, util.ET_BODYEXEC:
+			arg, _ := er.Text(nil, nil, nil)
 			if arg == "Rerun" {
 				if canExecute() {
 					startCommand(true, addrfd, xdatafd, bodyfd)
 				}
 			} else {
-				_, err := eventfd.Write([]byte(event))
+				err := er.SendBack(eventfd)
 				util.Allergic(debug, err)
 			}
-		case 'l', 'L':
-			_, err := eventfd.Write([]byte(event))
+		case util.ET_TAGLOAD, util.ET_BODYLOAD:
+			err := er.SendBack(eventfd)
 			util.Allergic(debug, err)
 		}
 	}

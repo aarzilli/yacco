@@ -172,63 +172,56 @@ var signalCommands = map[string]syscall.Signal{
 	"Sigusr1": syscall.SIGUSR1,
 }
 
+const BUFSIZE = 2 * util.MAX_EVENT_TEXT_LENGTH
+
 func eventReader(eventfd io.ReadWriter, ctlfd io.ReadWriter, addrfd io.Writer, bodyfd io.ReadWriter, pty *os.File, outbufid string, startPid int) {
-	buf := make([]byte, 1024)
+	buf := make([]byte, BUFSIZE)
 	addrfd.Write([]byte("$"))
+	var er util.EventReader
+
 	for {
 		if debug {
 			log.Println("Waiting for event")
 		}
 		n, err := eventfd.Read(buf)
-		if err == io.EOF {
+		if err != nil {
 			break
 		}
-		util.Allergic(debug, err)
 		if n < 2 {
 			log.Fatalf("Not enough read from event file")
 		}
 
-		event := string(buf[:n])
+		er.Reset()
+		er.Insert(string(buf[:n]))
 
-		origin := event[0]
-		etype := event[1]
-		v := strings.SplitN(event[2:], " ", 5)
-		if len(v) != 5 {
-			log.Fatalf("Wrong number of arguments from split: %d", len(v))
-		}
-
-		s, err := strconv.Atoi(v[0])
-		util.Allergic(debug, err)
-		_, err = strconv.Atoi(v[1])
-		util.Allergic(debug, err)
-		flags, err := strconv.Atoi(v[2])
-		util.Allergic(debug, err)
-		arglen, err := strconv.Atoi(v[3])
-		util.Allergic(debug, err)
-
-		arg := v[4]
-
-		for len(arg) < arglen {
+		for !er.Done() {
 			n, err := eventfd.Read(buf)
 			util.Allergic(debug, err)
-			arg += string(buf[:n])
-			event += string(buf[:n])
+			er.Insert(string(buf[:n]))
 		}
 
-		if arg[len(arg)-1] == '\n' {
-			arg = arg[:len(arg)-1]
+		if ok, perr := er.Valid(); !ok {
+			log.Printf("Error parsing event message(s): %s", perr)
+			continue
 		}
 
 		if debug {
-			fmt.Printf("event <%s>\n", event)
+			log.Printf("Event: %v\n", er)
 		}
 
-		switch etype {
-		case 'x', 'X':
-			if flags != 0 {
-				_, err := eventfd.Write([]byte(event))
+		switch er.Type() {
+		case util.ET_TAGEXEC, util.ET_BODYEXEC:
+			if er.BuiltIn() {
+				if debug {
+					log.Printf("Sending back")
+				}
+				err := er.SendBack(eventfd)
+				if debug {
+					log.Printf("Sent back")
+				}
 				util.Allergic(debug, err)
 			} else {
+				arg, _ := er.Text(nil, nil, nil)
 				if signal, ok := signalCommands[arg]; ok {
 					pid := TcGetPGrp(pty)
 					if pid < 0 {
@@ -253,12 +246,12 @@ func eventReader(eventfd io.ReadWriter, ctlfd io.ReadWriter, addrfd io.Writer, b
 			}
 
 			util.Allergic(debug, err)
-		case 'l', 'L':
-			_, err := eventfd.Write([]byte(event))
+		case util.ET_TAGLOAD, util.ET_BODYLOAD:
+			err := er.SendBack(eventfd)
 			util.Allergic(debug, err)
 
-		case 'I':
-			if (origin == 'E') || (origin == 'F') {
+		case util.ET_BODYINS:
+			if (er.Origin() == util.EO_BODYTAG) || (er.Origin() == util.EO_FILES) {
 				if debug {
 					fmt.Println("Moving address forward")
 				}
@@ -267,6 +260,8 @@ func eventReader(eventfd io.ReadWriter, ctlfd io.ReadWriter, addrfd io.Writer, b
 				_, err = ctlfd.Write([]byte("dot=addr\n"))
 				util.Allergic(debug, err)
 			} else {
+				_, s, _ := er.Points()
+				arg, _ := er.Text(nil, nil, nil)
 				addr := readAddr(outbufid)
 				if (addr[0] <= s) && (len(arg) > 0) && (arg[len(arg)-1] == '\n') {
 					if debug {

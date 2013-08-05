@@ -1,11 +1,11 @@
 package util
 
 import (
-	"strings"
-	"image"
-	"io/ioutil"
 	"code.google.com/p/freetype-go/freetype"
 	"code.google.com/p/freetype-go/freetype/truetype"
+	"image"
+	"io/ioutil"
+	"strings"
 )
 
 type Font struct {

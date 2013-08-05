@@ -316,38 +316,46 @@ func writeEventFn(i int, data []byte, off int64) syscall.Errno {
 	if ec == nil {
 		return syscall.ENOENT
 	}
-	origin, etype, s, e, flags, arg, ok := util.Parsevent(string(data))
-	if !ok {
+	if ec.ed == nil {
 		return syscall.EIO
 	}
 
-	switch etype {
-	case util.ET_BODYEXEC:
-		sideChan <- ExecMsg{ec, s, e, arg}
+	ec.ed.eventReader.Insert(string(data))
 
-	case util.ET_TAGEXEC:
-		ec2 := *ec
-		if origin == util.EO_KBD {
-			ec2.buf = ec2.ed.tagbuf
-			ec2.fr = &ec2.ed.tagfr
-			ec2.ontag = true
+	if ec.ed.eventReader.Done() {
+		etype := ec.ed.eventReader.Type()
+		switch etype {
+		case util.ET_BODYDEL, util.ET_TAGDEL, util.ET_BODYINS, util.ET_TAGINS:
+			return 0
 		}
-		sideChan <- ExecMsg{&ec2, s, e, arg}
 
-	case util.ET_BODYLOAD:
-		sideChan <- LoadMsg{ec, s, e, int(flags)}
+		if ok, perr := ec.ed.eventReader.Valid(); ok {
+			ec2 := *ec
 
-	case util.ET_TAGLOAD:
-		ec2 := *ec
-		if ec.ed != nil {
-			ec2.buf = ec2.ed.tagbuf
-			ec2.fr = &ec2.ed.tagfr
+			switch etype {
+			case util.ET_TAGEXEC:
+				if ec.ed.eventReader.Origin() == util.EO_KBD {
+					ec2.buf = ec2.ed.tagbuf
+					ec2.fr = &ec2.ed.tagfr
+					ec2.ontag = true
+				}
+
+			case util.ET_TAGLOAD:
+				if ec.ed != nil {
+					ec2.buf = ec2.ed.tagbuf
+					ec2.fr = &ec2.ed.tagfr
+				}
+
+			}
+
+			sideChan <- EventMsg{ec2, ec.ed.eventReader}
+			ec.ed.eventReader.Reset()
+		} else {
+			fmt.Println("Event parsing error:", perr)
+			return syscall.EIO
 		}
-		sideChan <- LoadMsg{ec, s, e, int(flags)}
-
-	default:
-		return syscall.EIO
 	}
+
 	return 0
 }
 
@@ -365,6 +373,7 @@ func openEventsFn(i int) bool {
 	}
 
 	ec.ed.eventChan = make(chan string, 10)
+	ec.ed.eventReader.Reset()
 
 	return true
 }

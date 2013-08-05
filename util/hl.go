@@ -5,16 +5,16 @@ import (
 )
 
 type RegionMatchType int
+
 const (
-	RMT_STRING = RegionMatchType(2)
+	RMT_STRING  = RegionMatchType(2)
 	RMT_COMMENT = RegionMatchType(3)
 )
 
 type RegionMatch struct {
-	NameRe *regexp.Regexp
+	NameRe     *regexp.Regexp
 	StartDelim []rune
-	EndDelim []rune
-	Escape rune
-	Type RegionMatchType
+	EndDelim   []rune
+	Escape     rune
+	Type       RegionMatchType
 }
-

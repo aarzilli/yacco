@@ -1,20 +1,20 @@
 package util
 
 import (
+	"bufio"
+	"code.google.com/p/go9p/p"
+	"code.google.com/p/go9p/p/clnt"
 	"fmt"
-	"strings"
-	"time"
-	"runtime"
+	"github.com/skelterjohn/go.wde"
 	"image"
-	"sort"
+	"io"
 	"math"
 	"os"
-	"io"
-	"bufio"
 	"path/filepath"
-	"github.com/skelterjohn/go.wde"
-	"code.google.com/p/go9p/p/clnt"
-	"code.google.com/p/go9p/p"
+	"runtime"
+	"sort"
+	"strings"
+	"time"
 )
 
 type Sel struct {
@@ -22,7 +22,7 @@ type Sel struct {
 }
 
 type AltingEntry struct {
-	Seq string
+	Seq   string
 	Glyph string
 }
 
@@ -32,14 +32,14 @@ type WheelEvent struct {
 }
 
 type MouseDownEvent struct {
-	Where image.Point
-	Which wde.Button
+	Where     image.Point
+	Which     wde.Button
 	Modifiers string
-	Count int
+	Count     int
 }
 
 func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion map[string]string) (out chan interface{}) {
-	dblclickp := image.Point{ 0, 0 }
+	dblclickp := image.Point{0, 0}
 	dblclickc := 0
 	dblclickbtn := wde.LeftButton
 	dblclickt := time.Now()
@@ -102,7 +102,7 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 		for {
 			runtime.Gosched()
 			select {
-			case ei := <- in:
+			case ei := <-in:
 				switch e := ei.(type) {
 				case wde.KeyTypedEvent:
 					if alting && (e.Glyph != "") {
@@ -175,9 +175,9 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 						scheduleWheelEvent(e, +1)
 					default:
 						now := time.Now()
-						dist := math.Sqrt(float64(dblclickp.X - e.Where.X) * float64(dblclickp.X - e.Where.X) + float64(dblclickp.Y - e.Where.Y) * float64(dblclickp.Y - e.Where.Y))
+						dist := math.Sqrt(float64(dblclickp.X-e.Where.X)*float64(dblclickp.X-e.Where.X) + float64(dblclickp.Y-e.Where.Y)*float64(dblclickp.Y-e.Where.Y))
 
-						if (e.Which == dblclickbtn) && (dist < 5) && (now.Sub(dblclickt) < time.Duration(200 * time.Millisecond)) {
+						if (e.Which == dblclickbtn) && (dist < 5) && (now.Sub(dblclickt) < time.Duration(200*time.Millisecond)) {
 							dblclickt = now
 							dblclickc++
 						} else {
@@ -193,9 +193,9 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 
 						out <- e
 						out <- MouseDownEvent{
-							Where: e.Where,
-							Which: e.Which,
-							Count: dblclickc,
+							Where:     e.Where,
+							Which:     e.Which,
+							Count:     dblclickc,
 							Modifiers: e.Modifiers,
 						}
 					}
@@ -221,15 +221,15 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 					out <- ei
 				}
 
-			case <- resizeChan:
+			case <-resizeChan:
 				resizeFlag = false
 				out <- resizeEvent
 
-			case <- mouseChan:
+			case <-mouseChan:
 				mouseFlag = false
 				out <- mouseEvent
 
-			case <- wheelChan:
+			case <-wheelChan:
 				out <- WheelEvent{
 					Count: wheelTotal,
 					Where: wheelEvent.Where,
@@ -337,13 +337,13 @@ func findWinRestored(name string, p9clnt *clnt.Clnt) (bool, string, io.ReadWrite
 		ctlfd.Close()
 		return false, "", nil, nil
 	}
-	if !strings.HasSuffix(strings.TrimSpace(ctlln), "+" + name) {
+	if !strings.HasSuffix(strings.TrimSpace(ctlln), "+"+name) {
 		return false, "", nil, nil
 	}
 
 	outbufid := strings.TrimSpace(ctlln[:11])
 
-	eventfd, err := p9clnt.FOpen("/" + outbufid + "/event", p.ORDWR)
+	eventfd, err := p9clnt.FOpen("/"+outbufid+"/event", p.ORDWR)
 	if err != nil {
 		ctlfd.Close()
 		return false, "", nil, nil
@@ -371,13 +371,13 @@ func FindWin(name string, p9clnt *clnt.Clnt) (string, io.ReadWriteCloser, io.Rea
 			break
 		}
 		line = strings.TrimSuffix(line, "\n")
-		if strings.HasSuffix(line, "+" + name) {
+		if strings.HasSuffix(line, "+"+name) {
 			id := strings.TrimSpace(line[:11])
-			eventfd, err := p9clnt.FOpen("/" + id + "/event", p.ORDWR)
+			eventfd, err := p9clnt.FOpen("/"+id+"/event", p.ORDWR)
 			if err != nil {
 				continue
 			}
-			ctlfd, err := p9clnt.FOpen("/" + id + "/ctl", p.OWRITE)
+			ctlfd, err := p9clnt.FOpen("/"+id+"/ctl", p.OWRITE)
 			if err != nil {
 				return "", nil, nil, err
 			}
@@ -393,7 +393,7 @@ func FindWin(name string, p9clnt *clnt.Clnt) (string, io.ReadWriteCloser, io.Rea
 		return "", nil, nil, err
 	}
 	outbufid := strings.TrimSpace(ctlln[:11])
-	eventfd, err := p9clnt.FOpen("/" + outbufid + "/event", p.ORDWR)
+	eventfd, err := p9clnt.FOpen("/"+outbufid+"/event", p.ORDWR)
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -414,7 +414,7 @@ func YaccoConnect() (*clnt.Clnt, error) {
 }
 
 func SetTag(p9clnt *clnt.Clnt, outbufid string, tagstr string) error {
-	fh, err := p9clnt.FOpen("/" + outbufid + "/tag", p.OWRITE)
+	fh, err := p9clnt.FOpen("/"+outbufid+"/tag", p.OWRITE)
 	if err != nil {
 		return err
 	}

@@ -26,7 +26,8 @@ type Editor struct {
 	confirmDel  bool
 	confirmSave bool
 
-	eventChan chan string
+	eventChan   chan string
+	eventReader util.EventReader
 
 	specialTag          string
 	savedTag            string

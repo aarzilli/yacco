@@ -197,16 +197,11 @@ func (b *Buffer) generateEvent(text []rune, sel util.Sel, eventChan chan string,
 	}
 
 	if sel.S != sel.E {
-		etypec := 'D'
-		util.Fmtevent(eventChan, origin, b.Name == "+Tag", util.EventType(etypec), sel.S, sel.E, 0, "")
+		util.FmteventBase(eventChan, origin, b.Name == "+Tag", util.ET_BODYDEL, sel.S, sel.E, "")
 	}
 
 	if (sel.S == sel.E) || (len(text) != 0) {
-		etypec := 'I'
-		if b.Name == "+Tag" {
-			etypec = unicode.ToLower(etypec)
-		}
-		util.Fmtevent(eventChan, origin, b.Name == "+Tag", util.EventType(etypec), sel.S, sel.S, 0, string(text))
+		util.FmteventBase(eventChan, origin, b.Name == "+Tag", util.ET_BODYINS, sel.S, sel.S, string(text))
 	}
 }
 
