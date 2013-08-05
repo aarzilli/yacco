@@ -466,9 +466,7 @@ func (fr *Frame) setSelectEx(idx, kind, start, end int, disableOther bool) {
 		var s, e int
 		s = start - fr.Top
 		if (s <= len(fr.glyphs)) && (s >= 0) {
-			if s == len(fr.glyphs) {
-				s = s - 1
-			}
+			s = s - 1
 			for ; s > 0; s-- {
 				if fr.glyphs[s].r == '\n' {
 					s++
