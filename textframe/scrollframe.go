@@ -1,6 +1,7 @@
 package textframe
 
 import (
+	"fmt"
 	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
@@ -27,7 +28,7 @@ func (sfr *ScrollFrame) Init(margin int) error {
 	sfr.Fr.R.Min.X += sfr.Width
 	sfr.Fr.Wnd = sfr.Wnd
 	if sfr.Width < 2 {
-		return ScrollFrameErrorNotWideEnough
+		return fmt.Errorf("ScrollFrame not wide enough")
 	}
 	return sfr.Fr.Init(margin)
 }

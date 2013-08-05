@@ -4,6 +4,7 @@ import (
 	"code.google.com/p/freetype-go/freetype"
 	"code.google.com/p/freetype-go/freetype/raster"
 	"code.google.com/p/freetype-go/freetype/truetype"
+	"fmt"
 	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
@@ -96,12 +97,12 @@ func (fr *Frame) Init(margin int) error {
 	// sanity checks
 
 	if len(fr.Colors) < 2 {
-		return FrameErrorNotEnoughColorLines
+		return fmt.Errorf("Not enough color lines")
 	}
 
 	for i, _ := range fr.Colors {
 		if len(fr.Colors[i]) < 2 {
-			return FrameErrorNotEnoughColors(i)
+			return fmt.Errorf("Not enough colors in line %d", i)
 		}
 	}
 
