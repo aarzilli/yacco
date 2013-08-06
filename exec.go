@@ -538,7 +538,7 @@ func GetallCmd(ec ExecContext, arg string) {
 	nerr := 0
 	for _, col := range Wnd.cols.cols {
 		for _, ed := range col.editors {
-			if (ed.bodybuf.Name[0] != '+') && ed.bodybuf.Modified {
+			if ed.bodybuf.Name[0] != '+' {
 				if ed.bodybuf.Modified {
 					t += ed.bodybuf.ShortName() + "\n"
 					nerr++
