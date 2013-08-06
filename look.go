@@ -68,6 +68,7 @@ func lookproc(ec ExecContext) {
 	ch := make(chan string, 5)
 	Wnd.Lock.Lock()
 	if !ec.ed.EnterSpecial(ch, " Look!Quit Look!Prev Look!Again", true) {
+		Wnd.Lock.Unlock()
 		return
 	}
 	Wnd.Lock.Unlock()
