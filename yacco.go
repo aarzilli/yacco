@@ -56,7 +56,10 @@ func realmain() {
 		}
 	} else {
 		dumpDest := getDumpPath(*dumpFlag, false)
-		LoadFrom(dumpDest)
+		if LoadFrom(dumpDest) {
+			Wnd.wnd.SetTitle("Yacco " + dumpDest)
+			AutoDumpPath = dumpDest
+		}
 	}
 
 	Wnd.wnd.FlushImage()
