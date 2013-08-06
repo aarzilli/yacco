@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"github.com/skelterjohn/go.wde"
 	_ "github.com/skelterjohn/go.wde/init"
 	"log"
@@ -16,19 +17,46 @@ var buffers []*buf.Buffer = []*buf.Buffer{}
 var sideChan chan interface{}
 var AutoDumpPath string
 
+var themeFlag = flag.String("t", "", "Theme to use (standard, evening, midnight, bw)")
+var dumpFlag = flag.String("d", "", "Dump to load")
+
 func realmain() {
+	flag.Parse()
+
+	if *themeFlag != "" {
+		switch *themeFlag {
+		default:
+			fallthrough
+		case "standard":
+			config.TheColorScheme = config.AcmeColorScheme
+		case "e", "evening":
+			config.TheColorScheme = config.AcmeEveningColorScheme
+		case "m", "midnight":
+			config.TheColorScheme = config.AcmeMidnightColorScheme
+		case "bw":
+			config.TheColorScheme = config.AcmeBWColorScheme
+		}
+	}
+
 	err := Wnd.Init(640, 480)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
 	Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
-	Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
+	if len(flag.Args()) != 1 {
+		Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
+	}
 
 	wd, _ := os.Getwd()
 
-	for _, arg := range os.Args[1:] {
-		EditFind(wd, arg, false, true)
+	if *dumpFlag == "" {
+		for _, arg := range flag.Args() {
+			EditFind(wd, arg, false, true)
+		}
+	} else {
+		dumpDest := getDumpPath(*dumpFlag, false)
+		LoadFrom(dumpDest)
 	}
 
 	Wnd.wnd.FlushImage()
