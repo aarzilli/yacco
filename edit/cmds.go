@@ -2,14 +2,14 @@ package edit
 
 import (
 	"fmt"
-	"regexp"
+	"yacco/regexp"
 	"yacco/util"
 )
 
 var Warnfn func(msg string)
 var NewJob func(wd, cmd, input string, resultChan chan<- string)
 
-const LOOP_LIMIT = 200
+const LOOP_LIMIT = 2000
 
 func nilcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	ec.Sels[0] = c.rangeaddr.Eval(ec.Buf, atsel)
@@ -68,19 +68,18 @@ func eqcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 
 func scmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
-	re := regexp.MustCompile("(?m)" + c.txtargs[0])
+	ec.Sels[3] = sel
+	re := regexp.Compile(c.txtargs[0], true, false)
 	subs := []rune(c.txtargs[1])
-	end := sel.E
 	first := ec.Buf.EditMark
 	count := 0
 	for {
 		psel := sel.S
-		br := ec.Buf.ReaderFrom(sel.S, end)
-		loc := re.FindReaderIndex(br)
+		loc := re.Match(ec.Buf, sel.S, ec.Sels[3].E, +1)
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}
-		sel = util.Sel{loc[0] + sel.S, loc[1] + sel.S}
+		sel = util.Sel{loc[0], loc[1]}
 		ec.Buf.Replace(subs, &sel, ec.Sels, first, ec.EventChan, util.EO_MOUSE, false)
 		if sel.S != psel {
 			count++
@@ -92,74 +91,78 @@ func scmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 		}
 		first = false
 	}
+	ec.Sels[0] = ec.Sels[3]
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 }
 
 func xcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
-	re := regexp.MustCompile("(?m)" + c.txtargs[0])
-	end := sel.E
+	ec.Sels[3] = sel
+
+	re := regexp.Compile(c.txtargs[0], true, false)
 	count := 0
 	ebn := ec.Buf.EditMarkNext
 	ec.Buf.EditMarkNext = false
+
+	defer func() {
+		ec.Sels[0] = ec.Sels[3]
+		ec.Buf.EditMarkNext = ebn
+		ec.Buf.EditMark = ec.Buf.EditMarkNext
+	}()
+
 	for {
-		oldS := sel.S
-		br := ec.Buf.ReaderFrom(sel.S, end)
-		loc := re.FindReaderIndex(br)
+		loc := re.Match(ec.Buf, sel.S, ec.Sels[3].E, +1)
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}
-		sel = util.Sel{loc[0] + sel.S, loc[1] + sel.S}
+		sel = util.Sel{loc[0], loc[1]}
 		ec.Sels[0] = sel
 		c.body.fn(c.body, sel, ec)
-		if (ec.Sels[0].S == sel.S) && (ec.Sels[0].E == sel.E) {
-			sel.S = sel.E
-		} else {
-			sel.S = ec.Sels[0].E
-		}
-		if sel.S <= oldS {
-			count++
-			if count > LOOP_LIMIT {
-				Warnfn("x/y loop seems stuck\n")
-				return
-			}
+		sel.S = ec.Sels[0].E
+		count++
+		if count > LOOP_LIMIT {
+			Warnfn("x/y loop seems stuck\n")
+			return
 		}
 	}
-	ec.Buf.EditMarkNext = ebn
-	ec.Buf.EditMark = ec.Buf.EditMarkNext
 }
 
 func ycmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
-	re := regexp.MustCompile("(?m)" + c.txtargs[0])
-	end := sel.E
+	ec.Sels[3] = sel
+	re := regexp.Compile(c.txtargs[0], true, false)
 	count := 0
+	ebn := ec.Buf.EditMarkNext
+	ec.Buf.EditMarkNext = false
+
+	defer func() {
+		ec.Sels[0] = ec.Sels[3]
+		ec.Buf.EditMarkNext = ebn
+		ec.Buf.EditMark = ec.Buf.EditMarkNext
+	}()
+
 	for {
-		oldS := sel.S
-		br := ec.Buf.ReaderFrom(sel.S, end)
-		loc := re.FindReaderIndex(br)
+		loc := re.Match(ec.Buf, sel.S, ec.Sels[3].E, +1)
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}
-		sel.E = loc[0] + sel.S
+		sel.E = loc[0]
 		ec.Sels[0] = sel
 		c.body.fn(c.body, sel, ec)
-		sel.S = sel.E
-		if sel.S <= oldS {
-			count++
-			if count > LOOP_LIMIT {
-				Warnfn("x/y loop seems stuck\n")
-				return
-			}
+		sel.S = ec.Sels[0].S + (loc[1] - loc[0])
+		sel.E = sel.S
+		count++
+		if count > LOOP_LIMIT {
+			Warnfn("x/y loop seems stuck\n")
+			return
 		}
 	}
 }
 
 func gcmdfn(inv bool, c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
-	rr := ec.Buf.ReaderFrom(sel.S, sel.E)
-	re := regexp.MustCompile("(?m)" + c.txtargs[0])
-	loc := re.FindReaderIndex(rr)
+	re := regexp.Compile(c.txtargs[0], true, false)
+	loc := re.Match(ec.Buf, sel.S, sel.E, +1)
 	if loc == nil {
 		if inv {
 			c.body.fn(c.body, sel, ec)

@@ -2,9 +2,9 @@ package edit
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
 	"yacco/buf"
+	"yacco/regexp"
 	"yacco/util"
 )
 
@@ -211,51 +211,28 @@ func regexpEval(b *buf.Buffer, sel util.Sel, rstr string, dir int) util.Sel {
 		rstr = rstr[1:]
 		doerr = false
 	}
-	rstr = "(?m)" + rstr
-	re := regexp.MustCompile(rstr)
+	re := regexp.Compile(rstr, true, dir < 0)
 
-	if dir >= 0 {
-		return regexpEvalFwd(b, sel, re, rstr, doerr)
-	} else {
-		return regexpEvalBwd(b, sel, re, rstr, doerr)
+	start := sel.E
+	if dir < 0 {
+		start = sel.S
 	}
 
-}
-
-func regexpEvalFwd(b *buf.Buffer, sel util.Sel, re *regexp.Regexp, rstr string, doerr bool) util.Sel {
-	loc := re.FindReaderIndex(b.ReaderFrom(sel.E, b.Size()))
+	loc := re.Match(b, start, -1, dir)
 	if loc == nil {
 		if doerr {
 			panic(fmt.Errorf("No match found for: %s", rstr))
 		}
 	} else {
-		sel.S = sel.E + loc[0]
-		sel.E = sel.E + loc[1]
-	}
-	return sel
-}
-
-func regexpEvalBwd(b *buf.Buffer, sel util.Sel, re *regexp.Regexp, rstr string, doerr bool) util.Sel {
-	// XXX Awfully inefficient but I don't want to implement a regexp engine
-	s := 0
-	p := sel.S
-	found := false
-	for {
-		loc := re.FindReaderIndex(b.ReaderFrom(s, b.Size()))
-		if loc == nil {
-			if !found && doerr {
-				panic(fmt.Errorf("No match found for: %s", rstr))
-			}
-			return sel
+		if dir >= 0 {
+			sel.S = loc[0]
+			sel.E = loc[1]
 		} else {
-			found = true
-			if loc[0]+s > p {
-				return sel
-			}
-			sel.S = loc[0] + s
-			sel.E = loc[1] + s
+			sel.S = loc[1] + 1
+			sel.E = loc[0] + 1
 		}
 	}
+	return sel
 }
 
 type AddrList struct {

@@ -597,13 +597,15 @@ func SortCmd(ec ExecContext, arg string) {
 
 func UndoCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	if ec.ed == nil {
+	if (ec.ed == nil) || (ec.buf == nil) {
 		return
 	}
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
 	ec.buf.Undo(ec.fr.Sels, false)
-	ec.br.BufferRefresh(ec.ontag)
+	if ec.br != nil {
+		ec.br.BufferRefresh(ec.ontag)
+	}
 }
 
 func ZeroxCmd(ec ExecContext, arg string) {

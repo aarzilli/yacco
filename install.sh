@@ -15,6 +15,6 @@ cat >$1/yacco <<EOF
 source ~/.bash_profile
 export PATH=$1/yaccodir:\$PATH
 export yaccoshell=/usr/local/plan9/bin/rc
-exec $1/yaccodir/yacco \$* >>/tmp/yaccolog
+exec $1/yaccodir/yacco \$*
 EOF
 chmod u+x $1/yacco

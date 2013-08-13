@@ -476,7 +476,7 @@ func (b *Buffer) Tonl(start int, dir int) int {
 
 	i := start
 	if i < 0 {
-		i = 0
+		return 0
 	}
 	if i >= sz {
 		i = sz - 1

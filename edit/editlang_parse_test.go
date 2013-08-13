@@ -5,7 +5,7 @@ import (
 )
 
 func testParsed(t *testing.T, s string, tgt string) {
-	ecmd := parse([]rune(s))
+	ecmd := Parse([]rune(s))
 	o := ecmd.String()
 
 	if o != tgt {
