@@ -1,16 +1,16 @@
-package main;
+package main
 
 import (
-	"syscall"
+	"code.google.com/p/go9p/p"
 	"flag"
-	"io"
 	"fmt"
-	"strings"
+	"io"
 	"os"
 	"os/exec"
-	"time"
+	"strings"
 	"sync"
-	"code.google.com/p/go9p/p"
+	"syscall"
+	"time"
 	"yacco/util"
 )
 
@@ -30,8 +30,8 @@ func startCommand(clean bool, addrfd io.Writer, xdatafd io.Writer, bodyfd io.Wri
 	running = true
 
 	if clean {
-		addrfd.Write([]byte{ ',' })
-		xdatafd.Write([]byte{ 0 })
+		addrfd.Write([]byte{','})
+		xdatafd.Write([]byte{0})
 	}
 	bodyfd.Write([]byte(fmt.Sprintf("# %s\n", strings.Join(args, " "))))
 
@@ -75,7 +75,7 @@ func startCommand(clean bool, addrfd io.Writer, xdatafd io.Writer, bodyfd io.Wri
 		for !done {
 			select {
 			case <-waitChan:
-				bodyfd.Write([]byte{ '~', '\n' })
+				bodyfd.Write([]byte{'~', '\n'})
 				done = true
 				break
 			case <-killChan:
@@ -91,7 +91,7 @@ func startCommand(clean bool, addrfd io.Writer, xdatafd io.Writer, bodyfd io.Wri
 		running = false
 		doneTimeMutex.Unlock()
 
-		addrfd.Write([]byte{ '#', '0' })
+		addrfd.Write([]byte{'#', '0'})
 	}()
 }
 
@@ -116,26 +116,32 @@ func canExecute() bool {
 	doneTimeMutex.Lock()
 	defer doneTimeMutex.Unlock()
 
-	if running { return false }
+	if running {
+		return false
+	}
 	delayEnd := doneTime.Add(time.Duration(*delayPeriod) * time.Second)
 	return time.Now().After(delayEnd)
 }
 
 func LsDir(dirname string) ([]os.FileInfo, error) {
 	dir, err := os.Open(dirname)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	defer dir.Close()
 	return dir.Readdir(-1)
 }
 
 func registerDirectory(inotifyFd int, dirname string, recurse int) {
-	_, err := syscall.InotifyAddWatch(inotifyFd, dirname, syscall.IN_CREATE | syscall.IN_DELETE | syscall.IN_CLOSE_WRITE)
+	_, err := syscall.InotifyAddWatch(inotifyFd, dirname, syscall.IN_CREATE|syscall.IN_DELETE|syscall.IN_CLOSE_WRITE)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Can not add %s to inotify: %v", dirname, err)
 		os.Exit(1)
 	}
 
-	if recurse <= 0 { return }
+	if recurse <= 0 {
+		return
+	}
 
 	dir, err := LsDir(dirname)
 	if err != nil {
@@ -145,13 +151,15 @@ func registerDirectory(inotifyFd int, dirname string, recurse int) {
 
 	for _, cur := range dir {
 		if cur.Mode().IsDir() {
-			if cur.Name()[0] == '.' { continue } // skip hidden directories
-			registerDirectory(inotifyFd, dirname + "/" + cur.Name(), recurse-1)
+			if cur.Name()[0] == '.' {
+				continue
+			} // skip hidden directories
+			registerDirectory(inotifyFd, dirname+"/"+cur.Name(), recurse-1)
 		}
 	}
 }
 
-const BUFSIZE = 2*util.MAX_EVENT_TEXT_LENGTH
+const BUFSIZE = 2 * util.MAX_EVENT_TEXT_LENGTH
 
 func readEvents(eventfd io.ReadWriteCloser, addrfd io.Writer, xdatafd io.Writer, bodyfd io.Writer) {
 	var er util.EventReader
@@ -166,16 +174,16 @@ func readEvents(eventfd io.ReadWriteCloser, addrfd io.Writer, xdatafd io.Writer,
 			fmt.Fprintf(os.Stderr, "Not enough read from event file\n")
 			os.Exit(1)
 		}
-		
+
 		er.Reset()
 		er.Insert(string(buf[:n]))
-		
+
 		for !er.Done() {
 			n, err := eventfd.Read(buf)
 			util.Allergic(debug, err)
 			er.Insert(string(buf[:n]))
 		}
-		
+
 		if ok, perr := er.Valid(); !ok {
 			fmt.Fprintf(os.Stderr, "Error parsing event message(s): %s", perr)
 			continue
@@ -215,26 +223,27 @@ func main() {
 
 	outbufid, ctlfd, eventfd, err := util.FindWin("Watch", p9clnt)
 	util.Allergic(debug, err)
-	bodyfd, err := p9clnt.FOpen("/" + outbufid + "/body", p.OWRITE)
+	bodyfd, err := p9clnt.FOpen("/"+outbufid+"/body", p.OWRITE)
 	util.Allergic(debug, err)
-	addrfd, err := p9clnt.FOpen("/" + outbufid + "/addr", p.OWRITE)
+	addrfd, err := p9clnt.FOpen("/"+outbufid+"/addr", p.OWRITE)
 	util.Allergic(debug, err)
-	xdatafd, err := p9clnt.FOpen("/" + outbufid + "/xdata", p.OWRITE)
+	xdatafd, err := p9clnt.FOpen("/"+outbufid+"/xdata", p.OWRITE)
 	util.Allergic(debug, err)
 
-	_, err = ctlfd.Write([]byte("name +Watch"))
+	wd, _ := os.Getwd()
+	_, err = ctlfd.Write([]byte(fmt.Sprintf("name %s/+Watch", wd)))
 	util.Allergic(debug, err)
 
 	_, err = ctlfd.Write([]byte("dump " + strings.Join(os.Args, " ") + "\n"))
 	util.Allergic(debug, err)
-	wd, _ := os.Getwd()
 	_, err = ctlfd.Write([]byte("dumpdir " + wd + "\n"))
+	util.Allergic(debug, err)
 
 	util.SetTag(p9clnt, outbufid, "Jobs Kill Delete Rerun ")
 
 	_, err = addrfd.Write([]byte(","))
 	util.Allergic(debug, err)
-	xdatafd.Write([]byte{ 0 })
+	xdatafd.Write([]byte{0})
 
 	go readEvents(eventfd, addrfd, xdatafd, bodyfd)
 
@@ -248,15 +257,19 @@ func main() {
 		}
 
 		recdepth := 0
-		if *recurse { recdepth = *depth }
+		if *recurse {
+			recdepth = *depth
+		}
 
 		registerDirectory(inotifyFd, ".", recdepth)
 
-		inotifyBuf := make([]byte, 1024*syscall.SizeofInotifyEvent + 16)
+		inotifyBuf := make([]byte, 1024*syscall.SizeofInotifyEvent+16)
 
 		for {
 			n, err := syscall.Read(inotifyFd, inotifyBuf[0:])
-			if err == io.EOF { break }
+			if err == io.EOF {
+				break
+			}
 			if err != nil {
 				bodyfd.Write([]byte(fmt.Sprintf("Can not read inotify: %v", err)))
 				break
@@ -269,6 +282,6 @@ func main() {
 			}
 		}
 
-		syscall.Close(inotifyFd);
+		syscall.Close(inotifyFd)
 	}
 }
