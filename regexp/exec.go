@@ -101,6 +101,10 @@ func (rx *Regex) Match(b *buf.Buffer, start, end int, dir int) []int {
 		return []int{start, start}
 	}
 
+	if dir == 0 {
+		dir = 1
+	}
+
 	if rxDebug {
 		fmt.Printf("CODE:\n%s\n", rx.String())
 	}

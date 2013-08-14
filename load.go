@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"yacco/config"
-	"yacco/edit"
 	"yacco/util"
+	"yacco/edit"
 )
 
 type LoadRule struct {
@@ -29,6 +29,11 @@ func LoadInit() {
 }
 
 func Load(ec ExecContext, origin int) {
+	defer func() {
+		if ierr := recover(); ierr != nil {
+			fmt.Printf("Error during Load: %v\n", ierr.(error).Error())
+		}
+	}()
 	//println("\nin load")
 	if ec.buf == nil {
 		return
@@ -113,6 +118,11 @@ func expandMatches(str string, matches []string) string {
 }
 
 func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
+	defer func() {
+		if ierr := recover(); ierr != nil {
+			fmt.Printf("Error during Load: %v\n", ierr.(error).Error())
+		}
+	}()
 	action := rule.Action[1:]
 
 	switch rule.Action[0] {
