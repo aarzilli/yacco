@@ -18,3 +18,7 @@ export yaccoshell=/usr/local/plan9/bin/rc
 exec $1/yaccodir/yacco \$*
 EOF
 chmod u+x $1/yacco
+mkdir -p $HOME/.config/yacco/
+cp config/DejaVuSans.ttf $HOME/.config/yacco/
+cp config/luxisr.ttf $HOME/.config/yacco/
+cp config/luximr.ttf $HOME/.config/yacco/

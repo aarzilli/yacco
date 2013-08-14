@@ -13,3 +13,5 @@ def convert(path, name):
 
 convert("config/luxisr.ttf", "luxibytes")
 convert("config/luximr.ttf", "luximonobytes")
+convert("config/DejaVuSans.ttf", "dejabytes")
+convert("config/DejaVuSansMono.ttf", "dejamonobytes")

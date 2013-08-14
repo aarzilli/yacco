@@ -6,6 +6,7 @@ import (
 	"image"
 	"io/ioutil"
 	"strings"
+	"os"
 )
 
 type Font struct {
@@ -20,7 +21,7 @@ func NewFont(dpi, size, lineSpacing float64, fontPath string) (*Font, error) {
 	fontPathV := strings.Split(fontPath, ":")
 	rf := &Font{make([]*truetype.Font, 0, len(fontPathV)), dpi, size, lineSpacing}
 	for _, fontfile := range fontPathV {
-		fontBytes, err := ioutil.ReadFile(fontfile)
+		fontBytes, err := ioutil.ReadFile(os.ExpandEnv(fontfile))
 		if err != nil {
 			return nil, err
 		}
@@ -31,6 +32,14 @@ func NewFont(dpi, size, lineSpacing float64, fontPath string) (*Font, error) {
 		rf.Fonts = append(rf.Fonts, parsedfont)
 	}
 	return rf, nil
+}
+
+func MustNewFont(dpi, size, lineSpacing float64, fontPath string) *Font {
+	r, err := NewFont(dpi, size, lineSpacing, fontPath)
+	if err != nil {
+		panic(err)
+	}
+	return r
 }
 
 func NewFontFromBytes(dpi, size, lineSpacing float64, fontBytes [][]byte) (*Font, error) {

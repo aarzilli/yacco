@@ -126,7 +126,7 @@ func (fr *Frame) lineHeight() raster.Fix32 {
 
 func (fr *Frame) initialInsPoint() raster.Point {
 	gb := fr.Font.Bounds()
-	return raster.Point{raster.Fix32(fr.R.Min.X<<8) + fr.margin, raster.Fix32(fr.R.Min.Y<<8) + raster.Fix32(gb.YMax<<8)}
+	return raster.Point{raster.Fix32(fr.R.Min.X<<8) + fr.margin, raster.Fix32(fr.R.Min.Y<<8) + raster.Fix32(int32(float64(gb.YMax) * fr.Font.Spacing)<<8)}
 }
 
 func (fr *Frame) Clear() {
