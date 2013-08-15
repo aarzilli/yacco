@@ -107,13 +107,18 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 
 // (re)loads buffer from disk
 func (b *Buffer) Reload(sels []util.Sel, create bool) error {
-	infile, err := os.Open(filepath.Join(b.Dir, b.Name))
+	path := filepath.Join(b.Dir, b.Name)
+	infile, err := os.Open(path)
 	if err == nil {
 		defer infile.Close()
 
 		fi, err := infile.Stat()
 		if err != nil {
-			return fmt.Errorf("Couldn't stat file (after opening it?) %s", filepath.Join(b.Dir, b.Name))
+			return fmt.Errorf("Couldn't stat file (after opening it?) %s", path)
+		}
+
+		if fi.IsDir() {
+			return b.reloadDir(sels, infile)
 		}
 
 		if fi.Size() > 10*1024*1024 {
@@ -145,10 +150,40 @@ func (b *Buffer) Reload(sels []util.Sel, create bool) error {
 			b.Modified = true
 			b.ModTime = time.Now()
 		} else {
-			return fmt.Errorf("File doesn't exist: %s", filepath.Join(b.Dir, b.Name))
+			return fmt.Errorf("File doesn't exist: %s", path)
 		}
 	}
 
+	return nil
+}
+
+func (b *Buffer) reloadDir(sels []util.Sel, fh *os.File) error {
+	if b.Name[len(b.Name)-1] != '/' {
+		b.Name = b.Name + "/"
+	}
+	fis, err := fh.Readdir(-1)
+	if err != nil {
+		return err
+	}
+
+	r := make([]string, 0, len(fis))
+	for _, fi := range fis {
+		n := fi.Name()
+		switch {
+		case fi.IsDir():
+			n += "/"
+		case fi.Mode()&os.ModeSymlink != 0:
+			n += "@"
+		case fi.Mode()&0111 != 0:
+			n += "*"
+		}
+		r = append(r, n)
+	}
+
+	b.Replace([]rune(strings.Join(r, "\t")), &util.Sel{0, b.Size()}, sels, true, nil, 0, false)
+
+	b.Modified = false
+	b.ul.Reset()
 	return nil
 }
 

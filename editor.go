@@ -149,6 +149,11 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	}
 	e.top = 0
 
+	if (len(bodybuf.Name) > 0) && (bodybuf.Name[len(bodybuf.Name)-1] == '/') {
+		e.sfr.Fr.Hackflags = e.sfr.Fr.Hackflags | textframe.HF_COLUMNIZE
+		e.sfr.Fr.Hackflags = e.sfr.Fr.Hackflags & ^textframe.HF_MARKSOFTWRAP
+	}
+
 	util.Must(e.sfr.Init(5), "Editor initialization failed")
 	util.Must(e.tagfr.Init(5), "Editor initialization failed")
 

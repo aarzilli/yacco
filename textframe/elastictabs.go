@@ -67,6 +67,38 @@ func (fr *Frame) elasticTabs(padding, tabWidth, bottom, leftMargin, rightMargin,
 
 	set()
 
+	colwrap := -1
+
+	if (len(fieldWidths) == 1) && (fr.Hackflags&HF_COLUMNIZE != 0) {
+		var n int
+
+		for n = len(fieldWidths[0]); n > 0; n-- {
+			newFieldWidth := make([]raster.Fix32, n)
+
+			for i := range newFieldWidth {
+				newFieldWidth[i] = 0
+			}
+
+			for i := 0; i < len(fieldWidths[0]); i++ {
+				j := i % n
+				if fieldWidths[0][i] > newFieldWidth[j] {
+					newFieldWidth[j] = fieldWidths[0][i]
+				}
+			}
+
+			totalWidth := leftMargin
+			for i := range newFieldWidth {
+				totalWidth += newFieldWidth[i]
+			}
+
+			if totalWidth <= rightMargin {
+				colwrap = n
+				fieldWidths[0] = newFieldWidth
+				break
+			}
+		}
+	}
+
 	fr.ins = fr.initialInsPoint()
 
 	/* Reflowing glyphs to respect new field widths */
@@ -89,6 +121,7 @@ func (fr *Frame) elasticTabs(padding, tabWidth, bottom, leftMargin, rightMargin,
 			margin = leftMargin
 
 		case '\t':
+			//TODO: if columnizing replace appropriate '\t' with newline behaviour
 			g.p = fr.ins
 			if bol {
 				curIndent++
@@ -110,9 +143,23 @@ func (fr *Frame) elasticTabs(padding, tabWidth, bottom, leftMargin, rightMargin,
 					g.width = ts - fr.ins.X
 					fr.ins.X = ts
 					found = true
+					curField = i
 					break
 				}
 			}
+
+			if (colwrap > 0) && (curField+1 >= colwrap) {
+				g.p = fr.ins
+				g.width = raster.Fix32(fr.R.Max.X<<8) - fr.ins.X - fr.margin
+				fr.ins.X = leftMargin
+				fr.ins.Y += lh
+				curField = 0
+				curIndent = 0
+				bol = true
+				margin = leftMargin
+				break
+			}
+
 			if !found {
 				toNextCell := tabWidth - ((fr.ins.X - leftMargin) % tabWidth)
 				if toNextCell <= padding/2 {
@@ -122,7 +169,6 @@ func (fr *Frame) elasticTabs(padding, tabWidth, bottom, leftMargin, rightMargin,
 				g.width = toNextCell
 				fr.ins.X += g.width
 			}
-			curField++
 
 		default:
 			fr.ins.X += g.kerning

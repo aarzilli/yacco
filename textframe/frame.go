@@ -36,6 +36,7 @@ const (
 	HF_QUOTEHACK
 	HF_TRUNCATE // truncates instead of softwrapping
 	HF_ELASTICTABS
+	HF_COLUMNIZE
 )
 
 type Frame struct {
@@ -126,7 +127,7 @@ func (fr *Frame) lineHeight() raster.Fix32 {
 
 func (fr *Frame) initialInsPoint() raster.Point {
 	gb := fr.Font.Bounds()
-	return raster.Point{raster.Fix32(fr.R.Min.X<<8) + fr.margin, raster.Fix32(fr.R.Min.Y<<8) + raster.Fix32(int32(float64(gb.YMax) * fr.Font.Spacing)<<8)}
+	return raster.Point{raster.Fix32(fr.R.Min.X<<8) + fr.margin, raster.Fix32(fr.R.Min.Y<<8) + raster.Fix32(int32(float64(gb.YMax)*fr.Font.Spacing)<<8)}
 }
 
 func (fr *Frame) Clear() {
@@ -617,20 +618,12 @@ func (fr *Frame) Redraw(flush bool) {
 			}
 		} else {
 			for j := range fr.Sels {
-				if j > 5 {
+				if j+1 >= len(fr.Colors) {
 					break
 				}
 				if (i+fr.Top >= fr.Sels[j].S) && (i+fr.Top < fr.Sels[j].E) {
 					ssel = j + 1
-					var color *image.Uniform
-					if ssel >= len(fr.Colors) {
-						println("BUG: drawing color for a selection that doesn't exist: ", ssel)
-						color = &fr.Colors[0][0]
-					} else {
-						color = &fr.Colors[ssel][0]
-					}
-
-					fr.redrawSelection(fr.Sels[j].S-fr.Top, fr.Sels[j].E-fr.Top, color)
+					fr.redrawSelection(fr.Sels[j].S-fr.Top, fr.Sels[j].E-fr.Top, &fr.Colors[ssel][0])
 				}
 			}
 		}

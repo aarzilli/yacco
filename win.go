@@ -89,6 +89,8 @@ type activeSelStruct struct {
 	txt  string
 }
 
+const DEFAULT_CURSOR = wde.XTermCursor
+
 var highlightChan = make(chan *buf.Buffer, 10)
 var activeSel activeSelStruct
 var activeEditor *Editor = nil
@@ -110,6 +112,7 @@ func (w *Window) Init(width, height int) (err error) {
 	w.Prop["indentchar"] = "\t"
 	w.Words = []string{}
 	w.wnd, err = wde.NewWindow(width, height)
+	w.wnd.ChangeCursor(DEFAULT_CURSOR)
 	if err != nil {
 		return err
 	}
@@ -208,25 +211,51 @@ func eventUnion(a <-chan interface{}, b <-chan interface{}, hlChan <-chan *buf.B
 func (w *Window) EventLoop() {
 	events := eventUnion(util.FilterEvents(Wnd.wnd.EventChan(), config.AltingList, config.KeyConversion), sideChan, highlightChan)
 	var lastWhere image.Point
+	var curCursor = DEFAULT_CURSOR
+
 	for ei := range events {
 		runtime.Gosched()
 		Wnd.Lock.Lock()
 		switch e := ei.(type) {
 		case wde.CloseEvent:
-			HideCompl("close event")
+			HideCompl()
 			FsQuit()
 
 		case wde.ResizeEvent:
-			HideCompl("resize event")
+			HideCompl()
 			Wnd.Resized()
 
 		case wde.MouseMovedEvent:
-			HideCompl("mouse moved")
+			if DEFAULT_CURSOR != -1 {
+				lp := w.TranslatePosition(e.Where, false)
+				onframe := false
+				if lp.tagfr != nil {
+					onframe = true
+				} else if lp.sfr != nil {
+					if e.Where.In(lp.sfr.Fr.R) {
+						onframe = true
+					}
+				}
+
+				if onframe {
+					if curCursor != DEFAULT_CURSOR {
+						w.wnd.ChangeCursor(DEFAULT_CURSOR)
+						curCursor = DEFAULT_CURSOR
+					}
+				} else {
+					if curCursor != -1 {
+						w.wnd.ChangeCursor(-1)
+						curCursor = -1
+					}
+				}
+			}
+
+			HideCompl()
 			lastWhere = e.Where
 			Wnd.SetTick(e.Where)
 
 		case util.MouseDownEvent:
-			HideCompl("mouse down")
+			HideCompl()
 			lastWhere = e.Where
 			lp := w.TranslatePosition(e.Where, true)
 
@@ -273,7 +302,7 @@ func (w *Window) EventLoop() {
 			}
 
 		case util.WheelEvent:
-			HideCompl("wheel")
+			HideCompl()
 			lp := w.TranslatePosition(e.Where, false)
 			if lp.sfr != nil {
 				if e.Count > 0 {
@@ -288,7 +317,7 @@ func (w *Window) EventLoop() {
 			Wnd.HideAllTicks()
 
 		case wde.MouseEnteredEvent:
-			HideCompl("mouse entered")
+			HideCompl()
 			lastWhere = e.Where
 			Wnd.SetTick(e.Where)
 
@@ -304,7 +333,7 @@ func (w *Window) EventLoop() {
 			}
 
 		case ReplaceMsg:
-			HideCompl("replacemsg")
+			HideCompl()
 			sel := e.sel
 			if sel == nil {
 				if e.append {
@@ -383,7 +412,7 @@ func (w *Window) EventLoop() {
 }
 
 func TagHeight(tagfr *textframe.Frame) int {
-	return int(float64(tagfr.Font.LineHeight())*tagfr.Font.Spacing)
+	return int(float64(tagfr.Font.LineHeight()) * tagfr.Font.Spacing)
 }
 
 func TagSetEditableStart(tagbuf *buf.Buffer) {
@@ -539,7 +568,7 @@ loop:
 			break loop
 
 		case wde.MouseDownEvent:
-			w.wnd.ChangeCursor(-1)
+			w.wnd.ChangeCursor(DEFAULT_CURSOR)
 			return // cancelled
 
 		case wde.MouseDraggedEvent:
@@ -581,7 +610,7 @@ loop:
 		}
 	}
 
-	w.wnd.ChangeCursor(-1)
+	w.wnd.ChangeCursor(DEFAULT_CURSOR)
 
 	if dist(startPos, endPos) < 10 {
 		d := endPos.Sub(ed.r.Min)
@@ -679,7 +708,7 @@ loop:
 			break loop
 
 		case wde.MouseDownEvent:
-			w.wnd.ChangeCursor(-1)
+			w.wnd.ChangeCursor(DEFAULT_CURSOR)
 			return // cancelled
 
 		case wde.MouseDraggedEvent:
@@ -708,7 +737,7 @@ loop:
 		}
 	}
 
-	w.wnd.ChangeCursor(-1)
+	w.wnd.ChangeCursor(DEFAULT_CURSOR)
 }
 
 func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
@@ -719,7 +748,12 @@ func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
 
 	if ec.ed != nil {
 		ec.eventChan = ec.ed.eventChan
-		ec.dir = ec.ed.bodybuf.Dir
+		n := ec.ed.bodybuf.Name
+		if (len(n) > 0) && (n[len(n)-1] == '/') {
+			ec.dir = filepath.Join(ec.ed.bodybuf.Dir, n)
+		} else {
+			ec.dir = ec.ed.bodybuf.Dir
+		}
 	} else {
 		ec.dir = Wnd.tagbuf.Dir
 	}
@@ -774,7 +808,7 @@ func (lp *LogicalPos) bufferRefreshable() BufferRefreshable {
 func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 	switch e.Chord {
 	case "escape":
-		HideCompl("keytype")
+		HideCompl()
 		if (lp.ed != nil) && (lp.ed.specialChan != nil) && lp.ed.specialExitOnReturn {
 			lp.ed.sfr.Fr.VisibleTick = true
 			lp.ed.ExitSpecial()
@@ -782,7 +816,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		}
 
 	case "return":
-		HideCompl("keytype")
+		HideCompl()
 		if (lp.ed != nil) && (lp.ed.specialChan != nil) {
 			if lp.ed.specialExitOnReturn {
 				lp.ed.sfr.Fr.VisibleTick = true
@@ -834,7 +868,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		}
 
 	case "next", "prior":
-		HideCompl("keytype")
+		HideCompl()
 		dir := +1
 		if e.Chord == "prior" {
 			dir = -1
@@ -856,7 +890,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				ec.br.BufferRefresh(ec.ontag)
 				ComplStart(ec)
 			} else {
-				HideCompl("")
+				HideCompl()
 				tch := "\t"
 
 				if (ec.ed != nil) && (ec.ed.bodybuf == ec.buf) {
@@ -882,7 +916,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		ec := lp.asExecContext(true)
 		if fcmd, ok := KeyBindings[e.Chord]; ok {
 			cmd := config.KeyBindings[e.Chord]
-			HideCompl("keytype")
+			HideCompl()
 			//println("Execute command: <" + cmd + ">")
 			if (ec.eventChan == nil) || (cmd == "Delete") {
 				up := -1

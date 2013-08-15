@@ -6,8 +6,8 @@ import (
 	"regexp"
 	"strings"
 	"yacco/config"
-	"yacco/util"
 	"yacco/edit"
+	"yacco/util"
 )
 
 type LoadRule struct {

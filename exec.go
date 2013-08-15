@@ -87,6 +87,10 @@ func init() {
 	cmds["Load"] = LoadCmd
 }
 
+func fakebuf(name string) bool {
+	return (len(name) == 0) || (name[0] == '+') || (name[len(name)-1] == '/')
+}
+
 func IntlCmd(cmd string) (Cmd, string, string, bool) {
 	if len(cmd) <= 0 {
 		return nil, "", "", true
@@ -180,7 +184,7 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 
 func DelCmd(ec ExecContext, arg string, confirmed bool) {
 	exitConfirmed = false
-	if !ec.ed.bodybuf.Modified || (ec.ed.bodybuf.Name[0] == '+') || confirmed || ec.ed.confirmDel {
+	if !ec.ed.bodybuf.Modified || fakebuf(ec.ed.bodybuf.Name) || confirmed || ec.ed.confirmDel {
 		if ec.ed.eventChan != nil {
 			close(ec.ed.eventChan)
 			ec.ed.eventChan = nil
@@ -204,7 +208,7 @@ func DelcolCmd(ec ExecContext, arg string) {
 	t := "The following files have unsaved changes:\n"
 	n := 0
 	for _, ed := range ec.col.editors {
-		if ed.bodybuf.Modified && (ed.bodybuf.Name[0] != '+') && !ed.confirmDel {
+		if ed.bodybuf.Modified && !fakebuf(ed.bodybuf.Name) && !ed.confirmDel {
 			ed.confirmDel = true
 			t += ed.bodybuf.ShortName() + "\n"
 			n++
@@ -280,7 +284,7 @@ func ExitCmd(ec ExecContext, arg string) {
 		if buf == nil {
 			continue
 		}
-		if buf.Modified && (buf.Name[0] != '+') {
+		if buf.Modified && !fakebuf(buf.Name) {
 			t += buf.ShortName() + "\n"
 			n++
 		}
@@ -490,7 +494,7 @@ func PutCmd(ec ExecContext, arg string) {
 		return
 	}
 	ec.ed.confirmDel = false
-	if ec.ed.bodybuf.Name[0] == '+' {
+	if fakebuf(ec.ed.bodybuf.Name) {
 		return
 	}
 
@@ -517,7 +521,7 @@ func PutallCmd(ec ExecContext, arg string) {
 	nerr := 0
 	for _, col := range Wnd.cols.cols {
 		for _, ed := range col.editors {
-			if (ed.bodybuf.Name[0] != '+') && ed.bodybuf.Modified {
+			if !fakebuf(ed.bodybuf.Name) && ed.bodybuf.Modified {
 				err := ed.bodybuf.Put()
 				if err != nil {
 					t += ed.bodybuf.ShortName() + ": " + err.Error() + "\n"
@@ -538,7 +542,7 @@ func GetallCmd(ec ExecContext, arg string) {
 	nerr := 0
 	for _, col := range Wnd.cols.cols {
 		for _, ed := range col.editors {
-			if ed.bodybuf.Name[0] != '+' {
+			if !fakebuf(ed.bodybuf.Name) {
 				if ed.bodybuf.Modified {
 					t += ed.bodybuf.ShortName() + "\n"
 					nerr++

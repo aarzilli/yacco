@@ -94,9 +94,8 @@ func ComplWndEventLoop(eventLoopExit chan struct{}) {
 	//println("Loop done")
 }
 
-func HideCompl(reason string) {
+func HideCompl() {
 	if ComplWnd != nil {
-		//println("HideCompl", reason)
 		ComplWnd.Hide()
 		ComplWnd = nil
 	}
@@ -112,19 +111,19 @@ func ComplDraw(b *image.RGBA, r image.Rectangle) {
 
 func ComplStart(ec ExecContext) {
 	if ec.buf == nil {
-		HideCompl("")
+		HideCompl()
 		return
 	}
 	if (ec.buf.Name == "+Tag") && (ec.ed != nil) && (ec.ed.specialChan != nil) {
-		HideCompl("")
+		HideCompl()
 		return
 	}
 	if ec.fr.Sels[0].S != ec.fr.Sels[0].E {
-		HideCompl("")
+		HideCompl()
 		return
 	}
 	if ec.fr.Sels[0].S == 0 {
-		HideCompl("")
+		HideCompl()
 		return
 	}
 
@@ -174,7 +173,7 @@ func ComplStart(ec ExecContext) {
 	compls = util.Dedup(append(compls, wdCompls...))
 
 	if len(compls) <= 0 {
-		HideCompl("")
+		HideCompl()
 		return
 	}
 

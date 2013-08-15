@@ -6,6 +6,8 @@ import (
 	_ "github.com/skelterjohn/go.wde/init"
 	"log"
 	"os"
+	"strconv"
+	"strings"
 	"yacco/buf"
 	"yacco/config"
 	"yacco/edit"
@@ -19,6 +21,7 @@ var AutoDumpPath string
 
 var themeFlag = flag.String("t", "", "Theme to use (standard, evening, midnight, bw)")
 var dumpFlag = flag.String("d", "", "Dump to load")
+var sizeFlag = flag.String("s", "", "Size of window")
 
 func realmain() {
 	flag.Parse()
@@ -38,7 +41,25 @@ func realmain() {
 		}
 	}
 
-	err := Wnd.Init(640, 480)
+	width := 640
+	height := 480
+
+	if *sizeFlag != "" {
+		v := strings.Split(*sizeFlag, "x")
+		if len(v) == 2 {
+			var err error
+			width, err = strconv.Atoi(v[0])
+			if err != nil {
+				width = 640
+			}
+			height, err = strconv.Atoi(v[1])
+			if err != nil {
+				height = 480
+			}
+		}
+	}
+
+	err := Wnd.Init(width, height)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
