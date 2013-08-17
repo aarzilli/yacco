@@ -110,6 +110,7 @@ func (as *activeSelStruct) Set(lp LogicalPos) {
 func (w *Window) Init(width, height int) (err error) {
 	w.Prop = make(map[string]string)
 	w.Prop["indentchar"] = "\t"
+	w.Prop["font"] = "main"
 	w.Words = []string{}
 	w.wnd, err = wde.NewWindow(width, height)
 	w.wnd.ChangeCursor(DEFAULT_CURSOR)

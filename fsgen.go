@@ -247,7 +247,15 @@ func writePropFn(i int, data []byte, off int64) syscall.Errno {
 	}
 	v := strings.SplitN(string(data), "=", 2)
 	if len(v) >= 2 {
-		ec.buf.Props[v[0]] = v[1]
+		if (v[0] == "font") && (v[1] == "switch") {
+			if ec.buf.Props["font"] == "main" {
+				ec.buf.Props["font"] = "alt"
+			} else {
+				ec.buf.Props["font"] = "main"
+			}
+		} else {
+			ec.buf.Props[v[0]] = v[1]
+		}
 	}
 	if ec.ed != nil {
 		ec.ed.PropTrigger()
@@ -271,7 +279,15 @@ func readMainPropFn(off int64) ([]byte, syscall.Errno) {
 func writeMainPropFn(data []byte, off int64) syscall.Errno {
 	v := strings.SplitN(string(data), "=", 2)
 	if len(v) >= 2 {
-		Wnd.Prop[v[0]] = v[1]
+		if (v[0] == "font") && (v[1] == "switch") {
+			if Wnd.Prop["font"] == "main" {
+				Wnd.Prop["font"] = "alt"
+			} else {
+				Wnd.Prop["font"] = "main"
+			}
+		} else {
+			Wnd.Prop[v[0]] = v[1]
+		}
 	}
 	return 0
 }

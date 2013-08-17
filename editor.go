@@ -149,6 +149,13 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	}
 	e.top = 0
 
+	bodybuf.Props["font"] = Wnd.Prop["font"]
+	if bodybuf.Props["font"] == "alt" {
+		e.sfr.Fr.Font = config.AltFont
+	} else {
+		e.sfr.Fr.Font = config.MainFont
+	}
+
 	if (len(bodybuf.Name) > 0) && (bodybuf.Name[len(bodybuf.Name)-1] == '/') {
 		e.sfr.Fr.Hackflags = e.sfr.Fr.Hackflags | textframe.HF_COLUMNIZE
 		e.sfr.Fr.Hackflags = e.sfr.Fr.Hackflags & ^textframe.HF_MARKSOFTWRAP
