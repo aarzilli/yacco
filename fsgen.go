@@ -40,10 +40,17 @@ func readAddrFn(i int, off int64) ([]byte, syscall.Errno) {
 	if ec == nil {
 		return nil, syscall.ENOENT
 	}
-	ec.buf.Rdlock()
-	defer ec.buf.Rdunlock()
-	ec.buf.FixSel(&ec.fr.Sels[4])
-	t := fmt.Sprintf("%d,%d", ec.fr.Sels[4].S, ec.fr.Sels[4].E)
+
+	t := ""
+	done := make(chan bool)
+	sideChan <- func() {
+		defer func() {
+			done <- true
+		}()
+		ec.buf.FixSel(&ec.fr.Sels[4])
+		t = fmt.Sprintf("%d,%d", ec.fr.Sels[4].S, ec.fr.Sels[4].E)
+	}
+	<-done
 	return []byte(t), 0
 }
 
@@ -52,16 +59,19 @@ func writeAddrFn(i int, data []byte, off int64) (code syscall.Errno) {
 	if ec == nil {
 		return syscall.ENOENT
 	}
-	defer func() {
-		r := recover()
-		if r != nil {
-			fmt.Println("Error evaluating address: ", r)
-			code = syscall.EIO
-		}
-	}()
 
 	addrstr := string(data)
-	ec.fr.Sels[4] = edit.AddrEval(addrstr, ec.buf, ec.fr.Sels[4])
+
+	sideChan <- func() {
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("Error evaluating address: ", r)
+				code = syscall.EIO
+			}
+		}()
+
+		ec.fr.Sels[4] = edit.AddrEval(addrstr, ec.buf, ec.fr.Sels[4])
+	}
 
 	return 0
 }
@@ -72,16 +82,19 @@ func readBodyFn(i int, off int64) ([]byte, syscall.Errno) {
 		return nil, syscall.ENOENT
 	}
 
-	ec.buf.Rdlock()
-	defer ec.buf.Rdunlock()
+	resp := make(chan []byte)
 
-	//XXX - inefficient
-	body := []byte(string(ec.buf.SelectionRunes(util.Sel{0, ec.buf.Size()})))
-	if off < int64(len(body)) {
-		return body[off:], 0
-	} else {
-		return []byte{}, 0
+	sideChan <- func() {
+		//XXX - inefficient
+		body := []byte(string(ec.buf.SelectionRunes(util.Sel{0, ec.buf.Size()})))
+		if off < int64(len(body)) {
+			resp <- body[off:]
+		} else {
+			resp <- []byte{}
+		}
 	}
+
+	return <-resp, 0
 }
 
 func writeBodyFn(i int, data []byte, off int64) syscall.Errno {
@@ -143,19 +156,22 @@ func readDataFn(i int, off int64, stopAtAddrEnd bool) ([]byte, syscall.Errno) {
 		return nil, syscall.ENOENT
 	}
 
-	ec.buf.Rdlock()
-	defer ec.buf.Rdunlock()
+	resp := make(chan []byte)
 
-	e := ec.buf.Size()
-	if stopAtAddrEnd {
-		e = ec.fr.Sels[4].E
+	sideChan <- func() {
+		e := ec.buf.Size()
+		if stopAtAddrEnd {
+			e = ec.fr.Sels[4].E
+		}
+		data := []byte(string(ec.buf.SelectionRunes(util.Sel{ec.fr.Sels[4].S, e})))
+		if off < int64(len(data)) {
+			resp <- data[off:]
+		} else {
+			resp <- []byte{}
+		}
 	}
-	data := []byte(string(ec.buf.SelectionRunes(util.Sel{ec.fr.Sels[4].S, e})))
-	if off < int64(len(data)) {
-		return data[off:], 0
-	} else {
-		return []byte{}, 0
-	}
+
+	return <-resp, 0
 }
 
 func writeDataFn(i int, data []byte, off int64) syscall.Errno {
@@ -195,16 +211,18 @@ func readTagFn(i int, off int64) ([]byte, syscall.Errno) {
 		return nil, syscall.ENOENT
 	}
 
-	Wnd.Lock.Lock()
-	defer Wnd.Lock.Unlock()
+	resp := make(chan []byte)
 
-	body := []byte(string(ec.ed.tagbuf.SelectionRunes(util.Sel{0, ec.ed.tagbuf.Size()})))
-	if off < int64(len(body)) {
-		return body[off:], 0
-	} else {
-		return []byte{}, 0
+	sideChan <- func() {
+		body := []byte(string(ec.ed.tagbuf.SelectionRunes(util.Sel{0, ec.ed.tagbuf.Size()})))
+		if off < int64(len(body)) {
+			resp <- body[off:]
+		} else {
+			resp <- []byte{}
+		}
 	}
-	return nil, syscall.ENOSYS
+
+	return <-resp, 0
 }
 
 func writeTagFn(i int, data []byte, off int64) syscall.Errno {
@@ -213,10 +231,9 @@ func writeTagFn(i int, data []byte, off int64) syscall.Errno {
 		return syscall.ENOENT
 	}
 
-	Wnd.Lock.Lock()
-	defer Wnd.Lock.Unlock()
-
-	ec.ed.tagbuf.Replace([]rune(string(data)), &util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}, ec.ed.tagfr.Sels, true, ec.eventChan, util.EO_BODYTAG, false)
+	sideChan <- func() {
+		ec.ed.tagbuf.Replace([]rune(string(data)), &util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}, ec.ed.tagfr.Sels, true, ec.eventChan, util.EO_BODYTAG, false)
+	}
 
 	return 0
 }

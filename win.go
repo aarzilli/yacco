@@ -407,6 +407,10 @@ func (w *Window) EventLoop() {
 				e.ec.fr.Sels[2] = util.Sel{sp, ep}
 				Load(e.ec, pp)
 			}
+
+		case func():
+			e()
+
 		}
 		Wnd.Lock.Unlock()
 	}

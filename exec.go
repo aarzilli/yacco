@@ -798,6 +798,9 @@ func CompileCmd(cmdstr string) func(ec ExecContext) {
 		pgm := edit.Parse([]rune(arg))
 		return func(ec ExecContext) {
 			defer execGuard()
+			if (ec.ed == nil) || (ec.fr == nil) {
+				return
+			}
 			edc := edit.EditContext{
 				Buf:       ec.buf,
 				Sels:      ec.fr.Sels,

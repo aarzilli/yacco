@@ -5,8 +5,8 @@ import (
 	"code.google.com/p/freetype-go/freetype/truetype"
 	"image"
 	"io/ioutil"
-	"strings"
 	"os"
+	"strings"
 )
 
 type Font struct {

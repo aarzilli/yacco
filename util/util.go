@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -313,6 +314,15 @@ func Allergic(debug bool, err error) {
 	}
 }
 
+type BufferConn struct {
+	Id      string
+	CtlFd   *clnt.File
+	EventFd *clnt.File
+	BodyFd  *clnt.File
+	AddrFd  *clnt.File
+	XDataFd *clnt.File
+}
+
 func read(fd io.Reader) (string, error) {
 	b := make([]byte, 1024)
 	n, err := fd.Read(b)
@@ -322,7 +332,7 @@ func read(fd io.Reader) (string, error) {
 	return string(b[:n]), nil
 }
 
-func findWinRestored(name string, p9clnt *clnt.Clnt) (bool, string, io.ReadWriteCloser, io.ReadWriteCloser) {
+func findWinRestored(name string, p9clnt *clnt.Clnt) (bool, string, *clnt.File, *clnt.File) {
 	if os.Getenv("bd") == "" {
 		return false, "", nil, nil
 	}
@@ -352,14 +362,52 @@ func findWinRestored(name string, p9clnt *clnt.Clnt) (bool, string, io.ReadWrite
 	return true, outbufid, ctlfd, eventfd
 }
 
-func FindWin(name string, p9clnt *clnt.Clnt) (string, io.ReadWriteCloser, io.ReadWriteCloser, error) {
+func makeBufferConn(p9clnt *clnt.Clnt, id string, ctlfd, eventfd *clnt.File) (*BufferConn, error) {
+	bodyfd, err := p9clnt.FOpen("/"+id+"/body", p.ORDWR)
+	if err != nil {
+		return nil, err
+	}
+	addrfd, err := p9clnt.FOpen("/"+id+"/addr", p.ORDWR)
+	if err != nil {
+		return nil, err
+	}
+	xdatafd, err := p9clnt.FOpen("/"+id+"/xdata", p.ORDWR)
+	if err != nil {
+		return nil, err
+	}
+
+	return &BufferConn{
+		id,
+		ctlfd,
+		eventfd,
+		bodyfd,
+		addrfd,
+		xdatafd,
+	}, nil
+}
+
+func OpenBufferConn(p9clnt *clnt.Clnt, id string) (*BufferConn, error) {
+	ctlfd, err := p9clnt.FOpen("/"+id+"/ctl", p.ORDWR)
+	if err != nil {
+		return nil, err
+	}
+
+	eventfd, err := p9clnt.FOpen("/"+id+"/event", p.ORDWR)
+	if err != nil {
+		return nil, err
+	}
+
+	return makeBufferConn(p9clnt, id, ctlfd, eventfd)
+}
+
+func FindWin(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
 	if ok, outbufid, ctlfd, eventfd := findWinRestored(name, p9clnt); ok {
-		return outbufid, ctlfd, eventfd, nil
+		return makeBufferConn(p9clnt, outbufid, ctlfd, eventfd)
 	}
 
 	fh, err := p9clnt.FOpen("/index", p.OREAD)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, err
 	}
 	defer fh.Close()
 
@@ -379,25 +427,25 @@ func FindWin(name string, p9clnt *clnt.Clnt) (string, io.ReadWriteCloser, io.Rea
 			}
 			ctlfd, err := p9clnt.FOpen("/"+id+"/ctl", p.OWRITE)
 			if err != nil {
-				return "", nil, nil, err
+				return nil, err
 			}
-			return id, ctlfd, eventfd, nil
+			return makeBufferConn(p9clnt, id, ctlfd, eventfd)
 		}
 	}
 	ctlfd, err := p9clnt.FCreate("/new/ctl", 0666, p.ORDWR)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, err
 	}
 	ctlln, err := read(ctlfd)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, err
 	}
 	outbufid := strings.TrimSpace(ctlln[:11])
 	eventfd, err := p9clnt.FOpen("/"+outbufid+"/event", p.ORDWR)
 	if err != nil {
-		return "", nil, nil, err
+		return nil, err
 	}
-	return outbufid, ctlfd, eventfd, nil
+	return makeBufferConn(p9clnt, outbufid, ctlfd, eventfd)
 }
 
 func YaccoConnect() (*clnt.Clnt, error) {
@@ -424,4 +472,42 @@ func SetTag(p9clnt *clnt.Clnt, outbufid string, tagstr string) error {
 		return err
 	}
 	return nil
+}
+
+func (buf *BufferConn) ReadAddr() ([]int, error) {
+	b := make([]byte, 1024)
+	n, err := buf.AddrFd.ReadAt(b, 0)
+	if err != nil {
+		return nil, err
+	}
+	str := string(b[:n])
+	v := strings.Split(str, ",")
+	iv := []int{0, 0}
+	iv[0], err = strconv.Atoi(v[0])
+	if err != nil {
+		return nil, err
+	}
+	iv[1], err = strconv.Atoi(v[1])
+	if err != nil {
+		return nil, err
+	}
+	return iv, nil
+}
+
+func (buf *BufferConn) ReadXData() ([]byte, error) {
+	b := make([]byte, 1024)
+	r := []byte{}
+	start := int64(0)
+	for {
+		n, err := buf.XDataFd.ReadAt(b, start)
+		if n == 0 {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		start += int64(n)
+		r = append(r, b[:n]...)
+	}
+	return r, nil
 }

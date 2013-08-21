@@ -1,7 +1,6 @@
 package main
 
 import (
-	"code.google.com/p/go9p/p"
 	"flag"
 	"fmt"
 	"io"
@@ -26,38 +25,38 @@ var doneTime time.Time
 var running bool
 var killChan = make(chan bool, 0)
 
-func startCommand(clean bool, addrfd io.Writer, xdatafd io.Writer, bodyfd io.Writer) {
+func startCommand(clean bool, buf *util.BufferConn) {
 	running = true
 
 	if clean {
-		addrfd.Write([]byte{','})
-		xdatafd.Write([]byte{0})
+		buf.AddrFd.Write([]byte{','})
+		buf.XDataFd.Write([]byte{0})
 	}
-	bodyfd.Write([]byte(fmt.Sprintf("# %s\n", strings.Join(args, " "))))
+	buf.BodyFd.Write([]byte(fmt.Sprintf("# %s\n", strings.Join(args, " "))))
 
 	go func() {
 		cmd := exec.Command(args[0], args[1:]...)
 
 		stdout, err := cmd.StdoutPipe()
 		if err != nil {
-			bodyfd.Write([]byte(fmt.Sprintf("Could not get stdout of command: %v", err)))
+			buf.BodyFd.Write([]byte(fmt.Sprintf("Could not get stdout of command: %v", err)))
 			return
 		}
 
 		stderr, err := cmd.StderrPipe()
 		if err != nil {
-			bodyfd.Write([]byte(fmt.Sprintf("Could not get stderr of command: %v", err)))
+			buf.BodyFd.Write([]byte(fmt.Sprintf("Could not get stderr of command: %v", err)))
 			return
 		}
 
 		err = cmd.Start()
 		if err != nil {
-			bodyfd.Write([]byte(fmt.Sprintf("Could not execute command: %v", err)))
+			buf.BodyFd.Write([]byte(fmt.Sprintf("Could not execute command: %v", err)))
 			return
 		}
 
-		go io.Copy(bodyfd, stdout)
-		go io.Copy(bodyfd, stderr)
+		go io.Copy(buf.BodyFd, stdout)
+		go io.Copy(buf.BodyFd, stderr)
 
 		waitChan := make(chan bool, 0)
 		go func() {
@@ -75,12 +74,12 @@ func startCommand(clean bool, addrfd io.Writer, xdatafd io.Writer, bodyfd io.Wri
 		for !done {
 			select {
 			case <-waitChan:
-				bodyfd.Write([]byte{'~', '\n'})
+				buf.BodyFd.Write([]byte{'~', '\n'})
 				done = true
 				break
 			case <-killChan:
 				if err := cmd.Process.Kill(); err != nil {
-					bodyfd.Write([]byte("Error killing process"))
+					buf.BodyFd.Write([]byte("Error killing process"))
 				}
 				break
 			}
@@ -91,7 +90,7 @@ func startCommand(clean bool, addrfd io.Writer, xdatafd io.Writer, bodyfd io.Wri
 		running = false
 		doneTimeMutex.Unlock()
 
-		addrfd.Write([]byte{'#', '0'})
+		buf.AddrFd.Write([]byte{'#', '0'})
 	}()
 }
 
@@ -161,13 +160,13 @@ func registerDirectory(inotifyFd int, dirname string, recurse int) {
 
 const BUFSIZE = 2 * util.MAX_EVENT_TEXT_LENGTH
 
-func readEvents(eventfd io.ReadWriteCloser, addrfd io.Writer, xdatafd io.Writer, bodyfd io.Writer) {
+func readEvents(buf *util.BufferConn) {
 	var er util.EventReader
-	buf := make([]byte, BUFSIZE)
+	rbuf := make([]byte, BUFSIZE)
 	for {
-		n, err := eventfd.Read(buf)
+		n, err := buf.EventFd.Read(rbuf)
 		if err != nil {
-			eventfd.Close()
+			buf.EventFd.Close()
 			os.Exit(0)
 		}
 		if n < 2 {
@@ -176,12 +175,12 @@ func readEvents(eventfd io.ReadWriteCloser, addrfd io.Writer, xdatafd io.Writer,
 		}
 
 		er.Reset()
-		er.Insert(string(buf[:n]))
+		er.Insert(string(rbuf[:n]))
 
 		for !er.Done() {
-			n, err := eventfd.Read(buf)
+			n, err := buf.EventFd.Read(rbuf)
 			util.Allergic(debug, err)
-			er.Insert(string(buf[:n]))
+			er.Insert(string(rbuf[:n]))
 		}
 
 		if ok, perr := er.Valid(); !ok {
@@ -194,14 +193,14 @@ func readEvents(eventfd io.ReadWriteCloser, addrfd io.Writer, xdatafd io.Writer,
 			arg, _ := er.Text(nil, nil, nil)
 			if arg == "Rerun" {
 				if canExecute() {
-					startCommand(true, addrfd, xdatafd, bodyfd)
+					startCommand(true, buf)
 				}
 			} else {
-				err := er.SendBack(eventfd)
+				err := er.SendBack(buf.EventFd)
 				util.Allergic(debug, err)
 			}
 		case util.ET_TAGLOAD, util.ET_BODYLOAD:
-			err := er.SendBack(eventfd)
+			err := er.SendBack(buf.EventFd)
 			util.Allergic(debug, err)
 		}
 	}
@@ -221,33 +220,27 @@ func main() {
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)
 
-	outbufid, ctlfd, eventfd, err := util.FindWin("Watch", p9clnt)
-	util.Allergic(debug, err)
-	bodyfd, err := p9clnt.FOpen("/"+outbufid+"/body", p.OWRITE)
-	util.Allergic(debug, err)
-	addrfd, err := p9clnt.FOpen("/"+outbufid+"/addr", p.OWRITE)
-	util.Allergic(debug, err)
-	xdatafd, err := p9clnt.FOpen("/"+outbufid+"/xdata", p.OWRITE)
+	buf, err := util.FindWin("Watch", p9clnt)
 	util.Allergic(debug, err)
 
 	wd, _ := os.Getwd()
-	_, err = ctlfd.Write([]byte(fmt.Sprintf("name %s/+Watch", wd)))
+	_, err = buf.CtlFd.Write([]byte(fmt.Sprintf("name %s/+Watch", wd)))
 	util.Allergic(debug, err)
 
-	_, err = ctlfd.Write([]byte("dump " + strings.Join(os.Args, " ") + "\n"))
+	_, err = buf.CtlFd.Write([]byte("dump " + strings.Join(os.Args, " ") + "\n"))
 	util.Allergic(debug, err)
-	_, err = ctlfd.Write([]byte("dumpdir " + wd + "\n"))
+	_, err = buf.CtlFd.Write([]byte("dumpdir " + wd + "\n"))
 	util.Allergic(debug, err)
 
-	util.SetTag(p9clnt, outbufid, "Jobs Kill Delete Rerun ")
+	util.SetTag(p9clnt, buf.Id, "Jobs Kill Delete Rerun ")
 
-	_, err = addrfd.Write([]byte(","))
+	_, err = buf.AddrFd.Write([]byte(","))
 	util.Allergic(debug, err)
-	xdatafd.Write([]byte{0})
+	buf.XDataFd.Write([]byte{0})
 
-	go readEvents(eventfd, addrfd, xdatafd, bodyfd)
+	go readEvents(buf)
 
-	startCommand(false, addrfd, xdatafd, bodyfd)
+	startCommand(false, buf)
 
 	for {
 		inotifyFd, err := syscall.InotifyInit()
@@ -271,13 +264,13 @@ func main() {
 				break
 			}
 			if err != nil {
-				bodyfd.Write([]byte(fmt.Sprintf("Can not read inotify: %v", err)))
+				buf.BodyFd.Write([]byte(fmt.Sprintf("Can not read inotify: %v", err)))
 				break
 			}
 
 			if n > syscall.SizeofInotifyEvent {
 				if canExecute() {
-					startCommand(true, addrfd, xdatafd, bodyfd)
+					startCommand(true, buf)
 				}
 			}
 		}
