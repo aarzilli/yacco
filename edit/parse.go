@@ -15,15 +15,16 @@ type cmdDef struct {
 	bodyarg  bool
 	optxtarg bool
 	restargs bool
+	escarg bool
 	fn       func(c *cmd, atsel util.Sel, ec EditContext)
 }
 
 var commands = map[rune]cmdDef{
-	'a': cmdDef{txtargs: 1, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(+1, c, atsel, ec) }},
-	'c': cmdDef{txtargs: 1, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(0, c, atsel, ec) }},
-	'i': cmdDef{txtargs: 1, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(-1, c, atsel, ec) }},
+	'a': cmdDef{txtargs: 1, escarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(+1, c, atsel, ec) }},
+	'c': cmdDef{txtargs: 1, escarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(0, c, atsel, ec) }},
+	'i': cmdDef{txtargs: 1, escarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(-1, c, atsel, ec) }},
 	'd': cmdDef{txtargs: 0, fn: func(c *cmd, atsel util.Sel, ec EditContext) { c.txtargs = []string{""}; inscmdfn(0, c, atsel, ec) }},
-	's': cmdDef{txtargs: 2, sarg: true, fn: scmdfn},
+	's': cmdDef{txtargs: 2, escarg: true, sarg: true, fn: scmdfn},
 	'm': cmdDef{txtargs: 0, addrarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { mtcmdfn(true, c, atsel, ec) }},
 	't': cmdDef{txtargs: 0, addrarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { mtcmdfn(false, c, atsel, ec) }},
 	'p': cmdDef{txtargs: 0, fn: pcmdfn},
@@ -113,7 +114,7 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*cmd, []run
 			rest = rest[1:]
 			for i := 0; i < theCmdDef.txtargs; i++ {
 				var arg string
-				arg, rest = readDelim(rest, endr)
+				arg, rest = readDelim(rest, endr, theCmdDef.escarg && (i == theCmdDef.txtargs-1))
 				r.txtargs = append(r.txtargs, arg)
 				rest = skipSpaces(rest)
 			}
@@ -182,7 +183,7 @@ func readAddressTok(pgm []rune) (addrTok, []rune) {
 		return addrTok(string([]rune{pgm[0]})), pgm[1:]
 
 	case '/', '?': // regexp
-		rx, rest := readDelim(pgm[1:], pgm[0])
+		rx, rest := readDelim(pgm[1:], pgm[0], false)
 		return addrTok(fmt.Sprintf("%c%s%c", pgm[0], rx, pgm[0])), rest
 
 	case '#':
@@ -211,7 +212,7 @@ func readNumber(rest []rune) (string, []rune) {
 	return string(rest), []rune{}
 }
 
-func readDelim(pgm []rune, endr rune) (string, []rune) {
+func readDelim(pgm []rune, endr rune, unescape bool) (string, []rune) {
 	r := []rune{}
 	escaping := false
 	for i := 0; i < len(pgm); i++ {
@@ -228,8 +229,28 @@ func readDelim(pgm []rune, endr rune) (string, []rune) {
 			if pgm[i] == endr {
 				r = append(r, endr)
 			} else {
-				r = append(r, '\\')
-				r = append(r, pgm[i])
+				if !unescape {
+					r = append(r, '\\')
+					r = append(r, pgm[i])
+				} else {
+					switch pgm[i] {
+					case 'a':
+						r = append(r, '\a')
+					case 'f':
+						r = append(r, '\f')
+					case 't':
+						r = append(r, '\t')
+					case 'n':
+						r = append(r, '\n')
+					case 'r':
+						r = append(r, '\r')
+					case 'v':
+						r = append(r, '\v')
+					default:
+						r = append(r, '\\')
+						r = append(r, pgm[i])
+					}
+				}
 			}
 			escaping = false
 		}
