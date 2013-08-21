@@ -265,12 +265,16 @@ func EditCmd(ec ExecContext, arg string) {
 	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
 		return
 	}
+	var pj func() = nil
+	if ec.ed != nil {
+		pj = ec.ed.PushJump
+	}
 
 	edc := edit.EditContext{
 		Buf:       ec.buf,
 		Sels:      ec.fr.Sels,
 		EventChan: ec.eventChan,
-		PushJump:  ec.ed.PushJump,
+		PushJump:  pj,
 	}
 
 	edit.Edit(arg, edc)
@@ -798,14 +802,21 @@ func CompileCmd(cmdstr string) func(ec ExecContext) {
 		pgm := edit.Parse([]rune(arg))
 		return func(ec ExecContext) {
 			defer execGuard()
-			if (ec.ed == nil) || (ec.fr == nil) {
+
+			if (ec.buf == nil) || (ec.fr == nil) {
 				return
 			}
+
+			var pj func() = nil
+			if ec.ed != nil {
+				pj = ec.ed.PushJump
+			}
+
 			edc := edit.EditContext{
 				Buf:       ec.buf,
 				Sels:      ec.fr.Sels,
 				EventChan: ec.eventChan,
-				PushJump:  ec.ed.PushJump,
+				PushJump:  pj,
 			}
 			pgm.Exec(edc)
 			ec.br.BufferRefresh(ec.ontag)
