@@ -147,6 +147,7 @@ func LoadFrom(dumpDest string) bool {
 		}
 		if buffers[i].RefCount == 0 {
 			FsRemoveBuffer(i)
+			buffers[i] = nil
 		}
 	}
 

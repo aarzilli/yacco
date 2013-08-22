@@ -19,6 +19,7 @@ func FsQuit() {
 	for i := range jobs {
 		jobKill(i)
 	}
+	os.Exit(0)
 }
 
 func FsRemoveBuffer(n int) {
