@@ -21,3 +21,8 @@ cd -
 cd extra/Watch
 go build
 cd -
+
+# building y9p
+cd extra/y9p
+go build
+cd -

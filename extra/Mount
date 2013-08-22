@@ -1,0 +1,5 @@
+#!/bin/bash
+
+mkdir -p $1
+p9fuse $1
+

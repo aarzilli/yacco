@@ -1,8 +1,8 @@
 #!/bin/bash
 
 ic="\t"
-if [ "x$bd" != "x" ]; then
-	ic=`cat $bd/prop | grep "^indentchar" | cut -d= -f2-`
+if [ "x$bi" != "x" ]; then
+	ic=`y9p read prop | grep "^indentchar" | cut -d= -f2-`
 fi
 
 sed "s/^\($ic\|  \)//"

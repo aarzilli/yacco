@@ -2,15 +2,12 @@
 
 import os
 import sys
+from subprocess import Popen, PIPE
+
+def send(s):
+	p = Popen([ "y9p", "write", "prop" ], shell=False, stdin=PIPE)
+	p.communicate(s)
 
 arg = sys.argv[1] if len(sys.argv) > 1 else "switch"
 
-if os.environ["bd"] != "":
-	fh = file(os.environ["bd"] + "/prop", "a")
-	fh.write("font=" + arg)
-	fh.close()
-elif os.environ["yd"] != "":
-	fh = file(os.environ["yd"] + "/prop", "a")
-	fh.write("font=" + arg)
-	fh.close()
-
+send("font=" + arg)

@@ -323,6 +323,14 @@ type BufferConn struct {
 	XDataFd *clnt.File
 }
 
+func (buf *BufferConn) Close() {
+	buf.CtlFd.Close()
+	buf.EventFd.Close()
+	buf.BodyFd.Close()
+	buf.AddrFd.Close()
+	buf.XDataFd.Close()
+}
+
 func read(fd io.Reader) (string, error) {
 	b := make([]byte, 1024)
 	n, err := fd.Read(b)
@@ -347,7 +355,7 @@ func findWinRestored(name string, p9clnt *clnt.Clnt) (bool, string, *clnt.File, 
 		ctlfd.Close()
 		return false, "", nil, nil
 	}
-	if !strings.HasSuffix(strings.TrimSpace(ctlln), "+"+name) {
+	if !strings.HasSuffix(strings.TrimSpace(ctlln), name) {
 		return false, "", nil, nil
 	}
 
@@ -401,6 +409,10 @@ func OpenBufferConn(p9clnt *clnt.Clnt, id string) (*BufferConn, error) {
 }
 
 func FindWin(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
+	return FindWinEx("+" + name, p9clnt)
+}
+
+func FindWinEx(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
 	if ok, outbufid, ctlfd, eventfd := findWinRestored(name, p9clnt); ok {
 		return makeBufferConn(p9clnt, outbufid, ctlfd, eventfd)
 	}
@@ -419,7 +431,7 @@ func FindWin(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
 			break
 		}
 		line = strings.TrimSuffix(line, "\n")
-		if strings.HasSuffix(line, "+"+name) {
+		if strings.HasSuffix(line, name) {
 			id := strings.TrimSpace(line[:11])
 			eventfd, err := p9clnt.FOpen("/"+id+"/event", p.ORDWR)
 			if err != nil {

@@ -1,33 +1,38 @@
 #!/usr/bin/env python
 
-import os
 import sys
+import os
+import string
+from subprocess import Popen, PIPE
 
-indent = ""
+def send(s):
+	p = Popen([ "y9p", "write", "prop" ], shell=False, stdin=PIPE)
+	p.communicate(s)
 
-if sys.argv[1] == "off":
-	fh = file(os.environ["bd"] + "/prop", "a")
-	fh.write("indent=off")
-	fh.close()
-	exit()
+cmd = ""
 
-fh = file(os.environ["bd"] + "/prop", "a")
-fh.write("indent=on")
-fh.close()
+if len(sys.argv) >= 2:
+	cmd = sys.argv[1]
 
-if sys.argv[1] == "on":
-	exit()
-
-if sys.argv[1][0] == 's':
-	indent = ' '  * int(sys.argv[1][1;])
-elif sys.argv[1][0] == 't':
-	indent = '\t' * int(sys.argv[1][1:])
-
-if os.environ["bd"] != "":
-	fh = file(os.environ["bd"] + "/prop", "a")
-	fh.write("indentchar=" + indent)
-	fh.close()
-elif os.environ["yd"] != "":
-	fh = file)os.environ["yd"] + "/prop", "a")
-	fh.write("indentchar=" + indent)
-	fh.close()
+if cmd == "":
+	p = Popen([ "y9p", "read", "prop" ], shell=False, stdout=PIPE)
+	out, err = p.communicate()
+	curval = "off"
+	for line in out.split("\n"):
+		if line.startswith('indent='):
+			curval = line[len('indent='):]
+			
+	newval = "on" if curval != "on" else "off"
+	send("indent=" + newval)
+elif cmd == "on":
+	send("indent=on")
+elif cmd == "off":
+	send("indent=off")
+elif (len(cmd) > 0) and (cmd[0] == 't'):
+	ic = '\t' * string.atoi(cmd[1:])
+	send("indentchar=" + ic)
+elif (len(cmd) > 0) and (cmd[0] == 's'):
+	ic = ' ' * string.atoi(cmd[1:])
+	send("indentchar=" + ic)
+else:
+	print "Wrong command argument to Indent"

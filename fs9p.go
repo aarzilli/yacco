@@ -23,6 +23,7 @@ func fs9PInit() {
 	}
 
 	p9ListenAddr = il.Addr().String()
+	os.Setenv("yp9", p9ListenAddr)
 
 	user := p.OsUsers.Uid2User(os.Geteuid())
 	p9root = new(srv.File)

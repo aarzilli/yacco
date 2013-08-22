@@ -44,6 +44,8 @@ func realmain() {
 	width := 640
 	height := 480
 
+	os.Setenv("TERM", "ascii")
+
 	if *sizeFlag != "" {
 		v := strings.Split(*sizeFlag, "x")
 		if len(v) == 2 {

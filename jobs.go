@@ -54,8 +54,6 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 		job.cmd = exec.Command(os.Getenv("SHELL"), "-c", cmd)
 	}
 
-	os.Setenv("yd", fsDir)
-	os.Setenv("yp9", p9ListenAddr)
 	if i < 0 {
 		os.Setenv("bd", "")
 		os.Setenv("bi", "")

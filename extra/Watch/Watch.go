@@ -219,6 +219,7 @@ func main() {
 
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)
+	defer p9clnt.Unmount()
 
 	buf, err := util.FindWin("Watch", p9clnt)
 	util.Allergic(debug, err)
