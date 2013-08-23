@@ -80,7 +80,7 @@ var stratostundora = mix(color.RGBA{0x00, 0x00, 0x44, 0xff}, color.RGBA{0x44, 0x
 var AcmeEveningColorScheme = ColorScheme{
 	WindowBG: *image.Black,
 
-	Border:    *image.White,
+	Border:    *image.Black,
 	Scrollbar: *image.NewUniform(color.RGBA{153, 153, 76, 0xff}),
 
 	EditorPlain:               []image.Uniform{*image.Black, *image.White, *DGreygreen, *DPalegreyblue},

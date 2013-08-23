@@ -240,7 +240,7 @@ func (e *Editor) Redraw() {
 	e.tagfr.Redraw(false)
 	e.sfr.Redraw(false)
 
-	// draw two-pixel border
+	// draw two-pixel border at the top and at the right of the editor
 	border := e.r
 	border.Max.Y = border.Min.Y + 2
 	drawingFuncs.DrawFillSrc(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.Border)
