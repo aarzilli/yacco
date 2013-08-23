@@ -168,7 +168,7 @@ func (fh *NewP9) Create(fid *srv.FFid, name string, perm uint32) (*srv.File, err
 	}
 
 	if !valid {
-		return nil, &p.Error{ "Not a valid name", p.EPERM }
+		return nil, &p.Error{"Not a valid name", p.EPERM}
 	}
 
 	Wnd.Lock.Lock()
@@ -176,13 +176,13 @@ func (fh *NewP9) Create(fid *srv.FFid, name string, perm uint32) (*srv.File, err
 
 	ed, err := HeuristicOpen("+New", false, true)
 	if err != nil {
-		return nil, &p.Error{ err.Error(), p.EIO }
+		return nil, &p.Error{err.Error(), p.EIO}
 	}
 
 	bufn := fmt.Sprintf("%d", bufferIndex(ed.bodybuf))
 	bufdir := p9root.Find(bufn)
 	if bufdir == nil {
-		return nil, &p.Error{ fmt.Sprintf("Could not find buffer %d: %s", bufn, err.Error()), p.EIO }
+		return nil, &p.Error{fmt.Sprintf("Could not find buffer %d: %s", bufn, err.Error()), p.EIO}
 	}
 
 	file := bufdir.Find(name)
@@ -226,7 +226,7 @@ type ReadWriteExclP9 struct {
 
 func (fh *ReadWriteExclP9) Open(fid *srv.FFid, mode uint8) error {
 	if !fh.openFn() {
-		return &p.Error{ "Already opened", p.EIO }
+		return &p.Error{"Already opened", p.EIO}
 	}
 
 	fh.owner = fid.Fid.Fconn.Id

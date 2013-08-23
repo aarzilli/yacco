@@ -37,6 +37,7 @@ type LogicalPos struct {
 	sfr            *textframe.ScrollFrame
 	bodybuf        *buf.Buffer
 	notReallyOnTag bool
+	onButton       bool
 }
 
 type BufferRefreshable interface {
@@ -293,12 +294,12 @@ func (w *Window) EventLoop() {
 				break
 			}
 
-			if lp.ed != nil { // clicked on editor's resize handle
+			if (lp.ed != nil) && lp.onButton { // clicked on editor's resize handle
 				w.EditorMove(lp.col, lp.ed, e, events)
 				break
 			}
 
-			if lp.col != nil { // clicked on column's resize handle
+			if (lp.col != nil) && lp.onButton { // clicked on column's resize handle
 				w.ColResize(lp.col, e, events)
 			}
 
@@ -493,8 +494,12 @@ func (w *Window) TranslatePosition(p image.Point, abideSpecial bool) (lp Logical
 				}
 			}
 
+			lp.onButton = p.In(lp.ed.btnr)
+
 			return
 		}
+
+		lp.onButton = p.In(lp.col.btnr)
 
 		return
 	}

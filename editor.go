@@ -14,6 +14,7 @@ import (
 
 type Editor struct {
 	r       image.Rectangle
+	btnr    image.Rectangle
 	rhandle image.Rectangle
 	frac    float64
 
@@ -175,6 +176,10 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 
 func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
 	e.r = r
+	e.btnr = r
+	e.btnr.Max.X = e.btnr.Min.X + SCROLL_WIDTH
+	e.btnr.Max.Y = e.btnr.Min.Y + TagHeight(&e.tagfr) + 3
+
 	sfrr := r
 	sfrr.Min.Y = sfrr.Min.Y + TagHeight(&e.tagfr) + 3
 	sfrr.Max.X -= 2

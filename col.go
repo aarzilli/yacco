@@ -15,6 +15,7 @@ type Col struct {
 	editors []*Editor
 	wnd     wde.Window
 	r       image.Rectangle
+	btnr    image.Rectangle
 	b       draw.Image
 	frac    float64
 
@@ -91,6 +92,11 @@ func (c *Col) AddAfter(ed *Editor, n int, h float32) {
 
 func (c *Col) RecalcRects() {
 	screen := c.b
+
+	c.btnr = c.r
+	c.btnr.Max.X = c.btnr.Min.X + SCROLL_WIDTH
+	c.btnr.Max.Y = c.btnr.Min.Y + TagHeight(&c.tagfr)
+
 	c.tagfr.R = c.r
 	c.tagfr.R.Min.Y += 2
 	c.tagfr.R.Min.X += SCROLL_WIDTH
