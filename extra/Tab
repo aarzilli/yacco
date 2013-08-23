@@ -2,8 +2,10 @@
 
 import os
 import sys
+from subprocess import Popen, PIPE
 
-if os.environ["bd"] != "":
-	fh = file(os.environ["bd"] + "/prop", "a")
-	fh.write("tab=" + sys.argv[1])
-	fh.close()
+def send(s):
+	p = Popen([ "y9p", "write", "prop" ], shell=False, stdin=PIPE)
+	p.communicate(s)
+
+send("tab=" + sys.argv[1])

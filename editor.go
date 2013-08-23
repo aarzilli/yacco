@@ -456,7 +456,7 @@ func (ed *Editor) ExitSpecial() {
 
 func (ed *Editor) PropTrigger() {
 	tabWidth, err := strconv.Atoi(ed.bodybuf.Props["tab"])
-	if err != nil {
+	if err == nil {
 		ed.sfr.Fr.TabWidth = tabWidth
 	}
 	oldFont := ed.sfr.Fr.Font

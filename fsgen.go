@@ -135,7 +135,7 @@ func readCtlFn(i int, off int64) ([]byte, syscall.Errno) {
 
 	tabWidth := ec.fr.TabWidth
 
-	t := fmt.Sprintf("%11d %11d %11d %11d %11d %11d %11d %11d %s\n",
+	t := fmt.Sprintf("%11d %11d %11d %11d %11d %11d %11s %11d %s\n",
 		i, ec.ed.tagbuf.Size(), ec.ed.bodybuf.Size(), 0, mod, wwidth, fontName, tabWidth, tc)
 	return []byte(t), 0
 }
