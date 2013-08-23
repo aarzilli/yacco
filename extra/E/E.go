@@ -1,40 +1,21 @@
 package main
 
 import (
+	"code.google.com/p/go9p/p"
 	"fmt"
-	"runtime"
-	"log"
+	"io"
 	"os"
 	"strings"
+	"time"
 	"yacco/util"
 )
 
 var debug = false
 
-func Must(err error) {
-	if err != nil {
-		if !debug {
-			_, file, line, _ := runtime.Caller(2)
-			log.Fatalf("%s:%d: %s", file, line, err.Error())
-		} else {
-			i := 1
-			fmt.Println("Error" + err.Error() + " at:")
-			for {
-				_, file, line, ok := runtime.Caller(i)
-				if !ok {
-					break
-				}
-				fmt.Printf("\t %s:%d\n", file, line)
-				i++
-			}
-		}
-	}
-}
-
-func read(fd *os.File) string {
+func read(fd io.Reader) string {
 	b := make([]byte, 1024)
 	n, err := fd.Read(b)
-	Must(err)
+	util.Allergic(debug, err)
 	return string(b[:n])
 }
 
@@ -47,28 +28,29 @@ func main() {
 		return
 	}
 	
+	p9clnt, err := util.YaccoConnect()
+	util.Allergic(debug, err)
+	
 	wd, _ := os.Getwd()
 	path := os.Args[1]
 	abspath := util.ResolvePath(wd, path)
 	
-	ctlfd, err := os.OpenFile(os.ExpandEnv("$yd/new/ctl"), os.O_RDWR, 0666)
-	Must(err)
+	ctlfd, err := p9clnt.FOpen("/new/ctl", p.ORDWR)
+	util.Allergic(debug, err)
 	ctlln := read(ctlfd)
 	outbufid := strings.TrimSpace(ctlln[:11])
 	
 	_, err = ctlfd.Write([]byte(fmt.Sprintf("name %s", abspath)))
-	Must(err)
+	util.Allergic(debug, err)
 	_, err = ctlfd.Write([]byte(fmt.Sprintf("get")))
-	Must(err)
+	util.Allergic(debug, err)
 	ctlfd.Close()
 	
 	for {
-		fi, err := os.Stat(os.ExpandEnv("$yd/" + outbufid ))
+		_, err := p9clnt.FStat("/" + outbufid)
 		if err != nil {
 			break
 		}
-		if !fi.IsDir() {
-			break
-		}
+		time.Sleep(1 * time.Second)
 	}
 }
