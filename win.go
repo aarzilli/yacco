@@ -588,6 +588,14 @@ loop:
 				break
 			}
 
+			if col.IndexOf(ed) == 0 {
+				// first editor isn't moved unless we dragged the button past the second editor in the column
+				mlp := w.TranslatePosition(endPos, true)
+				if (mlp.ed == nil) || (mlp.ed == ed) {
+					break
+				}
+			}
+
 			col.Remove(col.IndexOf(ed))
 			col.RecalcRects()
 
@@ -726,6 +734,14 @@ loop:
 
 			if !endPos.In(Wnd.cols.r) {
 				break
+			}
+
+			if w.cols.IndexOf(col) == 0 {
+				// first column isn't resized unless we dragged the button past the second column
+				mlp := w.TranslatePosition(endPos, true)
+				if (mlp.col == nil) || (mlp.col == col) {
+					break
+				}
 			}
 
 			w.cols.Remove(w.cols.IndexOf(col))
