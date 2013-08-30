@@ -591,7 +591,7 @@ loop:
 			if col.IndexOf(ed) == 0 {
 				// first editor isn't moved unless we dragged the button past the second editor in the column
 				mlp := w.TranslatePosition(endPos, true)
-				if (mlp.ed == nil) || (mlp.ed == ed) {
+				if ((mlp.ed == nil) && (mlp.col == col)) || (mlp.ed == ed) {
 					break
 				}
 			}
