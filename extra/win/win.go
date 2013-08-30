@@ -288,6 +288,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 
 	floating := false
 	lastUpdate := time.Now()
+	updCount := 0
 	var oldPrompt []byte = nil
 
 	anchorDown := func() {
@@ -306,14 +307,22 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 			if msg.updateDir {
 				updateDir(cmd, buf.CtlFd)
 			}
-			lastUpdate = time.Now()
 			if !floating {
-				floating = true
-				go func() {
-					time.Sleep(time.Millisecond * 100)
-					controlChan <- AnchorDownMsg{}
-				}()
+				if time.Since(lastUpdate) > time.Millisecond * 100 {
+					updCount = 0
+				}
+				if updCount < 10 {
+					updCount++
+					anchorDown()
+				} else {
+					floating = true
+					go func() {
+						time.Sleep(time.Millisecond * 100)
+						controlChan <- AnchorDownMsg{}
+					}()
+				}
 			}
+			lastUpdate = time.Now()
 
 		case UserAppendMsg:
 			if floating {
