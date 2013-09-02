@@ -5,5 +5,5 @@ var Initialization = []string{
 		Edit ,s/[ \t]+$//g`,
 	`Macro Music
 		win minstrel start
-		win minstrel where`,
+		minstrel where`,
 }
