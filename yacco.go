@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"github.com/skelterjohn/go.wde"
 	_ "github.com/skelterjohn/go.wde/init"
 	"log"
@@ -73,15 +74,41 @@ func realmain() {
 
 	wd, _ := os.Getwd()
 
+	hasarg := false
 	if *dumpFlag == "" {
 		for _, arg := range flag.Args() {
+			hasarg = true
 			EditFind(wd, arg, false, true)
 		}
 	} else {
 		dumpDest := getDumpPath(*dumpFlag, false)
 		if LoadFrom(dumpDest) {
+			hasarg = true
 			Wnd.wnd.SetTitle("Yacco " + dumpDest)
 			AutoDumpPath = dumpDest
+		}
+	}
+
+	if !hasarg {
+		EditFind(wd, ".", false, false)
+		EditFind(wd, "+Dumps", false, false)
+
+		dh, err := os.Open(os.ExpandEnv("$HOME/.config/yacco/"))
+		if err == nil {
+			defer dh.Close()
+			names, err := dh.Readdirnames(-1)
+			if err != nil {
+				names = []string{}
+			}
+			r := []string{}
+			for i := range names {
+				if !strings.HasSuffix(names[i], ".dump") {
+					continue
+				}
+				r = append(r, fmt.Sprintf("Load %s", names[i][:len(names[i])-len(".dump")]))
+			}
+			Warnfull("+Dumps", strings.Join(r, "\n"))
+			Warnfull("+Dumps", "\n")
 		}
 	}
 
