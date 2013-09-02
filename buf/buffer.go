@@ -49,7 +49,8 @@ type Buffer struct {
 
 	RefCount int
 
-	Words []string
+	Words    []string
+	updcount int
 
 	EditMark, EditMarkNext bool
 
@@ -224,6 +225,15 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel, solid bool
 
 	sel.S = sel.S + len(text)
 	sel.E = sel.S
+
+	if origin == util.EO_FILES {
+		b.updcount += len(text)
+		if b.updcount > 2*1024 {
+			b.updcount = 0
+			ba, bb := b.Selection(util.Sel{0, b.Size()})
+			b.updateWords(string(ToRunes(ba)), string(ToRunes(bb)))
+		}
+	}
 }
 
 func (b *Buffer) generateEvent(text []rune, sel util.Sel, eventChan chan string, origin util.EventOrigin) {
@@ -730,27 +740,37 @@ func (b *Buffer) FixSel(sel *util.Sel) {
 	}
 }
 
+func (b *Buffer) updateWords(sa, sb string) {
+	newWordsA := nonwdRe.Split(sa, -1)
+	newWordsB := nonwdRe.Split(sb, -1)
+	b.Words = util.Dedup(append(newWordsA[:len(newWordsA)-1], newWordsB[:len(newWordsB)-1]...))
+}
+
 func (b *Buffer) Put() error {
 	out, err := os.OpenFile(filepath.Join(b.Dir, b.Name), os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}
 	defer out.Close()
-	bout := bufio.NewWriter(out)
+
 	ba, bb := b.Selection(util.Sel{0, b.Size()})
 	sa := string(ToRunes(ba))
-	newWordsA := nonwdRe.Split(sa, -1)
+	sb := string(ToRunes(bb))
+
+	b.updateWords(sa, sb)
+
+	bout := bufio.NewWriter(out)
+
 	_, err = bout.Write([]byte(sa))
 	if err != nil {
 		return err
 	}
-	sb := string(ToRunes(bb))
-	newWordsB := nonwdRe.Split(sb, -1)
-	b.Words = util.Dedup(append(newWordsA[:len(newWordsA)-1], newWordsB[:len(newWordsB)-1]...))
+
 	_, err = bout.Write([]byte(sb))
 	if err != nil {
 		return err
 	}
+
 	err = bout.Flush()
 	if err != nil {
 		return err
