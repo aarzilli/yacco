@@ -23,6 +23,17 @@ type jobrec struct {
 var jobs = []*jobrec{}
 var jobsMutex = sync.Mutex{}
 
+func removeEmpty(v []string) []string {
+	dst := 0
+	for i := range v {
+		if v[i] != "" {
+			v[dst] = v[i]
+			dst++
+		}
+	}
+	return v[:dst]
+}
+
 func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan chan<- string) {
 	job := &jobrec{}
 
@@ -46,10 +57,13 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 			job.cmd = exec.Command("win")
 		}
 	} else if easyCommand(cmd) {
-		vcmd := strings.Split(cmd, " ")
+		vcmd := removeEmpty(strings.Split(cmd, " "))
+		fmt.Printf("Straight out %v %d\n", vcmd, len(vcmd))
 		job.descr = cmd
 		job.cmd = exec.Command(vcmd[0], vcmd[1:]...)
+		fmt.Printf("cmd.Args: %d\n", len(job.cmd.Args))
 	} else {
+		fmt.Printf("Through shell\n")
 		job.descr = cmd
 		job.cmd = exec.Command(os.Getenv("SHELL"), "-c", cmd)
 	}
