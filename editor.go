@@ -171,6 +171,9 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 
 	e.sfr.Set(0, e.bodybuf.Size())
 
+	e.tagbuf.AddSels(&e.tagfr.Sels)
+	e.bodybuf.AddSels(&e.sfr.Fr.Sels)
+
 	return e
 }
 
@@ -212,6 +215,10 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
 	e.rhandle = e.r.Intersect(e.rhandle)
 
 	e.bodybuf.Highlight(-1, false, e.top)
+}
+
+func (e *Editor) Close() {
+	e.bodybuf.RmSels(&e.sfr.Fr.Sels)
 }
 
 func (e *Editor) MinHeight() int {
@@ -297,7 +304,7 @@ func (e *Editor) GenTag() {
 	start := e.tagfr.Sels[0].S - e.tagbuf.EditableStart
 	end := e.tagfr.Sels[0].E - e.tagbuf.EditableStart
 	e.tagbuf.EditableStart = -1
-	e.tagbuf.Replace([]rune(t), &util.Sel{0, e.tagbuf.Size()}, e.tagfr.Sels, true, nil, 0, false)
+	e.tagbuf.Replace([]rune(t), &util.Sel{0, e.tagbuf.Size()}, true, nil, 0, false)
 	TagSetEditableStart(e.tagbuf)
 	e.tagfr.Sels[0].S = start + e.tagbuf.EditableStart
 	e.tagfr.Sels[0].E = end + e.tagbuf.EditableStart
@@ -446,7 +453,7 @@ func (ed *Editor) EnterSpecial(specialChan chan string, specialTag string, exitO
 	ed.specialTag = specialTag
 	ed.specialExitOnReturn = exitOnReturn
 	ed.savedTag = string(ed.tagbuf.SelectionRunes(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}))
-	ed.tagbuf.Replace([]rune{}, &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, ed.tagfr.Sels, true, nil, 0, false)
+	ed.tagbuf.Replace([]rune{}, &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0, false)
 	ed.BufferRefresh(false)
 	return true
 }
@@ -455,7 +462,7 @@ func (ed *Editor) ExitSpecial() {
 	close(ed.specialChan)
 	ed.specialChan = nil
 	ed.specialTag = ""
-	ed.tagbuf.Replace([]rune(ed.savedTag), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, ed.tagfr.Sels, true, nil, 0, false)
+	ed.tagbuf.Replace([]rune(ed.savedTag), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0, false)
 	ed.BufferRefresh(false)
 }
 

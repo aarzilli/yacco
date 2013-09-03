@@ -51,7 +51,8 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 		return c
 	}
 
-	c.tagbuf.Replace(config.DefaultColumnTag, &c.tagfr.Sels[0], c.tagfr.Sels, true, nil, 0, false)
+	c.tagbuf.AddSels(&c.tagfr.Sels)
+	c.tagbuf.Replace(config.DefaultColumnTag, &c.tagfr.Sels[0], true, nil, 0, false)
 	TagSetEditableStart(c.tagbuf)
 	return c
 }
@@ -198,6 +199,8 @@ func (c *Col) IndexOf(ed *Editor) int {
 }
 
 func (c *Col) Remove(i int) {
+	c.editors[i].Close()
+
 	if i == 0 {
 		if i+1 < len(c.editors) {
 			c.editors[i+1].frac += c.editors[i].frac
@@ -211,6 +214,12 @@ func (c *Col) Remove(i int) {
 
 	c.RecalcRects()
 	c.Redraw()
+}
+
+func (c *Col) Close() {
+	for i := range c.editors {
+		c.editors[i].Close()
+	}
 }
 
 func (c *Col) Dump() DumpColumn {

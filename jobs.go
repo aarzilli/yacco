@@ -5,10 +5,10 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"yacco/util"
-	"path/filepath"
 )
 
 type jobrec struct {

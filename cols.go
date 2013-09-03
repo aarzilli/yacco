@@ -116,6 +116,7 @@ func (cs *Cols) IndexOf(c *Col) int {
 }
 
 func (cs *Cols) Remove(i int) {
+	cs.cols[i].Close()
 	if i > 0 {
 		cs.cols[i-1].frac += cs.cols[i].frac
 	} else { // i == 0

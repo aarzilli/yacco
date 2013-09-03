@@ -35,6 +35,7 @@ type Buffer struct {
 
 	// gap buffer implementation
 	buf        []textframe.ColorRune
+	sels       []*[]util.Sel
 	gap, gapsz int
 
 	ul undoList
@@ -88,7 +89,7 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 	b.lastCleanHl = -1
 
 	if name[0] != '+' {
-		err := b.Reload([]util.Sel{}, create)
+		err := b.Reload(create)
 		if err != nil {
 			return nil, err
 		}
@@ -106,8 +107,27 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 	return b, nil
 }
 
+func (b *Buffer) AddSels(sels *[]util.Sel) {
+	for i := range b.sels {
+		if b.sels[i] == nil {
+			b.sels[i] = sels
+			break
+		}
+	}
+	b.sels = append(b.sels, sels)
+}
+
+func (b *Buffer) RmSels(sels *[]util.Sel) {
+	for i := range b.sels {
+		if b.sels[i] == sels {
+			b.sels[i] = nil
+			break
+		}
+	}
+}
+
 // (re)loads buffer from disk
-func (b *Buffer) Reload(sels []util.Sel, create bool) error {
+func (b *Buffer) Reload(create bool) error {
 	path := filepath.Join(b.Dir, b.Name)
 	infile, err := os.Open(path)
 	if err == nil {
@@ -119,7 +139,7 @@ func (b *Buffer) Reload(sels []util.Sel, create bool) error {
 		}
 
 		if fi.IsDir() {
-			return b.reloadDir(sels, infile)
+			return b.reloadDir(infile)
 		}
 
 		if fi.Size() > 10*1024*1024 {
@@ -142,7 +162,7 @@ func (b *Buffer) Reload(sels []util.Sel, create bool) error {
 		str := string(bytes)
 		b.Words = util.Dedup(nonwdRe.Split(str, -1))
 		runes := []rune(str)
-		b.Replace(runes, &util.Sel{0, b.Size()}, sels, true, nil, 0, false)
+		b.Replace(runes, &util.Sel{0, b.Size()}, true, nil, 0, false)
 		b.Modified = false
 		b.ul.Reset()
 	} else {
@@ -158,7 +178,7 @@ func (b *Buffer) Reload(sels []util.Sel, create bool) error {
 	return nil
 }
 
-func (b *Buffer) reloadDir(sels []util.Sel, fh *os.File) error {
+func (b *Buffer) reloadDir(fh *os.File) error {
 	if b.Name[len(b.Name)-1] != '/' {
 		b.Name = b.Name + "/"
 	}
@@ -181,7 +201,7 @@ func (b *Buffer) reloadDir(sels []util.Sel, fh *os.File) error {
 		r = append(r, n)
 	}
 
-	b.Replace([]rune(strings.Join(r, "\t")), &util.Sel{0, b.Size()}, sels, true, nil, 0, false)
+	b.Replace([]rune(strings.Join(r, "\t")), &util.Sel{0, b.Size()}, true, nil, 0, false)
 
 	b.Modified = false
 	b.ul.Reset()
@@ -190,7 +210,7 @@ func (b *Buffer) reloadDir(sels []util.Sel, fh *os.File) error {
 
 // Replaces text between sel.S and sel.E with text, updates sels AND sel accordingly
 // After the replacement the highlighter is restarted
-func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel, solid bool, eventChan chan string, origin util.EventOrigin, dohl bool) {
+func (b *Buffer) Replace(text []rune, sel *util.Sel, solid bool, eventChan chan string, origin util.EventOrigin, dohl bool) {
 	if !b.Editable {
 		return
 	}
@@ -212,8 +232,8 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, sels []util.Sel, solid bool
 	b.Modified = true
 
 	b.pushUndo(*sel, text, solid)
-	b.replaceIntl(text, sel, sels)
-	updateSels(sels, sel, len(text))
+	b.replaceIntl(text, sel)
+	b.updateSels(sel, len(text))
 
 	if dohl {
 		b.Highlight(sel.S-1, false, -1)
@@ -288,8 +308,8 @@ func (b *Buffer) Undo(sels []util.Sel, redo bool) {
 			text = []rune(ui.before.text)
 		}
 		ws := util.Sel{us.S, us.E}
-		b.replaceIntl(text, &ws, sels)
-		updateSels(sels, &ws, len(text))
+		b.replaceIntl(text, &ws)
+		b.updateSels(&ws, len(text))
 
 		b.unlock()
 
@@ -357,11 +377,11 @@ func (b *Buffer) Highlight(start int, full bool, pinc int) {
 
 // Replaces text between sel.S and sel.E with text, updates selections in sels except sel itself
 // NOTE sel IS NOT modified, we need a pointer specifically so we can skip updating it in sels
-func (b *Buffer) replaceIntl(text []rune, sel *util.Sel, sels []util.Sel) {
+func (b *Buffer) replaceIntl(text []rune, sel *util.Sel) {
 	regionSize := sel.E - sel.S
 
 	if sel.S != sel.E {
-		updateSels(sels, sel, -regionSize)
+		b.updateSels(sel, -regionSize)
 		b.MoveGap(sel.S)
 		b.gapsz += regionSize // this effectively deletes the current selection
 	} else {
@@ -395,7 +415,7 @@ func (b *Buffer) pushUndo(sel util.Sel, text []rune, solid bool) {
 
 // Updates position of items in sels except for the one pointed by sel
 // The update is for a text replacement starting at sel.S of size delta
-func updateSels(sels []util.Sel, sel *util.Sel, delta int) {
+func (b *Buffer) updateSels(sel *util.Sel, delta int) {
 	var end int
 	if delta < 0 {
 		end = sel.S - delta
@@ -403,21 +423,24 @@ func updateSels(sels []util.Sel, sel *util.Sel, delta int) {
 		end = -1
 	}
 
-	for i := range sels {
-		if &sels[i] == sel {
-			continue
-		}
+	for k := range b.sels {
+		sels := *(b.sels[k])
+		for i := range sels {
+			if &sels[i] == sel {
+				continue
+			}
 
-		if (sels[i].S >= sel.S) && (sels[i].S < end) {
-			sels[i].S = sel.S
-		} else if sels[i].S > sel.S {
-			sels[i].S += delta
-		}
+			if (sels[i].S >= sel.S) && (sels[i].S < end) {
+				sels[i].S = sel.S
+			} else if sels[i].S > sel.S {
+				sels[i].S += delta
+			}
 
-		if (sels[i].E >= sel.S) && (sels[i].E < end) {
-			sels[i].E = sel.S
-		} else if sels[i].E > sel.S {
-			sels[i].E += delta
+			if (sels[i].E >= sel.S) && (sels[i].E < end) {
+				sels[i].E = sel.S
+			} else if sels[i].E > sel.S {
+				sels[i].E += delta
+			}
 		}
 	}
 }

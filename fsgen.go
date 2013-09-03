@@ -232,7 +232,7 @@ func writeTagFn(i int, data []byte, off int64) syscall.Errno {
 	}
 
 	sideChan <- func() {
-		ec.ed.tagbuf.Replace([]rune(string(data)), &util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}, ec.ed.tagfr.Sels, true, ec.eventChan, util.EO_BODYTAG, false)
+		ec.ed.tagbuf.Replace([]rune(string(data)), &util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}, true, ec.eventChan, util.EO_BODYTAG, false)
 	}
 
 	return 0
