@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"yacco/util"
+	"path/filepath"
 )
 
 type jobrec struct {
@@ -58,12 +59,14 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 		}
 	} else if easyCommand(cmd) {
 		vcmd := removeEmpty(strings.Split(cmd, " "))
-		fmt.Printf("Straight out %v %d\n", vcmd, len(vcmd))
 		job.descr = cmd
-		job.cmd = exec.Command(vcmd[0], vcmd[1:]...)
-		fmt.Printf("cmd.Args: %d\n", len(job.cmd.Args))
+		name := vcmd[0]
+		aname, err := exec.LookPath(name)
+		if err != nil {
+			aname = filepath.Join(wd, name)
+		}
+		job.cmd = exec.Command(aname, vcmd[1:]...)
 	} else {
-		fmt.Printf("Through shell\n")
 		job.descr = cmd
 		job.cmd = exec.Command(os.Getenv("SHELL"), "-c", cmd)
 	}
