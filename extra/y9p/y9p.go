@@ -69,7 +69,36 @@ func main() {
 		fd, err := p9clnt.FOpen(resolvePath(arg), p.OWRITE)
 		util.Allergic(debug, err)
 		defer fd.Close()
-		io.Copy(fd, os.Stdin)
+
+		written := int64(0)
+		buf := make([]byte, 4*1024)
+		for {
+			nr, er := os.Stdin.Read(buf)
+			if nr > 0 {
+				nw, ew := fd.Write(buf[0:nr])
+				if nw > 0 {
+					written += int64(nw)
+				}
+				if ew != nil {
+					err = ew
+					break
+				}
+				if nr != nw {
+					err = io.ErrShortWrite
+					break
+				}
+			}
+			if er == io.EOF {
+				break
+			}
+			if er != nil {
+				break
+			}
+		}
+
+		if err != nil {
+			fmt.Printf("Error: %s\n", err.Error())
+		}
 
 	case "find":
 		wd, _ := os.Getwd()

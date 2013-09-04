@@ -846,6 +846,10 @@ func (rr *runeReader) ReadRune() (r rune, size int, err error) {
 }
 
 func (b *Buffer) GetLine(i int) (int, int) {
+	if i > b.Size() {
+		println("GetLine Error:", i, b.Size())
+		return 0, 0
+	}
 	ba, bb := b.Selection(util.Sel{0, b.Size()})
 	if i < len(ba) {
 		n, c := countNl(ba[:i])
