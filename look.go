@@ -5,16 +5,17 @@ import (
 	"yacco/util"
 )
 
-func lookfwdEx(ed *Editor, needle []rune, start int) bool {
+func lookfwdEx(ed *Editor, needle []rune, start int, exact bool) bool {
 	if len(needle) <= 0 {
 		return true
 	}
 
-	exact := false
-	for _, r := range needle {
-		if unicode.IsUpper(r) {
-			exact = true
-			break
+	if !exact {
+		for _, r := range needle {
+			if unicode.IsUpper(r) {
+				exact = true
+				break
+			}
 		}
 	}
 
@@ -46,14 +47,14 @@ func lookfwdEx(ed *Editor, needle []rune, start int) bool {
 	return false
 }
 
-func lookfwd(ed *Editor, needle []rune, fromEnd bool, setJump bool) {
+func lookfwd(ed *Editor, needle []rune, fromEnd bool, setJump bool, exact bool) {
 	start := ed.sfr.Fr.Sels[0].S
 	if fromEnd {
 		start = ed.sfr.Fr.Sels[0].E
 	}
 	ed.sfr.Fr.Sels[0].S = ed.sfr.Fr.Sels[0].E
-	if !lookfwdEx(ed, needle, start) {
-		lookfwdEx(ed, needle, 0)
+	if !lookfwdEx(ed, needle, start, exact) {
+		lookfwdEx(ed, needle, 0, exact)
 	}
 	ed.BufferRefresh(false)
 	ed.Warp()
@@ -71,6 +72,7 @@ func lookproc(ec ExecContext) {
 		Wnd.Lock.Unlock()
 		return
 	}
+	exact := Wnd.Prop["lookexact"] == "yes"
 	Wnd.Lock.Unlock()
 	needle := []rune{}
 	matches := []util.Sel{}
@@ -87,7 +89,7 @@ func lookproc(ec ExecContext) {
 				func() {
 					Wnd.Lock.Lock()
 					defer Wnd.Lock.Unlock()
-					lookfwd(ec.ed, needle, true, false)
+					lookfwd(ec.ed, needle, true, false, exact)
 					if ec.fr.Sels[0].S != ec.fr.Sels[0].E {
 						matches = append(matches, ec.fr.Sels[0])
 					}
@@ -119,7 +121,7 @@ func lookproc(ec ExecContext) {
 			func() {
 				Wnd.Lock.Lock()
 				defer Wnd.Lock.Unlock()
-				lookfwd(ec.ed, needle, false, false)
+				lookfwd(ec.ed, needle, false, false, exact)
 				if doAppend && (ec.fr.Sels[0].S != ec.fr.Sels[0].E) {
 					matches = append(matches, ec.fr.Sels[0])
 				}

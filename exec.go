@@ -344,7 +344,7 @@ func LookCmd(ec ExecContext, arg string) {
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
 	if arg != "" {
-		lookfwd(ec.ed, []rune(arg), true, true)
+		lookfwd(ec.ed, []rune(arg), true, true, Wnd.Prop["lookexact"] == "yes")
 	} else {
 		go lookproc(ec)
 	}
@@ -358,7 +358,7 @@ func LookAgainCmd(ec ExecContext, arg string) {
 	if ec.ed.specialChan != nil {
 		ec.ed.specialChan <- "!Again"
 	} else {
-		lookfwd(ec.ed, lastNeedle, true, true)
+		lookfwd(ec.ed, lastNeedle, true, true, Wnd.Prop["lookexact"] == "yes")
 	}
 }
 
