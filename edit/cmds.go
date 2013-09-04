@@ -68,14 +68,14 @@ func eqcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 
 func scmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
-	ec.Sels[3] = sel
+	ec.addrSave[0] = sel
 	re := regexp.Compile(c.txtargs[0], true, false)
 	subs := []rune(c.txtargs[1])
 	first := ec.Buf.EditMark
 	count := 0
 	for {
 		psel := sel.S
-		loc := re.Match(ec.Buf, sel.S, ec.Sels[3].E, +1)
+		loc := re.Match(ec.Buf, sel.S, ec.addrSave[0].E, +1)
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}
@@ -91,13 +91,13 @@ func scmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 		}
 		first = false
 	}
-	ec.Sels[0] = ec.Sels[3]
+	ec.Sels[0] = ec.addrSave[0]
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 }
 
 func xcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
-	ec.Sels[3] = sel
+	ec.addrSave[0] = sel
 
 	re := regexp.Compile(c.txtargs[0], true, false)
 	count := 0
@@ -105,13 +105,13 @@ func xcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	ec.Buf.EditMarkNext = false
 
 	defer func() {
-		ec.Sels[0] = ec.Sels[3]
+		ec.Sels[0] = ec.addrSave[0]
 		ec.Buf.EditMarkNext = ebn
 		ec.Buf.EditMark = ec.Buf.EditMarkNext
 	}()
 
 	for {
-		loc := re.Match(ec.Buf, sel.S, ec.Sels[3].E, +1)
+		loc := re.Match(ec.Buf, sel.S, ec.addrSave[0].E, +1)
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}
@@ -129,20 +129,20 @@ func xcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 
 func ycmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
-	ec.Sels[3] = sel
+	ec.addrSave[0] = sel
 	re := regexp.Compile(c.txtargs[0], true, false)
 	count := 0
 	ebn := ec.Buf.EditMarkNext
 	ec.Buf.EditMarkNext = false
 
 	defer func() {
-		ec.Sels[0] = ec.Sels[3]
+		ec.Sels[0] = ec.addrSave[0]
 		ec.Buf.EditMarkNext = ebn
 		ec.Buf.EditMark = ec.Buf.EditMarkNext
 	}()
 
 	for {
-		loc := re.Match(ec.Buf, sel.S, ec.Sels[3].E, +1)
+		loc := re.Match(ec.Buf, sel.S, ec.addrSave[0].E, +1)
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}

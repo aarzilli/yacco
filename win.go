@@ -133,7 +133,6 @@ func (w *Window) Init(width, height int) (err error) {
 			config.TheColorScheme.TagSel1,
 			config.TheColorScheme.TagSel2,
 			config.TheColorScheme.TagSel3,
-			config.TheColorScheme.TagPlain,
 			config.TheColorScheme.TagMatchingParenthesis},
 	}
 
@@ -953,7 +952,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				fcmd(ec)
 				if ec.ed != nil {
 					if up != ec.ed.bodybuf.UndoWhere() {
-						ec.ed.bodybuf.Highlight(-1, false, ec.ed.top)
+						ec.ed.bodybuf.Highlight(-1, false, ec.ed.otherSel[OS_TOP].E)
 					}
 				}
 			} else {

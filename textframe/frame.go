@@ -621,7 +621,7 @@ func (fr *Frame) Redraw(flush bool) {
 				if (j+1 >= len(fr.Colors)) {
 					break
 				}
-				if ((fr.Colors[j+1][0] != fr.Colors[0][0]) || (fr.Colors[j+1][1] != fr.Colors[0][1])) && (i+fr.Top >= fr.Sels[j].S) && (i+fr.Top < fr.Sels[j].E) {
+				if /*((fr.Colors[j+1][0] != fr.Colors[0][0]) || (fr.Colors[j+1][1] != fr.Colors[0][1])) && */(i+fr.Top >= fr.Sels[j].S) && (i+fr.Top < fr.Sels[j].E) {
 					ssel = j + 1
 					fr.redrawSelection(fr.Sels[j].S-fr.Top, fr.Sels[j].E-fr.Top, &fr.Colors[ssel][0])
 				}

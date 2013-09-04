@@ -47,8 +47,8 @@ func readAddrFn(i int, off int64) ([]byte, syscall.Errno) {
 		defer func() {
 			done <- true
 		}()
-		ec.buf.FixSel(&ec.fr.Sels[4])
-		t = fmt.Sprintf("%d,%d", ec.fr.Sels[4].S, ec.fr.Sels[4].E)
+		ec.buf.FixSel(&ec.ed.otherSel[OS_ADDR])
+		t = fmt.Sprintf("%d,%d", ec.ed.otherSel[OS_ADDR].S, ec.ed.otherSel[OS_ADDR].E)
 	}
 	<-done
 	return []byte(t), 0
@@ -70,7 +70,7 @@ func writeAddrFn(i int, data []byte, off int64) (code syscall.Errno) {
 			}
 		}()
 
-		ec.fr.Sels[4] = edit.AddrEval(addrstr, ec.buf, ec.fr.Sels[4])
+		ec.ed.otherSel[OS_ADDR] = edit.AddrEval(addrstr, ec.buf, ec.ed.otherSel[OS_ADDR])
 	}
 
 	return 0
@@ -155,15 +155,18 @@ func readDataFn(i int, off int64, stopAtAddrEnd bool) ([]byte, syscall.Errno) {
 	if ec == nil {
 		return nil, syscall.ENOENT
 	}
+	if ec.ed == nil {
+		return nil, syscall.ENOENT
+	}
 
 	resp := make(chan []byte)
 
 	sideChan <- func() {
 		e := ec.buf.Size()
 		if stopAtAddrEnd {
-			e = ec.fr.Sels[4].E
+			e = ec.ed.otherSel[OS_ADDR].E
 		}
-		data := []byte(string(ec.buf.SelectionRunes(util.Sel{ec.fr.Sels[4].S, e})))
+		data := []byte(string(ec.buf.SelectionRunes(util.Sel{ec.ed.otherSel[OS_ADDR].S, e})))
 		if off < int64(len(data)) {
 			resp <- data[off:]
 		} else {
@@ -183,7 +186,7 @@ func writeDataFn(i int, data []byte, off int64) syscall.Errno {
 	if (len(data) == 1) && (data[0] == 0) {
 		sdata = ""
 	}
-	sideChan <- ReplaceMsg{ec, &ec.fr.Sels[4], false, sdata, util.EO_FILES, false}
+	sideChan <- ReplaceMsg{ec, &ec.ed.otherSel[OS_ADDR], false, sdata, util.EO_FILES, false}
 	return 0
 }
 

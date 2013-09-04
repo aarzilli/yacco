@@ -118,6 +118,7 @@ func realmain() {
 }
 
 func main() {
+	config.LoadConfiguration()
 	PlatformInit()
 	LoadInit()
 	KeysInit()

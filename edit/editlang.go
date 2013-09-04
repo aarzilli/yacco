@@ -27,6 +27,7 @@ type cmd struct {
 type EditContext struct {
 	Buf       *buf.Buffer
 	Sels      []util.Sel
+	addrSave  []util.Sel
 	EventChan chan string
 	PushJump  func()
 }
@@ -41,9 +42,12 @@ func (ecmd *cmd) Exec(ec EditContext) {
 		panic(fmt.Errorf("Command '%c' not implemented", ecmd.cmdch))
 	}
 
-	func() {
-		ecmd.fn(ecmd, ec.Sels[0], ec)
-	}()
+	ec.addrSave = make([]util.Sel, 2)
+
+	ec.Buf.AddSels(&ec.addrSave)
+	defer ec.Buf.RmSels(&ec.addrSave)
+
+	ecmd.fn(ecmd, ec.Sels[0], ec)
 }
 
 func AddrEval(pgm string, b *buf.Buffer, sel util.Sel) util.Sel {

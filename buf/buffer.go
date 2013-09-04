@@ -104,6 +104,8 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 	b.EditMarkNext = true
 	b.EditMark = true
 
+	b.sels = []*[]util.Sel{}
+
 	return b, nil
 }
 
@@ -424,6 +426,9 @@ func (b *Buffer) updateSels(sel *util.Sel, delta int) {
 	}
 
 	for k := range b.sels {
+		if b.sels[k] == nil {
+			continue
+		}
 		sels := *(b.sels[k])
 		for i := range sels {
 			if &sels[i] == sel {

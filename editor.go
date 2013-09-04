@@ -22,7 +22,6 @@ type Editor struct {
 	tagfr textframe.Frame
 
 	bodybuf     *buf.Buffer
-	top         int
 	tagbuf      *buf.Buffer
 	confirmDel  bool
 	confirmSave bool
@@ -35,6 +34,8 @@ type Editor struct {
 	specialChan         chan string
 	specialExitOnReturn bool
 
+	otherSel     []util.Sel
+	jumps        []util.Sel
 	restoredJump int
 	jumpCount    int
 }
@@ -42,6 +43,14 @@ type Editor struct {
 const SCROLL_WIDTH = 10
 const NUM_JUMPS = 7
 const JUMP_THRESHOLD = 100
+
+const (
+	OS_TOP = iota
+	OS_ADDR
+	NUM_OTHER_SEL
+)
+
+const PMATCHSEL = 3
 
 func scrollfn(e *Editor, sd int, sl int) {
 	e.bodybuf.Rdlock()
@@ -51,44 +60,44 @@ func scrollfn(e *Editor, sd int, sl int) {
 
 	switch {
 	case sd == 0:
-		e.top = e.bodybuf.Tonl(sl, -1)
+		e.otherSel[OS_TOP].E = e.bodybuf.Tonl(sl, -1)
 
 		sz := e.bodybuf.Size()
 
 		e.bodybuf.Rdlock()
 		defer e.bodybuf.Rdunlock()
-		a, b := e.bodybuf.Selection(util.Sel{e.top, sz})
+		a, b := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, sz})
 		e.sfr.Fr.Clear()
 		e.sfr.Fr.InsertColor(a)
 		e.sfr.Fr.InsertColor(b)
 
 	case sd > 0:
 		n := e.sfr.Fr.PushUp(sl)
-		e.top = e.sfr.Fr.Top
-		e.bodybuf.Highlight(-1, false, e.top)
-		a, b := e.bodybuf.Selection(util.Sel{e.top + n, sz})
+		e.otherSel[OS_TOP].E = e.sfr.Fr.Top
+		e.bodybuf.Highlight(-1, false, e.otherSel[OS_TOP].E)
+		a, b := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E + n, sz})
 		e.sfr.Fr.InsertColor(a)
 		e.sfr.Fr.InsertColor(b)
 
 	case sd < 0:
-		nt := e.top
+		nt := e.otherSel[OS_TOP].E
 		for i := 0; i < sl; i++ {
 			nt = e.bodybuf.Tonl(nt-2, -1)
 		}
 
-		a, b := e.bodybuf.Selection(util.Sel{nt, e.top})
+		a, b := e.bodybuf.Selection(util.Sel{nt, e.otherSel[OS_TOP].E})
 
 		if len(a)+len(b) == 0 {
 			return
 		}
 
 		e.sfr.Fr.PushDown(sl, a, b)
-		e.top = e.sfr.Fr.Top
+		e.otherSel[OS_TOP].E = e.sfr.Fr.Top
 	}
 
-	e.sfr.Set(e.top, sz)
+	e.sfr.Set(e.otherSel[OS_TOP].E, sz)
 	e.sfr.Redraw(true)
-	e.bodybuf.Highlight(-1, true, e.top)
+	e.bodybuf.Highlight(-1, true, e.otherSel[OS_TOP].E)
 }
 
 func (e *Editor) SetWnd(wnd wde.Window) {
@@ -122,17 +131,8 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 				config.TheColorScheme.EditorSel1,                // 0 first button selection
 				config.TheColorScheme.EditorSel2,                // 1 second button selection
 				config.TheColorScheme.EditorSel3,                // 2 third button selection
-				config.TheColorScheme.EditorPlain,               // 3 x command save
-				config.TheColorScheme.EditorPlain,               // 4 content of 'addr' file
-				config.TheColorScheme.EditorMatchingParenthesis, // 5 matching parenthesis
-				/* space for jumps - 6 through 12 */
-				config.TheColorScheme.EditorPlain,
-				config.TheColorScheme.EditorPlain,
-				config.TheColorScheme.EditorPlain,
-				config.TheColorScheme.EditorPlain,
-				config.TheColorScheme.EditorPlain,
-				config.TheColorScheme.EditorPlain,
-				config.TheColorScheme.EditorPlain},
+				config.TheColorScheme.EditorMatchingParenthesis, // 3 matching parenthesis
+			},
 		},
 	}
 	e.tagfr = textframe.Frame{
@@ -145,10 +145,13 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 			config.TheColorScheme.TagSel1,
 			config.TheColorScheme.TagSel2,
 			config.TheColorScheme.TagSel3,
-			config.TheColorScheme.TagPlain,
 			config.TheColorScheme.TagMatchingParenthesis},
 	}
-	e.top = 0
+
+	e.jumps = make([]util.Sel, NUM_JUMPS)
+	e.otherSel = make([]util.Sel, NUM_OTHER_SEL)
+
+	e.otherSel[OS_TOP].E = 0
 
 	bodybuf.Props["font"] = Wnd.Prop["font"]
 	if bodybuf.Props["font"] == "alt" {
@@ -173,6 +176,8 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 
 	e.tagbuf.AddSels(&e.tagfr.Sels)
 	e.bodybuf.AddSels(&e.sfr.Fr.Sels)
+	e.bodybuf.AddSels(&e.jumps)
+	e.bodybuf.AddSels(&e.otherSel)
 
 	return e
 }
@@ -192,7 +197,7 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
 	e.bodybuf.DisplayLines = int(float64(sfrr.Max.Y-sfrr.Min.Y) / float64(e.sfr.Fr.Font.LineHeight()))
 
 	e.sfr.Fr.Clear()
-	ba, bb := e.bodybuf.Selection(util.Sel{e.top, e.bodybuf.Size()})
+	ba, bb := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, e.bodybuf.Size()})
 	e.sfr.Fr.InsertColor(ba)
 	e.sfr.Fr.InsertColor(bb)
 
@@ -214,11 +219,13 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
 	e.rhandle.Max.Y = e.tagfr.R.Max.Y
 	e.rhandle = e.r.Intersect(e.rhandle)
 
-	e.bodybuf.Highlight(-1, false, e.top)
+	e.bodybuf.Highlight(-1, false, e.otherSel[OS_TOP].E)
 }
 
 func (e *Editor) Close() {
 	e.bodybuf.RmSels(&e.sfr.Fr.Sels)
+	e.bodybuf.RmSels(&e.jumps)
+	e.bodybuf.RmSels(&e.otherSel)
 }
 
 func (e *Editor) MinHeight() int {
@@ -313,11 +320,11 @@ func (e *Editor) GenTag() {
 
 func (e *Editor) refreshIntl() {
 	e.sfr.Fr.Clear()
-	e.sfr.Set(e.top, e.bodybuf.Size())
+	e.sfr.Set(e.otherSel[OS_TOP].E, e.bodybuf.Size())
 
 	e.bodybuf.Rdlock()
 	defer e.bodybuf.Rdunlock()
-	ba, bb := e.bodybuf.Selection(util.Sel{e.top, e.bodybuf.Size()})
+	ba, bb := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, e.bodybuf.Size()})
 	e.sfr.Fr.InsertColor(ba)
 	e.sfr.Fr.InsertColor(bb)
 }
@@ -325,15 +332,15 @@ func (e *Editor) refreshIntl() {
 func (e *Editor) BufferRefreshEx(ontag bool, recur bool) {
 	match := findPMatch(e.tagbuf, e.tagfr.Sels[0])
 	if match.S >= 0 {
-		e.tagfr.Sels[5] = match
+		e.tagfr.Sels[PMATCHSEL] = match
 	} else {
-		e.tagfr.Sels[5].S = e.tagfr.Sels[5].E
+		e.tagfr.Sels[PMATCHSEL].S = e.tagfr.Sels[PMATCHSEL].E
 	}
 	match = findPMatch(e.bodybuf, e.sfr.Fr.Sels[0])
 	if match.S >= 0 {
-		e.sfr.Fr.Sels[5] = match
+		e.sfr.Fr.Sels[PMATCHSEL] = match
 	} else {
-		e.sfr.Fr.Sels[5].S = e.sfr.Fr.Sels[5].E
+		e.sfr.Fr.Sels[PMATCHSEL].S = e.sfr.Fr.Sels[PMATCHSEL].E
 	}
 
 	if ontag {
@@ -424,11 +431,11 @@ func (ed *Editor) recenterIntl(refresh bool) bool {
 	for i := 0; i < n; i++ {
 		x = ed.bodybuf.Tonl(x-2, -1)
 	}
-	ed.top = x
+	ed.otherSel[OS_TOP].E = x
 	if refresh {
 		ed.BufferRefresh(false)
 	}
-	ed.bodybuf.Highlight(-1, false, ed.top)
+	ed.bodybuf.Highlight(-1, false, ed.otherSel[OS_TOP].E)
 	return true
 }
 
@@ -505,11 +512,10 @@ func (ed *Editor) Dump() DumpEditor {
 }
 
 func (ed *Editor) PushJump() {
-	jb := len(ed.sfr.Fr.Sels) - NUM_JUMPS
-	for i := len(ed.sfr.Fr.Sels) - 2; i >= jb; i-- {
-		ed.sfr.Fr.Sels[i+1] = ed.sfr.Fr.Sels[i]
+	for i := len(ed.jumps) - 2; i >= 0; i-- {
+		ed.jumps[i+1] = ed.jumps[i]
 	}
-	ed.sfr.Fr.Sels[jb].S = ed.sfr.Fr.Sels[0].S
+	ed.jumps[0].S = ed.sfr.Fr.Sels[0].S
 	ed.restoredJump = 0
 	ed.jumpCount++
 }
@@ -519,34 +525,31 @@ func (ed *Editor) RestoreJump() {
 		return
 	}
 
-	jb := len(ed.sfr.Fr.Sels) - NUM_JUMPS
-
 	// if we haven't recently restored a jump since the last push, refer to the last pushed jump
-	if ed.restoredJump < jb {
-		ed.restoredJump = jb
+	if ed.restoredJump < 0 {
+		ed.restoredJump = 0
 	}
 
 	// if we moved since the last restored (or pushed jump)
-	if ed.sfr.Fr.Sels[0].S != ed.sfr.Fr.Sels[ed.restoredJump].S {
+	if ed.sfr.Fr.Sels[0].S != ed.jumps[ed.restoredJump].S {
 		// we push the current position, then restore the previously last jump done
 		ed.PushJump()
-		ed.sfr.Fr.Sels[0].S = ed.sfr.Fr.Sels[jb+1].S
-		ed.sfr.Fr.Sels[0].E = ed.sfr.Fr.Sels[jb+1].S
-		ed.restoredJump = jb + 1
+		ed.sfr.Fr.Sels[0].S = ed.jumps[1].S
+		ed.sfr.Fr.Sels[0].E = ed.jumps[1].S
+		ed.restoredJump = 1
 		return
 	}
 
 	// we are on the last restored jump, cycle through jump
 	ed.restoredJump++
-	if (ed.restoredJump >= len(ed.sfr.Fr.Sels)) || (ed.restoredJump >= jb+ed.jumpCount) {
-		ed.restoredJump = jb
+	if (ed.restoredJump >= len(ed.jumps)) || (ed.restoredJump >= ed.jumpCount) {
+		ed.restoredJump = 0
 	}
 
-	ed.sfr.Fr.Sels[0].S = ed.sfr.Fr.Sels[ed.restoredJump].S
-	ed.sfr.Fr.Sels[0].E = ed.sfr.Fr.Sels[ed.restoredJump].S
+	ed.sfr.Fr.Sels[0].S = ed.jumps[ed.restoredJump].S
+	ed.sfr.Fr.Sels[0].E = ed.jumps[ed.restoredJump].S
 }
 
 func (ed *Editor) LastJump() int {
-	jb := len(ed.sfr.Fr.Sels) - NUM_JUMPS
-	return ed.sfr.Fr.Sels[jb].S
+	return ed.sfr.Fr.Sels[0].S
 }
