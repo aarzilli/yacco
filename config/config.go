@@ -15,7 +15,7 @@ var TagFont = util.MustNewFont(72, 16, 0.9, "$HOME/.config/yacco/luxisr.ttf:$HOM
 var AltFont = util.MustNewFont(72, 16, 1.0, "$HOME/.config/yacco/luximr.ttf")
 var ComplFont = TagFont
 
-var EditErrorTrace = true
+var EditErrorTrace = false
 
 var TabElasticity = 4
 var EnableHighlighting = true

@@ -15,7 +15,7 @@ type cmdDef struct {
 	bodyarg  bool
 	optxtarg bool
 	restargs bool
-	escarg bool
+	escarg   bool
 	fn       func(c *cmd, atsel util.Sel, ec EditContext)
 }
 

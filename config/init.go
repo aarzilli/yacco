@@ -1,9 +1,3 @@
 package config
 
-var Initialization = []string{
-	`Macro Fs
-		Edit ,s/[ \t]+$//g`,
-	`Macro Music
-		win minstrel start
-		minstrel where`,
-}
+var Initialization = []string{}
