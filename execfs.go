@@ -11,7 +11,7 @@ func ExecFs(ec *ExecContext, cmd string) {
 	cmd = strings.TrimSpace(cmd)
 	switch cmd {
 	case "addr=dot":
-		ec.fr.Sels[4] = ec.fr.Sels[0]
+		ec.ed.otherSel[OS_ADDR] = ec.fr.Sels[0]
 
 	case "clean":
 		ec.buf.Modified = false
@@ -32,7 +32,7 @@ func ExecFs(ec *ExecContext, cmd string) {
 		DelCmd(*ec, "", true)
 
 	case "dot=addr":
-		ec.fr.Sels[0] = ec.fr.Sels[4]
+		ec.fr.Sels[0] = ec.ed.otherSel[OS_ADDR]
 		ec.br.BufferRefresh(false)
 
 	case "get":
