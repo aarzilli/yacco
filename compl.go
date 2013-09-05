@@ -22,7 +22,7 @@ var complImg *image.RGBA
 var complPrefixSuffix string
 
 const COMPL_MAXX = 512
-const COMPL_MAXY = 100
+const COMPL_MAXY = 200
 
 func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 	fr := textframe.Frame{
@@ -187,7 +187,7 @@ func ComplStart(ec ExecContext) {
 
 	//println("hasFp", hasFp, "hasWd", hasWd, "wdPrefixSuffix", wdPrefixSuffix, "fpPrefixSuffix", fpPrefixSuffix, "complPrefixSuffix", complPrefixSuffix)
 
-	cmax := 5
+	cmax := 10
 	if cmax > len(compls) {
 		cmax = len(compls)
 	}
@@ -247,9 +247,18 @@ func getFsCompls(resDir, resName string) []string {
 	}
 	defer fh.Close()
 
-	names, err := fh.Readdirnames(-1)
+	fes, err := fh.Readdir(-1)
 	if err != nil {
 		return []string{}
+	}
+
+	names := make([]string, len(fes))
+	for i := range fes {
+		if fes[i].IsDir() {
+			names[i] = fes[i].Name() + "/"
+		} else {
+			names[i] = fes[i].Name()
+		}
 	}
 
 	r := []string{}
