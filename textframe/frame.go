@@ -618,10 +618,10 @@ func (fr *Frame) Redraw(flush bool) {
 			}
 		} else {
 			for j := range fr.Sels {
-				if (j+1 >= len(fr.Colors)) {
+				if j+1 >= len(fr.Colors) {
 					break
 				}
-				if /*((fr.Colors[j+1][0] != fr.Colors[0][0]) || (fr.Colors[j+1][1] != fr.Colors[0][1])) && */(i+fr.Top >= fr.Sels[j].S) && (i+fr.Top < fr.Sels[j].E) {
+				if /*((fr.Colors[j+1][0] != fr.Colors[0][0]) || (fr.Colors[j+1][1] != fr.Colors[0][1])) && */ (i+fr.Top >= fr.Sels[j].S) && (i+fr.Top < fr.Sels[j].E) {
 					ssel = j + 1
 					fr.redrawSelection(fr.Sels[j].S-fr.Top, fr.Sels[j].E-fr.Top, &fr.Colors[ssel][0])
 				}
@@ -694,8 +694,14 @@ func (fr *Frame) Redraw(flush bool) {
 			}
 
 		}
+
+		h := int(glyphBounds.YMax)
+		if fr.Font.Spacing < 1 {
+			h = int(float64(h) * fr.Font.Spacing)
+		}
+
 		r := image.Rectangle{
-			Min: image.Point{x, y - int(glyphBounds.YMax)},
+			Min: image.Point{x, y - h},
 			Max: image.Point{x + 1, y - int(glyphBounds.YMin)}}
 
 		drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r), &fr.Colors[0][1])

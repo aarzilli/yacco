@@ -158,10 +158,14 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 
 				case wde.MouseDraggedEvent:
 					fixButton(&e.Which, e.Modifiers)
-					scheduleMouseEvent(e)
+					if !mouseFlag {
+						scheduleMouseEvent(e)
+					}
 
 				case wde.MouseMovedEvent:
-					scheduleMouseEvent(e)
+					if !mouseFlag {
+						scheduleMouseEvent(e)
+					}
 
 				case wde.MouseDownEvent:
 					if e.Which == 0 {
