@@ -273,7 +273,7 @@ func (b *Buffer) generateEvent(text []rune, sel util.Sel, eventChan chan string,
 }
 
 // Undo last change. Redoes last undo if redo == true
-func (b *Buffer) Undo(sels []util.Sel, redo bool) {
+func (b *Buffer) Undo(sel *util.Sel, redo bool) {
 	if !b.Editable {
 		return
 	}
@@ -315,8 +315,8 @@ func (b *Buffer) Undo(sels []util.Sel, redo bool) {
 
 		b.unlock()
 
-		sels[0].S = ws.S
-		sels[0].E = ws.S
+		sel.S = ws.S
+		sel.E = ws.S + len(text)
 
 		mui := ui
 		if !redo {
@@ -435,13 +435,13 @@ func (b *Buffer) updateSels(sel *util.Sel, delta int) {
 				continue
 			}
 
-			if (sels[i].S >= sel.S) && (sels[i].S < end) {
+			if (sels[i].S >= sel.S) && (sels[i].S <= end) {
 				sels[i].S = sel.S
 			} else if sels[i].S > sel.S {
 				sels[i].S += delta
 			}
 
-			if (sels[i].E >= sel.S) && (sels[i].E < end) {
+			if (sels[i].E >= sel.S) && (sels[i].E <= end) {
 				sels[i].E = sel.S
 			} else if sels[i].E > sel.S {
 				sels[i].E += delta

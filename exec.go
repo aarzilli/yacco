@@ -313,7 +313,7 @@ func JobsCmd(ec ExecContext, arg string) {
 	Warnfull(filepath.Join(Wnd.tagbuf.Dir, "+Jobs"), t, true)
 	ed, err := EditFind(Wnd.tagbuf.Dir, "+Jobs", false, true)
 	if err == nil {
-		ed.tagbuf.Replace([]rune("Jobs"), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0, true)
+		ed.tagbuf.Replace([]rune("Jobs"), &util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() }, true, nil, 0, true)
 		ed.BufferRefresh(false)
 	}
 }
@@ -574,7 +574,7 @@ func RedoCmd(ec ExecContext, arg string) {
 	}
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
-	ec.buf.Undo(ec.fr.Sels, true)
+	ec.buf.Undo(&ec.fr.Sels[0], true)
 	ec.br.BufferRefresh(ec.ontag)
 }
 
@@ -615,7 +615,7 @@ func UndoCmd(ec ExecContext, arg string) {
 	}
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
-	ec.buf.Undo(ec.fr.Sels, false)
+	ec.buf.Undo(&ec.fr.Sels[0], false)
 	if ec.br != nil {
 		ec.br.BufferRefresh(ec.ontag)
 	}
