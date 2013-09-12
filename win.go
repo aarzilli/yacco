@@ -836,10 +836,18 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 	switch e.Chord {
 	case "escape":
 		HideCompl()
-		if (lp.ed != nil) && (lp.ed.specialChan != nil) && lp.ed.specialExitOnReturn {
-			lp.ed.sfr.Fr.VisibleTick = true
-			lp.ed.ExitSpecial()
-			return
+		if lp.ed != nil {
+			if (lp.ed.specialChan != nil) && lp.ed.specialExitOnReturn {
+				lp.ed.sfr.Fr.VisibleTick = true
+				lp.ed.ExitSpecial()
+				return
+			} else if lp.tagfr != nil {
+				lp.tagfr.Sels[0].E = lp.tagfr.Sels[0].S
+				lp.ed.BufferRefresh(true)
+			} else if lp.sfr != nil {
+				lp.sfr.Fr.Sels[0].E = lp.sfr.Fr.Sels[0].S
+				lp.ed.BufferRefresh(false)
+			}
 		}
 
 	case "return":
@@ -1111,7 +1119,6 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 		}
 
 		return string(lp.tagbuf.SelectionRunes(*sel)), original
-
 	}
 
 	return "", original
