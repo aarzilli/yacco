@@ -310,7 +310,12 @@ func JobsCmd(ec ExecContext, arg string) {
 		}
 		t += fmt.Sprintf("%d %s\n", i, job.descr)
 	}
-	Warnfull(filepath.Join(Wnd.tagbuf.Dir, "+Jobs"), t)
+	Warnfull(filepath.Join(Wnd.tagbuf.Dir, "+Jobs"), t, true)
+	ed, err := EditFind(Wnd.tagbuf.Dir, "+Jobs", false, true)
+	if err == nil {
+		ed.tagbuf.Replace([]rune("Jobs"), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0, true)
+		ed.BufferRefresh(false)
+	}
 }
 
 func KillCmd(ec ExecContext, arg string) {

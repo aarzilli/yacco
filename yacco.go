@@ -107,8 +107,8 @@ func realmain() {
 				}
 				r = append(r, fmt.Sprintf("Load %s", names[i][:len(names[i])-len(".dump")]))
 			}
-			Warnfull("+Dumps", strings.Join(r, "\n"))
-			Warnfull("+Dumps", "\n")
+			Warnfull("+Dumps", strings.Join(r, "\n"), false)
+			Warnfull("+Dumps", "\n", false)
 		}
 	}
 
