@@ -309,9 +309,9 @@ func (w *Window) EventLoop() {
 			lp := w.TranslatePosition(e.Where, false)
 			if lp.sfr != nil {
 				if e.Count > 0 {
-					lp.sfr.Fr.Scroll(+3, e.Count)
+					lp.sfr.Fr.Scroll(+1, 3 * e.Count)
 				} else {
-					lp.sfr.Fr.Scroll(-3, -e.Count)
+					lp.sfr.Fr.Scroll(-1, -3 * e.Count)
 				}
 				lp.sfr.Redraw(true)
 			}
