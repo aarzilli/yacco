@@ -1010,25 +1010,14 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent, event
 	case wde.LeftButton:
 		switch ee.Which {
 		case wde.MiddleButton:
-			del := true
-		eventLoop:
-			for ei := range events {
-				if e, ok := ei.(wde.MouseUpEvent); ok {
-					switch e.Which {
-					case wde.LeftButton:
-						del = true
-						break eventLoop
-					case wde.RightButton:
-						del = false
-						break eventLoop
-					}
-				}
-			}
-
-			CopyCmd(lp.asExecContext(true), "", del)
+			clickExec12(lp, events)
 
 		case wde.RightButton:
-			PasteCmd(lp.asExecContext(true), "", false)
+			if ee.Modifiers == "shift+" {
+				clickExec12(lp, events)
+			} else {
+				PasteCmd(lp.asExecContext(true), "", false)
+			}
 
 		case wde.LeftButton:
 			fallthrough
@@ -1098,6 +1087,26 @@ func clickExec3(lp LogicalPos, e util.MouseDownEvent) {
 		}
 		util.Fmtevent3(lp.ed.eventChan, util.EO_MOUSE, lp.tagfr != nil, original, fr.Sels[2].S, fr.Sels[2].E, s)
 	}
+}
+
+// click with left button, followed by the middle button
+func clickExec12(lp LogicalPos, events <-chan interface{}) {
+	del := true
+		eventLoop:
+	for ei := range events {
+		if e, ok := ei.(wde.MouseUpEvent); ok {
+			switch e.Which {
+			case wde.LeftButton:
+				del = true
+				break eventLoop
+			case wde.RightButton:
+				del = false
+				break eventLoop
+			}
+		}
+	}
+
+	CopyCmd(lp.asExecContext(true), "", del)
 }
 
 func expandedSelection(lp LogicalPos, idx int) (string, int) {
