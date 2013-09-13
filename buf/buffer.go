@@ -425,6 +425,8 @@ func (b *Buffer) updateSels(sel *util.Sel, delta int) {
 		end = -1
 	}
 
+	s := b.Size()
+
 	for k := range b.sels {
 		if b.sels[k] == nil {
 			continue
@@ -445,6 +447,13 @@ func (b *Buffer) updateSels(sel *util.Sel, delta int) {
 				sels[i].E = sel.S
 			} else if sels[i].E > sel.S {
 				sels[i].E += delta
+			}
+
+			if sels[i].E > s {
+				sels[i].E = s
+			}
+			if sels[i].S > s {
+				sels[i].S = s
 			}
 		}
 	}

@@ -85,6 +85,7 @@ type EventMsg struct {
 }
 
 type activeSelStruct struct {
+	ed *Editor
 	path string
 	s, e int
 	txt  string
@@ -102,6 +103,7 @@ func (as *activeSelStruct) Set(lp LogicalPos) {
 		return
 	}
 
+	as.ed = lp.ed
 	as.path = filepath.Join(lp.bodybuf.Dir, lp.bodybuf.Name)
 	as.s = lp.sfr.Fr.Sels[0].S
 	as.e = lp.sfr.Fr.Sels[0].E
@@ -274,7 +276,7 @@ func (w *Window) EventLoop() {
 				if !could {
 					ee = lp.tagfr.OnClick(e, events)
 				}
-				clickExec(lp, e, ee)
+				clickExec(lp, e, ee, events)
 				if (lp.tagfr.Sels[0].S == 0) && (lp.tagfr.Sels[0].E == lp.tagbuf.Size()) && (lp.tagbuf.EditableStart >= 0) {
 					lp.tagfr.Sels[0].S = lp.tagbuf.EditableStart
 					lp.tagfr.Redraw(true)
@@ -288,7 +290,7 @@ func (w *Window) EventLoop() {
 					if !could {
 						_, ee = lp.sfr.OnClick(e, events)
 					}
-					clickExec(lp, e, ee)
+					clickExec(lp, e, ee, events)
 				} else {
 					lp.sfr.OnClick(e, events)
 				}
@@ -309,9 +311,9 @@ func (w *Window) EventLoop() {
 			lp := w.TranslatePosition(e.Where, false)
 			if lp.sfr != nil {
 				if e.Count > 0 {
-					lp.sfr.Fr.Scroll(+1, 3 * e.Count)
+					lp.sfr.Fr.Scroll(+1, 3*e.Count)
 				} else {
-					lp.sfr.Fr.Scroll(-1, -3 * e.Count)
+					lp.sfr.Fr.Scroll(-1, -3*e.Count)
 				}
 				lp.sfr.Redraw(true)
 			}
@@ -990,7 +992,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 	}
 }
 
-func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent) {
+func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent, events <-chan interface{}) {
 	switch e.Which {
 	case wde.MiddleButton:
 		if (ee != nil) && (ee.Which == wde.LeftButton) {
@@ -1006,7 +1008,33 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent) {
 		clickExec3(lp, e)
 
 	case wde.LeftButton:
-		clickExec1(lp, e)
+		switch ee.Which {
+		case wde.MiddleButton:
+			del := true
+		eventLoop:
+			for ei := range events {
+				if e, ok := ei.(wde.MouseUpEvent); ok {
+					switch e.Which {
+					case wde.LeftButton:
+						del = true
+						break eventLoop
+					case wde.RightButton:
+						del = false
+						break eventLoop
+					}
+				}
+			}
+
+			CopyCmd(lp.asExecContext(true), "", del)
+
+		case wde.RightButton:
+			PasteCmd(lp.asExecContext(true), "", false)
+
+		case wde.LeftButton:
+			fallthrough
+		default:
+			clickExec1(lp, e)
+		}
 	}
 }
 

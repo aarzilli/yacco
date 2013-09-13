@@ -103,6 +103,7 @@ func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReader
 					s = []byte{}
 				}
 			}
+
 		case ANSI_ESCAPE:
 			escseq = append(escseq, ch)
 			switch ch {
@@ -113,7 +114,7 @@ func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReader
 			default:
 				state = ANSI_ESCAPE_CSI
 			}
-		
+
 		case ANSI_ESCAPE_CSI:
 			escseq = append(escseq, ch)
 			if (ch >= 0x40) && (ch <= 0x7e) {
@@ -137,7 +138,7 @@ func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReader
 					controlChan <- MoveDotMsg{"#0"}
 				}
 			}
-			
+
 		case ANSI_ESCAPE_OSC:
 			escseq = append(escseq, ch)
 			if len(escseq) > 2 && (ch == 0x07) { /* ding! */
@@ -411,7 +412,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 			} else {
 				anchorDown()
 			}
-			
+
 		case NameMsg:
 			buf.CtlFd.Write([]byte(fmt.Sprintf("name %s/+Win\n", msg.name)))
 		}

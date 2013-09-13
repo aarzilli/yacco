@@ -85,6 +85,7 @@ func init() {
 	cmds["Macro"] = MacroCmd
 	cmds["LookFile"] = LookFileCmd
 	cmds["Load"] = LoadCmd
+	cmds["Builtin"] = BuiltinCmd
 }
 
 func fakebuf(name string) bool {
@@ -157,6 +158,10 @@ func ExtExec(ec ExecContext, cmd string) {
 		wd = ec.dir
 	}
 	NewJob(wd, cmd, "", &ec, false, nil)
+}
+
+func BuiltinCmd(ec ExecContext, arg string) {
+	execNoDefer(ec, arg)
 }
 
 func CopyCmd(ec ExecContext, arg string, del bool) {
@@ -313,7 +318,7 @@ func JobsCmd(ec ExecContext, arg string) {
 	Warnfull(filepath.Join(Wnd.tagbuf.Dir, "+Jobs"), t, true)
 	ed, err := EditFind(Wnd.tagbuf.Dir, "+Jobs", false, true)
 	if err == nil {
-		ed.tagbuf.Replace([]rune("Jobs"), &util.Sel{ ed.tagbuf.EditableStart, ed.tagbuf.Size() }, true, nil, 0, true)
+		ed.tagbuf.Replace([]rune("Jobs"), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0, true)
 		ed.BufferRefresh(false)
 	}
 }
@@ -625,15 +630,15 @@ func ZeroxCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	ed := ec.ed
 	if ed == nil {
-		ed = activeEditor
+		ed = activeSel.ed
 	}
 	if ed == nil {
 		return
 	}
-	ec.ed.confirmDel = false
-	ec.ed.confirmSave = false
-	ec.ed.bodybuf.RefCount++
-	ned := NewEditor(ec.ed.bodybuf, true)
+	ed.confirmDel = false
+	ed.confirmSave = false
+	ed.bodybuf.RefCount++
+	ned := NewEditor(ed.bodybuf, true)
 	HeuristicPlaceEditor(ned, true)
 }
 
