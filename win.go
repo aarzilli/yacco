@@ -85,7 +85,7 @@ type EventMsg struct {
 }
 
 type activeSelStruct struct {
-	ed *Editor
+	ed   *Editor
 	path string
 	s, e int
 	txt  string
@@ -993,11 +993,23 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 }
 
 func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent, events <-chan interface{}) {
+	if ee == nil {
+		ee = &wde.MouseUpEvent{}
+		ee.Where = e.Where
+		ee.Which = e.Which
+		ee.Modifiers = e.Modifiers
+	}
+
 	switch e.Which {
 	case wde.MiddleButton:
-		if (ee != nil) && (ee.Which == wde.LeftButton) {
-			clickExec2extra(lp, e)
-		} else {
+		switch ee.Which {
+		case wde.LeftButton:
+			if completeClick(events, wde.MiddleButton, wde.RightButton) {
+				clickExec2extra(lp, e)
+			}
+		case wde.RightButton:
+			// cancelled
+		default:
 			clickExec2(lp, e)
 		}
 
@@ -1005,7 +1017,9 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent, event
 		clickExec2extra(lp, e)
 
 	case wde.RightButton:
-		clickExec3(lp, e)
+		if ee.Which != wde.MiddleButton { // middle button cancels right button
+			clickExec3(lp, e)
+		}
 
 	case wde.LeftButton:
 		switch ee.Which {
@@ -1016,7 +1030,9 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent, event
 			if ee.Modifiers == "shift+" {
 				clickExec12(lp, events)
 			} else {
-				PasteCmd(lp.asExecContext(true), "", false)
+				if completeClick(events, wde.LeftButton, wde.MiddleButton) {
+					PasteCmd(lp.asExecContext(true), "", false)
+				}
 			}
 
 		case wde.LeftButton:
@@ -1025,6 +1041,22 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent, event
 			clickExec1(lp, e)
 		}
 	}
+}
+
+func completeClick(events <-chan interface{}, completeAction, cancelAction wde.Button) bool {
+	for ei := range events {
+		e, ok := ei.(wde.MouseUpEvent)
+		if !ok {
+			continue
+		}
+		switch e.Which {
+		case completeAction:
+			return true
+		case cancelAction:
+			return false
+		}
+	}
+	return false
 }
 
 func clickExec1(lp LogicalPos, e util.MouseDownEvent) {
@@ -1092,7 +1124,7 @@ func clickExec3(lp LogicalPos, e util.MouseDownEvent) {
 // click with left button, followed by the middle button
 func clickExec12(lp LogicalPos, events <-chan interface{}) {
 	del := true
-		eventLoop:
+eventLoop:
 	for ei := range events {
 		if e, ok := ei.(wde.MouseUpEvent); ok {
 			switch e.Which {
