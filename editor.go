@@ -443,7 +443,8 @@ func (ed *Editor) Height() int {
 }
 
 func (e *Editor) UsedHeight() int {
-	return e.sfr.Fr.Limit.Y - e.r.Min.Y + int(e.sfr.Fr.Font.LineHeight())
+	bounds := e.sfr.Fr.Font.Fonts[0].Bounds(int32(e.sfr.Fr.Font.Size))
+	return e.sfr.Fr.Limit.Y - e.r.Min.Y - int(bounds.YMin) + 2
 }
 
 func (ed *Editor) recenterIntl(refresh bool) bool {
