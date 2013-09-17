@@ -50,11 +50,11 @@ type WarnMsg struct {
 }
 
 type ReplaceMsg struct {
-	ec       *ExecContext
-	sel      *util.Sel
-	append   bool
-	txt      string
-	origin   util.EventOrigin
+	ec     *ExecContext
+	sel    *util.Sel
+	append bool
+	txt    string
+	origin util.EventOrigin
 	reselect bool
 }
 

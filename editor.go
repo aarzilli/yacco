@@ -137,7 +137,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	}
 	e.tagfr = textframe.Frame{
 		Font:        config.TagFont,
-		Hackflags:   textframe.HF_MARKSOFTWRAP | textframe.HF_QUOTEHACK,
+		Hackflags:   textframe.HF_TRUNCATE | textframe.HF_QUOTEHACK,
 		Scroll:      func(sd, sl int) {},
 		VisibleTick: false,
 		Colors: [][]image.Uniform{
@@ -344,10 +344,10 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur bool) {
 	}
 
 	if ontag {
-		e.tagfr.Clear()
-		ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
-		e.tagfr.InsertColor(ta)
-		e.tagfr.InsertColor(tb)
+		e.tagRefreshIntl()
+		if e.tagRecenterIntl() {
+			e.tagRefreshIntl()
+		}
 		e.tagfr.Redraw(true)
 	} else {
 		e.refreshIntl()
@@ -376,6 +376,30 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur bool) {
 			}
 		}
 	}
+}
+
+func (e *Editor) tagRefreshIntl() {
+	e.tagfr.Clear()
+	ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
+	e.tagfr.InsertColor(ta)
+	e.tagfr.InsertColor(tb)
+}
+
+func (e *Editor) tagRecenterIntl() bool {
+	p := e.tagfr.PointToCoord(e.tagfr.Sels[0].S)
+	if e.tagfr.Inside(e.tagfr.Sels[0].S) && p.In(e.tagfr.R) {
+		return false
+	}
+
+	dst := (e.tagfr.R.Max.X - e.tagfr.R.Min.X) / 2
+	nm := -(p.X - e.tagfr.R.Min.X + e.tagfr.Offset) + dst
+	if nm > 0 {
+		nm = 0
+	}
+
+	e.tagfr.Offset = nm
+
+	return true
 }
 
 func (e *Editor) BufferRefresh(ontag bool) {

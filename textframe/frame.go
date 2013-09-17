@@ -54,6 +54,7 @@ type Frame struct {
 	Limit image.Point
 
 	margin raster.Fix32
+	Offset int
 
 	Sels []util.Sel
 
@@ -90,6 +91,7 @@ func (fr *Frame) Init(margin int) error {
 	fr.margin = raster.Fix32(margin << 8)
 	fr.Sels = make([]util.Sel, len(fr.Colors))
 	fr.glyphs = []glyph{}
+	fr.Offset = 0
 
 	if fr.TabWidth == 0 {
 		fr.TabWidth = 8
@@ -127,7 +129,7 @@ func (fr *Frame) lineHeight() raster.Fix32 {
 
 func (fr *Frame) initialInsPoint() raster.Point {
 	gb := fr.Font.Bounds()
-	return raster.Point{raster.Fix32(fr.R.Min.X<<8) + fr.margin, raster.Fix32(fr.R.Min.Y<<8) + raster.Fix32(int32(float64(gb.YMax)*fr.Font.Spacing)<<8)}
+	return raster.Point{raster.Fix32(fr.R.Min.X<<8) + raster.Fix32(fr.Offset<<8) + fr.margin, raster.Fix32(fr.R.Min.Y<<8) + raster.Fix32(int32(float64(gb.YMax)*fr.Font.Spacing)<<8)}
 }
 
 func (fr *Frame) Clear() {
@@ -679,9 +681,9 @@ func (fr *Frame) Redraw(flush bool) {
 	if (fr.Sels[0].S == fr.Sels[0].E) && fr.VisibleTick && (len(fr.glyphs) > 0) && (fr.Sels[0].S-fr.Top >= 0) && (fr.Sels[0].S-fr.Top <= len(fr.glyphs)) {
 		var x, y int
 		if fr.Sels[0].S-fr.Top < len(fr.glyphs) {
-			g := fr.glyphs[fr.Sels[0].S-fr.Top]
-			x = int(g.p.X >> 8)
-			y = int(g.p.Y >> 8)
+			p := fr.glyphs[fr.Sels[0].S-fr.Top].p
+			x = int(p.X >> 8)
+			y = int(p.Y >> 8)
 		} else {
 			g := fr.glyphs[len(fr.glyphs)-1]
 
@@ -692,7 +694,6 @@ func (fr *Frame) Redraw(flush bool) {
 				x = int((g.p.X+g.width)>>8) + 1
 				y = int(g.p.Y >> 8)
 			}
-
 		}
 
 		h := int(glyphBounds.YMax)
