@@ -235,8 +235,8 @@ func DumpCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	dumpDest := getDumpPath(arg, true)
 	if DumpTo(dumpDest) {
-		Wnd.wnd.SetTitle("Yacco " + filepath.Base(dumpDest))
 		AutoDumpPath = dumpDest
+		setDumpTitle()
 	}
 }
 
@@ -244,14 +244,17 @@ func LoadCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	dumpDest := getDumpPath(arg, false)
 	if LoadFrom(dumpDest) {
-		Wnd.wnd.SetTitle("Yacco " + dumpDest)
 		AutoDumpPath = dumpDest
+		setDumpTitle()
 	}
 }
 
 func getDumpPath(arg string, dodef bool) string {
 	dumpDest := strings.TrimSpace(arg)
 	if dumpDest == "" {
+		if AutoDumpPath != "" {
+			return AutoDumpPath
+		}
 		if !dodef {
 			return ""
 		}

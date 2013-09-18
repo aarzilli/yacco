@@ -153,3 +153,9 @@ func LoadFrom(dumpDest string) bool {
 
 	return true
 }
+
+func setDumpTitle() {
+	b := filepath.Base(AutoDumpPath)
+	b = b[:len(b)-len(".dump")]
+	Wnd.wnd.SetTitle("Yacco " + b)
+}

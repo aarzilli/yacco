@@ -84,8 +84,8 @@ func realmain() {
 		dumpDest := getDumpPath(*dumpFlag, false)
 		if LoadFrom(dumpDest) {
 			hasarg = true
-			Wnd.wnd.SetTitle("Yacco " + dumpDest)
 			AutoDumpPath = dumpDest
+			setDumpTitle()
 		}
 	}
 
