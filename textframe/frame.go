@@ -872,6 +872,7 @@ func (fr *Frame) PushUp(ln int) (newsize int) {
 		copy(fr.glyphs, fr.glyphs[off:])
 		fr.glyphs = fr.glyphs[:len(fr.glyphs)-off]
 	} else {
+		fr.Top += len(fr.glyphs)
 		fr.glyphs = []glyph{}
 	}
 
