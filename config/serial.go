@@ -15,6 +15,7 @@ type configObj struct {
 	AltFont            configFont
 	ComplFont          configFont
 	EnableHighlighting bool
+	ServeTCP           bool
 }
 
 type configFont struct {
@@ -48,4 +49,5 @@ func LoadConfiguration() {
 	AltFont = fontFromConf(co.AltFont)
 	ComplFont = fontFromConf(co.ComplFont)
 	EnableHighlighting = co.EnableHighlighting
+	ServeTCP = co.ServeTCP
 }

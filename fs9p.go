@@ -6,24 +6,48 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"yacco/buf"
+	"yacco/config"
 )
 
 var p9ListenAddr string
 var p9Srv *srv.Fsrv
 var p9root *srv.File
+var p9il net.Listener
 
 func fs9PInit() {
-	il, err := net.Listen("tcp4", "127.0.0.1:0")
-	if err != nil {
-		fmt.Printf("Could not start 9p server: %v\n", err)
-		os.Exit(1)
-	}
+	var err error
 
-	p9ListenAddr = il.Addr().String()
-	os.Setenv("yp9", p9ListenAddr)
+	if config.ServeTCP {
+		p9il, err = net.Listen("tcp4", "127.0.0.1:0")
+		if err != nil {
+			fmt.Printf("Could not start 9p server: %v\n", err)
+			os.Exit(1)
+		}
+
+		p9ListenAddr = p9il.Addr().String()
+		os.Setenv("yp9", p9ListenAddr)
+
+		p9il = &ListenLocalOnly{p9il}
+	} else {
+		ns := os.Getenv("NAMESPACE")
+		if ns == "" {
+			ns = fmt.Sprintf("/tmp/ns.%s.%s", os.Getenv("USER"), os.Getenv("DISPLAY"))
+			os.MkdirAll(ns, 0700)
+		}
+		addr := filepath.Join(ns, fmt.Sprintf("yacco.%d", os.Getpid()))
+		os.Remove(addr)
+		p9il, err = net.Listen("unix", addr)
+		if err != nil {
+			fmt.Printf("Could not start 9p server: %v\n", err)
+			os.Exit(1)
+		}
+
+		os.Setenv("yp9", "unix!"+addr)
+	}
 
 	user := p.OsUsers.Uid2User(os.Geteuid())
 	p9root = new(srv.File)
@@ -45,12 +69,16 @@ func fs9PInit() {
 	p9Srv.Start(p9Srv)
 
 	go func() {
-		err = p9Srv.StartListener(&ListenLocalOnly{il})
+		err = p9Srv.StartListener(p9il)
 		if err != nil {
 			fmt.Printf("Could not start 9p server: %v\n", err)
 			os.Exit(1)
 		}
 	}()
+}
+
+func fs9PQuit() {
+	p9il.Close()
 }
 
 type ListenLocalOnly struct {

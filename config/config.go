@@ -19,3 +19,4 @@ var EditErrorTrace = false
 
 var TabElasticity = 4
 var EnableHighlighting = true
+var ServeTCP = false

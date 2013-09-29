@@ -413,7 +413,7 @@ func OpenBufferConn(p9clnt *clnt.Clnt, id string) (*BufferConn, error) {
 }
 
 func FindWin(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
-	return FindWinEx("+" + name, p9clnt)
+	return FindWinEx("+"+name, p9clnt)
 }
 
 func FindWinEx(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
@@ -465,12 +465,23 @@ func FindWinEx(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
 }
 
 func YaccoConnect() (*clnt.Clnt, error) {
-	if os.Getenv("yp9") == "" {
+	yp9 := os.Getenv("yp9")
+
+	if yp9 == "" {
 		return nil, fmt.Errorf("Must be called with active instance of Yacco")
 	}
 
+	ntype, naddr := "tcp", yp9
+	if strings.Index(yp9, "!") >= 0 {
+		v := strings.SplitN(yp9, "!", 2)
+		ntype = v[0]
+		naddr = v[1]
+	} else if yp9[0] == '/' {
+		ntype = "unix"
+	}
+
 	user := p.OsUsers.Uid2User(os.Geteuid())
-	p9clnt, err := clnt.Mount("tcp", os.Getenv("yp9"), "", user)
+	p9clnt, err := clnt.Mount(ntype, naddr, "", user)
 	if err != nil {
 		return nil, fmt.Errorf("Error connecting to yacco: %v\n", err)
 	}

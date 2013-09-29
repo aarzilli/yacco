@@ -19,6 +19,7 @@ func FsQuit() {
 	for i := range jobs {
 		jobKill(i)
 	}
+	fs9PQuit()
 	os.Exit(0)
 }
 
