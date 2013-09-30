@@ -35,7 +35,6 @@ const (
 	HF_MARKSOFTWRAP
 	HF_QUOTEHACK
 	HF_TRUNCATE // truncates instead of softwrapping
-	HF_ELASTICTABS
 	HF_COLUMNIZE
 )
 
@@ -170,12 +169,6 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	spaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, spaceIndex).AdvanceWidth) << 2
 	bigSpaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, xIndex).AdvanceWidth) << 2
 	tabWidth := spaceWidth * raster.Fix32(fr.TabWidth)
-
-	if fr.Hackflags&HF_ELASTICTABS != 0 {
-		defer func() {
-			limit = fr.elasticTabs(bigSpaceWidth, tabWidth, bottom, leftMargin, rightMargin, lh)
-		}()
-	}
 
 	limit.X = int(fr.ins.X >> 8)
 	limit.Y = int(fr.ins.Y >> 8)
@@ -832,25 +825,9 @@ func (fr *Frame) PushUp(ln int) (newsize int) {
 	fr.ins = fr.initialInsPoint()
 
 	lh := fr.lineHeight()
-	_, spaceIndex := fr.getIndex(' ')
-
-	rightMargin := raster.Fix32(fr.R.Max.X<<8) - fr.margin
-	leftMargin := raster.Fix32(fr.R.Min.X<<8) + fr.margin
-	bottom := raster.Fix32(fr.R.Max.Y<<8) + lh
-
-	_, xIndex := fr.getIndex('x')
-	spaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, spaceIndex).AdvanceWidth) << 2
-	bigSpaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, xIndex).AdvanceWidth) << 2
-	tabWidth := spaceWidth * raster.Fix32(fr.TabWidth)
 
 	fr.Limit.X = int(fr.ins.X >> 8)
 	fr.Limit.Y = int(fr.ins.Y >> 8)
-
-	if fr.Hackflags&HF_ELASTICTABS != 0 {
-		defer func() {
-			fr.Limit = fr.elasticTabs(bigSpaceWidth, tabWidth, bottom, leftMargin, rightMargin, lh)
-		}()
-	}
 
 	off := -1
 	for i := range fr.glyphs {
@@ -905,26 +882,12 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
 
 	lh := fr.lineHeight()
 
-	_, spaceIndex := fr.getIndex(' ')
-
-	rightMargin := raster.Fix32(fr.R.Max.X<<8) - fr.margin
 	leftMargin := raster.Fix32(fr.R.Min.X<<8) + fr.margin
 	bottom := raster.Fix32(fr.R.Max.Y<<8) + lh
-
-	_, xIndex := fr.getIndex('x')
-	spaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, spaceIndex).AdvanceWidth) << 2
-	bigSpaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, xIndex).AdvanceWidth) << 2
-	tabWidth := spaceWidth * raster.Fix32(fr.TabWidth)
 
 	if fr.ins.X != leftMargin {
 		fr.ins.X = leftMargin
 		fr.ins.Y += lh
-	}
-
-	if fr.Hackflags&HF_ELASTICTABS != 0 {
-		defer func() {
-			fr.Limit = fr.elasticTabs(bigSpaceWidth, tabWidth, bottom, leftMargin, rightMargin, lh)
-		}()
 	}
 
 	for i := range oldglyphs {
