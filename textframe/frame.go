@@ -846,17 +846,15 @@ func (fr *Frame) PushUp(ln int) (newsize int) {
 
 	if off >= 0 {
 		fr.Top += off
+		g := fr.glyphs[len(fr.glyphs)-1]
 		copy(fr.glyphs, fr.glyphs[off:])
-		fr.glyphs = fr.glyphs[:len(fr.glyphs)-off]
+		fr.glyphs = fr.glyphs[:len(fr.glyphs)-off-1]
+		fr.ins.X = g.p.X
+		fr.ins.Y = g.p.Y
+		fr.InsertColor([]ColorRune{ColorRune{g.color, g.r}})
 	} else {
 		fr.Top += len(fr.glyphs)
 		fr.glyphs = []glyph{}
-	}
-
-	if len(fr.glyphs) > 0 {
-		g := &fr.glyphs[len(fr.glyphs)-1]
-		fr.ins.X = g.p.X
-		fr.ins.Y = g.p.Y
 	}
 
 	fr.lastFull = len(fr.glyphs)
@@ -890,6 +888,11 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
 		fr.ins.Y += lh
 	}
 
+	oldY := raster.Fix32(0)
+	if len(oldglyphs) > 0 {
+		oldY = oldglyphs[0].p.Y
+	}
+
 	for i := range oldglyphs {
 		if fr.ins.Y > bottom {
 			fr.Limit = limit
@@ -901,12 +904,13 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
 			fr.lastFull = len(fr.glyphs)
 		}
 
-		if oldglyphs[i].r == '\n' {
+		if oldglyphs[i].p.Y != oldY {
 			fr.ins.Y += lh
-		} else {
-			oldglyphs[i].p.Y = fr.ins.Y
-			fr.ins.X = oldglyphs[i].p.X
+			oldY = oldglyphs[i].p.Y
 		}
+
+		oldglyphs[i].p.Y = fr.ins.Y
+		fr.ins.X = oldglyphs[i].p.X
 
 		fr.glyphs = append(fr.glyphs, oldglyphs[i])
 
