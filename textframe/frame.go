@@ -49,6 +49,7 @@ type Frame struct {
 	Wnd         wde.Window
 	Scroll      FrameScrollFn
 	Top         int
+	Tabs        []int
 
 	Limit image.Point
 
@@ -153,6 +154,22 @@ func (fr *Frame) Insert(runes []rune) (limit image.Point) {
 	return fr.InsertColor(cr)
 }
 
+func (fr *Frame) toNextCell(spaceWidth, tabWidth, leftMargin raster.Fix32) raster.Fix32 {
+	if fr.Tabs != nil {
+		for i := range fr.Tabs {
+			t := raster.Fix32(fr.Tabs[i]<<8) + leftMargin
+			if fr.ins.X+spaceWidth/2 < t {
+				return t - fr.ins.X
+			}
+		}
+	}
+	toNextCell := tabWidth - ((fr.ins.X - leftMargin) % tabWidth)
+	if toNextCell <= spaceWidth/2 {
+		toNextCell += tabWidth
+	}
+	return toNextCell
+}
+
 // Inserts text into the frame, returns the maximum X and Y used
 func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	lh := fr.lineHeight()
@@ -200,10 +217,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 			fr.ins.Y += lh
 			prev, prevFontIdx, hasPrev = spaceIndex, 0, true
 		} else if crune.R == '\t' {
-			toNextCell := tabWidth - ((fr.ins.X - leftMargin) % tabWidth)
-			if toNextCell <= spaceWidth/2 {
-				toNextCell += tabWidth
-			}
+			toNextCell := fr.toNextCell(spaceWidth, tabWidth, leftMargin)
 
 			g := glyph{
 				r:         crune.R,
@@ -304,6 +318,44 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	}
 	fr.Limit = limit
 	return
+}
+
+// Mesures the length of the string
+func (fr *Frame) Measure(rs []rune) int {
+	ret := raster.Fix32(0)
+
+	_, spaceIndex := fr.getIndex(' ')
+	spaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, spaceIndex).AdvanceWidth) << 2
+	tabWidth := spaceWidth * raster.Fix32(fr.TabWidth)
+
+	prev, prevFontIdx, hasPrev := truetype.Index(0), 0, false
+
+	for _, r := range rs {
+		if r == '\t' {
+			ret += tabWidth
+		}
+
+		lur := r
+
+		if (fr.Hackflags & HF_QUOTEHACK) != 0 {
+			if lur == '`' {
+				lur = 0x2018
+			} else if lur == '\'' {
+				lur = 0x2019
+			}
+		}
+
+		fontIdx, index := fr.getIndex(lur)
+		width := raster.Fix32(fr.Font.Fonts[fontIdx].HMetric(fr.cs[fontIdx].Scale, index).AdvanceWidth) << 2
+		kerning := raster.Fix32(0)
+		if hasPrev && (fontIdx == prevFontIdx) {
+			kerning = raster.Fix32(fr.Font.Fonts[fontIdx].Kerning(fr.cs[fontIdx].Scale, prev, index)) << 2
+			width += kerning
+		}
+		ret += width
+	}
+
+	return int(ret >> 8)
 }
 
 // Tracks the mouse position, selecting text, the events channel is from go.wde
