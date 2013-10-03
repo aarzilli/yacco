@@ -197,6 +197,7 @@ func DelCmd(ec ExecContext, arg string, confirmed bool) {
 		}
 		col := ec.ed.Column()
 		col.Remove(col.IndexOf(ec.ed))
+		ec.ed.Close()
 		removeBuffer(ec.ed.bodybuf)
 		Wnd.wnd.FlushImage()
 	} else {

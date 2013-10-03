@@ -328,6 +328,7 @@ func jumpFileFn(i int, off int64) ([]byte, syscall.Errno) {
 	bsels := ec.buf.Sels()
 	for i := range bsels {
 		if bsels[i] == nil {
+			s += fmt.Sprintf("%d nil\n", i)
 			continue
 		}
 		stype := "(unknown)"
@@ -339,7 +340,7 @@ func jumpFileFn(i int, off int64) ([]byte, syscall.Errno) {
 			stype = "(jumps)"
 		}
 
-		s += fmt.Sprintf("%p %s: %v\n", bsels[i], stype, *(bsels[i]))
+		s += fmt.Sprintf("%d %p %s: %v\n", i, bsels[i], stype, *(bsels[i]))
 	}
 
 	return []byte(s), 0

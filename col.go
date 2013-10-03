@@ -198,8 +198,6 @@ func (c *Col) IndexOf(ed *Editor) int {
 }
 
 func (c *Col) Remove(i int) {
-	c.editors[i].Close()
-
 	if i == 0 {
 		if i+1 < len(c.editors) {
 			c.editors[i+1].frac += c.editors[i].frac
