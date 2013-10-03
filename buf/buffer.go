@@ -933,3 +933,7 @@ func ToRunes(v []textframe.ColorRune) []rune {
 func (b *Buffer) UndoWhere() int {
 	return b.ul.cur
 }
+
+func (b *Buffer) Sels() []*[]util.Sel {
+	return b.sels
+}

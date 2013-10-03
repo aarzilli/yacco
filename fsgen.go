@@ -323,11 +323,25 @@ func jumpFileFn(i int, off int64) ([]byte, syscall.Errno) {
 	if ec.fr == nil {
 		return nil, syscall.EIO
 	}
-	s := ""
+	s := fmt.Sprintf("Buffer size: %d\n", ec.buf.Size())
 
-	for _, sel := range ec.fr.Sels {
-		s += fmt.Sprintf("#%d\n", sel.S)
+	bsels := ec.buf.Sels()
+	for i := range bsels {
+		if bsels[i] == nil {
+			continue
+		}
+		stype := "(unknown)"
+		if bsels[i] == &ec.fr.Sels {
+			stype = "(frame)"
+		} else if bsels[i] == &ec.ed.otherSel {
+			stype = "(other)"
+		} else if bsels[i] == &ec.ed.jumps {
+			stype = "(jumps)"
+		}
+
+		s += fmt.Sprintf("%p %s: %v\n", bsels[i], stype, *(bsels[i]))
 	}
+
 	return []byte(s), 0
 }
 
