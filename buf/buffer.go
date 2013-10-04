@@ -113,7 +113,7 @@ func (b *Buffer) AddSels(sels *[]util.Sel) {
 	for i := range b.sels {
 		if b.sels[i] == nil {
 			b.sels[i] = sels
-			break
+			return
 		}
 	}
 	b.sels = append(b.sels, sels)
