@@ -53,6 +53,10 @@ func ExecFs(ec *ExecContext, cmd string) {
 	case "show":
 		ec.ed.Recenter()
 
+	case "tabadj":
+		elasticTabs(ec.ed, true)
+		ec.ed.BufferRefresh(false)
+
 	default:
 		if strings.HasPrefix(cmd, "dumpdir") {
 			ec.buf.DumpDir = strings.TrimSpace(cmd[len("dumpdir"):])

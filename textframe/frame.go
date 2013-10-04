@@ -35,7 +35,6 @@ const (
 	HF_MARKSOFTWRAP
 	HF_QUOTEHACK
 	HF_TRUNCATE // truncates instead of softwrapping
-	HF_COLUMNIZE
 )
 
 type Frame struct {

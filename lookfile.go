@@ -115,6 +115,7 @@ func displayResults(ed *Editor, resultList []*lookFileResult) {
 
 	sel := util.Sel{0, ed.bodybuf.Size()}
 	ed.bodybuf.Replace([]rune(t), &sel, true, nil, 0, true)
+	elasticTabs(ed, true)
 	ed.BufferRefresh(false)
 }
 

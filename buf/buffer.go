@@ -206,7 +206,6 @@ func (b *Buffer) reloadDir(fh *os.File) error {
 	b.Replace([]rune(strings.Join(r, "\t")), &util.Sel{0, b.Size()}, true, nil, 0, false)
 
 	b.Modified = false
-	b.ul.Reset()
 	return nil
 }
 
@@ -359,6 +358,10 @@ func (b *Buffer) unlock() {
 // otherwise it will continue until after DisplayLines lines after pinc
 func (b *Buffer) Highlight(start int, full bool, pinc int) {
 	if !config.EnableHighlighting {
+		return
+	}
+
+	if b.IsDir() {
 		return
 	}
 
@@ -936,4 +939,12 @@ func (b *Buffer) UndoWhere() int {
 
 func (b *Buffer) Sels() []*[]util.Sel {
 	return b.sels
+}
+
+func (b *Buffer) IsDir() bool {
+	return b.Name[len(b.Name)-1] == '/'
+}
+
+func (b *Buffer) UndoReset() {
+	b.ul.Reset()
 }

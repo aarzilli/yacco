@@ -72,7 +72,6 @@ var cmds = map[string]Cmd{
 	"Rename":        RenameCmd,
 	"Jump":          JumpCmd,
 	"Getall":        GetallCmd,
-	"Tabstops":      TabstopsCmd,
 }
 
 var macros = map[string]Cmd{}
@@ -797,16 +796,6 @@ func JumpCmd(ec ExecContext, arg string) {
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
 	ec.ed.RestoreJump()
-	ec.ed.BufferRefresh(false)
-}
-
-func TabstopsCmd(ec ExecContext, arg string) {
-	if ec.ed == nil {
-		return
-	}
-	ec.ed.confirmDel = false
-	ec.ed.confirmSave = false
-	elasticTabs(ec.ed)
 	ec.ed.BufferRefresh(false)
 }
 

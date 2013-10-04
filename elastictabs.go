@@ -4,7 +4,7 @@ import (
 	"yacco/util"
 )
 
-func elasticTabs(ed *Editor) {
+func elasticTabs(ed *Editor, ignoreOverlong bool) {
 	tabWidth := ed.sfr.Fr.Measure([]rune("\t"))
 	spaceWidth := ed.sfr.Fr.Measure([]rune(" ")) * 2
 
@@ -19,7 +19,7 @@ func elasticTabs(ed *Editor) {
 		}
 
 		sz := ed.sfr.Fr.Measure(ed.bodybuf.SelectionRunes(util.Sel{s, e})) + spaceWidth
-		if sz >= tabWidth*8 {
+		if !ignoreOverlong && (sz >= tabWidth*8) {
 			invalid = true
 			return
 		}
@@ -53,6 +53,10 @@ func elasticTabs(ed *Editor) {
 			invalid = false
 			f = 0
 		}
+	}
+
+	for i := 1; i < len(tabs); i++ {
+		tabs[i] += tabs[i-1]
 	}
 
 	if len(tabs) > 0 {

@@ -4,8 +4,11 @@ import os
 import sys
 from subprocess import Popen, PIPE
 
-def send(s):
-	p = Popen([ "y9p", "write", "prop" ], shell=False, stdin=PIPE)
+def send(s, dst):
+	p = Popen([ "y9p", "write", dst ], shell=False, stdin=PIPE)
 	p.communicate(s)
 
-send("tab=" + sys.argv[1])
+if sys.argv[1] == "adj" or sys.argv[1] == "adjust":
+	send("tabadj", "buf/ctl")
+else:
+	send("tab=" + sys.argv[1], "prop")

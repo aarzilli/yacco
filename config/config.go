@@ -17,6 +17,5 @@ var ComplFont = util.MustNewFont(72, 16, 1.0, "$HOME/.config/yacco/luxisr.ttf:$H
 
 var EditErrorTrace = false
 
-var TabElasticity = 4
 var EnableHighlighting = true
 var ServeTCP = false

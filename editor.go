@@ -5,7 +5,10 @@ import (
 	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"yacco/buf"
 	"yacco/config"
 	"yacco/textframe"
@@ -33,6 +36,8 @@ type Editor struct {
 	savedTag            string
 	specialChan         chan string
 	specialExitOnReturn bool
+
+	pw int
 
 	otherSel     []util.Sel
 	jumps        []util.Sel
@@ -160,11 +165,6 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 		e.sfr.Fr.Font = config.MainFont
 	}
 
-	if (len(bodybuf.Name) > 0) && (bodybuf.Name[len(bodybuf.Name)-1] == '/') {
-		e.sfr.Fr.Hackflags = e.sfr.Fr.Hackflags | textframe.HF_COLUMNIZE
-		e.sfr.Fr.Hackflags = e.sfr.Fr.Hackflags & ^textframe.HF_MARKSOFTWRAP
-	}
-
 	util.Must(e.sfr.Init(5), "Editor initialization failed")
 	util.Must(e.tagfr.Init(5), "Editor initialization failed")
 
@@ -195,6 +195,12 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
 	e.sfr.SetRects(b, sfrr)
 
 	e.bodybuf.DisplayLines = int(float64(sfrr.Max.Y-sfrr.Min.Y) / float64(e.sfr.Fr.Font.LineHeight()))
+
+	if (e.pw != e.r.Dx()) && e.bodybuf.IsDir() {
+		e.pw = e.r.Dx()
+		e.readDir()
+	}
+	e.pw = e.r.Dx()
 
 	e.sfr.Fr.Clear()
 	ba, bb := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, e.bodybuf.Size()})
@@ -577,4 +583,86 @@ func (ed *Editor) RestoreJump() {
 
 func (ed *Editor) LastJump() int {
 	return ed.sfr.Fr.Sels[0].S
+}
+
+func (e *Editor) readDir() {
+	fh, err := os.Open(filepath.Join(e.bodybuf.Dir, e.bodybuf.Name))
+	if err != nil {
+		return
+	}
+	defer fh.Close()
+
+	fis, err := fh.Readdir(-1)
+	if err != nil {
+		return
+	}
+
+	r := make([]string, 0, len(fis))
+	for _, fi := range fis {
+		n := fi.Name()
+		switch {
+		case fi.IsDir():
+			n += "/"
+		case fi.Mode()&os.ModeSymlink != 0:
+			n += "@"
+		case fi.Mode()&0111 != 0:
+			n += "*"
+		}
+		r = append(r, n)
+	}
+
+	spaceWidth := e.sfr.Fr.Measure([]rune(" ")) * 2
+
+	szs := make([]int, len(r))
+
+	for i := range r {
+		szs[i] = e.sfr.Fr.Measure([]rune(r[i]))
+	}
+
+	L := e.sfr.Fr.R.Dx() - 10
+	var n int
+	for n = 15; n > 0; n-- {
+		max := make([]int, n)
+		for i := range max {
+			max[i] = 0
+		}
+
+		for i := range szs {
+			if szs[i] > max[i%n] {
+				max[i%n] = szs[i]
+			}
+		}
+
+		tot := 0
+		for i := range max {
+			if i != 0 {
+				tot += spaceWidth
+			}
+			tot += max[i]
+		}
+
+		if tot < L {
+			break
+		}
+	}
+
+	if n <= 0 {
+		n = 1
+	}
+
+	rr := []string{}
+	for i := range r {
+		if (i != 0) && ((i % n) == 0) {
+			rr = append(rr, "\n")
+		}
+		rr = append(rr, r[i])
+		if (i % n) != n-1 {
+			rr = append(rr, "\t")
+		}
+	}
+
+	e.bodybuf.Replace([]rune(strings.Join(rr, "")), &util.Sel{0, e.bodybuf.Size()}, true, nil, 0, false)
+	e.bodybuf.Modified = false
+	e.bodybuf.UndoReset()
+	elasticTabs(e, true)
 }
