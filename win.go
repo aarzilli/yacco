@@ -897,8 +897,10 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				nl += indent
 			}
 
-			ec.buf.Replace([]rune(nl), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD, true)
-			ec.br.BufferRefresh(ec.ontag)
+			if (ec.buf != nil) && (ec.br != nil) {
+				ec.buf.Replace([]rune(nl), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD, true)
+				ec.br.BufferRefresh(ec.ontag)
+			}
 		}
 		if lp.sfr != nil {
 			lp.ed.Recenter()
