@@ -76,6 +76,7 @@ var yellowsilver = mix(color.RGBA{0xEE, 0xEE, 0x9E, 0xFF}, color.RGBA{0xcc, 0xcc
 var redsilver = mix(color.RGBA{0xff, 0x00, 0x00, 0xff}, color.RGBA{0xcc, 0xcc, 0xcc, 0xff})
 var greensilver = mix(color.RGBA{0x00, 0xff, 0x00, 0xff}, color.RGBA{0xcc, 0xcc, 0xcc, 0xff})
 var stratostundora = mix(color.RGBA{0x00, 0x00, 0x44, 0xff}, color.RGBA{0x44, 0x44, 0x44, 0xff})
+var stratostundora2 = mix(stratostundora.At(0, 0).(color.RGBA), color.RGBA{ 0x00, 0x00, 0x00, 0xff })
 
 var AcmeEveningColorScheme = ColorScheme{
 	WindowBG: *image.Black,
@@ -102,6 +103,33 @@ var AcmeEveningColorScheme = ColorScheme{
 	HandleSpecialFG:  *DMedgreen,
 	HandleBG:         *DPurpleblue,
 }
+
+var AcmeEvening2ColorScheme = ColorScheme{
+	WindowBG: stratostundora2,
+
+	Border:    *image.Black,
+	Scrollbar: *image.NewUniform(color.RGBA{153, 153, 76, 0xff}),
+
+	EditorPlain:               []image.Uniform{stratostundora2, *image.White, *DGreygreen, *DPalegreyblue},
+	EditorSel1:                []image.Uniform{yellowsilver, *image.Black, *image.Black, *image.Black},
+	EditorSel2:                []image.Uniform{redsilver, *image.Black, *image.Black, *image.Black},
+	EditorSel3:                []image.Uniform{greensilver, *image.Black, *image.Black, *image.Black},
+	EditorMatchingParenthesis: []image.Uniform{*image.White, *image.Black, *image.Black, *image.Black},
+
+	TagPlain:               []image.Uniform{stratostundora, *image.White},
+	TagSel1:                []image.Uniform{*DPurpleblue, *image.Black},
+	TagSel2:                []image.Uniform{*DPurpleblue, *image.Black},
+	TagSel3:                []image.Uniform{*DPurpleblue, *image.Black},
+	TagMatchingParenthesis: []image.Uniform{*image.White, stratostundora},
+
+	Compl: []image.Uniform{stratostundora, *image.White},
+
+	HandleFG:         stratostundora,
+	HandleModifiedFG: *DMedblue,
+	HandleSpecialFG:  *DMedgreen,
+	HandleBG:         *DPurpleblue,
+}
+
 
 var darkyellowgray = mix(color.RGBA{0xaa, 0xff, 0x55, 0xff}, color.RGBA{0x66, 0x66, 0x66, 0xff})
 var harlequin = image.NewUniform(color.RGBA{0x44, 0xcc, 0x00, 0xff})

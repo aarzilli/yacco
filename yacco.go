@@ -35,6 +35,8 @@ func realmain() {
 			config.TheColorScheme = config.AcmeColorScheme
 		case "e", "evening":
 			config.TheColorScheme = config.AcmeEveningColorScheme
+		case "e2", "evening2":
+			config.TheColorScheme = config.AcmeEvening2ColorScheme
 		case "m", "midnight":
 			config.TheColorScheme = config.AcmeMidnightColorScheme
 		case "bw":
