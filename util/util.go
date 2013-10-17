@@ -84,7 +84,10 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 			wheelTotal += n
 		}
 
-		fixButton := func(which *wde.Button, modifiers string) {
+		downButtons := wde.Button(0)
+
+		fixButton := func(which *wde.Button, modifiers string, down bool, up bool) {
+			orig := *which
 			switch *which {
 			case wde.LeftButton:
 				switch modifiers {
@@ -98,6 +101,17 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 					*which = wde.MiddleButton | wde.LeftButton
 				}
 			}
+
+			if down {
+				downButtons |= *which
+			}
+			if up {
+				if (downButtons & *which) == 0 {
+					*which = orig
+				}
+				downButtons &= ^(*which)
+			}
+
 		}
 
 		for {
@@ -157,7 +171,7 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 					out <- ei
 
 				case wde.MouseDraggedEvent:
-					fixButton(&e.Which, e.Modifiers)
+					fixButton(&e.Which, e.Modifiers, false, false)
 					if !mouseFlag {
 						scheduleMouseEvent(e)
 					}
@@ -172,7 +186,7 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 						break
 					}
 
-					fixButton(&e.Which, e.Modifiers)
+					fixButton(&e.Which, e.Modifiers, true, false)
 					switch e.Which {
 					case wde.WheelUpButton:
 						scheduleWheelEvent(e, -1)
@@ -209,7 +223,7 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 					if e.Which == 0 {
 						break
 					}
-					fixButton(&e.Which, e.Modifiers)
+					fixButton(&e.Which, e.Modifiers, false, true)
 					out <- e
 
 				case wde.ResizeEvent:
