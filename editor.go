@@ -600,6 +600,9 @@ func (e *Editor) readDir() {
 	r := make([]string, 0, len(fis))
 	for _, fi := range fis {
 		n := fi.Name()
+		if config.HideHidden && (len(n) <= 0 || n[0] == '.') {
+			continue
+		}
 		switch {
 		case fi.IsDir():
 			n += "/"

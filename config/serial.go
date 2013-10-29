@@ -16,6 +16,7 @@ type configObj struct {
 	ComplFont          configFont
 	EnableHighlighting bool
 	ServeTCP           bool
+	HideHidden         bool
 }
 
 type configFont struct {
@@ -50,4 +51,5 @@ func LoadConfiguration() {
 	ComplFont = fontFromConf(co.ComplFont)
 	EnableHighlighting = co.EnableHighlighting
 	ServeTCP = co.ServeTCP
+	HideHidden = co.HideHidden
 }
