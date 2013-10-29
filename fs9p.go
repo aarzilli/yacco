@@ -145,7 +145,7 @@ func fs9PAddBuffer(n int, b *buf.Buffer) {
 	tag := &ReadWriteP9{srv.File{}, bwr(readTagFn), bww(writeTagFn)}
 	tag.Add(bufdir, "tag", user, nil, 0660, tag)
 	event := &ReadWriteExclP9{srv.File{},
-		nil, "",
+		nil, nil,
 		func(off int64, interrupted chan struct{}) ([]byte, syscall.Errno) {
 			return readEventFn(n, off, interrupted)
 		},
@@ -245,7 +245,7 @@ func (fh *ReadWriteP9) Write(fid *srv.FFid, data []byte, offset uint64) (int, er
 type ReadWriteExclP9 struct {
 	srv.File
 	interrupted chan struct{}
-	owner       string
+	owner       *srv.Conn
 	readFn      func(off int64, interrupted chan struct{}) ([]byte, syscall.Errno)
 	writeFn     func(data []byte, off int64) syscall.Errno
 	openFn      func() bool
@@ -257,14 +257,14 @@ func (fh *ReadWriteExclP9) Open(fid *srv.FFid, mode uint8) error {
 		return &p.Error{"Already opened", p.EIO}
 	}
 
-	fh.owner = fid.Fid.Fconn.Id
+	fh.owner = fid.Fid.Fconn
 	fh.interrupted = make(chan struct{})
 
 	return nil
 }
 
 func (fh *ReadWriteExclP9) Clunk(fid *srv.FFid) error {
-	if fh.owner == fid.Fid.Fconn.Id {
+	if fh.owner == fid.Fid.Fconn {
 		close(fh.interrupted)
 		fh.closeFn()
 	}
