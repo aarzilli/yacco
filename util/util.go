@@ -359,11 +359,11 @@ func read(fd io.Reader) (string, error) {
 }
 
 func findWinRestored(name string, p9clnt *clnt.Clnt) (bool, string, *clnt.File, *clnt.File) {
-	if os.Getenv("bd") == "" {
+	if os.Getenv("bi") == "" {
 		return false, "", nil, nil
 	}
 
-	ctlfd, err := p9clnt.FOpen(os.ExpandEnv("/$bd/index"), p.ORDWR)
+	ctlfd, err := p9clnt.FOpen(os.ExpandEnv("/$bi/index"), p.ORDWR)
 	if err != nil {
 		return false, "", nil, nil
 	}
