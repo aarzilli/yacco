@@ -25,7 +25,7 @@ type lookFileResult struct {
 }
 
 const MAX_RESULTS = 20
-const MAX_FS_RECUR_DEPTH = 5
+const MAX_FS_RECUR_DEPTH = 7
 
 func lookFileIntl(ed *Editor, ch chan string) {
 	defer ed.ExitSpecial()
