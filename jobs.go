@@ -119,38 +119,28 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 	go func() {
 		defer func() { job.done <- true }()
 		defer stdout.Close()
+		bsr, err := ioutil.ReadAll(stdout)
+		if err != nil {
+			return
+		}
+		bs := string(bsr)
 		if ((ec != nil) && job.writeToBuf) || (resultChan != nil) {
-			bs, err := ioutil.ReadAll(stdout)
-			if err != nil {
-				return
-			}
-			job.outstr = string(bs)
-		} else {
-			buf := make([]byte, 1024)
-			for {
-				n, err := stdout.Read(buf)
-				if n > 0 {
-					sideChan <- WarnMsg{job.cmd.Dir, string(buf[:n])}
-				}
-				if err != nil {
-					return
-				}
-			}
+			job.outstr = bs
+		} else if bs != "" {
+			sideChan <- WarnMsg{job.cmd.Dir, bs, true}
 		}
 	}()
 
 	go func() {
 		defer func() { job.done <- true }()
 		defer stderr.Close()
-		buf := make([]byte, 1024)
-		for {
-			n, err := stderr.Read(buf)
-			if n > 0 {
-				sideChan <- WarnMsg{job.cmd.Dir, string(buf[:n])}
-			}
-			if err != nil {
-				return
-			}
+		bsr, err := ioutil.ReadAll(stdout)
+		if err != nil {
+			return
+		}
+		bs := string(bsr)
+		if bs != "" {
+			sideChan <- WarnMsg{job.cmd.Dir, bs, true}
 		}
 	}()
 
@@ -175,7 +165,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 
 		err := job.cmd.Wait()
 		if err != nil {
-			sideChan <- WarnMsg{job.cmd.Dir, "Error executing command: " + job.descr + "\n"}
+			sideChan <- WarnMsg{job.cmd.Dir, "Error executing command: " + job.descr + "\n", false}
 		}
 
 		if (ec != nil) && job.writeToBuf {

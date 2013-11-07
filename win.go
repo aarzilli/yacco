@@ -45,8 +45,9 @@ type BufferRefreshable interface {
 }
 
 type WarnMsg struct {
-	dir string
-	msg string
+	dir      string
+	msg      string
+	selectit bool
 }
 
 type ReplaceMsg struct {
@@ -332,9 +333,9 @@ func (w *Window) EventLoop() {
 
 		case WarnMsg:
 			if e.dir != "" {
-				Warndir(e.dir, e.msg)
+				Warnfull(filepath.Join(e.dir, "+Error"), e.msg, false, e.selectit)
 			} else {
-				Warn(e.msg)
+				Warnfull("+Error", e.msg, false, e.selectit)
 			}
 
 		case ReplaceMsg:
@@ -879,6 +880,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		} else {
 			ec := lp.asExecContext(true)
 			nl := "\n"
+			indent := ""
 
 			if (ec.ed != nil) && (ec.ed.bodybuf == ec.buf) && (ec.ed.bodybuf.Props["indent"] == "on") && (ec.fr.Sels[0].S == ec.fr.Sels[0].E) {
 				is := ec.buf.Tonl(ec.fr.Sels[0].S-1, -1)
@@ -893,12 +895,14 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 					}
 					ie++
 				}
-				indent := string(ec.buf.SelectionRunes(util.Sel{is, ie}))
-				nl += indent
+				indent = string(ec.buf.SelectionRunes(util.Sel{is, ie}))
 			}
 
 			if (ec.buf != nil) && (ec.br != nil) {
 				ec.buf.Replace([]rune(nl), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD, true)
+				if indent != "" {
+					ec.buf.Replace([]rune(indent), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD, true)
+				}
 				ec.br.BufferRefresh(ec.ontag)
 			}
 		}

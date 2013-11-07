@@ -18,7 +18,7 @@ export PATH=$1/yaccodir:\$PATH
 export yaccoshell=/bin/bash
 unset PROMPT_COMMAND
 export PS1='\e];\w\a% '
-exec $1/yaccodir/yacco -s=1168x900 -t=e \$*
+exec $1/yaccodir/yacco -s=1168x900 -t=e2 \$*
 EOF
 chmod u+x $1/yacco
 mkdir -p $HOME/.config/yacco/

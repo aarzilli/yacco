@@ -112,7 +112,7 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 	}
 }
 
-func Warnfull(bufname, msg string, clear bool) {
+func Warnfull(bufname, msg string, clear bool, selectit bool) {
 	ed, err := EditFind(Wnd.tagbuf.Dir, bufname, false, true)
 	if err != nil {
 		fmt.Printf("Warn: %s (additionally error %s while displaying this warning)\n", msg, err.Error())
@@ -124,16 +124,21 @@ func Warnfull(bufname, msg string, clear bool) {
 		}
 		ed.sfr.Fr.Sels[0].E = ed.bodybuf.Size()
 
+		s := ed.sfr.Fr.Sels[0].S
 		ed.bodybuf.Replace([]rune(msg), &ed.sfr.Fr.Sels[0], true, nil, 0, true)
+		if selectit {
+			ed.sfr.Fr.Sels[0].S = s
+		}
+
 		ed.BufferRefresh(false)
 	}
 }
 
 // Warn user about error
 func Warn(msg string) {
-	Warnfull("+Error", msg, false)
+	Warnfull("+Error", msg, false, false)
 }
 
 func Warndir(dir, msg string) {
-	Warnfull(filepath.Join(dir, "+Error"), msg, false)
+	Warnfull(filepath.Join(dir, "+Error"), msg, false, false)
 }
