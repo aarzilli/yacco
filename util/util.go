@@ -339,6 +339,7 @@ type BufferConn struct {
 	BodyFd  *clnt.File
 	AddrFd  *clnt.File
 	XDataFd *clnt.File
+	PropFd  *clnt.File
 }
 
 func (buf *BufferConn) Close() {
@@ -402,6 +403,11 @@ func makeBufferConn(p9clnt *clnt.Clnt, id string, ctlfd, eventfd *clnt.File) (*B
 		return nil, err
 	}
 
+	propfd, err := p9clnt.FOpen("/"+id+"/prop", p.ORDWR)
+	if err != nil {
+		return nil, err
+	}
+
 	return &BufferConn{
 		id,
 		ctlfd,
@@ -409,6 +415,7 @@ func makeBufferConn(p9clnt *clnt.Clnt, id string, ctlfd, eventfd *clnt.File) (*B
 		bodyfd,
 		addrfd,
 		xdatafd,
+		propfd,
 	}, nil
 }
 

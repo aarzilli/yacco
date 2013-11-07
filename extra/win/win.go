@@ -28,7 +28,7 @@ const (
 )
 
 type AppendMsg struct {
-	s         []byte
+	s []byte
 }
 
 type DeleteAddrMsg struct {
@@ -145,9 +145,9 @@ func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReader
 				state = ANSI_NORMAL
 				switch escseq[1] {
 				case ';':
-					label := string(escseq[2:len(escseq)-1])
+					label := string(escseq[2 : len(escseq)-1])
 					v := strings.SplitN(label, "-", 2)
-					controlChan <- NameMsg{ v[0] }
+					controlChan <- NameMsg{v[0]}
 				}
 			}
 
@@ -326,7 +326,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 			_, err := buf.BodyFd.Write(msg.s)
 			util.Allergic(debug, err)
 			if !floating {
-				if time.Since(lastUpdate) > time.Millisecond * 100 {
+				if time.Since(lastUpdate) > time.Millisecond*100 {
 					updCount = 0
 				}
 				if updCount < 10 {
@@ -492,6 +492,9 @@ func main() {
 	util.Allergic(debug, err)
 	wd, _ := os.Getwd()
 	_, err = buf.CtlFd.Write([]byte("dumpdir " + wd + "\n"))
+
+	_, err = buf.PropFd.Write([]byte("indent=off"))
+	util.Allergic(debug, err)
 
 	util.SetTag(p9clnt, buf.Id, "Jobs Kill Delete Sigkill Sigint Sigterm ")
 
