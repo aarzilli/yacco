@@ -134,7 +134,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 	go func() {
 		defer func() { job.done <- true }()
 		defer stderr.Close()
-		bsr, err := ioutil.ReadAll(stdout)
+		bsr, err := ioutil.ReadAll(stderr)
 		if err != nil {
 			return
 		}
