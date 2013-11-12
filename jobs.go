@@ -119,15 +119,25 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 	go func() {
 		defer func() { job.done <- true }()
 		defer stdout.Close()
-		bsr, err := ioutil.ReadAll(stdout)
-		if err != nil {
-			return
-		}
-		bs := string(bsr)
 		if ((ec != nil) && job.writeToBuf) || (resultChan != nil) {
+			bsr, err := ioutil.ReadAll(stdout)
+			if err != nil {
+				return
+			}
+			bs := string(bsr)
 			job.outstr = bs
-		} else if bs != "" {
-			sideChan <- WarnMsg{job.cmd.Dir, bs, true}
+		} else {
+			bsr := make([]byte, 4086)
+			for {
+				n, err := stdout.Read(bsr)
+				if n > 0 {
+					bs := string(bsr[:n])
+					sideChan <- WarnMsg{job.cmd.Dir, bs, true}
+				}
+				if err != nil {
+					break
+				}
+			}
 		}
 	}()
 
