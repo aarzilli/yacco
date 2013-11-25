@@ -19,7 +19,6 @@ import (
 )
 
 const SLOP = 128
-const SHORT_NAME_LEN = 40
 
 var nonwdRe = regexp.MustCompile(`\W+`)
 
@@ -732,42 +731,7 @@ func (b *Buffer) Toregend(start int) int {
 }
 
 func (b *Buffer) ShortName() string {
-	ap := filepath.Clean(filepath.Join(b.Dir, b.Name))
-	wd, _ := os.Getwd()
-	p, _ := filepath.Rel(wd, ap)
-	if len(ap) < len(p) {
-		p = ap
-	}
-
-	if len(p) <= 0 {
-		return p
-	}
-
-	curlen := len(p)
-	pcomps := strings.Split(p, string(filepath.Separator))
-	i := 0
-
-	for curlen > SHORT_NAME_LEN {
-		if i >= len(pcomps)-2 {
-			break
-		}
-
-		if (len(pcomps[i])) == 0 || (pcomps[i][0] == '.') || (pcomps[i][0] == '~') {
-			i++
-			continue
-		}
-
-		curlen -= len(pcomps[i]) - 1
-		pcomps[i] = pcomps[i][:1]
-		i++
-	}
-
-	rp := filepath.Join(pcomps...)
-	if p[0] == '/' {
-		return "/" + rp
-	} else {
-		return rp
-	}
+	return util.ShortPath(filepath.Join(b.Dir, b.Name))
 }
 
 func (b *Buffer) FixSel(sel *util.Sel) {

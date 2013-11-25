@@ -18,6 +18,8 @@ import (
 	"time"
 )
 
+const SHORT_NAME_LEN = 40
+
 type Sel struct {
 	S, E int
 }
@@ -558,4 +560,43 @@ func (buf *BufferConn) ReadXData() ([]byte, error) {
 		r = append(r, b[:n]...)
 	}
 	return r, nil
+}
+
+func ShortPath(ap string) string {
+	ap = filepath.Clean(ap)
+	wd, _ := os.Getwd()
+	p, _ := filepath.Rel(wd, ap)
+	if len(ap) < len(p) {
+		p = ap
+	}
+
+	if len(p) <= 0 {
+		return p
+	}
+
+	curlen := len(p)
+	pcomps := strings.Split(p, string(filepath.Separator))
+	i := 0
+
+	for curlen > SHORT_NAME_LEN {
+		if i >= len(pcomps)-2 {
+			break
+		}
+
+		if (len(pcomps[i])) == 0 || (pcomps[i][0] == '.') || (pcomps[i][0] == '~') {
+			i++
+			continue
+		}
+
+		curlen -= len(pcomps[i]) - 1
+		pcomps[i] = pcomps[i][:1]
+		i++
+	}
+
+	rp := filepath.Join(pcomps...)
+	if p[0] == '/' {
+		return "/" + rp
+	} else {
+		return rp
+	}
 }

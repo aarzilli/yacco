@@ -1217,6 +1217,7 @@ func (w *Window) GenTag() {
 	w.tagfr.Sels[0].E = w.tagbuf.Size()
 
 	pwd, _ := os.Getwd()
+	pwd = util.ShortPath(pwd)
 
 	t := pwd + " " + string(config.DefaultWindowTag) + usertext
 	w.tagbuf.EditableStart = -1
