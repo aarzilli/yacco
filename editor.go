@@ -105,6 +105,19 @@ func scrollfn(e *Editor, sd int, sl int) {
 	e.bodybuf.Highlight(-1, true, e.otherSel[OS_TOP].E)
 }
 
+func expandSelectionBuf(buf *buf.Buffer, kind, start, end int) (rstart, rend int) {
+	switch kind {
+	default:
+		fallthrough
+	case 1:
+		return start, end
+	case 2:
+		return buf.Towd(start, -1), buf.Towd(end, +1)
+	case 3:
+		return buf.Tonl(start-1, -1), buf.Tonl(end, +1)
+	}
+}
+
 func (e *Editor) SetWnd(wnd wde.Window) {
 	e.sfr.Wnd = wnd
 	e.sfr.Fr.Wnd = wnd
@@ -127,10 +140,11 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 		Width: SCROLL_WIDTH,
 		Color: config.TheColorScheme.Scrollbar,
 		Fr: textframe.Frame{
-			Font:        config.MainFont,
-			Hackflags:   textframe.HF_MARKSOFTWRAP | textframe.HF_QUOTEHACK,
-			Scroll:      func(sd, sl int) { scrollfn(e, sd, sl) },
-			VisibleTick: false,
+			Font:            config.MainFont,
+			Hackflags:       textframe.HF_MARKSOFTWRAP | textframe.HF_QUOTEHACK,
+			Scroll:          func(sd, sl int) { scrollfn(e, sd, sl) },
+			ExpandSelection: func(kind, start, end int) (int, int) { return expandSelectionBuf(e.bodybuf, kind, start, end) },
+			VisibleTick:     false,
 			Colors: [][]image.Uniform{
 				config.TheColorScheme.EditorPlain,
 				config.TheColorScheme.EditorSel1,                // 0 first button selection
@@ -141,10 +155,11 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 		},
 	}
 	e.tagfr = textframe.Frame{
-		Font:        config.TagFont,
-		Hackflags:   textframe.HF_TRUNCATE | textframe.HF_QUOTEHACK,
-		Scroll:      func(sd, sl int) {},
-		VisibleTick: false,
+		Font:            config.TagFont,
+		Hackflags:       textframe.HF_TRUNCATE | textframe.HF_QUOTEHACK,
+		Scroll:          func(sd, sl int) {},
+		ExpandSelection: func(kind, start, end int) (int, int) { return expandSelectionBuf(e.tagbuf, kind, start, end) },
+		VisibleTick:     false,
 		Colors: [][]image.Uniform{
 			config.TheColorScheme.TagPlain,
 			config.TheColorScheme.TagSel1,
@@ -357,8 +372,12 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur bool) {
 		e.tagfr.Redraw(true)
 	} else {
 		e.refreshIntl()
-		if e.recenterIntl(false) {
+		if !e.sfr.Fr.Inside(e.sfr.Fr.Sels[0].E) {
+			x := e.bodybuf.Tonl(e.sfr.Fr.Sels[0].E-2, -1)
+			e.otherSel[OS_TOP].E = x
 			e.refreshIntl()
+			scrollfn(e, -1, e.sfr.Fr.LineNo()/4-1)
+			e.bodybuf.Highlight(-1, false, e.otherSel[OS_TOP].E)
 		}
 
 		e.GenTag()
@@ -453,25 +472,8 @@ func (e *Editor) UsedHeight() int {
 	return e.sfr.Fr.Limit.Y - e.r.Min.Y - int(bounds.YMin) + 2
 }
 
-func (ed *Editor) recenterIntl(refresh bool) bool {
-	if ed.sfr.Fr.Inside(ed.sfr.Fr.Sels[0].E) {
-		return false
-	}
-	n := ed.sfr.Fr.LineNo() / 2
-	x := ed.sfr.Fr.Sels[0].E
-	for i := 0; i < n; i++ {
-		x = ed.bodybuf.Tonl(x-2, -1)
-	}
-	ed.otherSel[OS_TOP].E = x
-	if refresh {
-		ed.BufferRefresh(false)
-	}
-	ed.bodybuf.Highlight(-1, false, ed.otherSel[OS_TOP].E)
+func (ed *Editor) recenterIntl() bool {
 	return true
-}
-
-func (ed *Editor) Recenter() bool {
-	return ed.recenterIntl(true)
 }
 
 func (ed *Editor) Warp() {

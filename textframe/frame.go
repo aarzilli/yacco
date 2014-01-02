@@ -11,7 +11,6 @@ import (
 	"math"
 	"runtime"
 	"time"
-	"unicode"
 	"yacco/util"
 )
 
@@ -29,6 +28,7 @@ type ColorRune struct {
 // If scrollDir is -1 the text should be scrolled back by n lines
 // If scrollDir is +1 the text should be scrolled forward by n lines
 type FrameScrollFn func(scrollDir int, n int)
+type ExpandSelectionFn func(kind, start, end int) (int, int)
 
 const (
 	HF_BOLSPACES uint32 = 1 << iota
@@ -38,17 +38,18 @@ const (
 )
 
 type Frame struct {
-	Font        *util.Font
-	Hackflags   uint32
-	B           draw.Image      // the image the text will be drawn upon
-	R           image.Rectangle // the rectangle occupied by the frame
-	VisibleTick bool
-	Colors      [][]image.Uniform
-	TabWidth    int
-	Wnd         wde.Window
-	Scroll      FrameScrollFn
-	Top         int
-	Tabs        []int
+	Font            *util.Font
+	Hackflags       uint32
+	B               draw.Image      // the image the text will be drawn upon
+	R               image.Rectangle // the rectangle occupied by the frame
+	VisibleTick     bool
+	Colors          [][]image.Uniform
+	TabWidth        int
+	Wnd             wde.Window
+	Scroll          FrameScrollFn
+	ExpandSelection ExpandSelectionFn
+	Top             int
+	Tabs            []int
 
 	Limit image.Point
 
@@ -462,86 +463,14 @@ func (fr *Frame) setSelectEx(idx, kind, start, end int, disableOther bool) {
 		end = temp
 	}
 
-	switch kind {
-	case 1:
-		// do nothing
-
-	case 2:
-		var s, e int
-		s = start - fr.Top
-		if (s <= len(fr.glyphs)) && (s >= 0) {
-			first := true
-			if s == len(fr.glyphs) {
-				s = s - 1
-			}
-			for ; s >= 0; s-- {
-				g := fr.glyphs[s].r
-				if !(unicode.IsLetter(g) || unicode.IsDigit(g) || (g == '_')) {
-					if !first {
-						s++
-					}
-					break
-				}
-				first = false
-			}
-			if s < 0 {
-				s = 0
-			}
-		}
-
-		e = end - fr.Top
-		if (e < len(fr.glyphs)) && (e >= 0) {
-			first := true
-			for ; e < len(fr.glyphs); e++ {
-				g := fr.glyphs[e].r
-				if g == '\n' { // don't select end of line newline
-					break
-				}
-				if !(unicode.IsLetter(g) || unicode.IsDigit(g) || (g == '_')) {
-					if first {
-						e++
-					}
-					break
-				}
-				first = false
-			}
-		}
-
-		start = s + fr.Top
-		end = e + fr.Top
-
-	case 3:
-		var s, e int
-		s = start - fr.Top
-		if (s <= len(fr.glyphs)) && (s >= 0) {
-			s = s - 1
-			for ; s > 0; s-- {
-				if fr.glyphs[s].r == '\n' {
-					s++
-					break
-				}
-			}
-
-			if s < 0 {
-				s = 0
-			}
-		}
-
-		e = end - fr.Top
-		if (e < len(fr.glyphs)) && (e >= 0) {
-			for ; e < len(fr.glyphs); e++ {
-				if fr.glyphs[e].r == '\n' {
-					e++
-					break
-				}
-			}
-		}
-		start = s + fr.Top
-		end = e + fr.Top
+	if fr.ExpandSelection != nil {
+		nstart, nend := fr.ExpandSelection(kind, start, end)
+		fr.Sels[idx].S = nstart
+		fr.Sels[idx].E = nend
+	} else {
+		fr.Sels[idx].S = start
+		fr.Sels[idx].E = end
 	}
-
-	fr.Sels[idx].S = start
-	fr.Sels[idx].E = end
 }
 
 // Converts a graphical coordinate to a rune index
@@ -858,7 +787,7 @@ func (fr *Frame) Inside(p int) bool {
 
 // Returns a slice of addresses of the starting characters of each phisical line
 // Phisical lines are distinct lines on the screen, ie a softwrap generates a new phisical line
-func (fr *Frame) phisicalLines() []int {
+func (fr *Frame) PhisicalLines() []int {
 	r := []int{}
 	y := raster.Fix32(0)
 	for i := range fr.glyphs {
@@ -923,7 +852,7 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
 
 	limit = fr.Limit
 
-	pl := fr.phisicalLines()
+	pl := fr.PhisicalLines()
 
 	if len(pl) > ln {
 		fr.PushUp(len(pl) - ln)

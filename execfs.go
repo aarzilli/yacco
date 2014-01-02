@@ -51,7 +51,7 @@ func ExecFs(ec *ExecContext, cmd string) {
 		PutCmd(*ec, "")
 
 	case "show":
-		ec.ed.Recenter()
+		ec.ed.BufferRefresh(false)
 
 	case "tabadj":
 		elasticTabs(ec.ed, true)
