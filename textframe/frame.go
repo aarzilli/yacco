@@ -568,6 +568,59 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform) {
 	}
 }
 
+func (fr *Frame) drawTick(glyphBounds truetype.Bounds, drawingFuncs DrawingFuncs) {
+	if !fr.VisibleTick || (fr.Sels[0].S != fr.Sels[0].E) {
+		return
+	}
+	if (fr.Sels[0].S-fr.Top < 0) || (fr.Sels[0].S-fr.Top > len(fr.glyphs)) {
+		return
+	}
+
+	var x, y int
+	if len(fr.glyphs) == 0 {
+		p := fr.initialInsPoint()
+		x = int(p.X >> 8)
+		y = int(p.Y >> 8)
+	} else if fr.Sels[0].S-fr.Top < len(fr.glyphs) {
+		p := fr.glyphs[fr.Sels[0].S-fr.Top].p
+		x = int(p.X >> 8)
+		y = int(p.Y >> 8)
+	} else {
+		g := fr.glyphs[len(fr.glyphs)-1]
+
+		if g.widthy > 0 {
+			x = fr.R.Min.X + int(fr.margin>>8)
+			y = int((g.p.Y + g.widthy) >> 8)
+		} else {
+			x = int((g.p.X+g.width)>>8) + 1
+			y = int(g.p.Y >> 8)
+		}
+	}
+
+	h := int(glyphBounds.YMax)
+	if fr.Font.Spacing < 1 {
+		h = int(float64(h) * fr.Font.Spacing)
+	}
+
+	r := image.Rectangle{
+		Min: image.Point{x, y - h},
+		Max: image.Point{x + 1, y - int(glyphBounds.YMin)}}
+
+	drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r), &fr.Colors[0][1])
+
+	r1 := r
+	r1.Min.X -= 1
+	r1.Max.X += 1
+	r1.Max.Y = r1.Min.Y + 3
+	drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r1), &fr.Colors[0][1])
+
+	r2 := r
+	r2.Min.X -= 1
+	r2.Max.X += 1
+	r2.Min.Y = r2.Max.Y - 3
+	drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r2), &fr.Colors[0][1])
+}
+
 func (fr *Frame) Redraw(flush bool) {
 	glyphBounds := fr.Font.Fonts[0].Bounds(int32(fr.Font.Size))
 	rightMargin := raster.Fix32(fr.R.Max.X<<8) - fr.margin
@@ -651,47 +704,7 @@ func (fr *Frame) Redraw(flush bool) {
 	}
 
 	// Tick drawing
-	if (fr.Sels[0].S == fr.Sels[0].E) && fr.VisibleTick && (len(fr.glyphs) > 0) && (fr.Sels[0].S-fr.Top >= 0) && (fr.Sels[0].S-fr.Top <= len(fr.glyphs)) {
-		var x, y int
-		if fr.Sels[0].S-fr.Top < len(fr.glyphs) {
-			p := fr.glyphs[fr.Sels[0].S-fr.Top].p
-			x = int(p.X >> 8)
-			y = int(p.Y >> 8)
-		} else {
-			g := fr.glyphs[len(fr.glyphs)-1]
-
-			if g.widthy > 0 {
-				x = fr.R.Min.X + int(fr.margin>>8)
-				y = int((g.p.Y + g.widthy) >> 8)
-			} else {
-				x = int((g.p.X+g.width)>>8) + 1
-				y = int(g.p.Y >> 8)
-			}
-		}
-
-		h := int(glyphBounds.YMax)
-		if fr.Font.Spacing < 1 {
-			h = int(float64(h) * fr.Font.Spacing)
-		}
-
-		r := image.Rectangle{
-			Min: image.Point{x, y - h},
-			Max: image.Point{x + 1, y - int(glyphBounds.YMin)}}
-
-		drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r), &fr.Colors[0][1])
-
-		r1 := r
-		r1.Min.X -= 1
-		r1.Max.X += 1
-		r1.Max.Y = r1.Min.Y + 3
-		drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r1), &fr.Colors[0][1])
-
-		r2 := r
-		r2.Min.X -= 1
-		r2.Max.X += 1
-		r2.Min.Y = r2.Max.Y - 3
-		drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r2), &fr.Colors[0][1])
-	}
+	fr.drawTick(glyphBounds, drawingFuncs)
 
 	if flush && (fr.Wnd != nil) {
 		fr.Wnd.FlushImage(fr.R)
