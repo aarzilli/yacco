@@ -72,10 +72,8 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 	}
 
 	if i < 0 {
-		os.Setenv("bd", "")
 		os.Setenv("bi", "")
 	} else {
-		os.Setenv("bd", fmt.Sprintf("%s/%d", fsDir, i))
 		os.Setenv("bi", fmt.Sprintf("%d", i))
 	}
 
