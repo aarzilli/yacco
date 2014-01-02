@@ -565,8 +565,8 @@ func GetallCmd(ec ExecContext, arg string) {
 					t += ed.bodybuf.ShortName() + "\n"
 					nerr++
 				} else {
-					ec.ed.bodybuf.Reload(true)
-					ec.ed.BufferRefresh(false)
+					ed.bodybuf.Reload(true)
+					ed.BufferRefresh(false)
 				}
 			}
 		}
