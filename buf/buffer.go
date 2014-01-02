@@ -731,7 +731,7 @@ func (b *Buffer) Toregend(start int) int {
 }
 
 func (b *Buffer) ShortName() string {
-	return util.ShortPath(filepath.Join(b.Dir, b.Name))
+	return util.ShortPath(filepath.Join(b.Dir, b.Name), true)
 }
 
 func (b *Buffer) FixSel(sel *util.Sel) {

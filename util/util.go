@@ -562,16 +562,25 @@ func (buf *BufferConn) ReadXData() ([]byte, error) {
 	return r, nil
 }
 
-func ShortPath(ap string) string {
+func ShortPath(ap string, canRelative bool) string {
 	ap = filepath.Clean(ap)
 	wd, _ := os.Getwd()
 	p, _ := filepath.Rel(wd, ap)
-	if len(ap) < len(p) {
+	if (len(ap) < len(p)) || !canRelative {
 		p = ap
 	}
 
 	if len(p) <= 0 {
 		return p
+	}
+
+	if home := os.Getenv("HOME"); home != "" {
+		if home[len(home)-1] == '/' {
+			home = home[:len(home)-1]
+		}
+		if strings.HasPrefix(p, home) {
+			p = "~" + p[len(home):]
+		}
 	}
 
 	curlen := len(p)

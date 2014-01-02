@@ -907,7 +907,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			}
 		}
 		if lp.sfr != nil {
-			lp.ed.Recenter()
+			lp.ed.BufferRefresh(false)
 		}
 
 	case "next", "prior":
@@ -1217,7 +1217,7 @@ func (w *Window) GenTag() {
 	w.tagfr.Sels[0].E = w.tagbuf.Size()
 
 	pwd, _ := os.Getwd()
-	pwd = util.ShortPath(pwd)
+	pwd = util.ShortPath(pwd, false)
 
 	t := pwd + " " + string(config.DefaultWindowTag) + usertext
 	w.tagbuf.EditableStart = -1
