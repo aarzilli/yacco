@@ -6,7 +6,7 @@ import (
 
 var TheColorScheme = AcmeColorScheme
 
-var DefaultWindowTag = []rune("Newcol Putall Dump Exit | ")
+var DefaultWindowTag = []rune("Newcol Getall Jobs Exit | ")
 var DefaultColumnTag = []rune("New Cut Paste Sort Zerox Delcol | ")
 var DefaultEditorTag = " Del Look"
 
