@@ -29,10 +29,18 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 	c.wnd = wnd
 	c.r = r
 	c.frac = 10.0
+	cwd, _ := os.Getwd()
+	var err error
+	c.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true, Wnd.Prop["indentchar"])
+	if err != nil {
+		Warn("Error opening new column: " + err.Error())
+		return c
+	}
 	c.tagfr = textframe.Frame{
 		Font:        config.TagFont,
 		Hackflags:   textframe.HF_MARKSOFTWRAP | textframe.HF_BOLSPACES | textframe.HF_QUOTEHACK,
 		Scroll:      func(sd, sl int) {},
+		ExpandSelection: func(kind, start, end int) (int, int) { return expandSelectionBuf(c.tagbuf, kind, start, end) },
 		VisibleTick: false,
 		Colors: [][]image.Uniform{
 			config.TheColorScheme.TagPlain,
@@ -42,13 +50,6 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 			config.TheColorScheme.TagMatchingParenthesis},
 	}
 	util.Must(c.tagfr.Init(5), "Column initialization failed")
-	cwd, _ := os.Getwd()
-	var err error
-	c.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true, Wnd.Prop["indentchar"])
-	if err != nil {
-		Warn("Error opening new column: " + err.Error())
-		return c
-	}
 
 	c.tagbuf.AddSels(&c.tagfr.Sels)
 	c.tagbuf.Replace(config.DefaultColumnTag, &c.tagfr.Sels[0], true, nil, 0, false)

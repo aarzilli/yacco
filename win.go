@@ -130,9 +130,16 @@ func (w *Window) Init(width, height int) (err error) {
 	w.wnd.SetClass("yacco", "Yacco")
 	w.wnd.Show()
 	w.cols = NewCols(w.wnd, screen.Bounds())
+	cwd, _ := os.Getwd()
+	w.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true, Wnd.Prop["indentchar"])
+	if err != nil {
+		return err
+	}
+
 	w.tagfr = textframe.Frame{
 		Font:        config.TagFont,
 		Scroll:      func(sd, sl int) {},
+		ExpandSelection: func(kind, start, end int) (int, int) { return expandSelectionBuf(w.tagbuf, kind, start, end) },
 		VisibleTick: false,
 		Wnd:         w.wnd,
 		Colors: [][]image.Uniform{
@@ -143,8 +150,6 @@ func (w *Window) Init(width, height int) (err error) {
 			config.TheColorScheme.TagMatchingParenthesis},
 	}
 
-	cwd, _ := os.Getwd()
-	w.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true, Wnd.Prop["indentchar"])
 	w.tagbuf.AddSels(&w.tagfr.Sels)
 	util.Must(err, "Editor initialization failed")
 	util.Must(w.tagfr.Init(5), "Editor initialization failed")
