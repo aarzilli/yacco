@@ -12,7 +12,7 @@ import (
 
 func lookFile(ed *Editor) {
 	ch := make(chan string, 5)
-	if !ed.EnterSpecial(ch, " LookFile", false) {
+	if !ed.EnterSpecial(ch, " Del LookFile", false) {
 		return
 	}
 	ed.sfr.Fr.Hackflags |= textframe.HF_TRUNCATE
