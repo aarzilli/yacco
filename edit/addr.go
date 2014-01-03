@@ -161,15 +161,16 @@ func (e *AddrBase) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 		b.FixSel(&rsel)
 		rsel.E = rsel.S
 
-	case "#?":
+	case "#?": // weird hack to implement End key functionality don't touch
 		if (e.Value != "1") || (e.Dir != -1) {
 			panic(fmt.Errorf("Address starting with #? only supported as backward motion and with a value of 1"))
 		}
-		rsel = setStartSel(e.Dir, sel)
-		if rsel.S < b.Size() {
-			rsel.S--
-			rsel.E = rsel.S
+		if (sel.E-1 >= sel.S) && (sel.E-1>=0) && (b.At(sel.E-1).R == '\n') {
+			rsel.S = sel.E-1
+		} else {
+			rsel.S = sel.E
 		}
+		rsel.E = rsel.S
 
 	case "$":
 		if e.Dir != 0 {

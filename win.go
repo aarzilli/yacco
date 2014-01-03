@@ -118,6 +118,9 @@ func (w *Window) Init(width, height int) (err error) {
 	w.Prop["lookexact"] = "no"
 	w.Words = []string{}
 	w.wnd, err = wde.NewWindow(width, height)
+	if err != nil {
+		return err
+	}
 	w.wnd.ChangeCursor(DEFAULT_CURSOR)
 	if err != nil {
 		return err

@@ -15,9 +15,10 @@ func testEdit(t *testing.T, input, pgm, target string) {
 	input = input[:e] + input[e+1:]
 
 	buf, _ := buf.NewBuffer("/", "+Tag", true, " ")
-	buf.Replace([]rune(input), &util.Sel{0, 0}, []util.Sel{}, true, nil, util.EO_MOUSE, false)
+	buf.Replace([]rune(input), &util.Sel{0, 0}, true, nil, util.EO_MOUSE, false)
 
 	sels := []util.Sel{util.Sel{s, e}, util.Sel{0, 0}, util.Sel{0, 0}, util.Sel{0, 0}}
+	buf.AddSels(&sels)
 
 	ec := EditContext{Buf: buf, Sels: sels, EventChan: nil, PushJump: func() {}}
 	Edit(pgm, ec)
@@ -51,4 +52,15 @@ func TestUp(t *testing.T) {
 
 func TestBwSearch(t *testing.T) {
 	testEdit(t, "uno\ndue\nt<>re", "-/due/", "uno\n<due>\ntre")
+}
+
+const END_ADDR = "+0-#?1"
+
+func TestEndCmd(t *testing.T) {
+	testEdit(t, "pr<>ova\nprova\n", END_ADDR, "prova<>\nprova\n")
+	testEdit(t, "p<>rova", END_ADDR, "prova<>")
+	testEdit(t, "pr<>ova\n", END_ADDR, "prova<>\n")
+	testEdit(t, "prova\n<>\n", END_ADDR, "prova\n<>\n")
+	testEdit(t, "prova\n\n<>", END_ADDR, "prova\n\n<>")
+
 }
