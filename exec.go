@@ -397,7 +397,11 @@ func GetCmd(ec ExecContext, arg string) {
 		return
 	}
 
-	ec.ed.bodybuf.Reload(true)
+	if ec.ed.bodybuf.IsDir() {
+		ec.ed.readDir()
+	} else {
+		ec.ed.bodybuf.Reload(true)
+	}
 	ec.ed.BufferRefresh(false)
 }
 
