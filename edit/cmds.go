@@ -81,7 +81,7 @@ func scmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 		}
 		sel = util.Sel{loc[0], loc[1]}
 		ec.Buf.Replace(subs, &sel, first, ec.EventChan, util.EO_MOUSE, false)
-		if sel.S != psel {
+		if sel.S == psel {
 			count++
 		} else {
 			count = 0
