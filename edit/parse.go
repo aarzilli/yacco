@@ -116,8 +116,9 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*cmd, []run
 				var arg string
 				arg, rest = readDelim(rest, endr, theCmdDef.escarg && (i == theCmdDef.txtargs-1))
 				r.txtargs = append(r.txtargs, arg)
-				rest = skipSpaces(rest)
+				//rest = skipSpaces(rest)
 			}
+			rest = skipSpaces(rest)
 		} else {
 			if !theCmdDef.optxtarg {
 				panic(fmt.Errorf("Expected argument to %c but character %c found", cmdch, rest[0]))
