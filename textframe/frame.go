@@ -58,7 +58,6 @@ type Frame struct {
 
 	Sels []util.Sel
 
-	cs       []*freetype.Context
 	glyphs   []glyph
 	ins      raster.Point
 	lastFull int
@@ -109,22 +108,12 @@ func (fr *Frame) Init(margin int) error {
 		}
 	}
 
-	// create font contexts
-
-	fr.cs = fr.Font.CreateContexts(fr.R)
-
 	fr.Clear()
 
 	return nil
 }
 
 func (fr *Frame) ReinitFont() {
-	fr.cs = fr.Font.CreateContexts(fr.R)
-}
-
-func (fr *Frame) lineHeight() raster.Fix32 {
-	lh := fr.Font.LineHeight()
-	return fr.cs[0].PointToFix32(float64(lh) * fr.Font.Spacing)
 }
 
 func (fr *Frame) initialInsPoint() raster.Point {
@@ -172,9 +161,9 @@ func (fr *Frame) toNextCell(spaceWidth, tabWidth, leftMargin raster.Fix32) raste
 
 // Inserts text into the frame, returns the maximum X and Y used
 func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
-	lh := fr.lineHeight()
+	lh := fr.Font.LineHeightRaster()
 
-	_, spaceIndex := fr.getIndex(' ')
+	_, spaceIndex := fr.Font.Index(' ')
 
 	prev, prevFontIdx, hasPrev := truetype.Index(0), 0, false
 
@@ -182,9 +171,9 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	leftMargin := raster.Fix32(fr.R.Min.X<<8) + fr.margin
 	bottom := raster.Fix32(fr.R.Max.Y<<8) + lh
 
-	_, xIndex := fr.getIndex('x')
-	spaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, spaceIndex).AdvanceWidth) << 2
-	bigSpaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, xIndex).AdvanceWidth) << 2
+	_, xIndex := fr.Font.Index('x')
+	spaceWidth := fr.Font.GlyphWidth(0, spaceIndex)
+	bigSpaceWidth := fr.Font.GlyphWidth(0, xIndex)
 	tabWidth := spaceWidth * raster.Fix32(fr.TabWidth)
 
 	limit.X = int(fr.ins.X >> 8)
@@ -274,11 +263,11 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 				}
 			}
 
-			fontIdx, index := fr.getIndex(lur)
-			width := raster.Fix32(fr.Font.Fonts[fontIdx].HMetric(fr.cs[fontIdx].Scale, index).AdvanceWidth) << 2
+			fontIdx, index := fr.Font.Index(lur)
+			width := fr.Font.GlyphWidth(fontIdx, index)
 			kerning := raster.Fix32(0)
 			if hasPrev && (fontIdx == prevFontIdx) {
-				kerning = raster.Fix32(fr.Font.Fonts[fontIdx].Kerning(fr.cs[fontIdx].Scale, prev, index)) << 2
+				kerning = fr.Font.GlyphKerning(fontIdx, prev, index)
 				fr.ins.X += kerning
 			}
 
@@ -324,8 +313,8 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 func (fr *Frame) Measure(rs []rune) int {
 	ret := raster.Fix32(0)
 
-	_, spaceIndex := fr.getIndex(' ')
-	spaceWidth := raster.Fix32(fr.Font.Fonts[0].HMetric(fr.cs[0].Scale, spaceIndex).AdvanceWidth) << 2
+	_, spaceIndex := fr.Font.Index(' ')
+	spaceWidth := fr.Font.GlyphWidth(0, spaceIndex)
 	tabWidth := spaceWidth * raster.Fix32(fr.TabWidth)
 
 	prev, prevFontIdx, hasPrev := truetype.Index(0), 0, false
@@ -345,12 +334,10 @@ func (fr *Frame) Measure(rs []rune) int {
 			}
 		}
 
-		fontIdx, index := fr.getIndex(lur)
-		width := raster.Fix32(fr.Font.Fonts[fontIdx].HMetric(fr.cs[fontIdx].Scale, index).AdvanceWidth) << 2
-		kerning := raster.Fix32(0)
+		fontIdx, index := fr.Font.Index(lur)
+		width := fr.Font.GlyphWidth(fontIdx, index)
 		if hasPrev && (fontIdx == prevFontIdx) {
-			kerning = raster.Fix32(fr.Font.Fonts[fontIdx].Kerning(fr.cs[fontIdx].Scale, prev, index)) << 2
-			width += kerning
+			width += fr.Font.GlyphKerning(fontIdx, prev, index)
 		}
 		ret += width
 	}
@@ -480,8 +467,8 @@ func (fr *Frame) CoordToPoint(coord image.Point) int {
 	}
 
 	ftcoord := freetype.Pt(coord.X, coord.Y)
-	lh := fr.lineHeight()
-	glyphBounds := fr.Font.Fonts[0].Bounds(int32(fr.Font.Size))
+	lh := fr.Font.LineHeightRaster()
+	glyphBounds := fr.Font.Bounds()
 
 	for i, g := range fr.glyphs {
 		if g.p.Y-raster.Fix32(glyphBounds.YMin<<8) < ftcoord.Y {
@@ -526,7 +513,7 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform) {
 	if s < 0 {
 		s = 0
 	}
-	glyphBounds := fr.Font.Fonts[0].Bounds(int32(fr.Font.Size))
+	glyphBounds := fr.Font.Bounds()
 	rightMargin := raster.Fix32(fr.R.Max.X<<8) - fr.margin
 	leftMargin := raster.Fix32(fr.R.Min.X<<8) + fr.margin
 	drawingFuncs := GetOptimizedDrawing(fr.B)
@@ -622,7 +609,7 @@ func (fr *Frame) drawTick(glyphBounds truetype.Bounds, drawingFuncs DrawingFuncs
 }
 
 func (fr *Frame) Redraw(flush bool) {
-	glyphBounds := fr.Font.Fonts[0].Bounds(int32(fr.Font.Size))
+	glyphBounds := fr.Font.Bounds()
 	rightMargin := raster.Fix32(fr.R.Max.X<<8) - fr.margin
 	leftMargin := raster.Fix32(fr.R.Min.X<<8) + fr.margin
 
@@ -680,18 +667,10 @@ func (fr *Frame) Redraw(flush bool) {
 		newline = (g.r == '\n')
 
 		// Glyph drawing
-		var color *image.Uniform
-		if ssel >= len(fr.Colors) {
-			color = &fr.Colors[0][g.color]
-		} else {
-			color = &fr.Colors[ssel][g.color]
-		}
-		fr.cs[g.fontIndex].SetSrc(color)
-		mask, offset, err := fr.cs[g.fontIndex].Glyph(g.index, g.p)
+		mask, glyphRect, err := fr.Font.Glyph(g.fontIndex, g.index, g.p)
 		if err != nil {
 			panic(err)
 		}
-		glyphRect := mask.Bounds().Add(offset)
 		dr := fr.R.Intersect(glyphRect)
 		if !dr.Empty() {
 			mp := image.Point{0, dr.Min.Y - glyphRect.Min.Y}
@@ -709,19 +688,6 @@ func (fr *Frame) Redraw(flush bool) {
 	if flush && (fr.Wnd != nil) {
 		fr.Wnd.FlushImage(fr.R)
 	}
-}
-
-func (fr *Frame) getIndex(x rune) (fontIdx int, index truetype.Index) {
-	var font *truetype.Font
-	for fontIdx, font = range fr.Font.Fonts {
-		index = font.Index(x)
-		if index != 0 {
-			return
-		}
-	}
-	fontIdx = 0
-	index = 0
-	return
 }
 
 func (fr *Frame) scrollDir(recalcPos image.Point) int {
@@ -783,7 +749,7 @@ func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *wde.M
 }
 
 func (fr *Frame) LineNo() int {
-	return int(float32(fr.R.Max.Y-fr.R.Min.Y) / float32(fr.lineHeight()>>8))
+	return int(float32(fr.R.Max.Y-fr.R.Min.Y) / float32(fr.Font.LineHeightRaster()>>8))
 }
 
 func (fr *Frame) Inside(p int) bool {
@@ -817,7 +783,7 @@ func (fr *Frame) PhisicalLines() []int {
 func (fr *Frame) PushUp(ln int) (newsize int) {
 	fr.ins = fr.initialInsPoint()
 
-	lh := fr.lineHeight()
+	lh := fr.Font.LineHeightRaster()
 
 	fr.Limit.X = int(fr.ins.X >> 8)
 	fr.Limit.Y = int(fr.ins.Y >> 8)
@@ -871,7 +837,7 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
 		fr.PushUp(len(pl) - ln)
 	}
 
-	lh := fr.lineHeight()
+	lh := fr.Font.LineHeightRaster()
 
 	leftMargin := raster.Fix32(fr.R.Min.X<<8) + fr.margin
 	bottom := raster.Fix32(fr.R.Max.Y<<8) + lh

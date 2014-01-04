@@ -468,7 +468,7 @@ func (ed *Editor) Height() int {
 }
 
 func (e *Editor) UsedHeight() int {
-	bounds := e.sfr.Fr.Font.Fonts[0].Bounds(int32(e.sfr.Fr.Font.Size))
+	bounds := e.sfr.Fr.Font.Bounds()
 	return e.sfr.Fr.Limit.Y - e.r.Min.Y - int(bounds.YMin) + 2
 }
 

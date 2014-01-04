@@ -2,15 +2,17 @@ package util
 
 import (
 	"code.google.com/p/freetype-go/freetype"
+	"code.google.com/p/freetype-go/freetype/raster"
 	"code.google.com/p/freetype-go/freetype/truetype"
-	"image"
 	"io/ioutil"
+	"image"
 	"os"
 	"strings"
 )
 
 type Font struct {
-	Fonts   []*truetype.Font
+	fonts   []*truetype.Font
+	cs       []*freetype.Context
 	dpi     float64
 	Size    float64
 	Spacing float64
@@ -19,7 +21,7 @@ type Font struct {
 // Reads a Font: fontPath is a ':' separated list of ttf font files (they will be used to search characters)
 func NewFont(dpi, size, lineSpacing float64, fontPath string) (*Font, error) {
 	fontPathV := strings.Split(fontPath, ":")
-	rf := &Font{make([]*truetype.Font, 0, len(fontPathV)), dpi, size, lineSpacing}
+	rf := &Font{make([]*truetype.Font, 0, len(fontPathV)), make([]*freetype.Context, len(fontPathV)), dpi, size, lineSpacing}
 	for _, fontfile := range fontPathV {
 		fontBytes, err := ioutil.ReadFile(os.ExpandEnv(fontfile))
 		if err != nil {
@@ -29,8 +31,9 @@ func NewFont(dpi, size, lineSpacing float64, fontPath string) (*Font, error) {
 		if err != nil {
 			return nil, err
 		}
-		rf.Fonts = append(rf.Fonts, parsedfont)
+		rf.fonts = append(rf.fonts, parsedfont)
 	}
+	rf.createContexts()
 	return rf, nil
 }
 
@@ -43,14 +46,15 @@ func MustNewFont(dpi, size, lineSpacing float64, fontPath string) *Font {
 }
 
 func NewFontFromBytes(dpi, size, lineSpacing float64, fontBytes [][]byte) (*Font, error) {
-	rf := &Font{make([]*truetype.Font, 0, len(fontBytes)), dpi, size, lineSpacing}
+	rf := &Font{make([]*truetype.Font, 0, len(fontBytes)), make([]*freetype.Context, len(fontBytes)), dpi, size, lineSpacing}
 	for _, aFontBytes := range fontBytes {
 		parsedfont, err := freetype.ParseFont(aFontBytes)
 		if err != nil {
 			return nil, err
 		}
-		rf.Fonts = append(rf.Fonts, parsedfont)
+		rf.fonts = append(rf.fonts, parsedfont)
 	}
+	rf.createContexts()
 	return rf, nil
 }
 
@@ -62,23 +66,54 @@ func MustNewFontFromBytes(dpi, size, lineSpacing float64, fontBytes [][]byte) *F
 	return f
 }
 
+func (f *Font) createContexts() {
+	for i, _ := range f.fonts {
+		f.cs[i] = freetype.NewContext()
+		f.cs[i].SetDPI(f.dpi)
+		f.cs[i].SetFont(f.fonts[i])
+		f.cs[i].SetFontSize(f.Size)
+	}
+}
+
 func (f *Font) LineHeight() int32 {
-	bounds := f.Fonts[0].Bounds(int32(f.Size))
+	bounds := f.fonts[0].Bounds(int32(f.Size))
 	return bounds.YMax - bounds.YMin
 }
 
-func (f *Font) Bounds() truetype.Bounds {
-	return f.Fonts[0].Bounds(int32(f.Size))
+func (f *Font) LineHeightRaster() raster.Fix32 {
+	return f.cs[0].PointToFix32(float64(f.LineHeight()) * f.Spacing)
 }
 
-func (f *Font) CreateContexts(r image.Rectangle) []*freetype.Context {
-	cs := make([]*freetype.Context, len(f.Fonts))
-	for i, _ := range f.Fonts {
-		cs[i] = freetype.NewContext()
-		cs[i].SetDPI(f.dpi)
-		cs[i].SetFont(f.Fonts[i])
-		cs[i].SetFontSize(f.Size)
-		cs[i].SetClip(r)
+func (f *Font) Bounds() truetype.Bounds {
+	return f.fonts[0].Bounds(int32(f.Size))
+}
+
+func (f *Font) GlyphWidth(fontIdx int, idx truetype.Index) raster.Fix32 {
+	return raster.Fix32(f.fonts[fontIdx].HMetric(f.cs[fontIdx].Scale, idx).AdvanceWidth) << 2
+}
+
+func (f *Font) GlyphKerning(fontIdx int, pidx, idx truetype.Index) raster.Fix32 {
+	return raster.Fix32(f.fonts[fontIdx].Kerning(f.cs[fontIdx].Scale, pidx, idx)) << 2
+}
+
+func (f *Font) Glyph(fontIdx int, idx truetype.Index, p raster.Point) (mask *image.Alpha, glyphRect image.Rectangle, err error) {
+	mask, offset, err := f.cs[fontIdx].Glyph(idx, p)
+	if err != nil {	
+		return
 	}
-	return cs
+	glyphRect = mask.Bounds().Add(offset)
+	return
+}
+
+func (f *Font) Index(x rune) (fontIdx int, idx truetype.Index) {
+	var font *truetype.Font
+	for fontIdx, font = range f.fonts {
+		idx = font.Index(x)
+		if idx != 0 {
+			return
+		}
+	}
+	fontIdx = 0
+	idx = 0
+	return
 }

@@ -124,7 +124,7 @@ func (sfr *ScrollFrame) ScrollClick(e util.MouseDownEvent, events <-chan interfa
 	autoscrollTicker := time.NewTicker(100 * time.Millisecond)
 
 	scroll := func() {
-		c := int(float32(where.Y-sfr.r.Min.Y) / float32(sfr.Fr.lineHeight()>>8))
+		c := int(float32(where.Y-sfr.r.Min.Y) / float32(sfr.Fr.Font.LineHeightRaster()>>8))
 
 		switch which {
 		case wde.LeftButton:
