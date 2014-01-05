@@ -7,19 +7,19 @@ import (
 
 var botAssert = nodeAssert{
 	name: "\\A",
-	check: func(b *buf.Buffer, i int) bool {
+	check: func(b *buf.Buffer, end, i int) bool {
 		return i == 0
 	},
 }
 
-func notAssertFn(assertFn func(b *buf.Buffer, i int) bool) func(b *buf.Buffer, i int) bool {
-	return func(b *buf.Buffer, i int) bool {
-		return !assertFn(b, i)
+func notAssertFn(assertFn func(b *buf.Buffer, end, i int) bool) func(b *buf.Buffer, end, i int) bool {
+	return func(b *buf.Buffer, end, i int) bool {
+		return !assertFn(b, end, i)
 	}
 }
 
 // word boundary
-func bAssertFn(b *buf.Buffer, i int) bool {
+func bAssertFn(b *buf.Buffer, end, i int) bool {
 	if i == 0 {
 		return isw(b.At(i).R)
 	}
@@ -44,21 +44,24 @@ var BAssert = nodeAssert{
 
 var zAssert = nodeAssert{
 	name: "\\z",
-	check: func(b *buf.Buffer, i int) bool {
+	check: func(b *buf.Buffer, end, i int) bool {
 		return i >= b.Size()
 	},
 }
 
 var bolAssert = nodeAssert{
 	name: "^",
-	check: func(b *buf.Buffer, i int) bool {
+	check: func(b *buf.Buffer, end, i int) bool {
+		if i == end {
+			return false
+		}
 		return (i == 0) || (b.At(i-1).R == '\n')
 	},
 }
 
 var eolAssert = nodeAssert{
 	name: "$",
-	check: func(b *buf.Buffer, i int) bool {
+	check: func(b *buf.Buffer, end, i int) bool {
 		return (i >= b.Size()) || (b.At(i).R == '\n')
 	},
 }

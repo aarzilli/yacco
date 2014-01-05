@@ -32,7 +32,7 @@ func (rx *Regex) newThreadlist() *threadlist {
 	}
 }
 
-func (tl *threadlist) addthread(t threadlet, b *buf.Buffer, i int) {
+func (tl *threadlist) addthread(t threadlet, b *buf.Buffer, end, i int) {
 	if ok := tl.set[t.pc]; ok {
 		return
 	}
@@ -44,13 +44,13 @@ func (tl *threadlist) addthread(t threadlet, b *buf.Buffer, i int) {
 
 	switch ix := (*tl.rx)[t.pc]; ix.op {
 	case RX_ASSERT:
-		ok := ix.check(b, i)
+		ok := ix.check(b, end, i)
 		if ok {
 			t.pc++
 			if rxDebug {
 				fmt.Printf("\t\t-> %d\n", t.pc+1)
 			}
-			tl.addthread(t, b, i)
+			tl.addthread(t, b, end, i)
 		} else {
 			if rxDebug {
 				fmt.Printf("\t\t-> assert failed\n")
@@ -63,14 +63,14 @@ func (tl *threadlist) addthread(t threadlet, b *buf.Buffer, i int) {
 		if rxDebug {
 			fmt.Printf("\t\t-> %d\n", t.pc)
 		}
-		tl.addthread(t, b, i)
+		tl.addthread(t, b, end, i)
 
 	case RX_JMP:
 		t.pc = ix.L[0]
 		if rxDebug {
 			fmt.Printf("\t\t-> %d\n", t.pc)
 		}
-		tl.addthread(t, b, i)
+		tl.addthread(t, b, end, i)
 
 	case RX_SPLIT:
 		if rxDebug {
@@ -81,7 +81,7 @@ func (tl *threadlist) addthread(t threadlet, b *buf.Buffer, i int) {
 			fmt.Printf("\n")
 		}
 		for _, j := range ix.L {
-			tl.addthread(t.spawn(j), b, i)
+			tl.addthread(t.spawn(j), b, end, i)
 		}
 
 	default:
@@ -130,7 +130,7 @@ func (rx *Regex) Match(b *buf.Buffer, start, end int, dir int) []int {
 		fsave[i] = -1
 	}
 
-	clist.addthread(threadlet{0, fsave}, b, start)
+	clist.addthread(threadlet{0, fsave}, b, end, start)
 
 	for i := start; ; i += dir {
 		if len(clist.threads) == 0 {
@@ -156,6 +156,7 @@ func (rx *Regex) Match(b *buf.Buffer, start, end int, dir int) []int {
 				break
 			}
 			if (end >= 0) && (i <= end) {
+				break
 			}
 		}
 
@@ -177,7 +178,7 @@ func (rx *Regex) Match(b *buf.Buffer, start, end int, dir int) []int {
 				if ix.c != ch {
 					break
 				}
-				nlist.addthread(clist.threads[j].spawn(clist.threads[j].pc+1), b, i+dir)
+				nlist.addthread(clist.threads[j].spawn(clist.threads[j].pc+1), b, end, i+dir)
 
 			case RX_CLASS:
 				if ch == 0 {
@@ -207,7 +208,7 @@ func (rx *Regex) Match(b *buf.Buffer, start, end int, dir int) []int {
 				if !ok {
 					break
 				}
-				nlist.addthread(clist.threads[j].spawn(clist.threads[j].pc+1), b, i+dir)
+				nlist.addthread(clist.threads[j].spawn(clist.threads[j].pc+1), b, end, i+dir)
 
 			case RX_MATCH:
 				if rxDebug {
