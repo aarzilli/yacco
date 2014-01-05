@@ -28,3 +28,7 @@ func TestYEdit(t *testing.T) {
 func TestSExtraBolBug(t *testing.T) {
 	testEdit(t, "zero\n<1\n2\n3\n>extra\n", `s/^/!/`, "zero\n<!1\n!2\n!3\n>extra\n")
 }
+
+func TestSEOLAppend(t *testing.T) {
+	testEdit(t, "zero\n<1\n2\n3\n>extra\n", `s/$/!/`, "zero\n<1!\n2!\n3!\n>extra\n")
+}
