@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if [ "x$yd" == "x" ]; then
+if [ "x$yp9" == "x" ]; then
 	exec man $*
 else
 	if [ $# -eq 1 ]; then
@@ -8,6 +8,6 @@ else
 	else
 		name=$2
 	fi
-	bi=`y9p new "+$name"`
+	bi=`y9p new "+man+$name"`
 	exec man $* 2>&1 | y9p write buf/body
 fi
