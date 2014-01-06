@@ -73,6 +73,8 @@ func scmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	subs := []rune(c.txtargs[1])
 	first := ec.Buf.EditMark
 	count := 0
+	nmatch := 1
+	globalrepl := (c.numarg == 0) || (c.flags&G_FLAG != 0)
 	for {
 		psel := sel.S
 		loc := re.Match(ec.Buf, sel.S, ec.addrSave[0].E, +1)
@@ -80,7 +82,16 @@ func scmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 			return
 		}
 		sel = util.Sel{loc[0], loc[1]}
-		ec.Buf.Replace(subs, &sel, first, ec.EventChan, util.EO_MOUSE, false)
+		if globalrepl || (c.numarg == nmatch) {
+			ec.Buf.Replace(subs, &sel, first, ec.EventChan, util.EO_MOUSE, false)
+			if !globalrepl {
+				break
+			}
+		} else {
+			sel.S = sel.E
+		}
+		nmatch++
+
 		if sel.S == psel {
 			count++
 		} else {

@@ -96,7 +96,7 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*cmd, []run
 		n, rest = readNumber(rest)
 
 		if n == "" {
-			r.numarg = 1
+			r.numarg = 0
 		} else {
 			var err error
 			r.numarg, err = strconv.Atoi(n)

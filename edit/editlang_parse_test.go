@@ -28,7 +28,7 @@ func TestAddrless(t *testing.T) {
 }
 
 func TestS(t *testing.T) {
-	testParsed(t, ",s/regexp/repl/g", "Range<Op<0 , $>> Cmd<s> Num<1> Arg<regexp> Arg<repl> Flags<1>")
+	testParsed(t, ",s/regexp/repl/g", "Range<Op<0 , $>> Cmd<s> Arg<regexp> Arg<repl> Flags<1>")
 	testParsed(t, ",s2/regexp/repl/", "Range<Op<0 , $>> Cmd<s> Num<2> Arg<regexp> Arg<repl>")
 }
 
@@ -43,6 +43,6 @@ func TestX(t *testing.T) {
 }
 
 func TestSSpacesBug(t *testing.T) {
-	testParsed(t, ",s/regexp/ repl/g", "Range<Op<0 , $>> Cmd<s> Num<1> Arg<regexp> Arg< repl> Flags<1>")
-	testParsed(t, ",s/regexp/	repl/g", "Range<Op<0 , $>> Cmd<s> Num<1> Arg<regexp> Arg<	repl> Flags<1>")
+	testParsed(t, ",s/regexp/ repl/g", "Range<Op<0 , $>> Cmd<s> Arg<regexp> Arg< repl> Flags<1>")
+	testParsed(t, ",s/regexp/	repl/g", "Range<Op<0 , $>> Cmd<s> Arg<regexp> Arg<	repl> Flags<1>")
 }
