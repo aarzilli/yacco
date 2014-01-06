@@ -65,10 +65,11 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 		col = Wnd.cols.cols[len(Wnd.cols.cols)-1]
 	} else {
 		if activeEditor != nil {
-			activeCol := activeEditor.Column()
-			if activeCol != nil {
-				col = activeCol
+			if activeEditor.Column() != nil {
+				col = activeEditor.Column()
 			}
+		} else if activeCol != nil {
+			col = activeCol
 		}
 
 		if col == nil {

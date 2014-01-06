@@ -218,6 +218,9 @@ func (c *Col) Close() {
 	for i := range c.editors {
 		c.editors[i].Close()
 	}
+	if activeCol == c {
+		activeCol = nil
+	}
 }
 
 func (c *Col) Dump() DumpColumn {

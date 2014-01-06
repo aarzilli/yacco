@@ -97,6 +97,7 @@ const DEFAULT_CURSOR = wde.XTermCursor
 var highlightChan = make(chan *buf.Buffer, 10)
 var activeSel activeSelStruct
 var activeEditor *Editor = nil
+var activeCol *Col = nil
 var HasFocus = true
 
 func (as *activeSelStruct) Set(lp LogicalPos) {
@@ -311,8 +312,12 @@ func (w *Window) EventLoop() {
 				break
 			}
 
-			if (lp.col != nil) && lp.onButton { // clicked on column's resize handle
-				w.ColResize(lp.col, e, events)
+			if (lp.col != nil) {
+				if lp.onButton { // clicked on column's resize handle
+					w.ColResize(lp.col, e, events)
+				}
+				activeEditor = nil
+				activeCol = lp.col
 			}
 
 		case util.WheelEvent:
@@ -989,6 +994,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		} else if e.Glyph != "" {
 			if !ec.ontag && ec.ed != nil {
 				activeEditor = ec.ed
+				activeCol = nil
 			}
 			if ec.buf != nil {
 				ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD, true)
@@ -1078,6 +1084,8 @@ func clickExec1(lp LogicalPos, e util.MouseDownEvent) {
 	if lp.sfr != nil {
 		lp.sfr.Fr.DisableOtherSelections(0)
 		activeSel.Set(lp)
+		activeEditor = lp.ed
+		activeCol = nil
 		br.BufferRefresh(false)
 
 		d := lp.ed.LastJump() - lp.sfr.Fr.Sels[0].S
