@@ -324,7 +324,7 @@ func (e *Editor) GenTag() {
 			t += " Redo"
 		}
 		if e.bodybuf.IsDir() {
-			t += " Get"
+			t += " Get xdg-open"
 		}
 	} else {
 		t += e.specialTag
