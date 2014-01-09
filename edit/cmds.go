@@ -174,7 +174,7 @@ func gcmdfn(inv bool, c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
 	re := regexp.Compile(c.txtargs[0], true, false)
 	loc := re.Match(ec.Buf, sel.S, sel.E, +1)
-	if loc == nil {
+	if (loc == nil) || (loc[0] != sel.S) || (loc[1] != sel.E) {
 		if inv {
 			c.body.fn(c.body, sel, ec)
 		}
