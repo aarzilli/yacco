@@ -4,34 +4,47 @@ import (
 	"code.google.com/p/freetype-go/freetype"
 	"code.google.com/p/freetype-go/freetype/raster"
 	"code.google.com/p/freetype-go/freetype/truetype"
-	"io/ioutil"
+	"gopcf"
 	"image"
+	"io/ioutil"
 	"os"
 	"strings"
 )
 
 type Font struct {
 	fonts   []*truetype.Font
-	cs       []*freetype.Context
+	cs      []*freetype.Context
+	pfonts  []*pcf.Pcf
 	dpi     float64
 	Size    float64
 	Spacing float64
 }
 
-// Reads a Font: fontPath is a ':' separated list of ttf font files (they will be used to search characters)
+// Reads a Font: fontPath is a ':' separated list of ttf or pcf font files (they will be used to search characters)
 func NewFont(dpi, size, lineSpacing float64, fontPath string) (*Font, error) {
 	fontPathV := strings.Split(fontPath, ":")
-	rf := &Font{make([]*truetype.Font, 0, len(fontPathV)), make([]*freetype.Context, len(fontPathV)), dpi, size, lineSpacing}
+	rf := &Font{make([]*truetype.Font, 0, len(fontPathV)), make([]*freetype.Context, len(fontPathV)), make([]*pcf.Pcf, 0, len(fontPathV)), dpi, size, lineSpacing}
 	for _, fontfile := range fontPathV {
-		fontBytes, err := ioutil.ReadFile(os.ExpandEnv(fontfile))
-		if err != nil {
-			return nil, err
+		if strings.HasSuffix(fontfile, ".ttf") {
+			fontBytes, err := ioutil.ReadFile(os.ExpandEnv(fontfile))
+			if err != nil {
+				return nil, err
+			}
+			parsedfont, err := freetype.ParseFont(fontBytes)
+			if err != nil {
+				return nil, err
+			}
+			rf.fonts = append(rf.fonts, parsedfont)
+			rf.pfonts = append(rf.pfonts, nil)
+		} else {
+			font, err := pcf.ReadPath(os.ExpandEnv(fontfile))
+			if err != nil {
+				println("check")
+				return nil, err
+			}
+			rf.fonts = append(rf.fonts, nil)
+			rf.pfonts = append(rf.pfonts, font)
 		}
-		parsedfont, err := freetype.ParseFont(fontBytes)
-		if err != nil {
-			return nil, err
-		}
-		rf.fonts = append(rf.fonts, parsedfont)
 	}
 	rf.createContexts()
 	return rf, nil
@@ -46,13 +59,14 @@ func MustNewFont(dpi, size, lineSpacing float64, fontPath string) *Font {
 }
 
 func NewFontFromBytes(dpi, size, lineSpacing float64, fontBytes [][]byte) (*Font, error) {
-	rf := &Font{make([]*truetype.Font, 0, len(fontBytes)), make([]*freetype.Context, len(fontBytes)), dpi, size, lineSpacing}
+	rf := &Font{make([]*truetype.Font, 0, len(fontBytes)), make([]*freetype.Context, len(fontBytes)), make([]*pcf.Pcf, 0, len(fontBytes)), dpi, size, lineSpacing}
 	for _, aFontBytes := range fontBytes {
 		parsedfont, err := freetype.ParseFont(aFontBytes)
 		if err != nil {
 			return nil, err
 		}
 		rf.fonts = append(rf.fonts, parsedfont)
+		rf.pfonts = append(rf.pfonts, nil)
 	}
 	rf.createContexts()
 	return rf, nil
@@ -76,30 +90,56 @@ func (f *Font) createContexts() {
 }
 
 func (f *Font) LineHeight() int32 {
-	bounds := f.fonts[0].Bounds(int32(f.Size))
-	return bounds.YMax - bounds.YMin
+	if f.fonts[0] != nil {
+		bounds := f.fonts[0].Bounds(int32(f.Size))
+		return bounds.YMax - bounds.YMin
+	} else {
+		return int32(f.pfonts[0].LineAdvance() + 1)
+	}
 }
 
 func (f *Font) LineHeightRaster() raster.Fix32 {
-	return f.cs[0].PointToFix32(float64(f.LineHeight()) * f.Spacing)
+	if f.fonts[0] != nil {
+		return f.cs[0].PointToFix32(float64(f.LineHeight()) * f.Spacing)
+	} else {
+		return raster.Fix32(f.pfonts[0].LineAdvance() << 8)
+	}
 }
 
 func (f *Font) Bounds() truetype.Bounds {
-	return f.fonts[0].Bounds(int32(f.Size))
+	if f.fonts[0] != nil {
+		return f.fonts[0].Bounds(int32(f.Size))
+	} else {
+		mb := f.pfonts[0].Accelerators.Maxbounds
+		return truetype.Bounds{0, -int32(mb.CharacterDescent), int32(mb.CharacterWidth), int32(mb.CharacterAscent)}
+	}
 }
 
 func (f *Font) GlyphWidth(fontIdx int, idx truetype.Index) raster.Fix32 {
-	return raster.Fix32(f.fonts[fontIdx].HMetric(f.cs[fontIdx].Scale, idx).AdvanceWidth) << 2
+	if f.fonts[fontIdx] != nil {
+		return raster.Fix32(f.fonts[fontIdx].HMetric(f.cs[fontIdx].Scale, idx).AdvanceWidth) << 2
+	} else {
+		return raster.Fix32(f.pfonts[fontIdx].Advance(int(idx))) << 8
+	}
 }
 
 func (f *Font) GlyphKerning(fontIdx int, pidx, idx truetype.Index) raster.Fix32 {
-	return raster.Fix32(f.fonts[fontIdx].Kerning(f.cs[fontIdx].Scale, pidx, idx)) << 2
+	if f.fonts[fontIdx] != nil {
+		return raster.Fix32(f.fonts[fontIdx].Kerning(f.cs[fontIdx].Scale, pidx, idx)) << 2
+	} else {
+		return 0
+	}
 }
 
 func (f *Font) Glyph(fontIdx int, idx truetype.Index, p raster.Point) (mask *image.Alpha, glyphRect image.Rectangle, err error) {
-	mask, offset, err := f.cs[fontIdx].Glyph(idx, p)
-	if err != nil {	
-		return
+	var offset image.Point
+	if f.fonts[fontIdx] != nil {
+		mask, offset, err = f.cs[fontIdx].Glyph(idx, p)
+		if err != nil {
+			return
+		}
+	} else {
+		mask, offset = f.pfonts[fontIdx].Glyph(int(idx), image.Point{int(p.X >> 8), int(p.Y >> 8)})
 	}
 	glyphRect = mask.Bounds().Add(offset)
 	return
@@ -108,7 +148,11 @@ func (f *Font) Glyph(fontIdx int, idx truetype.Index, p raster.Point) (mask *ima
 func (f *Font) Index(x rune) (fontIdx int, idx truetype.Index) {
 	var font *truetype.Font
 	for fontIdx, font = range f.fonts {
-		idx = font.Index(x)
+		if font != nil {
+			idx = font.Index(x)
+		} else {
+			idx = truetype.Index(f.pfonts[fontIdx].GetIndex(x))
+		}
 		if idx != 0 {
 			return
 		}
