@@ -57,7 +57,7 @@ func (n *nodeRep) String() string {
 
 type nodeAssert struct {
 	name  string
-	check func(b *buf.Buffer, i int) bool
+	check func(b *buf.Buffer, start, end, i int) bool
 }
 
 func (n *nodeAssert) String() string {
@@ -102,7 +102,7 @@ type instr struct {
 	inv     bool                              // for RX_CLASS
 	set     map[rune]bool                     // for RX_CLASS
 	special []func(rune) bool                 // for RX_CLASS
-	check   func(buf *buf.Buffer, i int) bool // for RX_ASSERT
+	check   func(buf *buf.Buffer, start, end, i int) bool // for RX_ASSERT
 }
 
 type Regex []instr

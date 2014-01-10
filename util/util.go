@@ -609,3 +609,32 @@ func ShortPath(ap string, canRelative bool) string {
 		return rp
 	}
 }
+
+func P9Copy(dst *clnt.File, src io.Reader) (written int64, err error) {
+	written = int64(0)
+	buf := make([]byte, 4*1024)
+	for {
+		nr, er := src.Read(buf)
+		if nr > 0 {
+			nw, ew := dst.Write(buf[0:nr])
+			if nw > 0 {
+				written += int64(nw)
+			}
+			if ew != nil {
+				err = ew
+				break
+			}
+			if nr != nw {
+				err = io.ErrShortWrite
+				break
+			}
+		}
+		if er == io.EOF {
+			break
+		}
+		if er != nil {
+			break
+		}
+	}
+	return
+}

@@ -37,30 +37,18 @@ func startCommand(clean bool, buf *util.BufferConn) {
 	go func() {
 		cmd := exec.Command(args[0], args[1:]...)
 
-		stdout, err := cmd.StdoutPipe()
-		if err != nil {
-			buf.BodyFd.Write([]byte(fmt.Sprintf("Could not get stdout of command: %v", err)))
-			return
-		}
-
-		stderr, err := cmd.StderrPipe()
-		if err != nil {
-			buf.BodyFd.Write([]byte(fmt.Sprintf("Could not get stderr of command: %v", err)))
-			return
-		}
-
-		err = cmd.Start()
-		if err != nil {
-			buf.BodyFd.Write([]byte(fmt.Sprintf("Could not execute command: %v", err)))
-			return
-		}
-
-		go io.Copy(buf.BodyFd, stdout)
-		go io.Copy(buf.BodyFd, stderr)
-
 		waitChan := make(chan bool, 0)
 		go func() {
-			cmd.Wait()
+			co, err := cmd.CombinedOutput()
+
+			if err == nil {
+				if debug {
+					fmt.Printf("Read: %s", string(co))
+				}
+				buf.BodyFd.Writen(co, 0)
+			} else {
+				fmt.Fprintf(buf.BodyFd, "Error executing command: %v", err)
+			}
 
 			// signal the end of the process if anyone is listening
 			select {

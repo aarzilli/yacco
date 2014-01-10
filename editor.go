@@ -317,12 +317,14 @@ func (e *Editor) GenTag() {
 		if e.bodybuf.Modified {
 			t += " Put"
 		}
-
 		if e.bodybuf.HasUndo() {
 			t += " Undo"
 		}
 		if e.bodybuf.HasRedo() {
 			t += " Redo"
+		}
+		if e.bodybuf.IsDir() {
+			t += " Get xdg-open"
 		}
 	} else {
 		t += e.specialTag

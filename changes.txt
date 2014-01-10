@@ -31,3 +31,6 @@ CHANGE: unlimited Undo and Redo
 
 CHANGE: added LookFile command to do incremental search of files to open
 
+CHANGE: Edit's s command will replace all occourences of the regular expression unless given an integer parameter specifying which one to change. The 'g' flag is accepted but does nothing.
+
+CHANGE: Edit's g command will only evaluate its argument when the regexp matches the entire region. The original behaviour can be obtained prefixing and suffixing the regexp with .*. The reverse would be hard.

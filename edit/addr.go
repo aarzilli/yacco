@@ -165,8 +165,8 @@ func (e *AddrBase) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 		if (e.Value != "1") || (e.Dir != -1) {
 			panic(fmt.Errorf("Address starting with #? only supported as backward motion and with a value of 1"))
 		}
-		if (sel.E-1 >= sel.S) && (sel.E-1>=0) && (b.At(sel.E-1).R == '\n') {
-			rsel.S = sel.E-1
+		if (sel.E-1 >= sel.S) && (sel.E-1 >= 0) && (b.At(sel.E-1).R == '\n') {
+			rsel.S = sel.E - 1
 		} else {
 			rsel.S = sel.E
 		}

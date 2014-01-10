@@ -73,6 +73,8 @@ func scmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	subs := []rune(c.txtargs[1])
 	first := ec.Buf.EditMark
 	count := 0
+	nmatch := 1
+	globalrepl := (c.numarg == 0) || (c.flags&G_FLAG != 0)
 	for {
 		psel := sel.S
 		loc := re.Match(ec.Buf, sel.S, ec.addrSave[0].E, +1)
@@ -80,8 +82,17 @@ func scmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 			return
 		}
 		sel = util.Sel{loc[0], loc[1]}
-		ec.Buf.Replace(subs, &sel, first, ec.EventChan, util.EO_MOUSE, false)
-		if sel.S != psel {
+		if globalrepl || (c.numarg == nmatch) {
+			ec.Buf.Replace(subs, &sel, first, ec.EventChan, util.EO_MOUSE, false)
+			if !globalrepl {
+				break
+			}
+		} else {
+			sel.S = sel.E
+		}
+		nmatch++
+
+		if sel.S == psel {
 			count++
 		} else {
 			count = 0
@@ -163,7 +174,7 @@ func gcmdfn(inv bool, c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
 	re := regexp.Compile(c.txtargs[0], true, false)
 	loc := re.Match(ec.Buf, sel.S, sel.E, +1)
-	if loc == nil {
+	if (loc == nil) || (loc[0] != sel.S) || (loc[1] != sel.E) {
 		if inv {
 			c.body.fn(c.body, sel, ec)
 		}
