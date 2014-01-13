@@ -64,9 +64,9 @@ var KeyBindings = map[string]string{
 	"control+q": "LookFile",
 	"control+b": "Jump",
 
-	"backspace": "Do\nEdit v/./ -#1,.\nEdit c//",
-	"control+w": "Do\nEdit v/./ -#1,.\nEdit c//",
-	"delete":    "Do\nEdit v/./ .,+#1\nEdit c//",
+	"backspace": "Do\nEdit g// -#1,.\nEdit c//",
+	"control+w": "Do\nEdit g// -#1,.\nEdit c//",
+	"delete":    "Do\nEdit g// .,+#1\nEdit c//",
 }
 
 var KeyConversion = map[string]string{
