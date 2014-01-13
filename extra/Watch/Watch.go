@@ -41,12 +41,12 @@ func startCommand(clean bool, buf *util.BufferConn) {
 		go func() {
 			co, err := cmd.CombinedOutput()
 
-			if err == nil {
-				if debug {
-					fmt.Printf("Read: %s", string(co))
-				}
-				buf.BodyFd.Writen(co, 0)
-			} else {
+			if debug {
+				fmt.Printf("Read: %s", string(co))
+			}
+			buf.BodyFd.Writen(co, 0)
+
+			if err != nil {
 				fmt.Fprintf(buf.BodyFd, "Error executing command: %v", err)
 			}
 
