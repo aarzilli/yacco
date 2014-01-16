@@ -11,7 +11,8 @@ for scpt in m g a+ a- Font Indent Tab Mount in LookExact; do
 	cp -f extra/$scpt $1/yaccodir/$scpt
 	chmod u+x $1/yaccodir/$scpt
 done
-cat >$1/yacco <<EOF
+if [ ! -e $1/yacco ]; then
+	cat >$1/yacco <<EOF
 #!/bin/bash
 source ~/.bash_profile
 export PATH=$1/yaccodir:\$PATH
@@ -21,6 +22,7 @@ export PS1='\e];\w\a% '
 exec $1/yaccodir/yacco -s=1168x900 -t=e2 \$*
 EOF
 chmod u+x $1/yacco
+fi
 mkdir -p $HOME/.config/yacco/
 cp config/DejaVuSans.ttf $HOME/.config/yacco/
 cp config/luxisr.ttf $HOME/.config/yacco/

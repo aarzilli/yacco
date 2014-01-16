@@ -71,7 +71,9 @@ func realmain() {
 
 	Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
 	if len(flag.Args()) != 1 {
-		Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
+		rightcol := NewCol(Wnd.wnd, Wnd.cols.r)
+		Wnd.cols.AddAfter(rightcol, -1, 0.4)
+		activeCol = rightcol
 	}
 
 	wd, _ := os.Getwd()
