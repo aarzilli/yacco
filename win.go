@@ -149,12 +149,12 @@ func (w *Window) Init(width, height int) (err error) {
 		hf |= textframe.HF_QUOTEHACK
 	}
 	w.tagfr = textframe.Frame{
-		Font:        config.TagFont,
-		Scroll:      func(sd, sl int) {},
+		Font:            config.TagFont,
+		Scroll:          func(sd, sl int) {},
 		ExpandSelection: func(kind, start, end int) (int, int) { return expandSelectionBuf(w.tagbuf, kind, start, end) },
 		Hackflags:       hf,
-		VisibleTick: false,
-		Wnd:         w.wnd,
+		VisibleTick:     false,
+		Wnd:             w.wnd,
 		Colors: [][]image.Uniform{
 			config.TheColorScheme.TagPlain,
 			config.TheColorScheme.TagSel1,
@@ -324,7 +324,7 @@ func (w *Window) EventLoop() {
 				break
 			}
 
-			if (lp.col != nil) {
+			if lp.col != nil {
 				if lp.onButton { // clicked on column's resize handle
 					w.ColResize(lp.col, e, events)
 				}

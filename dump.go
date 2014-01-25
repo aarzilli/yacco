@@ -73,6 +73,10 @@ func LoadFrom(dumpDest string) bool {
 		return false
 	}
 
+	activeEditor = nil
+	activeCol = nil
+	activeSel.Reset()
+
 	for i := range buffers {
 		if buffers[i] != nil {
 			FsRemoveBuffer(i)

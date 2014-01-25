@@ -41,11 +41,11 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 		hf |= textframe.HF_QUOTEHACK
 	}
 	c.tagfr = textframe.Frame{
-		Font:        config.TagFont,
-		Hackflags:   hf,
-		Scroll:      func(sd, sl int) {},
+		Font:            config.TagFont,
+		Hackflags:       hf,
+		Scroll:          func(sd, sl int) {},
 		ExpandSelection: func(kind, start, end int) (int, int) { return expandSelectionBuf(c.tagbuf, kind, start, end) },
-		VisibleTick: false,
+		VisibleTick:     false,
 		Colors: [][]image.Uniform{
 			config.TheColorScheme.TagPlain,
 			config.TheColorScheme.TagSel1,
