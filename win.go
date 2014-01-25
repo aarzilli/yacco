@@ -1018,6 +1018,9 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			}
 			if ec.buf != nil {
 				ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD, true)
+				if ec.ed != nil {
+					ec.ed.otherSel[OS_TIP].E = ec.fr.Sels[0].S
+				}
 				ec.br.BufferRefresh(ec.ontag)
 				ComplStart(ec)
 			}

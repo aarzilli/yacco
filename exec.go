@@ -797,10 +797,15 @@ func JumpCmd(ec ExecContext, arg string) {
 	if ec.ed == nil {
 		return
 	}
-	ec.ed.confirmDel = false
-	ec.ed.confirmSave = false
-	ec.ed.RestoreJump()
-	ec.ed.BufferRefresh(false)
+	if strings.ToLower(arg) == "tip" {
+		ec.ed.sfr.Fr.Sels[0].S = ec.ed.otherSel[OS_TIP].E
+		ec.ed.sfr.Fr.Sels[0].E = ec.ed.otherSel[OS_TIP].E
+	} else {
+		ec.ed.confirmDel = false
+		ec.ed.confirmSave = false
+		ec.ed.RestoreJump()
+		ec.ed.BufferRefresh(false)
+	}
 }
 
 func KeysInit() {

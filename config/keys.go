@@ -62,7 +62,7 @@ var KeyBindings = map[string]string{
 	"control+,": "|a-",
 
 	"control+q": "LookFile",
-	"control+b": "Jump",
+	"control+b": "Jump tip",
 
 	"backspace": "Do\nEdit g// -#1,.\nEdit c//",
 	"control+w": "Do\nEdit g// -#1,.\nEdit c//",
