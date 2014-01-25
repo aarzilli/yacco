@@ -40,6 +40,10 @@ func EditFind(rel2dir, path string, warp bool, create bool) (*Editor, error) {
 		}
 	}
 
+	if !create && (len(path) > 0) && (path[0] == '+') {
+		return nil, fmt.Errorf("Editor %s not found (and create == false)", path)
+	}
+
 	return HeuristicOpen(abspath, true, create)
 }
 

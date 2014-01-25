@@ -114,6 +114,8 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 	}
 	jobsMutex.Unlock()
 
+	UpdateJobs(false)
+
 	go func() {
 		defer func() { job.done <- true }()
 		defer stdout.Close()
@@ -188,6 +190,10 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 		jobsMutex.Lock()
 		jobs[idx] = nil
 		jobsMutex.Unlock()
+
+		sideChan <- func() {
+			UpdateJobs(false)
+		}
 	}()
 }
 
@@ -208,4 +214,32 @@ func jobKill(i int) {
 	}
 
 	jobs[i].cmd.Process.Kill()
+}
+
+func UpdateJobs(create bool) {
+	jobsMutex.Lock()
+	t := ""
+	for i, job := range jobs {
+		if job == nil {
+			continue
+		}
+		t += fmt.Sprintf("%d %s\n", i, job.descr)
+	}
+	jobsMutex.Unlock()
+
+	ed, _ := EditFind(Wnd.tagbuf.Dir, "+Jobs", false, create)
+	if ed == nil {
+		return
+	}
+
+	ed.sfr.Fr.Sels[0].S = 0
+	ed.sfr.Fr.Sels[0].E = ed.bodybuf.Size()
+	ed.bodybuf.Replace([]rune(t), &ed.sfr.Fr.Sels[0], true, nil, 0, true)
+
+	if create {
+		ed.tagbuf.Replace([]rune("Jobs"), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0, true)
+		ed.BufferRefresh(false)
+	} else {
+		ed.BufferRefresh(false)
+	}
 }
