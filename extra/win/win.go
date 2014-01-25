@@ -320,8 +320,30 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 	lastUpdate := time.Now()
 	updCount := 0
 	var oldPrompt []byte = nil
+	bodyBuf := make([]byte, 0, 2048)
+
+	flushBodyBuf := func() {
+		_, err := buf.BodyFd.Writen(bodyBuf, 0)
+		util.Allergic3(debug, err, isDelSeen())
+		bodyBuf = bodyBuf[0:0]
+	}
+
+	maybeWriteBody := func(s []byte) {
+		if !floating {
+			_, err := buf.BodyFd.Writen(s, 0)
+			util.Allergic3(debug, err, isDelSeen())
+			return
+		}
+
+		bodyBuf = append(bodyBuf, s...)
+		if len(bodyBuf) > 1024 {
+			flushBodyBuf()
+		}
+	}
 
 	anchorDown := func() {
+		//println("Anchoring down", time.Now().Unix())
+		flushBodyBuf()
 		updateAddr(oldPrompt, buf)
 		floating = false
 	}
@@ -332,8 +354,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 			if !floating {
 				oldPrompt = getPrompt(-1, true, buf)
 			}
-			_, err := buf.BodyFd.Write(msg.s)
-			util.Allergic3(debug, err, isDelSeen())
+			maybeWriteBody(msg.s)
 			if !floating {
 				if time.Since(lastUpdate) > time.Millisecond*100 {
 					updCount = 0
