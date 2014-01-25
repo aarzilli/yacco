@@ -39,7 +39,7 @@ var KeyBindings = map[string]string{
 	"control+backspace":         "Edit -#w1,. c//",
 	"control+home":              "Edit #0 k",
 	"control+end":               "Edit $ k",
-	"home":                      "Edit +--#0",
+	"home":                      "Edit -0-#0",
 	"control+a":                 HOME_CMD,
 	"end":                       END_CMD,
 	"control+e":                 END_CMD,
@@ -49,7 +49,7 @@ var KeyBindings = map[string]string{
 	"control+y": "Paste!Primary",
 	"control+x": "Cut",
 	"control+s": "Put",
-	"control+k": "Edit -+c//",
+	"control+k": "Edit -0+0 c//",
 
 	"control+z":       "Undo",
 	"control+shift+z": "Redo",
