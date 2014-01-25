@@ -20,3 +20,4 @@ var EditErrorTrace = false
 var EnableHighlighting = true
 var ServeTCP = false
 var HideHidden = true
+var QuoteHack = true

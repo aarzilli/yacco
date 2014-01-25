@@ -36,9 +36,13 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 		Warn("Error opening new column: " + err.Error())
 		return c
 	}
+	hf := textframe.HF_TRUNCATE
+	if config.QuoteHack {
+		hf |= textframe.HF_QUOTEHACK
+	}
 	c.tagfr = textframe.Frame{
 		Font:        config.TagFont,
-		Hackflags:   textframe.HF_MARKSOFTWRAP | textframe.HF_BOLSPACES | textframe.HF_QUOTEHACK,
+		Hackflags:   hf,
 		Scroll:      func(sd, sl int) {},
 		ExpandSelection: func(kind, start, end int) (int, int) { return expandSelectionBuf(c.tagbuf, kind, start, end) },
 		VisibleTick: false,

@@ -17,6 +17,7 @@ type configObj struct {
 	EnableHighlighting bool
 	ServeTCP           bool
 	HideHidden         bool
+	QuoteHack bool
 }
 
 type configFont struct {
@@ -52,4 +53,5 @@ func LoadConfiguration() {
 	EnableHighlighting = co.EnableHighlighting
 	ServeTCP = co.ServeTCP
 	HideHidden = co.HideHidden
+	QuoteHack = co.QuoteHack
 }

@@ -135,13 +135,17 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	if addBuffer {
 		bufferAdd(bodybuf)
 	}
+	hf := textframe.HF_MARKSOFTWRAP
+	if config.QuoteHack {
+		hf |= textframe.HF_QUOTEHACK
+	}
 
 	e.sfr = textframe.ScrollFrame{
 		Width: SCROLL_WIDTH,
 		Color: config.TheColorScheme.Scrollbar,
 		Fr: textframe.Frame{
 			Font:            config.MainFont,
-			Hackflags:       textframe.HF_MARKSOFTWRAP | textframe.HF_QUOTEHACK,
+			Hackflags:       hf,
 			Scroll:          func(sd, sl int) { scrollfn(e, sd, sl) },
 			ExpandSelection: func(kind, start, end int) (int, int) { return expandSelectionBuf(e.bodybuf, kind, start, end) },
 			VisibleTick:     false,
@@ -154,9 +158,14 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 			},
 		},
 	}
+	hf = textframe.HF_TRUNCATE
+	if config.QuoteHack {
+		hf |= textframe.HF_QUOTEHACK
+	}
+
 	e.tagfr = textframe.Frame{
 		Font:            config.TagFont,
-		Hackflags:       textframe.HF_TRUNCATE | textframe.HF_QUOTEHACK,
+		Hackflags:       hf,
 		Scroll:          func(sd, sl int) {},
 		ExpandSelection: func(kind, start, end int) (int, int) { return expandSelectionBuf(e.tagbuf, kind, start, end) },
 		VisibleTick:     false,

@@ -112,6 +112,13 @@ func (as *activeSelStruct) Set(lp LogicalPos) {
 	as.txt = string(lp.bodybuf.SelectionRunes(lp.sfr.Fr.Sels[0]))
 }
 
+func (as *activeSelStruct) Reset() {
+	as.ed = nil
+	as.path = ""
+	as.s = 0
+	as.e = 0
+}
+
 func (w *Window) Init(width, height int) (err error) {
 	w.Prop = make(map[string]string)
 	w.Prop["indentchar"] = "\t"
@@ -137,10 +144,15 @@ func (w *Window) Init(width, height int) (err error) {
 		return err
 	}
 
+	hf := textframe.HF_TRUNCATE
+	if config.QuoteHack {
+		hf |= textframe.HF_QUOTEHACK
+	}
 	w.tagfr = textframe.Frame{
 		Font:        config.TagFont,
 		Scroll:      func(sd, sl int) {},
 		ExpandSelection: func(kind, start, end int) (int, int) { return expandSelectionBuf(w.tagbuf, kind, start, end) },
+		Hackflags:       hf,
 		VisibleTick: false,
 		Wnd:         w.wnd,
 		Colors: [][]image.Uniform{
