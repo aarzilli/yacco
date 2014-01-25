@@ -18,6 +18,12 @@ import (
 
 var debug = false
 var stopping int32 = 0
+var delSeenSupport int32 = 0
+var delSeen *int32 = &delSeenSupport
+
+func isDelSeen() bool {
+	return atomic.LoadInt32(delSeen) != 0
+}
 
 const (
 	ANSI_NORMAL = iota
@@ -211,7 +217,7 @@ func eventReader(controlChan chan<- interface{}, eventfd io.ReadWriter) {
 
 		for !er.Done() {
 			n, err := eventfd.Read(buf)
-			util.Allergic(debug, err)
+			util.Allergic3(debug, err, isDelSeen())
 			er.Insert(string(buf[:n]))
 		}
 
@@ -226,7 +232,11 @@ func eventReader(controlChan chan<- interface{}, eventfd io.ReadWriter) {
 
 		switch er.Type() {
 		case util.ET_TAGEXEC, util.ET_BODYEXEC:
+			arg, _ := er.Text(nil, nil, nil)
 			if er.BuiltIn() {
+				if arg == "Del" {
+					atomic.StoreInt32(delSeen, 1)
+				}
 				if debug {
 					log.Printf("Sending back")
 				}
@@ -234,9 +244,8 @@ func eventReader(controlChan chan<- interface{}, eventfd io.ReadWriter) {
 				if debug {
 					log.Printf("Sent back")
 				}
-				util.Allergic(debug, err)
+				util.Allergic3(debug, err, isDelSeen())
 			} else {
-				arg, _ := er.Text(nil, nil, nil)
 				if signal, ok := signalCommands[arg]; ok {
 					controlChan <- SignalMsg{signal}
 				} else {
@@ -245,11 +254,11 @@ func eventReader(controlChan chan<- interface{}, eventfd io.ReadWriter) {
 				}
 			}
 
-			util.Allergic(debug, err)
+			util.Allergic3(debug, err, isDelSeen())
 
 		case util.ET_TAGLOAD, util.ET_BODYLOAD:
 			err := er.SendBack(eventfd)
-			util.Allergic(debug, err)
+			util.Allergic3(debug, err, isDelSeen())
 
 		case util.ET_BODYINS:
 			if (er.Origin() == util.EO_BODYTAG) || (er.Origin() == util.EO_FILES) {
@@ -268,12 +277,12 @@ func eventReader(controlChan chan<- interface{}, eventfd io.ReadWriter) {
 func getPrompt(s int, delete bool, buf *util.BufferConn) []byte {
 	if s < 0 {
 		addr, err := buf.ReadAddr()
-		util.Allergic(debug, err)
+		util.Allergic3(debug, err, isDelSeen())
 		s = addr[0]
 	}
 	fmt.Fprintf(buf.AddrFd, "#%d,$", s)
 	command, err := buf.ReadXData()
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 
 	if delete {
 		buf.XDataFd.Write([]byte{0})
@@ -284,22 +293,22 @@ func getPrompt(s int, delete bool, buf *util.BufferConn) []byte {
 
 func updateDot(dstAddr string, buf *util.BufferConn) {
 	addr, err := buf.ReadAddr()
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 	_, err = buf.AddrFd.Write([]byte(dstAddr))
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 	_, err = buf.CtlFd.Write([]byte("dot=addr\n"))
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 	fmt.Fprintf(buf.AddrFd, "#%d,#%d", addr[0], addr[1])
 }
 
 func updateAddr(prompt []byte, buf *util.BufferConn) {
 	_, err := buf.AddrFd.Write([]byte("$"))
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 	_, err = buf.CtlFd.Write([]byte("dot=addr"))
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 	if len(prompt) > 0 {
 		_, err = buf.BodyFd.Write(prompt)
-		util.Allergic(debug, err)
+		util.Allergic3(debug, err, isDelSeen())
 		updateDot("$", buf)
 	}
 }
@@ -324,7 +333,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 				oldPrompt = getPrompt(-1, true, buf)
 			}
 			_, err := buf.BodyFd.Write(msg.s)
-			util.Allergic(debug, err)
+			util.Allergic3(debug, err, isDelSeen())
 			if !floating {
 				if time.Since(lastUpdate) > time.Millisecond*100 {
 					updCount = 0
@@ -347,7 +356,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 				anchorDown()
 			}
 			_, err := buf.BodyFd.Write(msg.s)
-			util.Allergic(debug, err)
+			util.Allergic3(debug, err, isDelSeen())
 
 		case DeleteAddrMsg:
 			if floating {
@@ -355,7 +364,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 			}
 			oldPrompt = getPrompt(-1, true, buf)
 			_, err := buf.AddrFd.Write([]byte(msg.addr))
-			util.Allergic(debug, err)
+			util.Allergic3(debug, err, isDelSeen())
 			buf.XDataFd.Write([]byte{0})
 			updateAddr(oldPrompt, buf)
 
@@ -367,7 +376,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 				anchorDown()
 			}
 			addr, err := buf.ReadAddr()
-			util.Allergic(debug, err)
+			util.Allergic3(debug, err, isDelSeen())
 			if (msg.s >= 0) && (addr[0] > msg.s) {
 				break
 			}
@@ -423,18 +432,18 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 
 func run(c *exec.Cmd) *os.File {
 	pty, tty, err := pty.Open()
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 	defer tty.Close()
 
 	termios, err := TcGetAttr(tty)
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 	termios.SetIFlags(ICRNL | IUTF8)
 	termios.SetOFlags(ONLRET)
 	termios.SetCFlags(CS8 | CREAD)
 	termios.SetLFlags(ICANON)
 	termios.SetSpeed(38400)
 	err = TcSetAttr(tty, TCSANOW, termios)
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 	err = TcSetAttr(pty, TCSANOW, termios)
 
 	c.Stdout = tty
@@ -444,7 +453,7 @@ func run(c *exec.Cmd) *os.File {
 	err = c.Start()
 	if err != nil {
 		pty.Close()
-		util.Allergic(debug, err)
+		util.Allergic3(debug, err, isDelSeen())
 	}
 	return pty
 }
@@ -479,29 +488,29 @@ func easyCommand(cmd string) bool {
 
 func main() {
 	p9clnt, err := util.YaccoConnect()
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 	defer p9clnt.Unmount()
 
 	buf, err := util.FindWin("Win", p9clnt)
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 
 	_, err = buf.CtlFd.Write([]byte("name +Win"))
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 
 	_, err = buf.CtlFd.Write([]byte("dump " + strings.Join(os.Args, " ") + "\n"))
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 	wd, _ := os.Getwd()
 	_, err = buf.CtlFd.Write([]byte("dumpdir " + wd + "\n"))
 
 	_, err = buf.PropFd.Write([]byte("indent=off"))
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 
 	util.SetTag(p9clnt, buf.Id, "Jobs Kill Delete Sigkill Sigint Sigterm ")
 
 	_, err = buf.AddrFd.Write([]byte(","))
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 	_, err = buf.XDataFd.Write([]byte{0})
-	util.Allergic(debug, err)
+	util.Allergic3(debug, err, isDelSeen())
 
 	var cmd *exec.Cmd
 	if len(os.Args) > 1 {

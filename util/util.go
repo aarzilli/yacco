@@ -314,11 +314,16 @@ func ResolvePath(rel2dir, path string) string {
 }
 
 func Allergic(debug bool, err error) {
+	Allergic3(debug, err, false)
+}
+
+func Allergic3(debug bool, err error, silent bool) {
 	if err != nil {
 		if !debug {
-			_, file, line, _ := runtime.Caller(1)
-			fmt.Fprintf(os.Stderr, "%s:%d: %s\n", file, line, err.Error())
-			os.Exit(1)
+			if !silent {
+				_, file, line, _ := runtime.Caller(1)
+				fmt.Fprintf(os.Stderr, "%s:%d: %s\n", file, line, err.Error())
+			}
 		} else {
 			i := 1
 			fmt.Println("Error" + err.Error() + " at:")
@@ -330,6 +335,11 @@ func Allergic(debug bool, err error) {
 				fmt.Printf("\t %s:%d\n", file, line)
 				i++
 			}
+		}
+		if silent {
+			os.Exit(0)
+		} else {
+			os.Exit(1)
 		}
 	}
 }
