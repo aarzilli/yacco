@@ -352,21 +352,29 @@ func (w *Window) EventLoop() {
 			}
 
 		case ReplaceMsg:
-			HideCompl()
-			sel := e.sel
-			if sel == nil {
-				if e.append {
-					sel = &util.Sel{e.ec.ed.bodybuf.Size(), e.ec.ed.bodybuf.Size()}
-				} else {
-					sel = &e.ec.fr.Sels[0]
+			found := false
+			for i := range buffers {
+				if buffers[i] == e.ec.buf {
+					found = true
 				}
 			}
-			oldS := sel.S
-			e.ec.ed.bodybuf.Replace([]rune(e.txt), sel, true, e.ec.eventChan, e.origin, true)
-			if e.reselect {
-				sel.S = oldS
+			if found {
+				HideCompl()
+				sel := e.sel
+				if sel == nil {
+					if e.append {
+						sel = &util.Sel{e.ec.ed.bodybuf.Size(), e.ec.ed.bodybuf.Size()}
+					} else {
+						sel = &e.ec.fr.Sels[0]
+					}
+				}
+				oldS := sel.S
+				e.ec.ed.bodybuf.Replace([]rune(e.txt), sel, true, e.ec.eventChan, e.origin, true)
+				if e.reselect {
+					sel.S = oldS
+				}
+				e.ec.br.BufferRefresh(false)
 			}
-			e.ec.br.BufferRefresh(false)
 
 		case LoadMsg:
 			e.ec.fr.Sels[2] = util.Sel{e.s, e.e}
