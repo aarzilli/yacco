@@ -383,7 +383,7 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur bool) {
 		e.tagfr.Redraw(true)
 	} else {
 		e.refreshIntl()
-		if !e.sfr.Fr.Inside(e.sfr.Fr.Sels[0].E) {
+		if !e.sfr.Fr.Inside(e.sfr.Fr.Sels[0].E) && recur {
 			x := e.bodybuf.Tonl(e.sfr.Fr.Sels[0].E-2, -1)
 			e.otherSel[OS_TOP].E = x
 			e.refreshIntl()
@@ -406,7 +406,7 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur bool) {
 
 		for _, col := range Wnd.cols.cols {
 			for _, oe := range col.editors {
-				if oe.bodybuf == e.bodybuf {
+				if (oe.bodybuf == e.bodybuf) && (oe != e) {
 					oe.BufferRefreshEx(false, false)
 				}
 			}
