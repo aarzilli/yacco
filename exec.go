@@ -226,6 +226,7 @@ func DelcolCmd(ec ExecContext, arg string) {
 			removeBuffer(ed.bodybuf)
 		}
 		Wnd.cols.Remove(Wnd.cols.IndexOf(ec.col))
+		ec.col.Close()
 		Wnd.wnd.FlushImage()
 	} else {
 		Warn(t)
