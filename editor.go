@@ -20,6 +20,7 @@ type Editor struct {
 	btnr    image.Rectangle
 	rhandle image.Rectangle
 	frac    float64
+	last    bool
 
 	sfr   textframe.ScrollFrame
 	tagfr textframe.Frame
@@ -208,7 +209,8 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	return e
 }
 
-func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
+func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool) {
+	e.last = last
 	e.r = r
 	e.btnr = r
 	e.btnr.Max.X = e.btnr.Min.X + SCROLL_WIDTH
@@ -216,8 +218,9 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
 
 	sfrr := r
 	sfrr.Min.Y = sfrr.Min.Y + TagHeight(&e.tagfr) + 3
-	sfrr.Max.X -= 2
-	//sfrr.Max.Y -= 1
+	if !last {
+		sfrr.Max.X -= 2
+	}
 	e.sfr.SetRects(b, sfrr)
 
 	e.bodybuf.DisplayLines = int(float64(sfrr.Max.Y-sfrr.Min.Y) / float64(e.sfr.Fr.Font.LineHeight()))
@@ -236,7 +239,9 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle) {
 	e.tagfr.R = r
 	e.tagfr.R.Min.Y += 2
 	e.tagfr.R.Min.X += SCROLL_WIDTH
-	e.tagfr.R.Max.X -= 2
+	if !last {
+		e.tagfr.R.Max.X -= 2
+	}
 	e.tagfr.R.Max.Y = e.tagfr.R.Min.Y + TagHeight(&e.tagfr)
 	e.tagfr.R = e.r.Intersect(e.tagfr.R)
 	e.tagfr.B = b
@@ -296,13 +301,17 @@ func (e *Editor) Redraw() {
 	border.Max.Y = border.Min.Y + 2
 	drawingFuncs.DrawFillSrc(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.Border)
 
-	border = e.r
-	border.Min.X = border.Max.X - 2
-	drawingFuncs.DrawFillSrc(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.Border)
+	if !e.last {
+		border = e.r
+		border.Min.X = border.Max.X - 2
+		drawingFuncs.DrawFillSrc(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.Border)
+	}
 
 	// draw one-pixel tag border
 	border = e.r
-	border.Max.X -= 2
+	if !e.last {
+		border.Max.X -= 2
+	}
 	border.Min.Y = e.tagfr.R.Max.Y
 	border.Max.Y = border.Min.Y + 1
 	drawingFuncs.DrawFillSrc(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.HandleBG)

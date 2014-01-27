@@ -90,7 +90,7 @@ func (cs *Cols) RecalcRects() {
 		r.Min.X = x
 		r.Max.X = x + curw
 		x += curw
-		cs.cols[i].SetRects(cs.wnd, cs.b, cs.r.Intersect(r))
+		cs.cols[i].SetRects(cs.wnd, cs.b, cs.r.Intersect(r), i == (len(cs.cols)-1))
 	}
 }
 

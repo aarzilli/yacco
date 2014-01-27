@@ -605,7 +605,7 @@ func SortCmd(ec ExecContext, arg string) {
 	}
 
 	sort.Sort((*Editors)(&ec.col.editors))
-	ec.col.RecalcRects()
+	ec.col.RecalcRects(ec.col.last)
 	ec.col.Redraw()
 	Wnd.wnd.FlushImage()
 }

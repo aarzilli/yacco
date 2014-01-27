@@ -18,6 +18,7 @@ type Col struct {
 	btnr    image.Rectangle
 	b       draw.Image
 	frac    float64
+	last    bool
 
 	tagfr  textframe.Frame
 	tagbuf *buf.Buffer
@@ -61,12 +62,12 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 	return c
 }
 
-func (c *Col) SetRects(wnd wde.Window, b draw.Image, r image.Rectangle) {
+func (c *Col) SetRects(wnd wde.Window, b draw.Image, r image.Rectangle, last bool) {
 	c.tagfr.Wnd = wnd
 	c.wnd = wnd
 	c.r = r
 	c.b = b
-	c.RecalcRects()
+	c.RecalcRects(last)
 }
 
 func (c *Col) AddAfter(ed *Editor, n int, h float32) {
@@ -75,7 +76,7 @@ func (c *Col) AddAfter(ed *Editor, n int, h float32) {
 	if len(c.editors) == 0 {
 		ed.SetWnd(c.wnd)
 		ed.frac = 10.0
-		ed.SetRects(screen, c.r)
+		ed.SetRects(screen, c.r, c.last)
 		c.editors = append(c.editors, ed)
 	} else {
 		if n < 0 {
@@ -91,12 +92,14 @@ func (c *Col) AddAfter(ed *Editor, n int, h float32) {
 		c.editors[n+1] = ed
 	}
 
-	c.RecalcRects()
+	c.RecalcRects(c.last)
 	c.Redraw()
 }
 
-func (c *Col) RecalcRects() {
+func (c *Col) RecalcRects(last bool) {
 	screen := c.b
+
+	c.last = last
 
 	c.btnr = c.r
 	c.btnr.Max.X = c.btnr.Min.X + SCROLL_WIDTH
@@ -105,7 +108,9 @@ func (c *Col) RecalcRects() {
 	c.tagfr.R = c.r
 	c.tagfr.R.Min.Y += 2
 	c.tagfr.R.Min.X += SCROLL_WIDTH
-	c.tagfr.R.Max.X -= 2
+	if !last {
+		c.tagfr.R.Max.X -= 2
+	}
 	c.tagfr.R.Max.Y = c.tagfr.R.Min.Y + TagHeight(&c.tagfr)
 	c.tagfr.R = screen.Bounds().Intersect(c.tagfr.R)
 	c.tagfr.B = screen
@@ -149,7 +154,7 @@ func (c *Col) RecalcRects() {
 		r.Min.Y = y
 		r.Max.Y = y + curh
 		y += curh
-		c.editors[i].SetRects(screen, c.r.Intersect(r))
+		c.editors[i].SetRects(screen, c.r.Intersect(r), last)
 	}
 }
 
@@ -163,6 +168,7 @@ func (c *Col) Redraw() {
 	br.Max.Y = br.Min.Y + 2
 	drawingFuncs.DrawFillSrc(c.tagfr.B, br, &config.TheColorScheme.Border)
 
+	// rectangle where the "button" would be
 	br = c.r
 	br.Min.Y += 2
 	br.Max.X = br.Min.X + SCROLL_WIDTH
@@ -214,7 +220,7 @@ func (c *Col) Remove(i int) {
 	copy(c.editors[i:], c.editors[i+1:])
 	c.editors = c.editors[:len(c.editors)-1]
 
-	c.RecalcRects()
+	c.RecalcRects(c.last)
 	c.Redraw()
 }
 

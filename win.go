@@ -634,7 +634,7 @@ loop:
 			}
 
 			col.Remove(col.IndexOf(ed))
-			col.RecalcRects()
+			col.RecalcRects(col.last)
 
 			mlp := w.TranslatePosition(endPos, true)
 			dstcol := mlp.col
@@ -682,7 +682,7 @@ loop:
 				oed.frac = 0.0
 			}
 			ed.frac = 10.0
-			col.RecalcRects()
+			col.RecalcRects(col.last)
 			p := ed.r.Min
 			w.wnd.WarpMouse(p.Add(d))
 			col.Redraw()
@@ -733,7 +733,7 @@ func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
 		}
 	}
 
-	col.RecalcRects()
+	col.RecalcRects(col.last)
 	col.Redraw()
 	w.wnd.FlushImage()
 	if d != nil {
