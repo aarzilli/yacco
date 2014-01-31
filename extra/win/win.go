@@ -249,6 +249,7 @@ func eventReader(controlChan chan<- interface{}, eventfd io.ReadWriter) {
 				if signal, ok := signalCommands[arg]; ok {
 					controlChan <- SignalMsg{signal}
 				} else {
+					arg = strings.TrimRight(arg, "\n")
 					controlChan <- UserAppendMsg{[]byte(fmt.Sprintf("%s\n", arg))}
 					controlChan <- ExecUserMsg{-1}
 				}
