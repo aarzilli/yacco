@@ -49,7 +49,7 @@ var KeyBindings = map[string]string{
 	"control+y": "Paste!Primary",
 	"control+x": "Cut",
 	"control+s": "Put",
-	"control+k": "Edit -0+0 c//",
+	"control+k": "Edit -0-#0+0 c//",
 
 	"control+z":       "Undo",
 	"control+shift+z": "Redo",
