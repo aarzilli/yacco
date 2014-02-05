@@ -91,27 +91,36 @@ func Load(ec ExecContext, origin int) {
 func expandMatches(str string, matches []string) string {
 	out := []byte{}
 	sub := false
+	tolower := false
 	for i := range str {
 		if !sub {
 			if str[i] == '$' {
+				tolower = false
 				sub = true
 			} else {
 				out = append(out, str[i])
 			}
 		} else {
-			if (str[i] >= '0') && (str[i] <= '9') {
+			if str[i] == 'l' {
+				tolower = true
+			} else if (str[i] >= '0') && (str[i] <= '9') {
 				d := int(str[i] - '0')
 				if d >= len(matches) {
 					out = append(out, '$')
 					out = append(out, str[i])
 				} else {
-					out = append(out, matches[d]...)
+					if tolower {
+						out =append(out, strings.ToLower(matches[d])...)
+					} else {
+						out = append(out, matches[d]...)
+					}
 				}
+				sub = false
 			} else {
 				out = append(out, '$')
 				out = append(out, str[i])
+				sub = false
 			}
-			sub = false
 		}
 	}
 	return string(out)

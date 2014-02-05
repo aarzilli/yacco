@@ -15,5 +15,5 @@ var LoadRules = []util.LoadRule{
 	util.LoadRule{BufRe: `.`, Re: `([^:\s\(\)]+):\t?/(.*)/`, Action: "L$1:/$2/"},
 	util.LoadRule{BufRe: `.`, Re: `[^:\s\(\)]+`, Action: "L$0"},
 	util.LoadRule{BufRe: `.`, Re: `\S+`, Action: "L$0"},
-	util.LoadRule{BufRe: `.`, Re: `\w+`, Action: "XLook $0"},
+	util.LoadRule{BufRe: `.`, Re: `\w+`, Action: "XLook $l0"},
 }
