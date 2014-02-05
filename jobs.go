@@ -243,7 +243,7 @@ func UpdateJobs(create bool) {
 	ed.bodybuf.Replace([]rune(t), &ed.sfr.Fr.Sels[0], true, nil, 0, true)
 
 	if create {
-		ed.tagbuf.Replace([]rune("Jobs"), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0, true)
+		ed.tagbuf.Replace([]rune("Kill"), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0, true)
 		ed.BufferRefresh(false)
 	} else {
 		ed.BufferRefresh(false)

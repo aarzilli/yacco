@@ -527,7 +527,7 @@ func main() {
 	_, err = buf.PropFd.Write([]byte("indent=off"))
 	util.Allergic3(debug, err, isDelSeen())
 
-	util.SetTag(p9clnt, buf.Id, "Jobs Kill Delete Sigkill Sigint Sigterm ")
+	util.SetTag(p9clnt, buf.Id, "Delete Sigkill Sigint Sigterm ")
 
 	_, err = buf.AddrFd.Write([]byte(","))
 	util.Allergic3(debug, err, isDelSeen())
