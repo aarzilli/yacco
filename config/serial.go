@@ -30,8 +30,11 @@ func fontFromConf(font configFont) *util.Font {
 	return util.MustNewFont(72, float64(font.Pixel), font.LineScale, font.Path)
 }
 
-func LoadConfiguration() {
-	fh, err := os.Open(filepath.Join(os.Getenv("HOME"), ".config/yacco/rc.json"))
+func LoadConfiguration(path string) {
+	if path == "" {
+		path = filepath.Join(os.Getenv("HOME"), ".config/yacco/rc.json")
+	}
+	fh, err := os.Open(path)
 	if err != nil {
 		return
 	}
