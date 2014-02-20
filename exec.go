@@ -793,8 +793,8 @@ func JumpCmd(ec ExecContext, arg string) {
 		ec.ed.confirmDel = false
 		ec.ed.confirmSave = false
 		ec.ed.RestoreJump()
-		ec.ed.BufferRefresh(false)
 	}
+	ec.ed.BufferRefresh(false)
 }
 
 func KeysInit() {
