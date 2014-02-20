@@ -69,9 +69,9 @@ var cmds = map[string]Cmd{
 	"Look!Prev":     func(ec ExecContext, arg string) { SpecialSendCmd(ec, "!Prev") },
 	"Paste!Primary": func(ec ExecContext, arg string) { PasteCmd(ec, arg, true) },
 	"Paste!Indent":  PasteIndentCmd,
-	"Rename":        RenameCmd,
 	"Jump":          JumpCmd,
 	"Getall":        GetallCmd,
+	"Rename":        RenameCmd,
 }
 
 var macros = map[string]Cmd{}
@@ -398,8 +398,7 @@ func NewCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	arg = strings.TrimSpace(arg)
 	if arg == "" {
-		Warn("New: must specify argument")
-		return
+		arg = "+New"
 	}
 	path := util.ResolvePath(ec.dir, arg)
 	_, err := HeuristicOpen(path, true, true)
@@ -739,19 +738,6 @@ func MacroCmd(ec ExecContext, arg string) {
 	}
 }
 
-func RenameCmd(ec ExecContext, arg string) {
-	exitConfirmed = false
-	if ec.ed == nil {
-		return
-	}
-	ec.ed.confirmDel = false
-	ec.ed.confirmSave = false
-
-	ec.ed.bodybuf.Name = arg
-	ec.ed.bodybuf.Modified = true
-	ec.ed.BufferRefresh(false)
-}
-
 type Editors []*Editor
 
 func (ev *Editors) Len() int {
@@ -852,4 +838,27 @@ func CompileCmd(cmdstr string) func(ec ExecContext) {
 			xcmd(ec, arg)
 		}
 	}
+}
+
+func RenameCmd(ec ExecContext, arg string) {
+	exitConfirmed = false
+	if ec.buf == nil {
+		return
+	}
+
+	if ec.br == nil {
+		return
+	}
+
+	if ec.ed != nil {
+		ec.ed.confirmDel = false
+		ec.ed.confirmSave = false
+	}
+
+	newName := strings.TrimSpace(arg)
+	abspath := util.ResolvePath(ec.buf.Dir, newName)
+	ec.buf.Name = filepath.Base(abspath)
+	ec.buf.Dir = filepath.Dir(abspath)
+	ec.buf.Modified = true
+	ec.br.BufferRefresh(false)
 }

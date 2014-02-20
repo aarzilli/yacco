@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 	"yacco/util"
 )
@@ -63,11 +62,7 @@ func ExecFs(ec *ExecContext, cmd string) {
 		} else if strings.HasPrefix(cmd, "dump") {
 			ec.buf.DumpCmd = strings.TrimSpace(cmd[len("dump"):])
 		} else if strings.HasPrefix(cmd, "name ") {
-			newName := strings.TrimSpace(cmd[len("name"):])
-			abspath := util.ResolvePath(ec.buf.Dir, newName)
-			ec.buf.Name = filepath.Base(abspath)
-			ec.buf.Dir = filepath.Dir(abspath)
-			ec.br.BufferRefresh(false)
+			RenameCmd(*ec, cmd[len("name"):])
 		} else {
 			fmt.Printf("Unrecognized ctl command <%s>\n", cmd)
 		}

@@ -110,7 +110,7 @@ func expandMatches(str string, matches []string) string {
 					out = append(out, str[i])
 				} else {
 					if tolower {
-						out =append(out, strings.ToLower(matches[d])...)
+						out = append(out, strings.ToLower(matches[d])...)
 					} else {
 						out = append(out, matches[d]...)
 					}
