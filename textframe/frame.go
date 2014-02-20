@@ -826,15 +826,43 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
 
 	fr.Top -= len(a) + len(b)
 	fr.Clear()
-	fr.InsertColor(a)
-	fr.InsertColor(b)
 
-	limit = fr.Limit
+	for {
+		ng := len(fr.glyphs)
 
-	pl := fr.PhisicalLines()
+		if len(a) > 0 {
+			fr.InsertColor(a)
+		}
+		if len(b) > 0 {
+			fr.InsertColor(b)
+		}
 
-	if len(pl) > ln {
+		limit = fr.Limit
+
+		pl := fr.PhisicalLines()
+		if len(pl) <= ln {
+			break
+		}
+
+		added := len(fr.glyphs) - ng
+
 		fr.PushUp(len(pl) - ln)
+
+		if added <= 0 {
+			break
+		}
+
+		if len(a) > added {
+			a = a[added:]
+		} else {
+			added -= len(a)
+			a = []ColorRune{}
+			if len(b) > added {
+				b = b[added:]
+			} else {
+				b = []ColorRune{}
+			}
+		}
 	}
 
 	lh := fr.Font.LineHeightRaster()
