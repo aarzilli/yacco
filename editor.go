@@ -638,7 +638,7 @@ func (e *Editor) readDir() {
 		r = append(r, n)
 	}
 
-	spaceWidth := e.sfr.Fr.Measure([]rune(" ")) * 2
+	spaceWidth := e.sfr.Fr.Measure([]rune(" ")) * _ELASTIC_TABS_SPACING
 
 	szs := make([]int, len(r))
 

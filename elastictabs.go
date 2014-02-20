@@ -4,9 +4,11 @@ import (
 	"yacco/util"
 )
 
+const _ELASTIC_TABS_SPACING = 4
+
 func elasticTabs(ed *Editor, ignoreOverlong bool) {
 	tabWidth := ed.sfr.Fr.Measure([]rune("\t"))
-	spaceWidth := ed.sfr.Fr.Measure([]rune(" ")) * 2
+	spaceWidth := ed.sfr.Fr.Measure([]rune(" ")) * _ELASTIC_TABS_SPACING
 
 	s := 0
 	f := 0
