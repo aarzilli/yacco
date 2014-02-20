@@ -230,7 +230,7 @@ func getComplWords(ec ExecContext) (fpwd, wdwd string) {
 		fpwd = string(ec.buf.SelectionRunes(util.Sel{fs, ec.fr.Sels[0].S}))
 	}
 
-	ws := ec.buf.Towd(ec.fr.Sels[0].S-1, -1)
+	ws := ec.buf.Towd(ec.fr.Sels[0].S-1, -1, false)
 	if ec.fr.Sels[0].S-ws >= 2 {
 		wdwd = string(ec.buf.SelectionRunes(util.Sel{ws, ec.fr.Sels[0].S}))
 	}

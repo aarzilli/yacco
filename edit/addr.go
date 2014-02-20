@@ -139,13 +139,13 @@ func (e *AddrBase) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 
 			for i := 0; i < asnumber(e.Value); i++ {
 				rsel.S = rsel.E
-				rsel.E = b.Towd(rsel.E, +1)
+				rsel.E = b.Towd(rsel.E, +1, false)
 			}
 		} else {
 			rsel = sel
 			for i := 0; i < asnumber(e.Value); i++ {
 				rsel.E = rsel.S
-				rsel.S = b.Towd(rsel.S-1, -1)
+				rsel.S = b.Towd(rsel.S-1, -1, false)
 			}
 		}
 		b.FixSel(&rsel)

@@ -589,14 +589,14 @@ func (b *Buffer) Tonl(start int, dir int) int {
 }
 
 // Moves to the beginning or end of an alphanumerically delimited word
-func (b *Buffer) Towd(start int, dir int) int {
+func (b *Buffer) Towd(start int, dir int, dontForceAdvance bool) int {
 	first := (dir < 0)
 	notfirst := !first
 	var i int
 	for i = start; (i >= 0) && (i < b.Size()); i += dir {
 		c := b.At(i).R
 		if !(unicode.IsLetter(c) || unicode.IsDigit(c) || (c == '_')) {
-			if !first {
+			if !first && !dontForceAdvance {
 				i++
 			}
 			break

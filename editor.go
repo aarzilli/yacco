@@ -114,7 +114,7 @@ func expandSelectionBuf(buf *buf.Buffer, kind, start, end int) (rstart, rend int
 	case 1:
 		return start, end
 	case 2:
-		return buf.Towd(start, -1), buf.Towd(end, +1)
+		return buf.Towd(start, -1, false), buf.Towd(end, +1, true)
 	case 3:
 		return buf.Tonl(start-1, -1), buf.Tonl(end, +1)
 	}
