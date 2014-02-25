@@ -846,7 +846,7 @@ func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
 			ec.br = lp.ed
 			ec.fr = &lp.ed.sfr.Fr
 			ec.buf = lp.ed.bodybuf
-		} else {
+		} else if lp.tagfr != &Wnd.tagfr {
 			ec.br = activeEditor
 			if activeEditor != nil {
 				ec.fr = &activeEditor.sfr.Fr

@@ -17,7 +17,7 @@ type configObj struct {
 	EnableHighlighting bool
 	ServeTCP           bool
 	HideHidden         bool
-	QuoteHack bool
+	QuoteHack          bool
 }
 
 type configFont struct {

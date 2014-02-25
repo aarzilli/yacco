@@ -20,6 +20,7 @@ package config
 // space
 
 const HOME_CMD = "Edit -+/@[^\t ]/-#0"
+
 //const END_CMD = "Edit +-#?1"
 const END_CMD = "Edit +0-#?1"
 
