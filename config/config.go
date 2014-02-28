@@ -6,8 +6,8 @@ import (
 
 var TheColorScheme = AcmeColorScheme
 
-var DefaultWindowTag = []rune("Newcol Getall Jobs Exit | ")
-var DefaultColumnTag = []rune("New Cut Paste Sort Zerox Delcol | ")
+var DefaultWindowTag = []rune("Newcol Getall Putall Jobs Exit | ")
+var DefaultColumnTag = []rune("New Cut Paste Sort Zerox Delcol ")
 var DefaultEditorTag = " Del Look"
 
 var MainFont = util.MustNewFont(72, 16, 1.0, "$HOME/.config/yacco/luxisr.ttf:$HOME/.config/yacco/DejaVuSans.ttf")
