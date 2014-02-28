@@ -163,7 +163,9 @@ func (b *Buffer) Reload(create bool) error {
 		str := string(bytes)
 		b.Words = util.Dedup(nonwdRe.Split(str, -1))
 		runes := []rune(str)
+		saveSels := b.saveSels()
 		b.Replace(runes, &util.Sel{0, b.Size()}, true, nil, 0, false)
+		b.restoreSels(saveSels)
 		b.Modified = false
 		b.ul.Reset()
 	} else {
@@ -914,4 +916,33 @@ func (b *Buffer) IsDir() bool {
 
 func (b *Buffer) UndoReset() {
 	b.ul.Reset()
+}
+
+func (b *Buffer) saveSels() []util.Sel {
+	r := []util.Sel{}
+	for i := range b.sels {
+		if b.sels[i] == nil {
+			continue
+		}
+		sels := *(b.sels[i])
+		for j := range sels {
+			r = append(r, sels[j])
+		}
+	}
+	return r
+}
+
+func (b *Buffer) restoreSels(ssels []util.Sel) {
+	k := 0
+	for i := range b.sels {
+		if b.sels[i] == nil {
+			continue
+		}
+		sels := *(b.sels[i])
+		for j := range sels {
+			sels[j] = ssels[k]
+			b.FixSel(&sels[j])
+			k++
+		}
+	}
 }
