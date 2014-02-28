@@ -162,10 +162,7 @@ func (b *Buffer) Reload(create bool) error {
 		}
 		str := string(bytes)
 		b.Words = util.Dedup(nonwdRe.Split(str, -1))
-		runes := []rune(str)
-		saveSels := b.saveSels()
-		b.Replace(runes, &util.Sel{0, b.Size()}, true, nil, 0, false)
-		b.restoreSels(saveSels)
+		b.ReplaceFull([]rune(str))
 		b.Modified = false
 		b.ul.Reset()
 	} else {
@@ -211,6 +208,12 @@ func (b *Buffer) reloadDir(fh *os.File) error {
 
 	b.Modified = false
 	return nil
+}
+
+func (b *Buffer) ReplaceFull(text []rune) {
+	saveSels := b.saveSels()
+	b.Replace(text, &util.Sel{0, b.Size()}, true, nil, 0, false)
+	b.restoreSels(saveSels)
 }
 
 // Replaces text between sel.S and sel.E with text, updates sels AND sel accordingly

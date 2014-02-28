@@ -353,6 +353,10 @@ func (e *Editor) GenTag() {
 	t += " | " + usertext
 	start := e.tagfr.Sels[0].S - e.tagbuf.EditableStart
 	end := e.tagfr.Sels[0].E - e.tagbuf.EditableStart
+	if start < 0 || end < 0 {
+		start = 0
+		end = 0
+	}
 	e.tagbuf.EditableStart = -1
 	e.tagbuf.Replace([]rune(t), &util.Sel{0, e.tagbuf.Size()}, true, nil, 0, false)
 	TagSetEditableStart(e.tagbuf)

@@ -312,6 +312,7 @@ func (w *Window) EventLoop() {
 					if !could {
 						_, ee = lp.sfr.OnClick(e, events)
 					}
+
 					clickExec(lp, e, ee, events)
 				} else {
 					lp.sfr.OnClick(e, events)
@@ -562,8 +563,6 @@ func (w *Window) SetTick(p image.Point) {
 
 	if (&w.tagfr != lp.tagfr) && w.tagfr.VisibleTick {
 		w.tagfr.VisibleTick = false
-		w.tagfr.Sels[1].E = w.tagfr.Sels[1].S
-		w.tagfr.Sels[2].E = w.tagfr.Sels[2].S
 		w.tagfr.Redraw(true)
 	}
 
@@ -574,21 +573,15 @@ func (w *Window) SetTick(p image.Point) {
 	for _, col := range w.cols.cols {
 		if col.tagfr.VisibleTick && (&col.tagfr != lp.tagfr) {
 			col.tagfr.VisibleTick = false
-			col.tagfr.Sels[1].E = col.tagfr.Sels[1].S
-			col.tagfr.Sels[2].E = col.tagfr.Sels[2].S
 			col.tagfr.Redraw(true)
 		}
 		for _, editor := range col.editors {
 			if editor.tagfr.VisibleTick && (&editor.tagfr != lp.tagfr) {
 				editor.tagfr.VisibleTick = false
-				editor.tagfr.Sels[1].E = editor.tagfr.Sels[1].S
-				editor.tagfr.Sels[2].E = editor.tagfr.Sels[2].S
 				editor.tagfr.Redraw(true)
 			}
 			if editor.sfr.Fr.VisibleTick && (&editor.sfr != lp.sfr) {
 				editor.sfr.Fr.VisibleTick = false
-				/*editor.sfr.Fr.Sels[1].E = editor.sfr.Fr.Sels[1].S
-				editor.sfr.Fr.Sels[2].E = editor.sfr.Fr.Sels[2].S*/
 				editor.sfr.Fr.Redraw(true)
 			}
 		}
@@ -1188,54 +1181,58 @@ eventLoop:
 
 func expandedSelection(lp LogicalPos, idx int) (string, int) {
 	original := -1
+
+	var frame *textframe.Frame
+	var buf *buf.Buffer
+	var expandToLine bool
+	var redraw func(bool)
+
 	if lp.sfr != nil {
-		sel := &lp.sfr.Fr.Sels[idx]
-		if sel.S == sel.E {
-			if (lp.sfr.Fr.Sels[0].S != lp.sfr.Fr.Sels[0].E) && (lp.sfr.Fr.Sels[0].S-1 <= sel.S) && (sel.S <= lp.sfr.Fr.Sels[0].E+1) {
-				//original = lp.sfr.Fr.Sels[0].S
-				original = -1
-				lp.sfr.Fr.SetSelect(idx, 1, lp.sfr.Fr.Sels[0].S, lp.sfr.Fr.Sels[0].E)
-				lp.sfr.Redraw(true)
-			} else {
-				original = sel.S
-				s := lp.bodybuf.Tonl(sel.S-1, -1)
-				e := lp.bodybuf.Tonl(sel.S, +1)
-				lp.sfr.Fr.SetSelect(idx, 1, s, e)
-				lp.sfr.Fr.Sels[0] = util.Sel{s, s}
-				lp.sfr.Redraw(true)
-			}
-		}
-
-		return string(lp.bodybuf.SelectionRunes(*sel)), original
+		frame = &lp.sfr.Fr
+		buf = lp.bodybuf
+		expandToLine = true
+		redraw = lp.sfr.Redraw
+	} else if lp.tagfr != nil {
+		frame = lp.tagfr
+		buf = lp.tagbuf
+		expandToLine = false
+		redraw = lp.tagfr.Redraw
 	}
 
-	if lp.tagfr != nil {
-		sel := &lp.tagfr.Sels[idx]
-		if sel.S == sel.E {
-			if (lp.tagfr.Sels[0].S != lp.tagfr.Sels[0].E) && (lp.tagfr.Sels[0].S-1 <= sel.S) && (sel.S <= lp.tagfr.Sels[0].E+1) {
-				*sel = lp.tagfr.Sels[0]
-				//original = lp.tagfr.Sels[0].S
-				lp.tagfr.Sels[0].S = lp.tagfr.Sels[0].E
-				lp.tagfr.Redraw(true)
-			} else {
-				original = sel.S
-				var s int
-				if sel.S >= lp.tagbuf.Size() {
-					s = lp.tagbuf.Tospc(sel.S-1, -1)
-				} else {
-					s = lp.tagbuf.Tospc(sel.S, -1)
-				}
-				e := lp.tagbuf.Tospc(sel.S, +1)
-				lp.tagfr.SetSelect(idx, 1, s, e)
-				lp.tagfr.Sels[0] = util.Sel{s, s}
-				lp.tagfr.Redraw(true)
-			}
-		}
-
-		return string(lp.tagbuf.SelectionRunes(*sel)), original
+	if frame == nil {
+		return "", original
 	}
 
-	return "", original
+	sel := &frame.Sels[idx]
+	if sel.S != sel.E {
+		return string(buf.SelectionRunes(*sel)), original
+	}
+
+	if (frame.Sels[0].S != frame.Sels[0].E) && (frame.Sels[0].S-1 <= sel.S) && (sel.S <= frame.Sels[0].E+1) {
+		// takes over main selection
+		frame.SetSelect(idx, 1, frame.Sels[0].S, frame.Sels[0].E)
+		redraw(true)
+	} else {
+		// expand selection
+		original = sel.S
+		if expandToLine {
+			s := buf.Tonl(sel.S-1, -1)
+			e := buf.Tonl(sel.S, +1)
+			frame.SetSelect(idx, 1, s, e)
+			redraw(true)
+		} else {
+			var s int
+			if sel.S >= buf.Size() {
+				s = buf.Tospc(sel.S-1, -1)
+			} else {
+				s = buf.Tospc(sel.S, -1)
+			}
+			e := buf.Tospc(sel.S, +1)
+			sel = &util.Sel{s, e}
+		}
+	}
+
+	return string(buf.SelectionRunes(*sel)), original
 }
 
 func (w *Window) BufferRefresh(ontag bool) {
