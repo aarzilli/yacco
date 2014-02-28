@@ -894,6 +894,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		if lp.tagfr != nil {
 			ec := lp.asExecContext(false)
 			lp.tagfr.SetSelect(1, 1, lp.tagbuf.EditableStart, lp.tagbuf.Size())
+			lp.tagfr.Sels[0] = lp.tagfr.Sels[1]
 			if lp.ed != nil {
 				lp.ed.BufferRefresh(true)
 			} else if lp.col != nil {
