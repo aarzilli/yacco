@@ -704,6 +704,11 @@ func cdIntl(arg string) {
 func CdCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	arg = strings.TrimSpace(arg)
+
+	if ec.buf != nil {
+		arg = util.ResolvePath(ec.buf.Dir, arg)
+	}
+
 	cdIntl(arg)
 
 	Wnd.GenTag()
