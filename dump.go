@@ -103,7 +103,7 @@ func LoadFrom(dumpDest string) bool {
 	for _, dc := range dw.Columns {
 		col := Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
 
-		col.tagbuf.Replace([]rune(dc.TagText), &util.Sel{col.tagbuf.EditableStart, col.tagbuf.Size()}, true, nil, util.EO_MOUSE, true)
+		col.tagbuf.Replace([]rune(dc.TagText), &util.Sel{0, col.tagbuf.Size()}, true, nil, util.EO_MOUSE, true)
 
 		for _, de := range dc.Editors {
 			b := buffers[de.Id]
