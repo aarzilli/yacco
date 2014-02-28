@@ -707,6 +707,8 @@ func CdCmd(ec ExecContext, arg string) {
 
 	if ec.buf != nil {
 		arg = util.ResolvePath(ec.buf.Dir, arg)
+	} else {
+		arg = util.ResolvePath(Wnd.tagbuf.Dir, arg)
 	}
 
 	cdIntl(arg)
