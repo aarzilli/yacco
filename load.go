@@ -158,6 +158,7 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 			return false
 		}
 		ec.fr.Sels[2] = util.Sel{s, e}
+		ec.fr.Sels[0] = ec.fr.Sels[2]
 		ec.br.BufferRefresh(ec.ontag)
 		if addrExpr != "" {
 			func() {

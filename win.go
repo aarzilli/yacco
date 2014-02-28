@@ -1148,6 +1148,7 @@ func clickExec2extra(lp LogicalPos, e util.MouseDownEvent) {
 func clickExec3(lp LogicalPos, e util.MouseDownEvent) {
 	ec := lp.asExecContext(true)
 	s, original := expandedSelection(lp, 2)
+
 	if (lp.ed == nil) || (lp.ed.eventChan == nil) {
 		Load(ec, original)
 	} else {
@@ -1218,6 +1219,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 		if expandToLine {
 			s := buf.Tonl(sel.S-1, -1)
 			e := buf.Tonl(sel.S, +1)
+			frame.SetSelect(0, 1, s, e)
 			frame.SetSelect(idx, 1, s, e)
 			redraw(true)
 		} else {
@@ -1229,6 +1231,10 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 			}
 			e := buf.Tospc(sel.S, +1)
 			sel = &util.Sel{s, e}
+			if idx == 2 {
+				frame.SetSelect(0, 1, s, e)
+				frame.SetSelect(idx, 1, s, e)
+			}
 		}
 	}
 
