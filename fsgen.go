@@ -235,7 +235,13 @@ func writeTagFn(i int, data []byte, off int64) syscall.Errno {
 	}
 
 	sideChan <- func() {
+		if ec.ed == nil {
+			return
+		}
 		ec.ed.tagbuf.Replace([]rune(string(data)), &util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}, true, ec.eventChan, util.EO_BODYTAG, false)
+		ec.ed.tagfr.Sels[0].S = ec.ed.tagbuf.Size()
+		ec.ed.tagfr.Sels[0].E = ec.ed.tagfr.Sels[0].S
+		ec.ed.BufferRefresh(true)
 	}
 
 	return 0
