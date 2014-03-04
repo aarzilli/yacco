@@ -9,6 +9,7 @@ import (
 	"yacco/config"
 	"yacco/textframe"
 	"yacco/util"
+	"yacco/edutil"
 )
 
 type Col struct {
@@ -45,7 +46,7 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 		Font:            config.TagFont,
 		Hackflags:       hf,
 		Scroll:          func(sd, sl int) {},
-		ExpandSelection: func(kind, start, end int) (int, int) { return expandSelectionBuf(c.tagbuf, kind, start, end) },
+		ExpandSelection: edutil.MakeExpandSelectionFn(c.tagbuf),
 		VisibleTick:     false,
 		Colors: [][]image.Uniform{
 			config.TheColorScheme.TagPlain,

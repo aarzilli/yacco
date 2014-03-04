@@ -17,6 +17,7 @@ import (
 	"yacco/edit"
 	"yacco/textframe"
 	"yacco/util"
+	"yacco/edutil"
 )
 
 type Window struct {
@@ -151,7 +152,7 @@ func (w *Window) Init(width, height int) (err error) {
 	w.tagfr = textframe.Frame{
 		Font:            config.TagFont,
 		Scroll:          func(sd, sl int) {},
-		ExpandSelection: func(kind, start, end int) (int, int) { return expandSelectionBuf(w.tagbuf, kind, start, end) },
+		ExpandSelection: edutil.MakeExpandSelectionFn(w.tagbuf),
 		Hackflags:       hf,
 		VisibleTick:     false,
 		Wnd:             w.wnd,
@@ -892,18 +893,20 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		}
 
 		if lp.tagfr != nil {
-			ec := lp.asExecContext(false)
-			lp.tagfr.SetSelect(1, 1, lp.tagbuf.EditableStart, lp.tagbuf.Size())
-			lp.tagfr.Sels[0] = lp.tagfr.Sels[1]
-			if lp.ed != nil {
-				lp.ed.BufferRefresh(true)
-			} else if lp.col != nil {
-				lp.col.BufferRefresh(true)
-			} else {
-				Wnd.BufferRefresh(true)
+			if lp.tagbuf.EditableStart >= 0 {
+				ec := lp.asExecContext(true)
+				lp.tagfr.SetSelect(1, 1, lp.tagbuf.EditableStart, lp.tagbuf.Size())
+				lp.tagfr.Sels[0] = lp.tagfr.Sels[1]
+				if lp.ed != nil {
+					lp.ed.BufferRefresh(true)
+				} else if lp.col != nil {
+					lp.col.BufferRefresh(true)
+				} else {
+					Wnd.BufferRefresh(true)
+				}
+				cmd := string(lp.tagbuf.SelectionRunes(lp.tagfr.Sels[1]))
+				sendEventOrExec(ec, cmd, -1)
 			}
-			cmd := string(lp.tagbuf.SelectionRunes(lp.tagfr.Sels[1]))
-			Exec(ec, cmd)
 		} else {
 			ec := lp.asExecContext(true)
 			nl := "\n"
@@ -1123,6 +1126,10 @@ func clickExec1(lp LogicalPos, e util.MouseDownEvent) {
 func clickExec2(lp LogicalPos, e util.MouseDownEvent) {
 	cmd, original := expandedSelection(lp, 1)
 	ec := lp.asExecContext(false)
+	sendEventOrExec(ec, cmd, original)
+}
+
+func sendEventOrExec(ec ExecContext, cmd string, original int) {
 	if (ec.eventChan == nil) || (cmd == "Delete") {
 		Exec(ec, cmd)
 	} else {

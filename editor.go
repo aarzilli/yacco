@@ -13,6 +13,7 @@ import (
 	"yacco/config"
 	"yacco/textframe"
 	"yacco/util"
+	"yacco/edutil"
 )
 
 type Editor struct {
@@ -59,67 +60,6 @@ const (
 
 const PMATCHSEL = 3
 
-func scrollfn(e *Editor, sd int, sl int) {
-	e.bodybuf.Rdlock()
-	defer e.bodybuf.Rdunlock()
-
-	sz := e.bodybuf.Size()
-
-	switch {
-	case sd == 0:
-		e.otherSel[OS_TOP].E = e.bodybuf.Tonl(sl, -1)
-
-		sz := e.bodybuf.Size()
-
-		e.bodybuf.Rdlock()
-		defer e.bodybuf.Rdunlock()
-		a, b := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, sz})
-		e.sfr.Fr.Clear()
-		e.sfr.Fr.InsertColor(a)
-		e.sfr.Fr.InsertColor(b)
-
-	case sd > 0:
-		n := e.sfr.Fr.PushUp(sl)
-		e.otherSel[OS_TOP].E = e.sfr.Fr.Top
-		e.bodybuf.Highlight(-1, false, e.otherSel[OS_TOP].E)
-		a, b := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E + n, sz})
-		e.sfr.Fr.InsertColor(a)
-		e.sfr.Fr.InsertColor(b)
-
-	case sd < 0:
-		nt := e.otherSel[OS_TOP].E
-		for i := 0; i < sl; i++ {
-			nt = e.bodybuf.Tonl(nt-2, -1)
-		}
-
-		a, b := e.bodybuf.Selection(util.Sel{nt, e.otherSel[OS_TOP].E})
-
-		if len(a)+len(b) == 0 {
-			return
-		}
-
-		e.sfr.Fr.PushDown(sl, a, b)
-		e.otherSel[OS_TOP].E = e.sfr.Fr.Top
-	}
-
-	e.sfr.Set(e.otherSel[OS_TOP].E, sz)
-	e.sfr.Redraw(true)
-	e.bodybuf.Highlight(-1, true, e.otherSel[OS_TOP].E)
-}
-
-func expandSelectionBuf(buf *buf.Buffer, kind, start, end int) (rstart, rend int) {
-	switch kind {
-	default:
-		fallthrough
-	case 1:
-		return start, end
-	case 2:
-		return buf.Towd(start, -1, false), buf.Towd(end, +1, true)
-	case 3:
-		return buf.Tonl(start-1, -1), buf.Tonl(end, +1)
-	}
-}
-
 func (e *Editor) SetWnd(wnd wde.Window) {
 	e.sfr.Wnd = wnd
 	e.sfr.Fr.Wnd = wnd
@@ -148,8 +88,8 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 		Fr: textframe.Frame{
 			Font:            config.MainFont,
 			Hackflags:       hf,
-			Scroll:          func(sd, sl int) { scrollfn(e, sd, sl) },
-			ExpandSelection: func(kind, start, end int) (int, int) { return expandSelectionBuf(e.bodybuf, kind, start, end) },
+			Scroll:          nil,
+			ExpandSelection: edutil.MakeExpandSelectionFn(e.bodybuf),
 			VisibleTick:     false,
 			Colors: [][]image.Uniform{
 				config.TheColorScheme.EditorPlain,
@@ -160,6 +100,8 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 			},
 		},
 	}
+	e.otherSel = make([]util.Sel, NUM_OTHER_SEL)
+	e.sfr.Fr.Scroll = edutil.MakeScrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr)
 	hf = textframe.HF_TRUNCATE
 	if config.QuoteHack {
 		hf |= textframe.HF_QUOTEHACK
@@ -169,7 +111,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 		Font:            config.TagFont,
 		Hackflags:       hf,
 		Scroll:          func(sd, sl int) {},
-		ExpandSelection: func(kind, start, end int) (int, int) { return expandSelectionBuf(e.tagbuf, kind, start, end) },
+		ExpandSelection: edutil.MakeExpandSelectionFn(e.tagbuf),
 		VisibleTick:     false,
 		Colors: [][]image.Uniform{
 			config.TheColorScheme.TagPlain,
@@ -180,7 +122,6 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	}
 
 	e.jumps = make([]util.Sel, NUM_JUMPS)
-	e.otherSel = make([]util.Sel, NUM_OTHER_SEL)
 
 	e.otherSel[OS_TOP].E = 0
 	e.otherSel[OS_TIP].E = 0
@@ -402,7 +343,7 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur bool) {
 			x := e.bodybuf.Tonl(e.sfr.Fr.Sels[0].E-2, -1)
 			e.otherSel[OS_TOP].E = x
 			e.refreshIntl()
-			scrollfn(e, -1, e.sfr.Fr.LineNo()/4-1)
+			edutil.Scrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, -1, e.sfr.Fr.LineNo()/4-1)
 			e.bodybuf.Highlight(-1, false, e.otherSel[OS_TOP].E)
 		}
 
