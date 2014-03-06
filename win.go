@@ -93,7 +93,8 @@ type activeSelStruct struct {
 	txt  string
 }
 
-const DEFAULT_CURSOR = wde.XTermCursor
+//const DEFAULT_CURSOR = wde.XTermCursor
+const DEFAULT_CURSOR = -1
 
 var highlightChan = make(chan *buf.Buffer, 10)
 var activeSel activeSelStruct
@@ -894,7 +895,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 
 		if lp.tagfr != nil {
 			if lp.tagbuf.EditableStart >= 0 {
-				ec := lp.asExecContext(true)
+				ec := lp.asExecContext(false)
 				lp.tagfr.SetSelect(1, 1, lp.tagbuf.EditableStart, lp.tagbuf.Size())
 				lp.tagfr.Sels[0] = lp.tagfr.Sels[1]
 				if lp.ed != nil {

@@ -345,6 +345,7 @@ func Allergic3(debug bool, err error, silent bool) {
 }
 
 type BufferConn struct {
+	conn *clnt.Clnt
 	Id      string
 	CtlFd   *clnt.File
 	EventFd *clnt.File
@@ -421,6 +422,7 @@ func makeBufferConn(p9clnt *clnt.Clnt, id string, ctlfd, eventfd *clnt.File) (*B
 	}
 
 	return &BufferConn{
+		p9clnt,
 		id,
 		ctlfd,
 		eventfd,
@@ -532,6 +534,10 @@ func SetTag(p9clnt *clnt.Clnt, outbufid string, tagstr string) error {
 		return err
 	}
 	return nil
+}
+
+func (buf *BufferConn) SetTag(newtag string) error {
+	return SetTag(buf.conn, buf.Id, newtag)
 }
 
 func (buf *BufferConn) ReadAddr() ([]int, error) {
