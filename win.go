@@ -1131,7 +1131,7 @@ func clickExec2(lp LogicalPos, e util.MouseDownEvent) {
 }
 
 func sendEventOrExec(ec ExecContext, cmd string, original int) {
-	if (ec.eventChan == nil) || (cmd == "Delete") {
+	if (ec.eventChan == nil) || (cmd == "Delete") || (cmd == "Builtin") {
 		Exec(ec, cmd)
 	} else {
 		_, _, _, isintl := IntlCmd(cmd)
