@@ -150,15 +150,11 @@ func (b *Buffer) Reload(create bool) error {
 		b.ModTime = fi.ModTime()
 
 		bytes, err := ioutil.ReadAll(infile)
-		testb := bytes
-		if len(testb) > 1024 {
-			testb = testb[:1024]
-		}
-		if !utf8.Valid(testb) {
-			return fmt.Errorf("Can not open binary file")
-		}
 		if err != nil {
 			return err
+		}
+		if isBinary(bytes) {
+			return fmt.Errorf("Can not open binary file")
 		}
 		str := string(bytes)
 		b.Words = util.Dedup(nonwdRe.Split(str, -1))
@@ -176,6 +172,19 @@ func (b *Buffer) Reload(create bool) error {
 	}
 
 	return nil
+}
+
+func isBinary(bytes []byte) bool {
+	testb := bytes
+	if len(testb) > 1024 {
+		testb = testb[:1024]
+	}
+	for j := 0; j < 10; j++ {
+		if testb[len(testb) - 1] & 0x8f != 0 {
+			testb = testb[:len(testb)]
+		}
+	}
+	return !utf8.Valid(testb)
 }
 
 func (b *Buffer) reloadDir(fh *os.File) error {
