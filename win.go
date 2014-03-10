@@ -15,9 +15,9 @@ import (
 	"yacco/buf"
 	"yacco/config"
 	"yacco/edit"
+	"yacco/edutil"
 	"yacco/textframe"
 	"yacco/util"
-	"yacco/edutil"
 )
 
 type Window struct {

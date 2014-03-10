@@ -7,9 +7,9 @@ import (
 	"os"
 	"yacco/buf"
 	"yacco/config"
+	"yacco/edutil"
 	"yacco/textframe"
 	"yacco/util"
-	"yacco/edutil"
 )
 
 type Col struct {

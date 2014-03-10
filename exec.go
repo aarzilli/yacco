@@ -715,6 +715,10 @@ func CdCmd(ec ExecContext, arg string) {
 
 	Wnd.GenTag()
 
+	pwd, _ := os.Getwd()
+	pwd = util.ShortPath(pwd, false)
+	Wnd.wnd.SetTitle("Yacco " + pwd)
+
 	Wnd.BufferRefresh(true)
 
 	Wnd.cols.Redraw()
