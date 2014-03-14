@@ -26,8 +26,6 @@ var sizeFlag = flag.String("s", "", "Size of window")
 var configFlag = flag.String("c", "", "Configuration file (defaults to ~/.config/yacco/rc.json)")
 
 func realmain() {
-	flag.Parse()
-
 	if *themeFlag != "" {
 		switch *themeFlag {
 		default:
@@ -123,6 +121,7 @@ func realmain() {
 }
 
 func main() {
+	flag.Parse()
 	config.LoadConfiguration(*configFlag)
 	PlatformInit()
 	LoadInit()
