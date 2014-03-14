@@ -435,6 +435,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 
 			if time.Since(lastUpdate) < time.Millisecond*90 {
 				go func() {
+					defer recover()
 					time.Sleep(time.Millisecond * 100)
 					controlChan <- AnchorDownMsg{}
 				}()
