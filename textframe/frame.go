@@ -673,7 +673,8 @@ func (fr *Frame) Redraw(flush bool) {
 		}
 		dr := fr.R.Intersect(glyphRect)
 		if !dr.Empty() {
-			mp := image.Point{0, dr.Min.Y - glyphRect.Min.Y}
+			//println("Glyph", string([]rune{ g.r }), "pos", (g.p.X>>8), "rect X", dr.Min.X, dr.Max.X, glyphRect.Min.X)
+			mp := image.Point{ dr.Min.X - glyphRect.Min.X, dr.Min.Y - glyphRect.Min.Y}
 			color := &fr.Colors[1][1]
 			if (ssel >= 0) && (ssel < len(fr.Colors)) && (g.color >= 0) && (int(g.color) < len(fr.Colors[ssel])) {
 				color = &fr.Colors[ssel][g.color]
