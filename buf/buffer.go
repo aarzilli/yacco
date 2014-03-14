@@ -180,6 +180,9 @@ func isBinary(bytes []byte) bool {
 		testb = testb[:1024]
 	}
 	for j := 0; j < 10; j++ {
+		if len(testb) <= 0 {
+			break
+		}
 		if testb[len(testb)-1]&0x8f != 0 {
 			testb = testb[:len(testb)]
 		}
