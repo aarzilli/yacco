@@ -180,7 +180,7 @@ func isBinary(bytes []byte) bool {
 		testb = testb[:1024]
 	}
 	for j := 0; j < 10; j++ {
-		if testb[len(testb) - 1] & 0x8f != 0 {
+		if testb[len(testb)-1]&0x8f != 0 {
 			testb = testb[:len(testb)]
 		}
 	}
@@ -267,8 +267,7 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, solid bool, eventChan chan 
 		b.updcount += len(text)
 		if b.updcount > 2*1024 {
 			b.updcount = 0
-			ba, bb := b.Selection(util.Sel{0, b.Size()})
-			b.updateWords(string(ToRunes(ba)), string(ToRunes(bb)))
+			b.UpdateWords()
 		}
 	}
 }
@@ -761,7 +760,11 @@ func (b *Buffer) FixSel(sel *util.Sel) {
 	}
 }
 
-func (b *Buffer) updateWords(sa, sb string) {
+func (b *Buffer) UpdateWords() {
+	ba, bb := b.Selection(util.Sel{0, b.Size()})
+	sa := string(ToRunes(ba))
+	sb := string(ToRunes(bb))
+
 	newWordsA := nonwdRe.Split(sa, -1)
 	newWordsB := nonwdRe.Split(sb, -1)
 	b.Words = util.Dedup(append(newWordsA[:len(newWordsA)-1], newWordsB[:len(newWordsB)-1]...))
@@ -778,7 +781,7 @@ func (b *Buffer) Put() error {
 	sa := string(ToRunes(ba))
 	sb := string(ToRunes(bb))
 
-	b.updateWords(sa, sb)
+	b.UpdateWords()
 
 	bout := bufio.NewWriter(out)
 

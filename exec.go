@@ -72,6 +72,7 @@ var cmds = map[string]Cmd{
 	"Jump":          JumpCmd,
 	"Getall":        GetallCmd,
 	"Rename":        RenameCmd,
+	"Rehash":        RehashCmd,
 }
 
 var macros = map[string]Cmd{}
@@ -872,4 +873,16 @@ func RenameCmd(ec ExecContext, arg string) {
 	ec.buf.Dir = filepath.Dir(abspath)
 	ec.buf.Modified = true
 	ec.br.BufferRefresh(false)
+}
+
+func RehashCmd(ec ExecContext, arg string) {
+	if ec.ed != nil {
+		ec.ed.bodybuf.UpdateWords()
+	} else {
+		for i := range buffers {
+			if buffers[i] != nil {
+				buffers[i].UpdateWords()
+			}
+		}
+	}
 }
