@@ -2,7 +2,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"github.com/skelterjohn/go.wde"
 	_ "github.com/skelterjohn/go.wde/init"
 	"log"
@@ -94,25 +93,10 @@ func realmain() {
 
 	if !hasarg {
 		EditFind(wd, ".", false, false)
-		EditFind(wd, "+Dumps", false, false)
-
-		dh, err := os.Open(os.ExpandEnv("$HOME/.config/yacco/"))
-		if err == nil {
-			defer dh.Close()
-			names, err := dh.Readdirnames(-1)
-			if err != nil {
-				names = []string{}
-			}
-			r := []string{}
-			for i := range names {
-				if !strings.HasSuffix(names[i], ".dump") {
-					continue
-				}
-				r = append(r, fmt.Sprintf("Load %s", names[i][:len(names[i])-len(".dump")]))
-			}
-			Warnfull("+Dumps", strings.Join(r, "\n"), false, false)
-			Warnfull("+Dumps", "\n", false, false)
-		}
+		LoadCmd(ExecContext{}, "")
+	} else if len(flag.Args()) == 1 {
+		Wnd.tagbuf.Replace([]rune("Load"), &util.Sel{Wnd.tagbuf.Size(), Wnd.tagbuf.Size()}, true, nil, 0, true)
+		Wnd.BufferRefresh(true)
 	}
 
 	Wnd.wnd.FlushImage()

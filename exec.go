@@ -245,10 +245,34 @@ func DumpCmd(ec ExecContext, arg string) {
 
 func LoadCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	dumpDest := getDumpPath(arg, false)
-	if LoadFrom(dumpDest) {
-		AutoDumpPath = dumpDest
-		setDumpTitle()
+
+	if strings.TrimSpace(arg) == "" {
+		wd, _ := os.Getwd()
+		EditFind(wd, "+Dumps", false, false)
+
+		dh, err := os.Open(os.ExpandEnv("$HOME/.config/yacco/"))
+		if err == nil {
+			defer dh.Close()
+			names, err := dh.Readdirnames(-1)
+			if err != nil {
+				names = []string{}
+			}
+			r := []string{}
+			for i := range names {
+				if !strings.HasSuffix(names[i], ".dump") {
+					continue
+				}
+				r = append(r, fmt.Sprintf("Load %s", names[i][:len(names[i])-len(".dump")]))
+			}
+			Warnfull("+Dumps", strings.Join(r, "\n"), false, false)
+			Warnfull("+Dumps", "\n", false, false)
+		}
+	} else {
+		dumpDest := getDumpPath(arg, false)
+		if LoadFrom(dumpDest) {
+			AutoDumpPath = dumpDest
+			setDumpTitle()
+		}
 	}
 }
 
