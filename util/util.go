@@ -345,7 +345,7 @@ func Allergic3(debug bool, err error, silent bool) {
 }
 
 type BufferConn struct {
-	conn *clnt.Clnt
+	conn    *clnt.Clnt
 	Id      string
 	CtlFd   *clnt.File
 	EventFd *clnt.File

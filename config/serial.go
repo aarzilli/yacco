@@ -1,24 +1,28 @@
 package config
 
 import (
-	"encoding/json"
+	"code.google.com/p/gcfg"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"yacco/util"
 )
 
 type configObj struct {
-	Initialization     []string
-	MainFont           configFont
-	TagFont            configFont
-	AltFont            configFont
-	ComplFont          configFont
-	EnableHighlighting bool
-	ServeTCP           bool
-	HideHidden         bool
-	QuoteHack          bool
+	Core struct {
+		EnableHighlighting bool
+		ServeTCP           bool
+		HideHidden         bool
+		QuoteHack          bool
+	}
+	Initialization struct {
+		O []string
+	}
+	Fonts map[string]*configFont
 }
+
+var admissibleFonts = []string{"Main", "Tag", "Alt", "Compl"}
 
 type configFont struct {
 	Pixel     int
@@ -31,30 +35,57 @@ func fontFromConf(font configFont) *util.Font {
 }
 
 func LoadConfiguration(path string) {
-	if path == "" {
-		path = filepath.Join(os.Getenv("HOME"), ".config/yacco/rc.json")
-	}
-	fh, err := os.Open(path)
-	if err != nil {
-		return
-	}
-	defer fh.Close()
-
-	dec := json.NewDecoder(fh)
 	var co configObj
-	err = dec.Decode(&co)
+
+	if path == "" {
+		path = filepath.Join(os.Getenv("HOME"), ".config/yacco/rc")
+	}
+
+	err := gcfg.ReadFileInto(&co, path)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not load configuration: %s\n", err.Error())
+		fmt.Fprintf(os.Stderr, "Could not load configuration file: %s\n", err.Error())
 		return
 	}
 
-	Initialization = co.Initialization
-	MainFont = fontFromConf(co.MainFont)
-	TagFont = fontFromConf(co.TagFont)
-	AltFont = fontFromConf(co.AltFont)
-	ComplFont = fontFromConf(co.ComplFont)
-	EnableHighlighting = co.EnableHighlighting
-	ServeTCP = co.ServeTCP
-	HideHidden = co.HideHidden
-	QuoteHack = co.QuoteHack
+	ks := []string{}
+	for k := range co.Fonts {
+		ks = append(ks, k)
+	}
+	if ok, descr := admissibleValues(ks, admissibleFonts); !ok {
+		fmt.Fprintf(os.Stderr, "Could not load configuration file: %s in Fonts\n", descr)
+		return
+	}
+
+	Initialization = co.Initialization.O
+	MainFont = fontFromConf(*co.Fonts["Main"])
+	TagFont = fontFromConf(*co.Fonts["Tag"])
+	AltFont = fontFromConf(*co.Fonts["Alt"])
+	ComplFont = fontFromConf(*co.Fonts["Compl"])
+	EnableHighlighting = co.Core.EnableHighlighting
+	ServeTCP = co.Core.ServeTCP
+	HideHidden = co.Core.HideHidden
+	QuoteHack = co.Core.QuoteHack
+}
+
+func admissibleValues(m []string, a []string) (bool, string) {
+	sort.Strings(m)
+	sort.Strings(a)
+
+	if len(m) > len(a) {
+		return false, fmt.Sprintf("unknown key '%s'", m[len(a)])
+	}
+
+	for i := range a {
+		if i >= len(m) {
+			return false, fmt.Sprintf("missing key '%s'", a[i])
+		}
+		if a[i] > m[i] {
+			return false, fmt.Sprintf("unknown key '%s'", m[i])
+		}
+		if a[i] < m[i] {
+			return false, fmt.Sprintf("missing key '%s'", a[i])
+		}
+	}
+
+	return true, ""
 }
