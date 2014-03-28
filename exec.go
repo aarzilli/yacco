@@ -243,6 +243,22 @@ func DumpCmd(ec ExecContext, arg string) {
 	}
 }
 
+type fileInfoSortByTime []os.FileInfo
+
+func (f fileInfoSortByTime) Len() int {
+	return len(f)
+}
+
+func (f fileInfoSortByTime) Less(i, j int) bool {
+	return f[i].ModTime().Unix() >= f[j].ModTime().Unix()
+}
+
+func (f fileInfoSortByTime) Swap(i, j int) {
+	t := f[i]
+	f[i] = f[j]
+	f[j] = t
+}
+
 func LoadCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 
@@ -253,16 +269,19 @@ func LoadCmd(ec ExecContext, arg string) {
 		dh, err := os.Open(os.ExpandEnv("$HOME/.config/yacco/"))
 		if err == nil {
 			defer dh.Close()
-			names, err := dh.Readdirnames(-1)
+			var fis fileInfoSortByTime
+			fis, err := dh.Readdir(-1)
 			if err != nil {
-				names = []string{}
+				fis = []os.FileInfo{}
 			}
+			sort.Sort(fis)
 			r := []string{}
-			for i := range names {
-				if !strings.HasSuffix(names[i], ".dump") {
+			for i := range fis {
+				n := fis[i].Name()
+				if !strings.HasSuffix(n, ".dump") {
 					continue
 				}
-				r = append(r, fmt.Sprintf("Load %s", names[i][:len(names[i])-len(".dump")]))
+				r = append(r, fmt.Sprintf("Load %s", n[:len(n)-len(".dump")]))
 			}
 			Warnfull("+Dumps", strings.Join(r, "\n"), false, false)
 			Warnfull("+Dumps", "\n", false, false)
