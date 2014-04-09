@@ -7,6 +7,7 @@ import (
 	"image/draw"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"yacco/buf"
@@ -566,6 +567,8 @@ func (e *Editor) readDir() {
 		return
 	}
 
+	sort.Sort(fileInfos(fis))
+
 	r := make([]string, 0, len(fis))
 	for _, fi := range fis {
 		n := fi.Name()
@@ -637,4 +640,30 @@ func (e *Editor) readDir() {
 	e.bodybuf.Modified = false
 	e.bodybuf.UndoReset()
 	elasticTabs(e, true)
+}
+
+type fileInfos []os.FileInfo
+
+func (fis fileInfos) Less(i, j int) bool {
+	isdiri := fis[i].IsDir()
+	isdirj := fis[j].IsDir()
+
+	switch {
+	case isdiri && !isdirj:
+		return true
+	case !isdiri && isdirj:
+		return false
+	default:
+		return fis[i].Name() < fis[j].Name()
+	}
+}
+
+func (fis fileInfos) Swap(i, j int) {
+	fi := fis[i]
+	fis[i] = fis[j]
+	fis[j] = fi
+}
+
+func (fis fileInfos) Len() int {
+	return len(fis)
 }
