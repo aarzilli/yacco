@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"path/filepath"
-	"regexp"
+	"yacco/regexp"
+	sysre "regexp"
 	"strings"
 	"yacco/config"
 	"yacco/edit"
@@ -11,8 +12,8 @@ import (
 )
 
 type LoadRule struct {
-	BufRe  *regexp.Regexp
-	Re     *regexp.Regexp
+	BufRe  *sysre.Regexp
+	Re     regexp.Regex
 	Action string
 }
 
@@ -24,7 +25,7 @@ func LoadInit() {
 		if (rule.Action[0] != 'L') && (rule.Action[0] != 'X') {
 			panic(fmt.Errorf("Actions must start with X or L in: %s", rule.Action))
 		}
-		LoadRules = append(LoadRules, LoadRule{BufRe: regexp.MustCompile(rule.BufRe), Re: regexp.MustCompile(rule.Re), Action: rule.Action})
+		LoadRules = append(LoadRules, LoadRule{BufRe: sysre.MustCompile(rule.BufRe), Re: regexp.Compile(rule.Re, true, false), Action: rule.Action})
 	}
 }
 
@@ -44,15 +45,14 @@ func Load(ec ExecContext, origin int) {
 			continue
 		}
 		start := ec.fr.Sels[2].S
-		rr := ec.buf.ReaderFrom(ec.fr.Sels[2].S, ec.fr.Sels[2].E)
 		for {
-			matches := rule.Re.FindReaderSubmatchIndex(rr)
+			matches := rule.Re.Match(ec.buf, start, ec.fr.Sels[2].E, +1)
 			//println("match:", matches, ec.fr.Sels[2].S, ec.fr.Sels[2].E)
 			if matches == nil {
 				break
 			}
-			s := matches[0] + start
-			e := matches[1] + start
+			s := matches[0]
+			e := matches[1]
 
 			//println("match:", s, e, origin)
 
@@ -66,8 +66,8 @@ func Load(ec ExecContext, origin int) {
 			if ok {
 				strmatches := []string{}
 				for i := 0; 2*i+1 < len(matches); i++ {
-					s := matches[2*i] + start
-					e := matches[2*i+1] + start
+					s := matches[2*i]
+					e := matches[2*i+1]
 					strmatches = append(strmatches, string(ec.buf.SelectionRunes(util.Sel{s, e})))
 				}
 				//println("Match:", strmatches[0])
@@ -83,7 +83,6 @@ func Load(ec ExecContext, origin int) {
 			if start > origin {
 				break
 			}
-			rr = ec.buf.ReaderFrom(start, ec.fr.Sels[2].E)
 		}
 	}
 }

@@ -1,0 +1,9 @@
+something http://www.google.com something
+something yacco.go:10:2 something
+something yacco.go:10 something
+something File "yacco.go", line 10 something
+something at yacco.go line 10 something
+something in yacco.go on line 10 something
+something yacco.go:[10,2] something
+something yacco.go:/import/ something
+try clicking on something and also on a arbitrary (multiword) region
