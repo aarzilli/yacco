@@ -3,11 +3,11 @@ package main
 import (
 	"fmt"
 	"path/filepath"
-	"yacco/regexp"
 	sysre "regexp"
 	"strings"
 	"yacco/config"
 	"yacco/edit"
+	"yacco/regexp"
 	"yacco/util"
 )
 

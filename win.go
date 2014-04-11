@@ -89,7 +89,6 @@ type EventMsg struct {
 type activeSelStruct struct {
 	ed   *Editor
 	path string
-	s, e int
 	txt  string
 }
 
@@ -107,18 +106,19 @@ func (as *activeSelStruct) Set(lp LogicalPos) {
 		return
 	}
 
+	if lp.sfr.Fr.Sels[0].S == lp.sfr.Fr.Sels[0].E {
+		return
+	}
+
 	as.ed = lp.ed
 	as.path = filepath.Join(lp.bodybuf.Dir, lp.bodybuf.Name)
-	as.s = lp.sfr.Fr.Sels[0].S
-	as.e = lp.sfr.Fr.Sels[0].E
 	as.txt = string(lp.bodybuf.SelectionRunes(lp.sfr.Fr.Sels[0]))
 }
 
 func (as *activeSelStruct) Reset() {
 	as.ed = nil
 	as.path = ""
-	as.s = 0
-	as.e = 0
+	as.txt = ""
 }
 
 func (w *Window) Init(width, height int) (err error) {
@@ -1149,7 +1149,7 @@ func clickExec2extra(lp LogicalPos, e util.MouseDownEvent) {
 	} else {
 		_, _, _, isintl := IntlCmd(cmd)
 		util.Fmtevent2(ec.eventChan, util.EO_MOUSE, ec.ontag, isintl, true, original, ec.fr.Sels[1].S, ec.fr.Sels[1].E, cmd)
-		util.Fmtevent2extra(ec.eventChan, util.EO_MOUSE, ec.ontag, activeSel.s, activeSel.e, activeSel.path, activeSel.txt)
+		util.Fmtevent2extra(ec.eventChan, util.EO_MOUSE, ec.ontag, activeSel.ed.sfr.Fr.Sels[0].S, activeSel.ed.sfr.Fr.Sels[0].E, activeSel.path, activeSel.txt)
 	}
 }
 
