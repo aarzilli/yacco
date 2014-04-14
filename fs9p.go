@@ -66,6 +66,7 @@ func fs9PInit() {
 
 	p9Srv = srv.NewFileSrv(p9root)
 	p9Srv.Dotu = true
+	//p9Srv.Debuglevel = srv.DbgPrintPackets|srv.DbgPrintFcalls
 	p9Srv.Start(p9Srv)
 
 	go func() {

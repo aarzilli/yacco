@@ -441,8 +441,8 @@ func releaseEventsFn(i int) {
 		return
 	}
 
-	Wnd.Lock.Lock()
-	defer Wnd.Lock.Unlock()
-
-	ec.ed.eventChan = nil
+	sideChan <- func() {
+		close(ec.ed.eventChan)
+		ec.ed.eventChan = nil
+	}
 }
