@@ -51,10 +51,9 @@ func main() {
 			t := ""
 			if (entry.Mode & p.DMDIR) != 0 {
 				t = "/"
-			} else if (entry.Mode & p.DMSYMLINK) != 0 {
+			} else if (entry.Mode & p.DMSYMLINK) != 0 || (entry.Mode & p.DMLINK) != 0 {
 				t = "@"
 			}
-			//TODO: check other types maybe
 
 			fmt.Printf("%#o\t%s%s\n", entry.Mode&0777, entry.Name, t)
 		}
