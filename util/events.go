@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"time"
 )
 
 type EventOrigin rune
@@ -42,26 +43,30 @@ const (
 	EFL_EXPANDED = EventFlag(2)
 )
 
-func fmteventEx(eventChan chan string, origin EventOrigin, istag bool, etype EventType, s, e int, flags EventFlag, arg string) {
+func fmteventEx(eventChan chan string, origin EventOrigin, istag bool, etype EventType, s, e int, flags EventFlag, arg string, onfail func()) bool {
 	if istag {
 		etype = EventType(unicode.ToLower(rune(etype)))
 	}
+	t := time.NewTimer(100 * time.Millisecond)
+	defer t.Stop()
 	select {
 	case eventChan <- fmt.Sprintf("%c%c%d %d %d %d %s\n", origin, etype, s, e, flags, len(arg), arg):
-	default:
-		fmt.Println("Event send failed")
+		return true
+	case <- t.C:
+		onfail()
+		return false
 	}
 }
 
-func FmteventBase(eventChan chan string, origin EventOrigin, istag bool, etype EventType, s, e int, arg string) {
+func FmteventBase(eventChan chan string, origin EventOrigin, istag bool, etype EventType, s, e int, arg string, onfail func()) {
 	if len(arg) >= MAX_EVENT_TEXT_LENGTH {
 		arg = ""
 	}
-	fmteventEx(eventChan, origin, istag, etype, s, e, 0, arg)
+	fmteventEx(eventChan, origin, istag, etype, s, e, 0, arg, onfail)
 }
 
 // Writes an execute event to eventChan. s and e are the boundaries of the selection, p is the point of the click that was expanded (-1 if the user made the selection directly)
-func Fmtevent2(eventChan chan string, origin EventOrigin, istag, isbltin, hasextra bool, p, s, e int, arg string) {
+func Fmtevent2(eventChan chan string, origin EventOrigin, istag, isbltin, hasextra bool, p, s, e int, arg string, onfail func()) {
 	flags := EventFlag(0)
 	if isbltin {
 		flags = EFX_BUILTIN
@@ -71,24 +76,33 @@ func Fmtevent2(eventChan chan string, origin EventOrigin, istag, isbltin, hasext
 	}
 
 	if p >= 0 {
-		fmteventEx(eventChan, origin, istag, ET_BODYEXEC, p, p, flags|EFX_EXPANDED, "")
-		fmteventEx(eventChan, origin, istag, ET_BODYEXEC, s, e, 0, arg)
+		ok := fmteventEx(eventChan, origin, istag, ET_BODYEXEC, p, p, flags|EFX_EXPANDED, "", onfail)
+		if !ok {
+			return
+		}
+		fmteventEx(eventChan, origin, istag, ET_BODYEXEC, s, e, 0, arg, onfail)
 	} else {
-		fmteventEx(eventChan, origin, istag, ET_BODYEXEC, s, e, flags, arg)
+		fmteventEx(eventChan, origin, istag, ET_BODYEXEC, s, e, flags, arg, onfail)
 	}
 }
 
 // Writes messages to describe the extra argument for an execute message (ie you should call Fmtevent2 first with hasextra == true
-func Fmtevent2extra(eventChan chan string, origin EventOrigin, istag bool, s, e int, originPath, arg string) {
-	fmteventEx(eventChan, origin, istag, ET_BODYEXEC, 0, 0, 0, arg)
-	fmteventEx(eventChan, origin, istag, ET_BODYEXEC, 0, 0, 0, fmt.Sprintf("%s:#%d,#%d", originPath, s, e))
+func Fmtevent2extra(eventChan chan string, origin EventOrigin, istag bool, s, e int, originPath, arg string, onfail func()) {
+	ok := fmteventEx(eventChan, origin, istag, ET_BODYEXEC, 0, 0, 0, arg, onfail)
+	if !ok {
+		return
+	}
+	fmteventEx(eventChan, origin, istag, ET_BODYEXEC, 0, 0, 0, fmt.Sprintf("%s:#%d,#%d", originPath, s, e), onfail)
 }
 
-func Fmtevent3(eventChan chan string, origin EventOrigin, istag bool, p, s, e int, arg string) {
+func Fmtevent3(eventChan chan string, origin EventOrigin, istag bool, p, s, e int, arg string, onfail func()) {
 	if p >= 0 {
-		fmteventEx(eventChan, origin, istag, ET_BODYLOAD, p, p, EFL_EXPANDED, "")
+		ok := fmteventEx(eventChan, origin, istag, ET_BODYLOAD, p, p, EFL_EXPANDED, "", onfail)
+		if !ok {
+			return
+		}
 	}
-	fmteventEx(eventChan, origin, istag, ET_BODYLOAD, s, e, 0, arg)
+	fmteventEx(eventChan, origin, istag, ET_BODYLOAD, s, e, 0, arg, onfail)
 }
 
 type eventReaderState func(er *EventReader, msg string) eventReaderState
@@ -173,16 +187,16 @@ func (er *EventReader) SendBack(fh io.Writer) error {
 
 	switch er.etype {
 	case ET_BODYDEL, ET_TAGDEL, ET_BODYINS, ET_TAGINS:
-		FmteventBase(eventChan, er.origin, false, er.etype, er.s, er.e, er.txt)
+		FmteventBase(eventChan, er.origin, false, er.etype, er.s, er.e, er.txt, func() {})
 
 	case ET_BODYEXEC, ET_TAGEXEC:
-		Fmtevent2(eventChan, er.origin, er.etype == ET_TAGEXEC, er.bltin, er.xs != -1, er.p, er.s, er.e, er.txt)
+		Fmtevent2(eventChan, er.origin, er.etype == ET_TAGEXEC, er.bltin, er.xs != -1, er.p, er.s, er.e, er.txt, func() {})
 		if er.xs != -1 {
-			Fmtevent2extra(eventChan, er.origin, er.etype == ET_TAGEXEC, er.xs, er.xe, er.xpath, er.xtxt)
+			Fmtevent2extra(eventChan, er.origin, er.etype == ET_TAGEXEC, er.xs, er.xe, er.xpath, er.xtxt, func() {})
 		}
 
 	case ET_BODYLOAD, ET_TAGLOAD:
-		Fmtevent3(eventChan, er.origin, er.etype == ET_TAGLOAD, er.p, er.s, er.e, er.txt)
+		Fmtevent3(eventChan, er.origin, er.etype == ET_TAGLOAD, er.p, er.s, er.e, er.txt, func() {})
 
 	}
 

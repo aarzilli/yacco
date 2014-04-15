@@ -642,6 +642,15 @@ func (e *Editor) readDir() {
 	elasticTabs(e, true)
 }
 
+func (e *Editor) closeEventChan() {
+	if e.eventChan == nil {
+		return
+	}
+	close(e.eventChan)
+	e.eventChan = nil
+	Warn(fmt.Sprintf("Closed event channel for %s because unresponsive", e.bodybuf.ShortName()))
+}
+
 type fileInfos []os.FileInfo
 
 func (fis fileInfos) Less(i, j int) bool {

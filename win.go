@@ -1007,7 +1007,11 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				cmd := config.KeyBindings[e.Chord]
 				cmd = strings.TrimSpace(cmd)
 				_, _, _, isintl := IntlCmd(cmd)
-				util.Fmtevent2(ec.eventChan, util.EO_KBD, ec.ontag, isintl, false, -1, ec.fr.Sels[0].S, ec.fr.Sels[0].E, cmd)
+				onfail := func() {}
+				if ec.ed != nil {
+					onfail = ec.ed.closeEventChan
+				}
+				util.Fmtevent2(ec.eventChan, util.EO_KBD, ec.ontag, isintl, false, -1, ec.fr.Sels[0].S, ec.fr.Sels[0].E, cmd, onfail)
 			}
 		} else if e.Glyph != "" {
 			if !ec.ontag && ec.ed != nil {
@@ -1135,7 +1139,11 @@ func sendEventOrExec(ec ExecContext, cmd string, original int) {
 		Exec(ec, cmd)
 	} else {
 		_, _, _, isintl := IntlCmd(cmd)
-		util.Fmtevent2(ec.eventChan, util.EO_MOUSE, ec.ontag, isintl, false, original, ec.fr.Sels[1].S, ec.fr.Sels[1].E, cmd)
+		onfail := func() {}
+		if ec.ed != nil {
+			onfail = ec.ed.closeEventChan
+		}
+		util.Fmtevent2(ec.eventChan, util.EO_MOUSE, ec.ontag, isintl, false, original, ec.fr.Sels[1].S, ec.fr.Sels[1].E, cmd, onfail)
 	}
 }
 
@@ -1148,8 +1156,12 @@ func clickExec2extra(lp LogicalPos, e util.MouseDownEvent) {
 		Exec(ec, cmd+" "+activeSel.txt)
 	} else {
 		_, _, _, isintl := IntlCmd(cmd)
-		util.Fmtevent2(ec.eventChan, util.EO_MOUSE, ec.ontag, isintl, true, original, ec.fr.Sels[1].S, ec.fr.Sels[1].E, cmd)
-		util.Fmtevent2extra(ec.eventChan, util.EO_MOUSE, ec.ontag, activeSel.ed.sfr.Fr.Sels[0].S, activeSel.ed.sfr.Fr.Sels[0].E, activeSel.path, activeSel.txt)
+		onfail := func() {}
+		if ec.ed != nil {
+			onfail = ec.ed.closeEventChan
+		}
+		util.Fmtevent2(ec.eventChan, util.EO_MOUSE, ec.ontag, isintl, true, original, ec.fr.Sels[1].S, ec.fr.Sels[1].E, cmd, onfail)
+		util.Fmtevent2extra(ec.eventChan, util.EO_MOUSE, ec.ontag, activeSel.ed.sfr.Fr.Sels[0].S, activeSel.ed.sfr.Fr.Sels[0].E, activeSel.path, activeSel.txt, onfail)
 	}
 }
 
@@ -1165,7 +1177,11 @@ func clickExec3(lp LogicalPos, e util.MouseDownEvent) {
 		if fr == nil {
 			fr = &lp.sfr.Fr
 		}
-		util.Fmtevent3(lp.ed.eventChan, util.EO_MOUSE, lp.tagfr != nil, original, fr.Sels[2].S, fr.Sels[2].E, s)
+		onfail := func() {}
+		if ec.ed != nil {
+			onfail = ec.ed.closeEventChan
+		}
+		util.Fmtevent3(lp.ed.eventChan, util.EO_MOUSE, lp.tagfr != nil, original, fr.Sels[2].S, fr.Sels[2].E, s, onfail)
 	}
 }
 

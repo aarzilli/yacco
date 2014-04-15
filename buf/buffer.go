@@ -281,11 +281,11 @@ func (b *Buffer) generateEvent(text []rune, sel util.Sel, eventChan chan string,
 	}
 
 	if sel.S != sel.E {
-		util.FmteventBase(eventChan, origin, b.Name == "+Tag", util.ET_BODYDEL, sel.S, sel.E, "")
+		util.FmteventBase(eventChan, origin, b.Name == "+Tag", util.ET_BODYDEL, sel.S, sel.E, "", func() {})
 	}
 
 	if (sel.S == sel.E) || (len(text) != 0) {
-		util.FmteventBase(eventChan, origin, b.Name == "+Tag", util.ET_BODYINS, sel.S, sel.S, string(text))
+		util.FmteventBase(eventChan, origin, b.Name == "+Tag", util.ET_BODYINS, sel.S, sel.S, string(text), func() {})
 	}
 }
 
