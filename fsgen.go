@@ -146,7 +146,7 @@ func writeCtlFn(i int, data []byte, off int64) syscall.Errno {
 		return syscall.ENOENT
 	}
 	cmd := string(data)
-	sideChan <- ExecFsMsg{ec, cmd}
+	sideChan <- func() { ExecFs(ec, cmd) }
 	return 0
 }
 
@@ -379,37 +379,63 @@ func writeEventFn(i int, data []byte, off int64) syscall.Errno {
 
 	ec.ed.eventReader.Insert(string(data))
 
-	if ec.ed.eventReader.Done() {
-		etype := ec.ed.eventReader.Type()
-		switch etype {
-		case util.ET_BODYDEL, util.ET_TAGDEL, util.ET_BODYINS, util.ET_TAGINS:
-			return 0
+	if !ec.ed.eventReader.Done() {
+		return 0
+	}
+
+	etype := ec.ed.eventReader.Type()
+
+	ok, perr := ec.ed.eventReader.Valid()
+	if !ok {
+		fmt.Println("Event parsing error:", perr)
+		return syscall.EIO
+	}
+
+	er := ec.ed.eventReader
+	ec.ed.eventReader.Reset()
+
+	switch etype {
+	case util.ET_BODYDEL, util.ET_TAGDEL, util.ET_BODYINS, util.ET_TAGINS:
+		return 0
+
+	case util.ET_TAGLOAD:
+		if ec.ed != nil {
+			ec.buf = ec.ed.tagbuf
+			ec.fr = &ec.ed.tagfr
+		}
+		fallthrough
+	case util.ET_BODYLOAD:
+		pp, sp, ep := er.Points()
+		sideChan <- func() {
+			ec.fr.Sels[2] = util.Sel{sp, ep}
+			Load(*ec, pp)
 		}
 
-		if ok, perr := ec.ed.eventReader.Valid(); ok {
-			ec2 := *ec
-
-			switch etype {
-			case util.ET_TAGEXEC:
-				if ec.ed.eventReader.Origin() == util.EO_KBD {
-					ec2.buf = ec2.ed.tagbuf
-					ec2.fr = &ec2.ed.tagfr
-					ec2.ontag = true
-				}
-
-			case util.ET_TAGLOAD:
-				if ec.ed != nil {
-					ec2.buf = ec2.ed.tagbuf
-					ec2.fr = &ec2.ed.tagfr
-				}
-
+	case util.ET_TAGEXEC:
+		if er.Origin() == util.EO_KBD {
+			ec.buf = ec.ed.tagbuf
+			ec.fr = &ec.ed.tagfr
+			ec.ontag = true
+		}
+		fallthrough
+	case util.ET_BODYEXEC:
+		sideChan <- func() {
+			if er.ShouldFetchText() {
+				_, sp, ep := er.Points()
+				er.SetText(string(ec.ed.bodybuf.SelectionRunes(util.Sel{sp, ep})))
 			}
-
-			sideChan <- EventMsg{ec2, ec.ed.eventReader}
-			ec.ed.eventReader.Reset()
-		} else {
-			fmt.Println("Event parsing error:", perr)
-			return syscall.EIO
+			if er.MissingExtraArg() {
+				xpath, xs, xe, _ := er.ExtraArg()
+				for _, buf := range buffers {
+					if filepath.Join(buf.Dir, buf.Name) == xpath {
+						er.SetExtraArg(string(buf.SelectionRunes(util.Sel{xs, xe})))
+						break
+					}
+				}
+			}
+			txt, _ := er.Text(nil, nil, nil)
+			_, _, _, xtxt := er.ExtraArg()
+			Exec(*ec, txt+" "+xtxt)
 		}
 	}
 

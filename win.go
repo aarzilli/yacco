@@ -60,30 +60,8 @@ type ReplaceMsg struct {
 	reselect bool
 }
 
-type ExecMsg struct {
-	ec   *ExecContext
-	s, e int
-	cmd  string
-}
-
-type LoadMsg struct {
-	ec       *ExecContext
-	s, e     int
-	original int
-}
-
-type ExecFsMsg struct {
-	ec  *ExecContext
-	cmd string
-}
-
 type HighlightMsg struct {
 	b *buf.Buffer
-}
-
-type EventMsg struct {
-	ec ExecContext
-	er util.EventReader
 }
 
 type activeSelStruct struct {
@@ -391,62 +369,15 @@ func (w *Window) EventLoop() {
 				e.ec.br.BufferRefresh(false)
 			}
 
-		case LoadMsg:
-			e.ec.fr.Sels[2] = util.Sel{e.s, e.e}
-			Load(*e.ec, e.original)
-
-		case ExecMsg:
-			e.ec.fr.Sels[0] = util.Sel{e.s, e.e}
-			Exec(*e.ec, e.cmd)
-
-		case ExecFsMsg:
-			ExecFs(e.ec, e.cmd)
-
 		case HighlightMsg:
 			//println("Highlight refresh")
-		HlLoop:
 			for _, col := range w.cols.cols {
 				for _, ed := range col.editors {
 					if ed.bodybuf == e.b {
 						ed.refreshIntl()
 						ed.sfr.Redraw(true)
-						break HlLoop
 					}
 				}
-			}
-
-		case EventMsg:
-			if e.ec.ed == nil {
-				break
-			}
-
-			switch e.er.Type() {
-			case util.ET_BODYDEL, util.ET_TAGDEL, util.ET_BODYINS, util.ET_TAGINS:
-				// Nothing
-
-			case util.ET_BODYEXEC, util.ET_TAGEXEC:
-				if e.er.ShouldFetchText() {
-					_, sp, ep := e.er.Points()
-					e.er.SetText(string(e.ec.ed.bodybuf.SelectionRunes(util.Sel{sp, ep})))
-				}
-				if e.er.MissingExtraArg() {
-					xpath, xs, xe, _ := e.er.ExtraArg()
-					for _, buf := range buffers {
-						p := filepath.Join(buf.Dir, buf.Name)
-						if p == xpath {
-							e.er.SetExtraArg(string(buf.SelectionRunes(util.Sel{xs, xe})))
-							break
-						}
-					}
-				}
-				txt, _ := e.er.Text(nil, nil, nil)
-				_, _, _, xtxt := e.er.ExtraArg()
-				Exec(e.ec, txt+" "+xtxt)
-
-			case util.ET_BODYLOAD, util.ET_TAGLOAD:
-				pp, sp, ep := e.er.Points()
-				e.ec.fr.Sels[2] = util.Sel{sp, ep}
-				Load(e.ec, pp)
 			}
 
 		case func():

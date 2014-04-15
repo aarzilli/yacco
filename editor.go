@@ -648,7 +648,7 @@ func (e *Editor) closeEventChan() {
 	}
 	close(e.eventChan)
 	e.eventChan = nil
-	Warn(fmt.Sprintf("Closed event channel for %s because unresponsive", e.bodybuf.ShortName()))
+	Warn(fmt.Sprintf("Event channel for %s was unresponsive, closed", e.bodybuf.ShortName()))
 }
 
 type fileInfos []os.FileInfo

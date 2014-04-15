@@ -54,10 +54,11 @@ func lookFileIntl(ed *Editor, ch chan string) {
 			if specialMsg == "T\n" {
 				if len(resultList) > 0 {
 					ec := ExecContext{col: nil, ed: ed, br: ed, ontag: false, fr: &ed.sfr.Fr, buf: ed.bodybuf, eventChan: nil}
-					sideChan <- LoadMsg{
-						ec: &ec,
-						s:  0, e: ed.bodybuf.Tonl(1, +1),
-						original: 0}
+					sideChan <- func() {
+						ec.fr.Sels[2].S = 0
+						ec.fr.Sels[2].E = ed.bodybuf.Tonl(1, +1)
+						Load(ec, 0)
+					}
 				}
 			} else {
 				needle := specialMsg[1:]

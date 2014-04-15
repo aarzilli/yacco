@@ -33,47 +33,7 @@ var KeyBindings = map[string]func(ec ExecContext){}
 
 type Cmd func(ec ExecContext, arg string)
 
-var cmds = map[string]Cmd{
-	"Cut":    func(ec ExecContext, arg string) { CopyCmd(ec, arg, true) },
-	"Get":    GetCmd,
-	"Del":    func(ec ExecContext, arg string) { DelCmd(ec, arg, false) },
-	"Delcol": DelcolCmd,
-	"Delete": func(ec ExecContext, arg string) { DelCmd(ec, arg, true) },
-	"Dump":   DumpCmd,
-	"Edit":   EditCmd,
-	"Exit":   ExitCmd,
-	"Kill":   KillCmd,
-	"Setenv": SetenvCmd,
-	"Look":   LookCmd,
-	"New":    NewCmd,
-	"Newcol": NewcolCmd,
-	"Paste":  func(ec ExecContext, arg string) { PasteCmd(ec, arg, false) },
-	"Put":    PutCmd,
-	"Putall": PutallCmd,
-	"Redo":   RedoCmd,
-	"Send":   SendCmd,
-	"Snarf":  func(ec ExecContext, arg string) { CopyCmd(ec, arg, false) },
-	"Copy":   func(ec ExecContext, arg string) { CopyCmd(ec, arg, false) },
-	"Sort":   SortCmd,
-	"Undo":   UndoCmd,
-	"Zerox":  ZeroxCmd,
-	"|":      PipeCmd,
-	"<":      PipeInCmd,
-	">":      PipeOutCmd,
-
-	// New
-	"Cd":            CdCmd,
-	"Jobs":          JobsCmd,
-	"Look!Again":    LookAgainCmd,
-	"Look!Quit":     func(ec ExecContext, arg string) { SpecialSendCmd(ec, "!Quit") },
-	"Look!Prev":     func(ec ExecContext, arg string) { SpecialSendCmd(ec, "!Prev") },
-	"Paste!Primary": func(ec ExecContext, arg string) { PasteCmd(ec, arg, true) },
-	"Paste!Indent":  PasteIndentCmd,
-	"Jump":          JumpCmd,
-	"Getall":        GetallCmd,
-	"Rename":        RenameCmd,
-	"Rehash":        RehashCmd,
-}
+var cmds = map[string]Cmd{}
 
 var macros = map[string]Cmd{}
 
@@ -81,7 +41,45 @@ var spacesRe = regexp.MustCompile("\\s+")
 var exitConfirmed = false
 
 func init() {
-	// this would otherwise cause an initialization loop
+	cmds["Cut"] = func(ec ExecContext, arg string) { CopyCmd(ec, arg, true) }
+	cmds["Get"] = GetCmd
+	cmds["Del"] = func(ec ExecContext, arg string) { DelCmd(ec, arg, false) }
+	cmds["Delcol"] = DelcolCmd
+	cmds["Delete"] = func(ec ExecContext, arg string) { DelCmd(ec, arg, true) }
+	cmds["Dump"] = DumpCmd
+	cmds["Edit"] = EditCmd
+	cmds["Exit"] = ExitCmd
+	cmds["Kill"] = KillCmd
+	cmds["Setenv"] = SetenvCmd
+	cmds["Look"] = LookCmd
+	cmds["New"] = NewCmd
+	cmds["Newcol"] = NewcolCmd
+	cmds["Paste"] = func(ec ExecContext, arg string) { PasteCmd(ec, arg, false) }
+	cmds["Put"] = PutCmd
+	cmds["Putall"] = PutallCmd
+	cmds["Redo"] = RedoCmd
+	cmds["Send"] = SendCmd
+	cmds["Snarf"] = func(ec ExecContext, arg string) { CopyCmd(ec, arg, false) }
+	cmds["Copy"] = func(ec ExecContext, arg string) { CopyCmd(ec, arg, false) }
+	cmds["Sort"] = SortCmd
+	cmds["Undo"] = UndoCmd
+	cmds["Zerox"] = ZeroxCmd
+	cmds["|"] = PipeCmd
+	cmds["<"] = PipeInCmd
+	cmds[">"] = PipeOutCmd
+
+	// New
+	cmds["Cd"] = CdCmd
+	cmds["Jobs"] = JobsCmd
+	cmds["Look!Again"] = LookAgainCmd
+	cmds["Look!Quit"] = func(ec ExecContext, arg string) { SpecialSendCmd(ec, "!Quit") }
+	cmds["Look!Prev"] = func(ec ExecContext, arg string) { SpecialSendCmd(ec, "!Prev") }
+	cmds["Paste!Primary"] = func(ec ExecContext, arg string) { PasteCmd(ec, arg, true) }
+	cmds["Paste!Indent"] = PasteIndentCmd
+	cmds["Jump"] = JumpCmd
+	cmds["Getall"] = GetallCmd
+	cmds["Rename"] = RenameCmd
+	cmds["Rehash"] = RehashCmd
 	cmds["Do"] = DoCmd
 	cmds["Macro"] = MacroCmd
 	cmds["LookFile"] = LookFileCmd
