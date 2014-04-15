@@ -442,6 +442,9 @@ func releaseEventsFn(i int) {
 	}
 
 	sideChan <- func() {
+		if ec.ed.eventChan == nil {
+			return
+		}
 		close(ec.ed.eventChan)
 		ec.ed.eventChan = nil
 	}

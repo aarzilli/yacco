@@ -55,6 +55,13 @@ func ExecFs(ec *ExecContext, cmd string) {
 	case "tabadj":
 		elasticTabs(ec.ed, true)
 		ec.ed.BufferRefresh(false)
+		
+	case "disconnect":
+		if ec.ed.eventChan != nil {
+			ec.ed.eventChan <- ""
+			close(ec.ed.eventChan)
+			ec.ed.eventChan = nil
+		}
 
 	default:
 		if strings.HasPrefix(cmd, "dumpdir") {
