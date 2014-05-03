@@ -422,7 +422,7 @@ func GetCmd(ec ExecContext, arg string) {
 	if ec.ed == nil {
 		return
 	}
-	if ec.ed.bodybuf.Modified && !ec.ed.confirmDel {
+	if ec.ed.bodybuf.Modified && !ec.ed.confirmDel && !ec.ed.bodybuf.IsDir() {
 		ec.ed.confirmDel = true
 		Warn("File " + ec.ed.bodybuf.ShortName() + " has unsaved changes")
 		return
