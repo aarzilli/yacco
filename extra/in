@@ -1,5 +1,13 @@
 #!/bin/bash
 
+set -e
+
 cd $1
+
+b=$(y9p find +Error)
+
+# works in bash 4.2.47, no idea if it will keep working
+exec > >(y9p write $b/body) 2>&1
+
 shift
 exec $*
