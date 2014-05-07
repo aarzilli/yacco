@@ -1,11 +1,13 @@
 package config
 
 import (
-	"code.google.com/p/gcfg"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
+	"yacco/iniparse"
 	"yacco/util"
 )
 
@@ -16,10 +18,9 @@ type configObj struct {
 		HideHidden         bool
 		QuoteHack          bool
 	}
-	Initialization struct {
-		O []string
-	}
-	Fonts map[string]*configFont
+	Initialization *configInit
+	Fonts          map[string]*configFont
+	Load           *configLoadRules
 }
 
 var admissibleFonts = []string{"Main", "Tag", "Alt", "Compl"}
@@ -28,6 +29,14 @@ type configFont struct {
 	Pixel     int
 	LineScale float64
 	Path      string
+}
+
+type configLoadRules struct {
+	loadRules []util.LoadRule
+}
+
+type configInit struct {
+	O []string
 }
 
 func fontFromConf(font configFont) *util.Font {
@@ -41,9 +50,26 @@ func LoadConfiguration(path string) {
 		path = filepath.Join(os.Getenv("HOME"), ".config/yacco/rc")
 	}
 
-	err := gcfg.ReadFileInto(&co, path)
+	u := iniparse.NewUnmarshaller()
+	u.Path = path
+	u.AddSpecialUnmarshaller("load", LoadRulesParser)
+	u.AddSpecialUnmarshaller("initialization", InitializationParser)
+
+	fh, err := os.Open(path)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not load configuration file: %s\n", err.Error())
+		fmt.Fprintf(os.Stderr, "Could not open configuration file: %s\n", err.Error())
+		return
+	}
+	defer fh.Close()
+
+	bs, err := ioutil.ReadAll(fh)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not read configuration file: %s\n", err.Error())
+	}
+
+	err = u.Unmarshal(bs, &co)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not parse configuration file: %s\n", err.Error())
 		return
 	}
 
@@ -54,6 +80,10 @@ func LoadConfiguration(path string) {
 	if ok, descr := admissibleValues(ks, admissibleFonts); !ok {
 		fmt.Fprintf(os.Stderr, "Could not load configuration file: %s in Fonts\n", descr)
 		return
+	}
+
+	if co.Load != nil {
+		LoadRules = co.Load.loadRules
 	}
 
 	Initialization = co.Initialization.O
@@ -88,4 +118,42 @@ func admissibleValues(m []string, a []string) (bool, string) {
 	}
 
 	return true, ""
+}
+
+func LoadRulesParser(path string, lineno int, lines []string) (interface{}, error) {
+	r := &configLoadRules{make([]util.LoadRule, 0, len(lines))}
+	for i := range lines {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		if line[0] == ';' || line[0] == '#' {
+			continue
+		}
+		v := strings.Split(line, "\t")
+		if len(v) != 3 {
+			return nil, fmt.Errorf("%s:%d: Malformed line", path, lineno+i)
+		}
+		r.loadRules = append(r.loadRules, util.LoadRule{BufRe: v[0], Re: v[1], Action: v[2]})
+	}
+	return r, nil
+}
+
+func InitializationParser(path string, lineno int, lines []string) (interface{}, error) {
+	r := &configInit{make([]string, 0, len(lines))}
+	acc := []string{}
+	for i := range lines {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			if len(acc) != 0 {
+				r.O = append(r.O, strings.Join(acc, "\n"))
+				acc = []string{}
+			}
+		}
+		acc = append(acc, line)
+	}
+	if len(acc) != 0 {
+		r.O = append(r.O, strings.Join(acc, "\n"))
+	}
+	return r, nil
 }

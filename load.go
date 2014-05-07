@@ -12,6 +12,7 @@ import (
 )
 
 type LoadRule struct {
+	ForDir bool
 	BufRe  *sysre.Regexp
 	Re     regexp.Regex
 	Action string
@@ -25,7 +26,13 @@ func LoadInit() {
 		if (rule.Action[0] != 'L') && (rule.Action[0] != 'X') {
 			panic(fmt.Errorf("Actions must start with X or L in: %s", rule.Action))
 		}
-		LoadRules = append(LoadRules, LoadRule{BufRe: sysre.MustCompile(rule.BufRe), Re: regexp.Compile(rule.Re, true, false), Action: rule.Action})
+		var bufRe *sysre.Regexp = nil
+		if rule.BufRe != "/" {
+			bufRe = sysre.MustCompile(rule.BufRe)
+		} else {
+			bufRe = nil
+		}
+		LoadRules = append(LoadRules, LoadRule{ForDir: bufRe == nil, BufRe: bufRe, Re: regexp.Compile(rule.Re, true, false), Action: rule.Action})
 	}
 }
 
@@ -41,8 +48,14 @@ func Load(ec ExecContext, origin int) {
 	}
 	for _, rule := range LoadRules {
 		path := filepath.Join(ec.buf.Dir, ec.buf.Name)
-		if !rule.BufRe.MatchString(path) {
-			continue
+		if rule.ForDir {
+			if !ec.buf.IsDir() {
+				continue
+			}
+		} else {
+			if !rule.BufRe.MatchString(path) {
+				continue
+			}
 		}
 		start := ec.fr.Sels[2].S
 		for {
@@ -136,6 +149,8 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 	switch rule.Action[0] {
 	case 'X':
 		expaction := expandMatches(action, matches)
+		ec.fr.Sels[2] = util.Sel{s, e}
+		ec.fr.Sels[0] = ec.fr.Sels[2]
 		Exec(ec, expaction)
 		return true
 	case 'L':
