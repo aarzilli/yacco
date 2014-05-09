@@ -435,6 +435,7 @@ func erExtra2Insert(er *EventReader, msg string) eventReaderState {
 func erExpandAndExtraInsert(er *EventReader, msg string) eventReaderState {
 	erExpandInsert(er, msg)
 	if er.perr != "" {
+		er.done = true
 		return nil
 	}
 

@@ -18,7 +18,6 @@ type configObj struct {
 		HideHidden         bool
 		QuoteHack          bool
 	}
-	Initialization *configInit
 	Fonts          map[string]*configFont
 	Load           *configLoadRules
 }
@@ -35,10 +34,6 @@ type configLoadRules struct {
 	loadRules []util.LoadRule
 }
 
-type configInit struct {
-	O []string
-}
-
 func fontFromConf(font configFont) *util.Font {
 	return util.MustNewFont(72, float64(font.Pixel), font.LineScale, font.Path)
 }
@@ -53,7 +48,6 @@ func LoadConfiguration(path string) {
 	u := iniparse.NewUnmarshaller()
 	u.Path = path
 	u.AddSpecialUnmarshaller("load", LoadRulesParser)
-	u.AddSpecialUnmarshaller("initialization", InitializationParser)
 
 	fh, err := os.Open(path)
 	if err != nil {
@@ -86,7 +80,6 @@ func LoadConfiguration(path string) {
 		LoadRules = co.Load.loadRules
 	}
 
-	Initialization = co.Initialization.O
 	MainFont = fontFromConf(*co.Fonts["Main"])
 	TagFont = fontFromConf(*co.Fonts["Tag"])
 	AltFont = fontFromConf(*co.Fonts["Alt"])
@@ -135,25 +128,6 @@ func LoadRulesParser(path string, lineno int, lines []string) (interface{}, erro
 			return nil, fmt.Errorf("%s:%d: Malformed line", path, lineno+i)
 		}
 		r.loadRules = append(r.loadRules, util.LoadRule{BufRe: v[0], Re: v[1], Action: v[2]})
-	}
-	return r, nil
-}
-
-func InitializationParser(path string, lineno int, lines []string) (interface{}, error) {
-	r := &configInit{make([]string, 0, len(lines))}
-	acc := []string{}
-	for i := range lines {
-		line := strings.TrimSpace(lines[i])
-		if line == "" {
-			if len(acc) != 0 {
-				r.O = append(r.O, strings.Join(acc, "\n"))
-				acc = []string{}
-			}
-		}
-		acc = append(acc, line)
-	}
-	if len(acc) != 0 {
-		r.O = append(r.O, strings.Join(acc, "\n"))
 	}
 	return r, nil
 }

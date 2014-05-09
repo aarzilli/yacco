@@ -120,11 +120,6 @@ func main() {
 
 	FsInit()
 
-	ec := ExecContext{}
-	for _, initStr := range config.Initialization {
-		Exec(ec, initStr)
-	}
-
 	go realmain()
 	wde.Run()
 }

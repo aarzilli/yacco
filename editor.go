@@ -148,6 +148,8 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	e.bodybuf.AddSels(&e.jumps)
 	e.bodybuf.AddSels(&e.otherSel)
 
+	e.eventReader.Reset()
+
 	return e
 }
 

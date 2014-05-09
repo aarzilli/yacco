@@ -81,7 +81,6 @@ func init() {
 	cmds["Rename"] = RenameCmd
 	cmds["Rehash"] = RehashCmd
 	cmds["Do"] = DoCmd
-	cmds["Macro"] = MacroCmd
 	cmds["LookFile"] = LookFileCmd
 	cmds["Load"] = LoadCmd
 	cmds["Builtin"] = BuiltinCmd
@@ -772,22 +771,6 @@ func DoCmd(ec ExecContext, arg string) {
 	cmds := strings.Split(arg, "\n")
 	for _, cmd := range cmds {
 		execNoDefer(ec, cmd)
-	}
-}
-
-func MacroCmd(ec ExecContext, arg string) {
-	cmds := strings.Split(arg, "\n")
-	if len(cmds) <= 0 {
-		return
-	}
-
-	name := strings.TrimSpace(cmds[0])
-	cmds = cmds[1:]
-
-	macros[name] = func(ec ExecContext, arg string) {
-		for _, cmd := range cmds {
-			execNoDefer(ec, cmd)
-		}
 	}
 }
 

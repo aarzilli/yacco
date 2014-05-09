@@ -254,6 +254,14 @@ type ReadWriteExclP9 struct {
 }
 
 func (fh *ReadWriteExclP9) Open(fid *srv.FFid, mode uint8) error {
+	switch mode & 0x3 {
+	case p.OWRITE:
+		return nil
+	case p.OREAD:
+	case p.ORDWR:
+	case p.OEXEC:
+	}
+
 	if !fh.openFn() {
 		return &p.Error{"Already opened", p.EIO}
 	}

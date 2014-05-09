@@ -51,7 +51,7 @@ func main() {
 			t := ""
 			if (entry.Mode & p.DMDIR) != 0 {
 				t = "/"
-			} else if (entry.Mode & p.DMSYMLINK) != 0 || (entry.Mode & p.DMLINK) != 0 {
+			} else if (entry.Mode&p.DMSYMLINK) != 0 || (entry.Mode&p.DMLINK) != 0 {
 				t = "@"
 			}
 
@@ -69,6 +69,16 @@ func main() {
 		util.Allergic(debug, err)
 		defer fd.Close()
 		_, err = util.P9Copy(fd, os.Stdin)
+		if err != nil {
+			fmt.Printf("Error: %s\n", err.Error())
+		}
+
+	case "exec":
+		fd, err := p9clnt.FOpen(resolvePath("buf/event"), p.OWRITE)
+		util.Allergic(debug, err)
+		defer fd.Close()
+		arg = strings.Join(os.Args[2:], " ")
+		_, err = fd.Writen([]byte(fmt.Sprintf("EX0 0 0 %d %s\n", len(arg), arg)), 0)
 		if err != nil {
 			fmt.Printf("Error: %s\n", err.Error())
 		}
