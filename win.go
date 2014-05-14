@@ -65,9 +65,10 @@ type HighlightMsg struct {
 }
 
 type activeSelStruct struct {
-	ed   *Editor
-	path string
-	txt  string
+	ed      *Editor
+	zeroxEd *Editor
+	path    string
+	txt     string
 }
 
 //const DEFAULT_CURSOR = wde.XTermCursor
@@ -83,6 +84,7 @@ func (as *activeSelStruct) Set(lp LogicalPos) {
 	if (lp.bodybuf == nil) || (lp.sfr == nil) {
 		return
 	}
+	as.zeroxEd = lp.ed
 
 	if lp.sfr.Fr.Sels[0].S == lp.sfr.Fr.Sels[0].E {
 		return

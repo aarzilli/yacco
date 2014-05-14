@@ -61,6 +61,8 @@ func fs9PInit() {
 	index.Add(p9root, "index", user, nil, 0444, index)
 	prop := &ReadWriteP9{srv.File{}, readMainPropFn, writeMainPropFn}
 	prop.Add(p9root, "prop", user, nil, 0666, prop)
+	log := &ReadOpenP9{srv.File{}, openLogFileFn, readLogFileFn, clunkLogFileFn}
+	log.Add(p9root, "log", user, nil, 0666, log)
 	newdir := &NewP9{}
 	newdir.Add(p9root, "new", user, nil, p.DMDIR|0770, newdir)
 
@@ -297,4 +299,33 @@ func (fh *ReadWriteExclP9) Write(fid *srv.FFid, data []byte, offset uint64) (int
 	} else {
 		return 0, r
 	}
+}
+
+type ReadOpenP9 struct {
+	srv.File
+	openFn  func(conn string) error
+	readFn  func(conn string) ([]byte, syscall.Errno)
+	clunkFn func(conn string) error
+}
+
+func fidToId(fid *srv.FFid) string {
+	return fmt.Sprintf("%p", fid.Fid.Fconn)
+}
+
+func (fh *ReadOpenP9) Open(fid *srv.FFid, mode uint8) error {
+	return fh.openFn(fidToId(fid))
+}
+
+func (fh *ReadOpenP9) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
+	b, r := fh.readFn(fidToId(fid))
+	copy(buf, b)
+	if r == 0 {
+		return len(b), nil
+	} else {
+		return 0, r
+	}
+}
+
+func (fh *ReadOpenP9) Clunk(fid *srv.FFid) error {
+	return fh.clunkFn(fidToId(fid))
 }

@@ -475,3 +475,31 @@ func releaseEventsFn(i int) {
 		ec.ed.eventChan = nil
 	}
 }
+
+func openLogFileFn(conn string) error {
+	LogChans[conn] = make(chan string, 10)
+	return nil
+}
+
+func readLogFileFn(conn string) ([]byte, syscall.Errno) {
+	ch, ok := LogChans[conn]
+	if !ok {
+		return nil, syscall.ENOENT
+	}
+
+	select {
+	case event, ok := <-ch:
+		if !ok {
+			return []byte{}, syscall.EINTR
+		}
+		return []byte(event), 0
+	}
+}
+
+func clunkLogFileFn(conn string) error {
+	if ch, ok := LogChans[conn]; ok {
+		close(ch)
+		delete(LogChans, conn)
+	}
+	return nil
+}
