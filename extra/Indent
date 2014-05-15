@@ -24,6 +24,13 @@ if cmd == "":
 			
 	newval = "on" if curval != "on" else "off"
 	send("indent=" + newval)
+elif cmd == "help" or cmd == "-h":
+	print "Manipulates automatic indentation, possible arguments"
+	print "\t(none)\t\tToggles automatic indentation"
+	print "\ton\t\t\tTurns automatic indentation on"
+	print "\toff\t\t\tTurns automatic indentation off"
+	print "\tt#\t\t\tChanges the behaviour of the Tab key to insert the specified number of tabs"
+	print "\ts#\t\t\tChanges the behaviour of the Tab key to insert the specified number of spaces"
 elif cmd == "on":
 	send("indent=on")
 elif cmd == "off":

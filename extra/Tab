@@ -10,5 +10,11 @@ def send(s, dst):
 
 if sys.argv[1] == "adj" or sys.argv[1] == "adjust":
 	send("tabadj", "buf/ctl")
+elif sys.argv[1] == "help" or sys.argv[1] == "-h":
+	print "Tab stops manipulation:"
+	print "\tTab <argument>"
+	print "Possible <argument> values:"
+	print "\tadj, tabadj\t\tElastic adjustment of tab stops for the current frame"
+	print "\ttab=<width>\t\tWidth of a tab in number of spaces for the current frame"
 else:
 	send("tab=" + sys.argv[1], "prop")

@@ -10,4 +10,10 @@ def send(s):
 
 arg = sys.argv[1] if len(sys.argv) > 1 else "switch"
 
-send("font=" + arg)
+if arg == "help" or arg == "-h":
+	print "Changes the font of the current frame:"
+	print "\tswitch\t\tToggles between main and alt font"
+	print "\tmain\t\tSwitches to main (usually proportional) font"
+	print "\talt\t\t\tSwitches to alt (usually monospaced) font"
+else:
+	send("font=" + arg)
