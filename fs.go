@@ -10,6 +10,7 @@ func FsInit() {
 }
 
 func FsQuit() {
+	HistoryWrite()
 	for i := range jobs {
 		jobKill(i)
 	}

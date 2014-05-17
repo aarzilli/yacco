@@ -2,16 +2,24 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"time"
 	"yacco/buf"
 )
 
-var LogChans = map[string]chan string{}
-
 /*
 https://bitbucket.org/rsc/plan9port/commits/9e531f5eb3ab93ad9a208941f0cf1fab49d3cbf5
 */
+
+var LogChans = map[string]chan string{}
+var History = []HistoryEntry{}
+
+type HistoryEntry struct {
+	When time.Time
+	Cmd  string
+	Dir  string
+}
 
 type LogOperation string
 
@@ -39,4 +47,23 @@ func Log(wid int, op LogOperation, buf *buf.Buffer) {
 		}
 	}
 	t.Stop()
+}
+
+func LogExec(cmd, dir string) {
+	History = append(History, HistoryEntry{time.Now(), cmd, dir})
+}
+
+func HistoryWrite() {
+	fh, err := os.OpenFile(os.ExpandEnv("$HOME/longhistory"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not save history: %v\n", err)
+		return
+	}
+	defer fh.Close()
+
+	pid := os.Getpid()
+
+	for _, h := range History {
+		fmt.Fprintf(fh, "%d %s ### %s %s\n", pid, h.Cmd, h.When.Format("20060102 15:04"), h.Dir)
+	}
 }

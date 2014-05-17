@@ -146,14 +146,17 @@ func execNoDefer(ec ExecContext, cmd string) {
 			xcmd(ec, arg)
 		}
 	} else {
-		ExtExec(ec, cmd)
+		ExtExec(ec, cmd, true)
 	}
 }
 
-func ExtExec(ec ExecContext, cmd string) {
+func ExtExec(ec ExecContext, cmd string, dolog bool) {
 	wd := Wnd.tagbuf.Dir
 	if ec.dir != "" {
 		wd = ec.dir
+	}
+	if dolog {
+		LogExec(cmd, wd)
 	}
 	NewJob(wd, cmd, "", &ec, false, nil)
 }
@@ -835,7 +838,7 @@ func CompileCmd(cmdstr string) func(ec ExecContext) {
 	if !isintl {
 		return func(ec ExecContext) {
 			defer execGuard()
-			ExtExec(ec, cmdstr)
+			ExtExec(ec, cmdstr, false)
 		}
 	} else if cmdname == "Edit" {
 		pgm := edit.Parse([]rune(arg))
