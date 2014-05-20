@@ -47,25 +47,6 @@ type BufferRefreshable interface {
 	BufferRefresh(ontag bool)
 }
 
-type WarnMsg struct {
-	dir      string
-	msg      string
-	selectit bool
-}
-
-type ReplaceMsg struct {
-	ec       *ExecContext
-	sel      *util.Sel
-	append   bool
-	txt      string
-	origin   util.EventOrigin
-	reselect bool
-}
-
-type HighlightMsg struct {
-	b *buf.Buffer
-}
-
 type activeSelStruct struct {
 	ed      *Editor
 	zeroxEd *Editor
@@ -203,7 +184,6 @@ func (w *Window) Resized() {
 func (w *Window) EventLoop() {
 	wndEvents := util.FilterEvents(Wnd.wnd.EventChan(), config.AltingList, config.KeyConversion)
 
-	//events := eventUnion(util.FilterEvents(Wnd.wnd.EventChan(), config.AltingList, config.KeyConversion), sideChan, highlightChan)
 	w.curCursor = DEFAULT_CURSOR
 
 	for {
@@ -217,42 +197,7 @@ func (w *Window) EventLoop() {
 
 		case se := <-sideChan:
 			Wnd.Lock.Lock()
-			switch e := se.(type) {
-			case WarnMsg:
-				if e.dir != "" {
-					Warnfull(filepath.Join(e.dir, "+Error"), e.msg, false, e.selectit)
-				} else {
-					Warnfull("+Error", e.msg, false, e.selectit)
-				}
-
-			case ReplaceMsg:
-				found := false
-				for i := range buffers {
-					if buffers[i] == e.ec.buf {
-						found = true
-					}
-				}
-				if found {
-					HideCompl()
-					sel := e.sel
-					if sel == nil {
-						if e.append {
-							sel = &util.Sel{e.ec.ed.bodybuf.Size(), e.ec.ed.bodybuf.Size()}
-						} else {
-							sel = &e.ec.fr.Sels[0]
-						}
-					}
-					oldS := sel.S
-					e.ec.ed.bodybuf.Replace([]rune(e.txt), sel, true, e.ec.eventChan, e.origin, true)
-					if e.reselect {
-						sel.S = oldS
-					}
-					e.ec.br.BufferRefresh(false)
-				}
-
-			case func():
-				e()
-			}
+			se()
 			Wnd.Lock.Unlock()
 
 		case hbuf := <-highlightChan:
@@ -1303,4 +1248,33 @@ func (w *Window) Dump() DumpWindow {
 		}
 	}
 	return DumpWindow{cols, bufs, w.tagbuf.Dir, string(w.tagbuf.SelectionRunes(util.Sel{w.tagbuf.EditableStart, w.tagbuf.Size()}))}
+}
+
+func ReplaceMsg(ec *ExecContext, esel *util.Sel, append bool, txt string, origin util.EventOrigin, reselect bool) func() {
+	return func() {
+		found := false
+		for i := range buffers {
+			if buffers[i] == ec.buf {
+				found = true
+			}
+		}
+		if !found {
+			return
+		}
+		HideCompl()
+		sel := esel
+		if sel == nil {
+			if append {
+				sel = &util.Sel{ec.ed.bodybuf.Size(), ec.ed.bodybuf.Size()}
+			} else {
+				sel = &ec.fr.Sels[0]
+			}
+		}
+		oldS := sel.S
+		ec.ed.bodybuf.Replace([]rune(txt), sel, true, ec.eventChan, origin, true)
+		if reselect {
+			sel.S = oldS
+		}
+		ec.br.BufferRefresh(false)
+	}
 }

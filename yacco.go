@@ -16,7 +16,7 @@ import (
 
 var Wnd Window
 var buffers []*buf.Buffer = []*buf.Buffer{}
-var sideChan chan interface{}
+var sideChan chan func()
 var AutoDumpPath string
 
 var themeFlag = flag.String("t", "", "Theme to use (standard, evening, midnight, bw)")
@@ -116,7 +116,7 @@ func main() {
 		NewJob(wd, cmd, input, nil, false, resultChan)
 	}
 
-	sideChan = make(chan interface{}, 5)
+	sideChan = make(chan func(), 5)
 
 	FsInit()
 

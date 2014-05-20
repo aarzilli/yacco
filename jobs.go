@@ -138,7 +138,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 				n, err := stdout.Read(bsr)
 				if n > 0 {
 					bs := string(bsr[:n])
-					sideChan <- WarnMsg{job.cmd.Dir, bs, true}
+					sideChan <- WarnMsg(job.cmd.Dir, bs, true)
 				}
 				if err != nil {
 					break
@@ -156,7 +156,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 		}
 		bs := string(bsr)
 		if bs != "" {
-			sideChan <- WarnMsg{job.cmd.Dir, bs, true}
+			sideChan <- WarnMsg(job.cmd.Dir, bs, true)
 		}
 	}()
 
@@ -181,14 +181,14 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 
 		err := job.cmd.Wait()
 		if err != nil {
-			sideChan <- WarnMsg{job.cmd.Dir, "Error executing command: " + job.descr + "\n", false}
+			sideChan <- WarnMsg(job.cmd.Dir, "Error executing command: "+job.descr+"\n", false)
 		}
 
 		if (ec != nil) && job.writeToBuf {
 			if (len(job.outstr) > 0) && (job.outstr[len(job.outstr)-1] != '\n') {
 				job.outstr = job.outstr + "\n"
 			}
-			sideChan <- ReplaceMsg{ec, nil, false, job.outstr, util.EO_BODYTAG, true}
+			sideChan <- ReplaceMsg(ec, nil, false, job.outstr, util.EO_BODYTAG, true)
 		} else if resultChan != nil {
 			resultChan <- job.outstr
 		}
