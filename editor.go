@@ -320,7 +320,7 @@ func (e *Editor) refreshIntl() {
 	e.sfr.Fr.InsertColor(bb)
 }
 
-func (e *Editor) BufferRefreshEx(ontag bool, recur bool) {
+func (e *Editor) BufferRefreshEx(ontag bool, recur, scroll bool) {
 	match := findPMatch(e.tagbuf, e.tagfr.Sels[0])
 	if match.S >= 0 {
 		e.tagfr.Sels[PMATCHSEL] = match
@@ -342,7 +342,7 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur bool) {
 		e.tagfr.Redraw(true)
 	} else {
 		e.refreshIntl()
-		if !e.sfr.Fr.Inside(e.sfr.Fr.Sels[0].E) && recur {
+		if !e.sfr.Fr.Inside(e.sfr.Fr.Sels[0].E) && recur && scroll {
 			x := e.bodybuf.Tonl(e.sfr.Fr.Sels[0].E-2, -1)
 			e.otherSel[OS_TOP].E = x
 			e.refreshIntl()
@@ -366,7 +366,7 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur bool) {
 		for _, col := range Wnd.cols.cols {
 			for _, oe := range col.editors {
 				if (oe.bodybuf == e.bodybuf) && (oe != e) {
-					oe.BufferRefreshEx(false, false)
+					oe.BufferRefreshEx(false, false, false)
 				}
 			}
 		}
@@ -398,7 +398,7 @@ func (e *Editor) tagRecenterIntl() bool {
 }
 
 func (e *Editor) BufferRefresh(ontag bool) {
-	e.BufferRefreshEx(ontag, true)
+	e.BufferRefreshEx(ontag, true, true)
 }
 
 func findPMatch(b *buf.Buffer, sel0 util.Sel) util.Sel {

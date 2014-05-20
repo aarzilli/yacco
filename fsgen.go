@@ -106,7 +106,7 @@ func writeBodyFn(i int, data []byte, off int64) syscall.Errno {
 	if (len(data) == 1) && (data[0] == 0) {
 		sdata = ""
 	}
-	sideChan <- ReplaceMsg(ec, nil, true, sdata, util.EO_BODYTAG, false)
+	sideChan <- ReplaceMsg(ec, nil, true, sdata, util.EO_BODYTAG, false, false)
 	return 0
 }
 
@@ -186,7 +186,7 @@ func writeDataFn(i int, data []byte, off int64) syscall.Errno {
 	if (len(data) == 1) && (data[0] == 0) {
 		sdata = ""
 	}
-	sideChan <- ReplaceMsg(ec, &ec.ed.otherSel[OS_ADDR], false, sdata, util.EO_FILES, false)
+	sideChan <- ReplaceMsg(ec, &ec.ed.otherSel[OS_ADDR], false, sdata, util.EO_FILES, false, false)
 	return 0
 }
 

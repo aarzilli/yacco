@@ -1250,7 +1250,7 @@ func (w *Window) Dump() DumpWindow {
 	return DumpWindow{cols, bufs, w.tagbuf.Dir, string(w.tagbuf.SelectionRunes(util.Sel{w.tagbuf.EditableStart, w.tagbuf.Size()}))}
 }
 
-func ReplaceMsg(ec *ExecContext, esel *util.Sel, append bool, txt string, origin util.EventOrigin, reselect bool) func() {
+func ReplaceMsg(ec *ExecContext, esel *util.Sel, append bool, txt string, origin util.EventOrigin, reselect bool, scroll bool) func() {
 	return func() {
 		found := false
 		for i := range buffers {
@@ -1275,6 +1275,14 @@ func ReplaceMsg(ec *ExecContext, esel *util.Sel, append bool, txt string, origin
 		if reselect {
 			sel.S = oldS
 		}
+		for _, col := range Wnd.cols.cols {
+			for _, e := range col.editors {
+				if e.bodybuf == ec.ed.bodybuf {
+					e.BufferRefreshEx(false, false, scroll)
+				}
+			}
+		}
+
 		ec.br.BufferRefresh(false)
 	}
 }
