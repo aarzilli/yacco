@@ -1282,7 +1282,5 @@ func ReplaceMsg(ec *ExecContext, esel *util.Sel, append bool, txt string, origin
 				}
 			}
 		}
-
-		ec.br.BufferRefresh(false)
 	}
 }
