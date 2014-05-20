@@ -563,7 +563,7 @@ func main() {
 
 	outputReaderDone := make(chan struct{})
 	controlFuncDone := make(chan struct{})
-	controlChan := make(chan interface{}, 5)
+	controlChan := make(chan interface{})
 	go eventReader(controlChan, buf.EventFd)
 	go outputReader(controlChan, pty, outputReaderDone)
 	go controlFunc(cmd, pty, buf, controlChan, controlFuncDone)

@@ -21,13 +21,15 @@ import (
 )
 
 type Window struct {
-	wnd    wde.Window
-	cols   *Cols
-	tagfr  textframe.Frame
-	tagbuf *buf.Buffer
-	Lock   sync.Mutex // fuck it, we don't need no performance!
-	Words  []string
-	Prop   map[string]string
+	wnd       wde.Window
+	cols      *Cols
+	tagfr     textframe.Frame
+	tagbuf    *buf.Buffer
+	Lock      sync.Mutex // fuck it, we don't need no performance!
+	Words     []string
+	Prop      map[string]string
+	curCursor int
+	lastWhere image.Point
 }
 
 type LogicalPos struct {
@@ -198,195 +200,191 @@ func (w *Window) Resized() {
 	w.wnd.FlushImage()
 }
 
-func eventUnion(a <-chan interface{}, b <-chan interface{}, hlChan <-chan *buf.Buffer) <-chan interface{} {
-	out := make(chan interface{})
-
-	go func() {
-		for {
-			select {
-			case v := <-a:
-				out <- v
-			case v := <-b:
-				out <- v
-			case v := <-hlChan:
-				out <- HighlightMsg{v}
-			}
-		}
-	}()
-
-	return out
-}
-
 func (w *Window) EventLoop() {
-	events := eventUnion(util.FilterEvents(Wnd.wnd.EventChan(), config.AltingList, config.KeyConversion), sideChan, highlightChan)
-	var lastWhere image.Point
-	var curCursor = DEFAULT_CURSOR
+	wndEvents := util.FilterEvents(Wnd.wnd.EventChan(), config.AltingList, config.KeyConversion)
 
-	for ei := range events {
+	//events := eventUnion(util.FilterEvents(Wnd.wnd.EventChan(), config.AltingList, config.KeyConversion), sideChan, highlightChan)
+	w.curCursor = DEFAULT_CURSOR
+
+	for {
 		runtime.Gosched()
-		Wnd.Lock.Lock()
-		switch e := ei.(type) {
-		case wde.CloseEvent:
-			HideCompl()
-			FsQuit()
 
-		case wde.ResizeEvent:
-			HideCompl()
-			Wnd.Resized()
+		select {
+		case uie := <-wndEvents:
+			Wnd.Lock.Lock()
+			w.UiEventLoop(uie, wndEvents)
+			Wnd.Lock.Unlock()
 
-		case wde.MouseMovedEvent:
-			if DEFAULT_CURSOR != -1 {
-				lp := w.TranslatePosition(e.Where, false)
-				onframe := false
-				if lp.tagfr != nil {
-					onframe = true
-				} else if lp.sfr != nil {
-					if e.Where.In(lp.sfr.Fr.R) {
-						onframe = true
-					}
-				}
-
-				if onframe {
-					if curCursor != DEFAULT_CURSOR {
-						w.wnd.ChangeCursor(DEFAULT_CURSOR)
-						curCursor = DEFAULT_CURSOR
-					}
+		case se := <-sideChan:
+			Wnd.Lock.Lock()
+			switch e := se.(type) {
+			case WarnMsg:
+				if e.dir != "" {
+					Warnfull(filepath.Join(e.dir, "+Error"), e.msg, false, e.selectit)
 				} else {
-					if curCursor != -1 {
-						w.wnd.ChangeCursor(-1)
-						curCursor = -1
+					Warnfull("+Error", e.msg, false, e.selectit)
+				}
+
+			case ReplaceMsg:
+				found := false
+				for i := range buffers {
+					if buffers[i] == e.ec.buf {
+						found = true
 					}
 				}
-			}
-
-			HideCompl()
-			lastWhere = e.Where
-			Wnd.SetTick(e.Where)
-
-		case util.MouseDownEvent:
-			HideCompl()
-			lastWhere = e.Where
-			lp := w.TranslatePosition(e.Where, true)
-
-			if (lp.tagfr != nil) && lp.notReallyOnTag && (lp.ed != nil) {
-				if lp.ed.specialExitOnReturn {
-					lp.ed.ExitSpecial()
-				}
-				lp = w.TranslatePosition(e.Where, false)
-			}
-
-			if lp.tagfr != nil {
-				ee, could := specialDblClick(lp.tagbuf, lp.tagfr, e, events)
-				if !could {
-					ee = lp.tagfr.OnClick(e, events)
-				}
-				clickExec(lp, e, ee, events)
-				if (lp.tagfr.Sels[0].S == 0) && (lp.tagfr.Sels[0].E == lp.tagbuf.Size()) && (lp.tagbuf.EditableStart >= 0) {
-					lp.tagfr.Sels[0].S = lp.tagbuf.EditableStart
-					lp.tagfr.Redraw(true)
-				}
-				break
-			}
-
-			if lp.sfr != nil {
-				if e.Where.In(lp.sfr.Fr.R) {
-					ee, could := specialDblClick(lp.bodybuf, &lp.sfr.Fr, e, events)
-					if !could {
-						_, ee = lp.sfr.OnClick(e, events)
+				if found {
+					HideCompl()
+					sel := e.sel
+					if sel == nil {
+						if e.append {
+							sel = &util.Sel{e.ec.ed.bodybuf.Size(), e.ec.ed.bodybuf.Size()}
+						} else {
+							sel = &e.ec.fr.Sels[0]
+						}
 					}
-
-					clickExec(lp, e, ee, events)
-				} else {
-					lp.sfr.OnClick(e, events)
-				}
-				break
-			}
-
-			if (lp.ed != nil) && lp.onButton { // clicked on editor's resize handle
-				w.EditorMove(lp.col, lp.ed, e, events)
-				break
-			}
-
-			if lp.col != nil {
-				if lp.onButton { // clicked on column's resize handle
-					w.ColResize(lp.col, e, events)
-				}
-				activeEditor = nil
-				activeCol = lp.col
-			}
-
-		case util.WheelEvent:
-			HideCompl()
-			lp := w.TranslatePosition(e.Where, false)
-			if lp.sfr != nil {
-				if e.Count > 0 {
-					lp.sfr.Fr.Scroll(+1, 3*e.Count)
-				} else {
-					lp.sfr.Fr.Scroll(-1, -3*e.Count)
-				}
-				lp.sfr.Redraw(true)
-			}
-
-		case wde.MouseExitedEvent:
-			Wnd.HideAllTicks()
-
-		case wde.MouseEnteredEvent:
-			HideCompl()
-			lastWhere = e.Where
-			Wnd.SetTick(e.Where)
-
-		case wde.KeyTypedEvent:
-			lp := w.TranslatePosition(lastWhere, true)
-			w.Type(lp, e)
-
-		case WarnMsg:
-			if e.dir != "" {
-				Warnfull(filepath.Join(e.dir, "+Error"), e.msg, false, e.selectit)
-			} else {
-				Warnfull("+Error", e.msg, false, e.selectit)
-			}
-
-		case ReplaceMsg:
-			found := false
-			for i := range buffers {
-				if buffers[i] == e.ec.buf {
-					found = true
-				}
-			}
-			if found {
-				HideCompl()
-				sel := e.sel
-				if sel == nil {
-					if e.append {
-						sel = &util.Sel{e.ec.ed.bodybuf.Size(), e.ec.ed.bodybuf.Size()}
-					} else {
-						sel = &e.ec.fr.Sels[0]
+					oldS := sel.S
+					e.ec.ed.bodybuf.Replace([]rune(e.txt), sel, true, e.ec.eventChan, e.origin, true)
+					if e.reselect {
+						sel.S = oldS
 					}
+					e.ec.br.BufferRefresh(false)
 				}
-				oldS := sel.S
-				e.ec.ed.bodybuf.Replace([]rune(e.txt), sel, true, e.ec.eventChan, e.origin, true)
-				if e.reselect {
-					sel.S = oldS
-				}
-				e.ec.br.BufferRefresh(false)
-			}
 
-		case HighlightMsg:
+			case func():
+				e()
+			}
+			Wnd.Lock.Unlock()
+
+		case hbuf := <-highlightChan:
+			Wnd.Lock.Lock()
 			//println("Highlight refresh")
 			for _, col := range w.cols.cols {
 				for _, ed := range col.editors {
-					if ed.bodybuf == e.b {
+					if ed.bodybuf == hbuf {
 						ed.refreshIntl()
 						ed.sfr.Redraw(true)
 					}
 				}
 			}
-
-		case func():
-			e()
-
+			Wnd.Lock.Unlock()
 		}
-		Wnd.Lock.Unlock()
+	}
+}
+
+func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
+	switch e := ei.(type) {
+	case wde.CloseEvent:
+		HideCompl()
+		FsQuit()
+
+	case wde.ResizeEvent:
+		HideCompl()
+		Wnd.Resized()
+
+	case wde.MouseMovedEvent:
+		if DEFAULT_CURSOR != -1 {
+			lp := w.TranslatePosition(e.Where, false)
+			onframe := false
+			if lp.tagfr != nil {
+				onframe = true
+			} else if lp.sfr != nil {
+				if e.Where.In(lp.sfr.Fr.R) {
+					onframe = true
+				}
+			}
+
+			if onframe {
+				if w.curCursor != DEFAULT_CURSOR {
+					w.wnd.ChangeCursor(DEFAULT_CURSOR)
+					w.curCursor = DEFAULT_CURSOR
+				}
+			} else {
+				if w.curCursor != -1 {
+					w.wnd.ChangeCursor(-1)
+					w.curCursor = -1
+				}
+			}
+		}
+
+		HideCompl()
+		w.lastWhere = e.Where
+		Wnd.SetTick(e.Where)
+
+	case util.MouseDownEvent:
+		HideCompl()
+		w.lastWhere = e.Where
+		lp := w.TranslatePosition(e.Where, true)
+
+		if (lp.tagfr != nil) && lp.notReallyOnTag && (lp.ed != nil) {
+			if lp.ed.specialExitOnReturn {
+				lp.ed.ExitSpecial()
+			}
+			lp = w.TranslatePosition(e.Where, false)
+		}
+
+		if lp.tagfr != nil {
+			ee, could := specialDblClick(lp.tagbuf, lp.tagfr, e, events)
+			if !could {
+				ee = lp.tagfr.OnClick(e, events)
+			}
+			clickExec(lp, e, ee, events)
+			if (lp.tagfr.Sels[0].S == 0) && (lp.tagfr.Sels[0].E == lp.tagbuf.Size()) && (lp.tagbuf.EditableStart >= 0) {
+				lp.tagfr.Sels[0].S = lp.tagbuf.EditableStart
+				lp.tagfr.Redraw(true)
+			}
+			break
+		}
+
+		if lp.sfr != nil {
+			if e.Where.In(lp.sfr.Fr.R) {
+				ee, could := specialDblClick(lp.bodybuf, &lp.sfr.Fr, e, events)
+				if !could {
+					_, ee = lp.sfr.OnClick(e, events)
+				}
+
+				clickExec(lp, e, ee, events)
+			} else {
+				lp.sfr.OnClick(e, events)
+			}
+			break
+		}
+
+		if (lp.ed != nil) && lp.onButton { // clicked on editor's resize handle
+			w.EditorMove(lp.col, lp.ed, e, events)
+			break
+		}
+
+		if lp.col != nil {
+			if lp.onButton { // clicked on column's resize handle
+				w.ColResize(lp.col, e, events)
+			}
+			activeEditor = nil
+			activeCol = lp.col
+		}
+
+	case util.WheelEvent:
+		HideCompl()
+		lp := w.TranslatePosition(e.Where, false)
+		if lp.sfr != nil {
+			if e.Count > 0 {
+				lp.sfr.Fr.Scroll(+1, 3*e.Count)
+			} else {
+				lp.sfr.Fr.Scroll(-1, -3*e.Count)
+			}
+			lp.sfr.Redraw(true)
+		}
+
+	case wde.MouseExitedEvent:
+		Wnd.HideAllTicks()
+
+	case wde.MouseEnteredEvent:
+		HideCompl()
+		w.lastWhere = e.Where
+		Wnd.SetTick(e.Where)
+
+	case wde.KeyTypedEvent:
+		lp := w.TranslatePosition(w.lastWhere, true)
+		w.Type(lp, e)
 	}
 }
 
