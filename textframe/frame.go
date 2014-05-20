@@ -738,9 +738,7 @@ func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *wde.M
 		} else {
 			f.setSelectEx(sel, e.Count, p, p, false)
 		}
-		if e.Count > 1 {
-			f.Redraw(true)
-		}
+		f.Redraw(true)
 		ee := f.Select(sel, e.Count, e.Which, events)
 		f.Redraw(true)
 		return ee
