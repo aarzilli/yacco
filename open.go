@@ -153,7 +153,7 @@ func Warndir(dir, msg string) {
 func WarnMsg(dir, msg string, selectit bool) func() {
 	return func() {
 		if dir != "" {
-			Warnfull(filepath.Join(dir, "+Wrror"), msg, false, selectit)
+			Warnfull(filepath.Join(dir, "+Error"), msg, false, selectit)
 		} else {
 			Warnfull("+Error", msg, false, selectit)
 		}
