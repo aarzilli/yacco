@@ -14,22 +14,24 @@ func indexFileFn(off int64) ([]byte, syscall.Errno) {
 	if off > 0 {
 		return []byte{}, 0
 	}
-	Wnd.Lock.Lock()
-	defer Wnd.Lock.Unlock()
-	t := ""
-	for _, col := range Wnd.cols.cols {
-		for _, ed := range col.editors {
-			idx := bufferIndex(ed.bodybuf)
-			mod := 0
-			if ed.bodybuf.Modified {
-				mod = 1
+	done := make(chan string)
+	sideChan <- func() {
+		t := ""
+		for _, col := range Wnd.cols.cols {
+			for _, ed := range col.editors {
+				idx := bufferIndex(ed.bodybuf)
+				mod := 0
+				if ed.bodybuf.Modified {
+					mod = 1
+				}
+				tc := filepath.Join(ed.bodybuf.Dir, ed.bodybuf.Name)
+				t += fmt.Sprintf("%11d %11d %11d %11d %11d %s\n",
+					idx, ed.tagbuf.Size(), ed.bodybuf.Size(), 0, mod, tc)
 			}
-			tc := filepath.Join(ed.bodybuf.Dir, ed.bodybuf.Name)
-			t += fmt.Sprintf("%11d %11d %11d %11d %11d %s\n",
-				idx, ed.tagbuf.Size(), ed.bodybuf.Size(), 0, mod, tc)
 		}
+		done <- t
 	}
-	return []byte(t), 0
+	return []byte(<-done), 0
 }
 
 func readAddrFn(i int, off int64) ([]byte, syscall.Errno) {
@@ -200,10 +202,9 @@ func writeErrorsFn(i int, data []byte, off int64) syscall.Errno {
 		return syscall.ENOENT
 	}
 
-	Wnd.Lock.Lock()
-	defer Wnd.Lock.Unlock()
-
-	Warndir(ec.buf.Dir, string(data))
+	sideChan <- func() {
+		Warndir(ec.buf.Dir, string(data))
+	}
 
 	return 0
 }
@@ -448,17 +449,20 @@ func openEventsFn(i int) bool {
 		return false
 	}
 
-	Wnd.Lock.Lock()
-	defer Wnd.Lock.Unlock()
+	done := make(chan bool)
+	sideChan <- func() {
+		if ec.ed.eventChan != nil {
+			done <- false
+			return
+		}
 
-	if ec.ed.eventChan != nil {
-		return false
+		ec.ed.eventChan = make(chan string, 10)
+		ec.ed.eventReader.Reset()
+
+		done <- true
 	}
 
-	ec.ed.eventChan = make(chan string, 10)
-	ec.ed.eventReader.Reset()
-
-	return true
+	return <-done
 }
 
 func releaseEventsFn(i int) {

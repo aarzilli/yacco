@@ -132,9 +132,9 @@ func tagsLoad() {
 		newTagWords = append(newTagWords, tag)
 	}
 
-	Wnd.Lock.Lock()
-	tagWords = newTagWords
-	Wnd.Lock.Unlock()
+	sideChan <- func() {
+		tagWords = newTagWords
+	}
 }
 
 func regexpEx2Go(rx string) string {

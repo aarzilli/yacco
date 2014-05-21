@@ -10,7 +10,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 	"yacco/buf"
 	"yacco/config"
@@ -25,7 +24,6 @@ type Window struct {
 	cols      *Cols
 	tagfr     textframe.Frame
 	tagbuf    *buf.Buffer
-	Lock      sync.Mutex // fuck it, we don't need no performance!
 	Words     []string
 	Prop      map[string]string
 	curCursor int
@@ -191,17 +189,12 @@ func (w *Window) EventLoop() {
 
 		select {
 		case uie := <-wndEvents:
-			Wnd.Lock.Lock()
 			w.UiEventLoop(uie, wndEvents)
-			Wnd.Lock.Unlock()
 
 		case se := <-sideChan:
-			Wnd.Lock.Lock()
 			se()
-			Wnd.Lock.Unlock()
 
 		case hbuf := <-highlightChan:
-			Wnd.Lock.Lock()
 			//println("Highlight refresh")
 			for _, col := range w.cols.cols {
 				for _, ed := range col.editors {
@@ -211,7 +204,6 @@ func (w *Window) EventLoop() {
 					}
 				}
 			}
-			Wnd.Lock.Unlock()
 		}
 	}
 }
@@ -312,9 +304,9 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 		lp := w.TranslatePosition(e.Where, false)
 		if lp.sfr != nil {
 			if e.Count > 0 {
-				lp.sfr.Fr.Scroll(+1, 3*e.Count)
+				lp.sfr.Fr.Scroll(+1, 2*e.Count)
 			} else {
-				lp.sfr.Fr.Scroll(-1, -3*e.Count)
+				lp.sfr.Fr.Scroll(-1, -2*e.Count)
 			}
 			lp.sfr.Redraw(true)
 		}

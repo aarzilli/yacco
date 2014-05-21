@@ -67,13 +67,22 @@ var lastNeedle []rune
 
 func lookproc(ec ExecContext) {
 	ch := make(chan string, 5)
-	Wnd.Lock.Lock()
-	if !ec.ed.EnterSpecial(ch, " Look!Quit Look!Prev Look!Again", true) {
-		Wnd.Lock.Unlock()
+
+	exch := make(chan *bool)
+	sideChan <- func() {
+		if !ec.ed.EnterSpecial(ch, " Look!Quit Look!Prev Look!Again", true) {
+			exch <- nil
+			return
+		}
+		b := Wnd.Prop["lookexact"] == "yes"
+		exch <- &b
+	}
+	ee := <-exch
+	if ee == nil {
 		return
 	}
-	exact := Wnd.Prop["lookexact"] == "yes"
-	Wnd.Lock.Unlock()
+	exact := *ee
+
 	needle := []rune{}
 	matches := []util.Sel{}
 	for {
@@ -86,27 +95,25 @@ func lookproc(ec ExecContext) {
 		case '!':
 			switch specialMsg[1:] {
 			case "Again":
-				func() {
-					Wnd.Lock.Lock()
-					defer Wnd.Lock.Unlock()
+				sideChan <- func() {
 					lookfwd(ec.ed, needle, true, false, exact)
 					if ec.fr.Sels[0].S != ec.fr.Sels[0].E {
 						matches = append(matches, ec.fr.Sels[0])
 					}
-				}()
+				}
 			case "Quit":
-				func() {
-					Wnd.Lock.Lock()
-					defer Wnd.Lock.Unlock()
+				sideChan <- func() {
 					ec.ed.ExitSpecial()
 					ec.ed.PushJump()
-				}()
+				}
 			case "Prev":
 				if len(matches) > 1 {
-					ec.fr.Sels[0] = matches[len(matches)-2]
-					matches = matches[:len(matches)-1]
-					ec.ed.BufferRefresh(false)
-					ec.ed.Warp()
+					sideChan <- func() {
+						ec.fr.Sels[0] = matches[len(matches)-2]
+						matches = matches[:len(matches)-1]
+						ec.ed.BufferRefresh(false)
+						ec.ed.Warp()
+					}
 				}
 			}
 		case 'T':
@@ -118,14 +125,12 @@ func lookproc(ec ExecContext) {
 			}
 			needle = newNeedle
 			lastNeedle = needle
-			func() {
-				Wnd.Lock.Lock()
-				defer Wnd.Lock.Unlock()
+			sideChan <- func() {
 				lookfwd(ec.ed, needle, false, false, exact)
 				if doAppend && (ec.fr.Sels[0].S != ec.fr.Sels[0].E) {
 					matches = append(matches, ec.fr.Sels[0])
 				}
-			}()
+			}
 		}
 	}
 }

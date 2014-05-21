@@ -202,18 +202,28 @@ func (fh *NewP9) Create(fid *srv.FFid, name string, perm uint32) (*srv.File, err
 		return nil, &p.Error{"Not a valid name", p.EPERM}
 	}
 
-	Wnd.Lock.Lock()
-	defer Wnd.Lock.Unlock()
+	done := make(chan int)
 
-	ed, err := HeuristicOpen("+New", false, true)
-	if err != nil {
-		return nil, &p.Error{err.Error(), p.EIO}
+	sideChan <- func() {
+		ed, err := HeuristicOpen("+New", false, true)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Could not execute new: %v\n", err.Error())
+			done <- -1
+		} else {
+			done <- bufferIndex(ed.bodybuf)
+		}
 	}
 
-	bufn := fmt.Sprintf("%d", bufferIndex(ed.bodybuf))
+	bidx := <-done
+
+	if bidx < 0 {
+		return nil, &p.Error{"Internal error", p.EIO}
+	}
+
+	bufn := fmt.Sprintf("%d", bidx)
 	bufdir := p9root.Find(bufn)
 	if bufdir == nil {
-		return nil, &p.Error{fmt.Sprintf("Could not find buffer %d: %s", bufn, err.Error()), p.EIO}
+		return nil, &p.Error{fmt.Sprintf("Could not find buffer %d", bufn), p.EIO}
 	}
 
 	file := bufdir.Find(name)

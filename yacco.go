@@ -165,29 +165,34 @@ func removeBuffer(b *buf.Buffer) {
 }
 
 func bufferExecContext(i int) *ExecContext {
-	Wnd.Lock.Lock()
-	defer Wnd.Lock.Unlock()
+	done := make(chan *ExecContext)
 
-	if buffers[i] == nil {
-		return nil
-	}
+	sideChan <- func() {
+		if buffers[i] == nil {
+			done <- nil
+			return
+		}
 
-	for _, col := range Wnd.cols.cols {
-		for _, ed := range col.editors {
-			if ed.bodybuf == buffers[i] {
-				return &ExecContext{
-					col:       col,
-					ed:        ed,
-					br:        ed,
-					ontag:     false,
-					fr:        &ed.sfr.Fr,
-					buf:       ed.bodybuf,
-					eventChan: ed.eventChan,
-					dir:       ed.bodybuf.Dir,
+		for _, col := range Wnd.cols.cols {
+			for _, ed := range col.editors {
+				if ed.bodybuf == buffers[i] {
+					done <- &ExecContext{
+						col:       col,
+						ed:        ed,
+						br:        ed,
+						ontag:     false,
+						fr:        &ed.sfr.Fr,
+						buf:       ed.bodybuf,
+						eventChan: ed.eventChan,
+						dir:       ed.bodybuf.Dir,
+					}
+					return
 				}
 			}
 		}
-	}
 
-	return nil
+		done <- nil
+		return
+	}
+	return <-done
 }
