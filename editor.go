@@ -278,7 +278,7 @@ func (e *Editor) GenTag() {
 
 	if e.specialChan == nil {
 		t += config.DefaultEditorTag
-		if e.bodybuf.Modified {
+		if e.bodybuf.Modified && (e.bodybuf.Name[0] == '+' || e.bodybuf.IsDir()) {
 			t += " Put"
 		}
 		if e.bodybuf.HasUndo() {
