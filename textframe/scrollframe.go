@@ -122,6 +122,7 @@ func (sfr *ScrollFrame) ScrollClick(e util.MouseDownEvent, events <-chan interfa
 	where := e.Where
 	which := e.Which
 	autoscrollTicker := time.NewTicker(100 * time.Millisecond)
+	inertia := 0
 
 	scroll := func() {
 		c := int(float32(where.Y-sfr.r.Min.Y) / float32(sfr.Fr.Font.LineHeightRaster()>>8))
@@ -150,7 +151,11 @@ loop:
 			}
 
 		case <-autoscrollTicker.C:
-			scroll()
+			if inertia > 5 {
+				scroll()
+			} else {
+				inertia++
+			}
 		}
 	}
 
