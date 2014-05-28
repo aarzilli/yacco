@@ -18,8 +18,9 @@ type configObj struct {
 		HideHidden         bool
 		QuoteHack          bool
 	}
-	Fonts          map[string]*configFont
-	Load           *configLoadRules
+	Fonts       map[string]*configFont
+	Load        *configLoadRules
+	KeyBindings *configKeys
 }
 
 var admissibleFonts = []string{"Main", "Tag", "Alt", "Compl"}
@@ -32,6 +33,10 @@ type configFont struct {
 
 type configLoadRules struct {
 	loadRules []util.LoadRule
+}
+
+type configKeys struct {
+	keys map[string]string
 }
 
 func fontFromConf(font configFont) *util.Font {
@@ -48,6 +53,7 @@ func LoadConfiguration(path string) {
 	u := iniparse.NewUnmarshaller()
 	u.Path = path
 	u.AddSpecialUnmarshaller("load", LoadRulesParser)
+	u.AddSpecialUnmarshaller("keybindings", LoadKeysParser)
 
 	fh, err := os.Open(path)
 	if err != nil {
@@ -78,6 +84,10 @@ func LoadConfiguration(path string) {
 
 	if co.Load != nil {
 		LoadRules = co.Load.loadRules
+	}
+
+	if co.KeyBindings != nil {
+		KeyBindings = co.KeyBindings.keys
 	}
 
 	MainFont = fontFromConf(*co.Fonts["Main"])
@@ -128,6 +138,25 @@ func LoadRulesParser(path string, lineno int, lines []string) (interface{}, erro
 			return nil, fmt.Errorf("%s:%d: Malformed line", path, lineno+i)
 		}
 		r.loadRules = append(r.loadRules, util.LoadRule{BufRe: v[0], Re: v[1], Action: v[2]})
+	}
+	return r, nil
+}
+
+func LoadKeysParser(path string, lineno int, lines []string) (interface{}, error) {
+	r := &configKeys{map[string]string{}}
+	for i := range lines {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		if line[0] == ';' || line[0] == '#' {
+			continue
+		}
+		v := strings.SplitN(line, "\t", 2)
+		if len(v) != 2 {
+			return nil, fmt.Errorf("%s:%d: Malformed line (wrong number of fileds)", path, lineno+i)
+		}
+		r.keys[v[0]] = v[1]
 	}
 	return r, nil
 }
