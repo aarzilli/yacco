@@ -54,7 +54,7 @@ func init() {
 	cmds["Look"] = LookCmd
 	cmds["New"] = NewCmd
 	cmds["Newcol"] = NewcolCmd
-	cmds["Paste"] = func(ec ExecContext, arg string) { PasteCmd(ec, arg, false) }
+	cmds["Paste"] = PasteCmd
 	cmds["Put"] = PutCmd
 	cmds["Putall"] = PutallCmd
 	cmds["Redo"] = RedoCmd
@@ -74,8 +74,8 @@ func init() {
 	cmds["Look!Again"] = LookAgainCmd
 	cmds["Look!Quit"] = func(ec ExecContext, arg string) { SpecialSendCmd(ec, "!Quit") }
 	cmds["Look!Prev"] = func(ec ExecContext, arg string) { SpecialSendCmd(ec, "!Prev") }
-	cmds["Paste!Primary"] = func(ec ExecContext, arg string) { PasteCmd(ec, arg, true) }
-	cmds["Paste!Indent"] = PasteIndentCmd
+	/*cmds["Paste!Primary"] = func(ec ExecContext, arg string) { PasteCmd(ec, arg, true) }
+	cmds["Paste!Indent"] = PasteIndentCmd*/
 	cmds["Jump"] = JumpCmd
 	cmds["Getall"] = GetallCmd
 	cmds["Rename"] = RenameCmd
@@ -460,7 +460,7 @@ func NewcolCmd(ec ExecContext, arg string) {
 	Wnd.wnd.FlushImage()
 }
 
-func PasteCmd(ec ExecContext, arg string, primary bool) {
+func PasteCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	if ec.ed != nil {
 		ec.ed.confirmDel = false
@@ -470,11 +470,17 @@ func PasteCmd(ec ExecContext, arg string, primary bool) {
 		return
 	}
 	var cb string
-	if primary {
+
+	switch arg {
+	case "Indent", "indent":
+		PasteIndentCmd(ec, arg)
+		return
+	case "Primary", "primary":
 		cb = Wnd.wnd.GetPrimarySelection()
-	} else {
+	default:
 		cb = Wnd.wnd.GetClipboard()
 	}
+
 	ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE, true)
 	ec.br.BufferRefresh(ec.ontag)
 }

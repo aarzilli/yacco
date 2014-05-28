@@ -944,7 +944,7 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent, event
 				clickExec12(lp, events)
 			} else {
 				if completeClick(events, wde.LeftButton, wde.MiddleButton) {
-					PasteCmd(lp.asExecContext(true), "", false)
+					PasteCmd(lp.asExecContext(true), "")
 				}
 			}
 
