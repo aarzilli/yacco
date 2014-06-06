@@ -1127,9 +1127,9 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 			frame.SetSelect(idx, 1, s, e)
 			redraw(true)
 		} else if expandToTabs {
-			f := func(r rune)bool { return (r == '\t') || (r == '\n') }
+			f := func(r rune) bool { return (r == '\t') || (r == '\n') }
 			s := buf.Tof(sel.S-1, -1, f)
-			e := buf.Tof(sel.S, +1 , f)
+			e := buf.Tof(sel.S, +1, f)
 			frame.SetSelect(0, 1, s, e)
 			frame.SetSelect(idx, 1, s, e)
 			redraw(true)

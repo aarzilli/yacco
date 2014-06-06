@@ -179,9 +179,12 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 			}
 		}
 
+		doneSomething := false
+
 		err := job.cmd.Wait()
 		if err != nil {
 			sideChan <- WarnMsg(job.cmd.Dir, "Error executing command: "+job.descr+"\n", false)
+			doneSomething = true
 		}
 
 		if (ec != nil) && job.writeToBuf {
@@ -189,8 +192,10 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 				job.outstr = job.outstr + "\n"
 			}
 			sideChan <- ReplaceMsg(ec, nil, false, job.outstr, util.EO_BODYTAG, true, true)
+			doneSomething = true
 		} else if resultChan != nil {
 			resultChan <- job.outstr
+			doneSomething = true
 		}
 
 		jobsMutex.Lock()
@@ -199,6 +204,13 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 
 		sideChan <- func() {
 			UpdateJobs(false)
+		}
+
+		if !doneSomething && ec.buf != nil && ec.buf.IsDir() {
+			sideChan <- func() {
+				ec.ed.readDir()
+				ec.ed.BufferRefresh(false)
+			}
 		}
 	}()
 }
