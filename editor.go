@@ -583,7 +583,7 @@ func (e *Editor) readDir() {
 		case fi.Mode()&os.ModeSymlink != 0:
 			n += "@"
 		case fi.Mode()&0111 != 0:
-			n += "*"
+			n = "./" + n
 		}
 		r = append(r, n)
 	}
