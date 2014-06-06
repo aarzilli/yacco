@@ -1082,18 +1082,25 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 
 	var frame *textframe.Frame
 	var buf *buf.Buffer
-	var expandToLine bool
+	var expandToLine, expandToTabs bool
 	var redraw func(bool)
 
 	if lp.sfr != nil {
 		frame = &lp.sfr.Fr
 		buf = lp.bodybuf
-		expandToLine = true
+		if (buf == nil) || !buf.IsDir() {
+			expandToLine = true
+			expandToTabs = false
+		} else {
+			expandToLine = false
+			expandToTabs = true
+		}
 		redraw = lp.sfr.Redraw
 	} else if lp.tagfr != nil {
 		frame = lp.tagfr
 		buf = lp.tagbuf
 		expandToLine = false
+		expandToTabs = false
 		redraw = lp.tagfr.Redraw
 	}
 
@@ -1116,6 +1123,13 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 		if expandToLine {
 			s := buf.Tonl(sel.S-1, -1)
 			e := buf.Tonl(sel.S, +1)
+			frame.SetSelect(0, 1, s, e)
+			frame.SetSelect(idx, 1, s, e)
+			redraw(true)
+		} else if expandToTabs {
+			f := func(r rune)bool { return (r == '\t') || (r == '\n') }
+			s := buf.Tof(sel.S-1, -1, f)
+			e := buf.Tof(sel.S, +1 , f)
 			frame.SetSelect(0, 1, s, e)
 			frame.SetSelect(idx, 1, s, e)
 			redraw(true)

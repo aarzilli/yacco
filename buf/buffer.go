@@ -627,12 +627,17 @@ func (b *Buffer) Towd(start int, dir int, dontForceAdvance bool) int {
 
 // Moves to the beginning or end of a space delimited word
 func (b *Buffer) Tospc(start int, dir int) int {
+	return b.Tof(start, dir, unicode.IsSpace)
+}
+
+// Moves to the first position where f returns true
+func (b *Buffer) Tof(start int, dir int, f func(rune)bool) int {
 	first := (dir < 0)
 	notfirst := !first
 	var i int
 	for i = start; (i >= 0) && (i < b.Size()); i += dir {
 		c := b.At(i).R
-		if unicode.IsSpace(c) {
+		if f(c) {
 			if !first {
 				i++
 			}
@@ -645,6 +650,7 @@ func (b *Buffer) Tospc(start int, dir int) int {
 	}
 	return i
 }
+
 
 // Moves to the beginning or end of something that looks like a file path
 func (b *Buffer) Tofp(start int, dir int) int {
