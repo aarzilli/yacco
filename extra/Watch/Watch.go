@@ -221,7 +221,7 @@ func main() {
 	_, err = buf.CtlFd.Write([]byte("dumpdir " + wd + "\n"))
 	util.Allergic(debug, err)
 
-	util.SetTag(p9clnt, buf.Id, "Jobs Kill Delete Rerun ")
+	util.SetTag(p9clnt, buf.Id, "Kill Delete Rerun ")
 
 	_, err = buf.AddrFd.Write([]byte(","))
 	util.Allergic(debug, err)
