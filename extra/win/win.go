@@ -64,6 +64,9 @@ type NameMsg struct {
 	name string
 }
 
+type ShutDownMsg struct {
+}
+
 func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReaderDone chan struct{}) {
 	bufout := bufio.NewReader(stdout)
 	escseq := []byte{}
@@ -347,8 +350,18 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 		floating = false
 	}
 
+	shuttingDown := false
+
 	for imsg := range controlChan {
+		if shuttingDown {
+			// swallow everything
+			continue
+		}
+
 		switch msg := imsg.(type) {
+		case ShutDownMsg:
+			shuttingDown = true
+
 		case AppendMsg:
 			if !floating {
 				oldPrompt = getPrompt(-1, true, buf)
@@ -584,6 +597,8 @@ func main() {
 	atomic.StoreInt32(&stopping, 1)
 
 	<-outputReaderDone
+	controlChan <- &ShutDownMsg{}
+	time.Sleep(time.Millisecond * 200)
 	close(controlChan)
 	<-controlFuncDone
 
