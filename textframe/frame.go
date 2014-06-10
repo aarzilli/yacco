@@ -118,7 +118,7 @@ func (fr *Frame) ReinitFont() {
 
 func (fr *Frame) initialInsPoint() raster.Point {
 	gb := fr.Font.Bounds()
-	return raster.Point{raster.Fix32(fr.R.Min.X<<8) + raster.Fix32(fr.Offset<<8) + fr.margin, raster.Fix32(fr.R.Min.Y<<8) + raster.Fix32(int32(float64(gb.YMax)*fr.Font.Spacing)<<8)}
+	return raster.Point{raster.Fix32(fr.R.Min.X<<8) + raster.Fix32(fr.Offset<<8) + fr.margin, raster.Fix32(fr.R.Min.Y<<8) + raster.Fix32(int32(fr.Font.SpacingFix(gb.YMax))<<8)}
 }
 
 func (fr *Frame) Clear() {
@@ -584,10 +584,7 @@ func (fr *Frame) drawTick(glyphBounds truetype.Bounds, drawingFuncs DrawingFuncs
 		}
 	}
 
-	h := int(glyphBounds.YMax)
-	if fr.Font.Spacing < 1 {
-		h = int(float64(h) * fr.Font.Spacing)
-	}
+	h := int(fr.Font.SpacingFix(glyphBounds.YMax))
 
 	r := image.Rectangle{
 		Min: image.Point{x, y - h},

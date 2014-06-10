@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"math"
 )
 
 type Font struct {
@@ -17,7 +18,7 @@ type Font struct {
 	pfonts  []*pcf.Pcf
 	dpi     float64
 	Size    float64
-	Spacing float64
+	spacing float64
 }
 
 // Reads a Font: fontPath is a ':' separated list of ttf or pcf font files (they will be used to search characters)
@@ -98,9 +99,13 @@ func (f *Font) LineHeight() int32 {
 	}
 }
 
+func (f *Font) SpacingFix(h int32) float64 {
+	return math.Floor(float64(h) * f.spacing)
+}
+
 func (f *Font) LineHeightRaster() raster.Fix32 {
 	if f.fonts[0] != nil {
-		return f.cs[0].PointToFix32(float64(f.LineHeight()) * f.Spacing)
+		return f.cs[0].PointToFix32(f.SpacingFix(f.LineHeight()))
 	} else {
 		return raster.Fix32(f.pfonts[0].LineAdvance() << 8)
 	}
