@@ -237,13 +237,18 @@ func jobKill(i int) {
 func UpdateJobs(create bool) {
 	jobsMutex.Lock()
 	t := ""
+	n := 0
 	for i, job := range jobs {
 		if job == nil {
 			continue
 		}
 		t += fmt.Sprintf("%d %s\n", i, job.descr)
+		n++
 	}
 	jobsMutex.Unlock()
+
+	Wnd.GenTag()
+	Wnd.BufferRefresh(true)
 
 	ed, _ := EditFind(Wnd.tagbuf.Dir, "+Jobs", false, create)
 	if ed == nil {
@@ -260,4 +265,17 @@ func UpdateJobs(create bool) {
 	} else {
 		ed.BufferRefresh(false)
 	}
+}
+
+func JobsNum() int {
+	jobsMutex.Lock()
+	n := 0
+	for _, job := range jobs {
+		if job == nil {
+			continue
+		}
+		n++
+	}
+	jobsMutex.Unlock()
+	return n
 }

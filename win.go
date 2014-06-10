@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
@@ -1172,7 +1173,13 @@ func (w *Window) GenTag() {
 	pwd, _ := os.Getwd()
 	pwd = util.ShortPath(pwd, false)
 
+	njobs := JobsNum()
+
 	t := pwd + " " + string(config.DefaultWindowTag) + usertext
+	if njobs > 0 {
+		t = fmt.Sprintf("%d", njobs) + " " + t
+	}
+
 	w.tagbuf.EditableStart = -1
 	w.tagbuf.Replace([]rune(t), &w.tagfr.Sels[0], true, nil, 0, true)
 	TagSetEditableStart(w.tagbuf)
