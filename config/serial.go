@@ -29,6 +29,7 @@ type configFont struct {
 	Pixel     int
 	LineScale float64
 	Path      string
+	CopyFrom string
 }
 
 type configLoadRules struct {
@@ -39,7 +40,25 @@ type configKeys struct {
 	keys map[string]string
 }
 
-func fontFromConf(font configFont) *util.Font {
+func fontFromConf(font configFont, Fonts map[string]*configFont) *util.Font {
+	if font.CopyFrom != "" {
+		otherFont := Fonts[font.CopyFrom]
+		if otherFont == nil {
+			panic(fmt.Errorf("Could not copy from font %s (not found)", font.CopyFrom))
+		}
+		if otherFont.CopyFrom != "" {
+			panic(fmt.Errorf("Could not copy from font %s (also a copied font)", font.CopyFrom))
+		}
+		if font.Pixel == 0 {
+			font.Pixel = otherFont.Pixel
+		}
+		if font.LineScale == 0.0 {
+			font.LineScale = otherFont.LineScale
+		}
+		if font.Path == "" {
+			font.Path = otherFont.Path
+		}
+	}
 	return util.MustNewFont(72, float64(font.Pixel), font.LineScale, font.Path)
 }
 
@@ -90,10 +109,10 @@ func LoadConfiguration(path string) {
 		KeyBindings = co.KeyBindings.keys
 	}
 
-	MainFont = fontFromConf(*co.Fonts["Main"])
-	TagFont = fontFromConf(*co.Fonts["Tag"])
-	AltFont = fontFromConf(*co.Fonts["Alt"])
-	ComplFont = fontFromConf(*co.Fonts["Compl"])
+	MainFont = fontFromConf(*co.Fonts["Main"], co.Fonts)
+	TagFont = fontFromConf(*co.Fonts["Tag"], co.Fonts)
+	AltFont = fontFromConf(*co.Fonts["Alt"], co.Fonts)
+	ComplFont = fontFromConf(*co.Fonts["Compl"], co.Fonts)
 	EnableHighlighting = co.Core.EnableHighlighting
 	ServeTCP = co.Core.ServeTCP
 	HideHidden = co.Core.HideHidden
