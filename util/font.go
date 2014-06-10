@@ -134,7 +134,7 @@ func (f *Font) GlyphKerning(fontIdx int, pidx, idx truetype.Index) raster.Fix32 
 func (f *Font) Glyph(fontIdx int, idx truetype.Index, p raster.Point) (mask *image.Alpha, glyphRect image.Rectangle, err error) {
 	var offset image.Point
 	if f.fonts[fontIdx] != nil {
-		mask, offset, err = f.cs[fontIdx].Glyph(idx, p)
+		_, mask, offset, err = f.cs[fontIdx].Glyph(idx, p)
 		if err != nil {
 			return
 		}
