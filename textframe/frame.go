@@ -514,6 +514,8 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform) {
 		s = 0
 	}
 	glyphBounds := fr.Font.Bounds()
+	glyphBounds.YMax = int32(fr.Font.SpacingFix(glyphBounds.YMax))
+	glyphBounds.YMin = int32(fr.Font.SpacingFix(glyphBounds.YMin))
 	rightMargin := raster.Fix32(fr.R.Max.X<<8) - fr.margin
 	leftMargin := raster.Fix32(fr.R.Min.X<<8) + fr.margin
 	drawingFuncs := GetOptimizedDrawing(fr.B)
