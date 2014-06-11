@@ -642,6 +642,8 @@ func (e *Editor) readDir() {
 		}
 	}
 
+	rr = append(rr, "\n")
+
 	e.bodybuf.Replace([]rune(strings.Join(rr, "")), &util.Sel{0, e.bodybuf.Size()}, true, nil, 0, false)
 	e.bodybuf.Modified = false
 	e.bodybuf.UndoReset()
