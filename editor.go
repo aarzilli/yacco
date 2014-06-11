@@ -584,6 +584,10 @@ func (e *Editor) readDir() {
 			n += "@"
 		case fi.Mode()&0111 != 0:
 			n = "./" + n
+		default:
+			if strings.Index(n, " ") >= 0 || strings.Index(n, "\n") >= 0 {
+				n = util.SingleQuote(n)
+			}
 		}
 		r = append(r, n)
 	}
