@@ -28,6 +28,7 @@ type DumpEditor struct {
 	Font    string
 	Special bool
 	TagText string
+	SelS int
 }
 
 type DumpBuffer struct {
@@ -122,6 +123,10 @@ func LoadFrom(dumpDest string) bool {
 			}
 
 			ed.tagbuf.Replace([]rune(de.TagText), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, util.EO_MOUSE, true)
+			if de.SelS != 0 {
+				ed.sfr.Fr.Sels[0].S = de.SelS
+				ed.sfr.Fr.Sels[0].E = de.SelS
+			}
 
 		}
 		for i, de := range dc.Editors {

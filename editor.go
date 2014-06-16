@@ -381,6 +381,17 @@ func (e *Editor) tagRefreshIntl() {
 }
 
 func (e *Editor) tagRecenterIntl() bool {
+	tagtxt := e.tagbuf.SelectionRunes(util.Sel{0, e.tagbuf.Size()})
+	taglen := e.tagfr.Measure(tagtxt)
+	if taglen < e.tagfr.R.Dx()-10 {
+		if e.tagfr.Offset != 0 {
+			e.tagfr.Offset = 0
+			return true
+		} else {
+			return false
+		}
+	}
+
 	p := e.tagfr.PointToCoord(e.tagfr.Sels[0].S)
 	if e.tagfr.Inside(e.tagfr.Sels[0].S) && p.In(e.tagfr.R) {
 		return false
@@ -392,9 +403,12 @@ func (e *Editor) tagRecenterIntl() bool {
 		nm = 0
 	}
 
-	e.tagfr.Offset = nm
-
-	return true
+	if e.tagfr.Offset != nm {
+		e.tagfr.Offset = nm
+		return true
+	} else {
+		return false
+	}
 }
 
 func (e *Editor) BufferRefresh(ontag bool) {
@@ -511,6 +525,7 @@ func (ed *Editor) Dump() DumpEditor {
 		fontName,
 		ed.specialChan != nil,
 		string(ed.tagbuf.SelectionRunes(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()})),
+		ed.sfr.Fr.Sels[0].S,
 	}
 }
 

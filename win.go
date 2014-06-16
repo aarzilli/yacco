@@ -525,6 +525,7 @@ loop:
 				dstcol.AddAfter(ed, dstcol.IndexOf(dsted), float32(dsth)/float32(dsted.Height()))
 				col = dstcol
 			}
+			ed.BufferRefreshEx(true, false, false)
 			w.wnd.FlushImage()
 		}
 	}
