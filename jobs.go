@@ -206,7 +206,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 			UpdateJobs(false)
 		}
 
-		if !doneSomething && ec.buf != nil && ec.buf.IsDir() {
+		if !doneSomething && ec.buf != nil && ec.ed != nil && ec.buf.IsDir() {
 			sideChan <- func() {
 				ec.ed.readDir()
 				ec.ed.BufferRefresh(false)
