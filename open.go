@@ -28,7 +28,7 @@ func EditFind(rel2dir, path string, warp bool, create bool) (*Editor, error) {
 
 	for _, col := range Wnd.cols.cols {
 		for _, ed := range col.editors {
-			if (ed.bodybuf.Name == name) && (ed.bodybuf.Dir == dir) {
+			if ((ed.bodybuf.Name == name) || (ed.bodybuf.Name == name + "/"))&& (ed.bodybuf.Dir == dir) {
 				if ed.frac < 0.5 {
 					Wnd.GrowEditor(col, ed, nil)
 				}
