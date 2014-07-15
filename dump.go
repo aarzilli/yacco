@@ -116,7 +116,7 @@ func LoadFrom(dumpDest string) bool {
 			case "alt":
 				ed.sfr.Fr.Font = config.AltFont
 			}
-			col.AddAfter(ed, -1, 0.5, true)
+			col.AddAfter(ed, -1, 0.5)
 
 			if de.Special && (b.Name == "+LookFile") {
 				lookFile(ed)

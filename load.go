@@ -42,6 +42,7 @@ func Load(ec ExecContext, origin int) {
 			fmt.Printf("Error during Load: %v\n", ierr.(error).Error())
 		}
 	}()
+	//println("\nin load")
 	if ec.buf == nil {
 		return
 	}
@@ -66,6 +67,8 @@ func Load(ec ExecContext, origin int) {
 			s := matches[0]
 			e := matches[1]
 
+			//println("match:", s, e, origin)
+
 			ok := false
 			if origin < 0 {
 				ok = (s == ec.fr.Sels[2].S) && (e == ec.fr.Sels[2].E)
@@ -80,6 +83,7 @@ func Load(ec ExecContext, origin int) {
 					e := matches[2*i+1]
 					strmatches = append(strmatches, string(ec.buf.SelectionRunes(util.Sel{s, e})))
 				}
+				//println("Match:", strmatches[0])
 				if rule.Exec(ec, strmatches, s, e) {
 					return
 				} else {

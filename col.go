@@ -68,10 +68,10 @@ func (c *Col) SetRects(wnd wde.Window, b draw.Image, r image.Rectangle, last boo
 	c.wnd = wnd
 	c.r = r
 	c.b = b
-	c.RecalcRects(last, true)
+	c.RecalcRects(last)
 }
 
-func (c *Col) AddAfter(ed *Editor, n int, h float32, rounding bool) {
+func (c *Col) AddAfter(ed *Editor, n int, h float32) {
 	screen := c.b
 
 	if len(c.editors) == 0 {
@@ -93,11 +93,11 @@ func (c *Col) AddAfter(ed *Editor, n int, h float32, rounding bool) {
 		c.editors[n+1] = ed
 	}
 
-	c.RecalcRects(c.last, rounding)
+	c.RecalcRects(c.last)
 	c.Redraw()
 }
 
-func (c *Col) RecalcRects(last, rounding bool) {
+func (c *Col) RecalcRects(last bool) {
 	screen := c.b
 
 	c.last = last
@@ -147,17 +147,13 @@ func (c *Col) RecalcRects(last, rounding bool) {
 			curh = remh
 			remh = 0
 		} else {
-			if (rounding) {
-				// round to closest number of lines
-				hb := eh - c.editors[i].MinHeight() - 1
-				lh := (c.editors[i].sfr.Fr.Font.LineHeightRaster() >> 8)
-				hb = int(math.Floor((float64(hb)/float64(lh) + 0.5))) * int(lh)
-				curh = hb + c.editors[i].MinHeight() + 1
-				if curh > remh {
-					curh = remh
-				}
-			} else {
-				curh = eh
+			// round to closest number of lines
+			hb := eh - c.editors[i].MinHeight() - 1
+			lh := (c.editors[i].sfr.Fr.Font.LineHeightRaster() >> 8)
+			hb = int(math.Floor((float64(hb)/float64(lh) + 0.5))) * int(lh)
+			curh = hb + c.editors[i].MinHeight() + 1
+			if curh > remh {
+				curh = remh
 			}
 			remh -= curh
 		}
@@ -220,7 +216,7 @@ func (c *Col) IndexOf(ed *Editor) int {
 	return -1
 }
 
-func (c *Col) Remove(i int, rounding bool) {
+func (c *Col) Remove(i int) {
 	if i == 0 {
 		if i+1 < len(c.editors) {
 			c.editors[i+1].frac += c.editors[i].frac
@@ -232,7 +228,7 @@ func (c *Col) Remove(i int, rounding bool) {
 	copy(c.editors[i:], c.editors[i+1:])
 	c.editors = c.editors[:len(c.editors)-1]
 
-	c.RecalcRects(c.last, rounding)
+	c.RecalcRects(c.last)
 	c.Redraw()
 }
 
