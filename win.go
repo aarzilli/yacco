@@ -737,18 +737,28 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 	switch e.Chord {
 	case "escape":
 		HideCompl()
-		if lp.ed != nil {
-			if (lp.ed.specialChan != nil) && lp.ed.specialExitOnReturn {
-				lp.ed.sfr.Fr.VisibleTick = true
-				lp.ed.ExitSpecial()
-				return
-			} else if lp.tagfr != nil {
-				lp.tagfr.Sels[0].E = lp.tagfr.Sels[0].S
-				lp.ed.BufferRefresh(true)
-			} else if lp.sfr != nil {
-				lp.sfr.Fr.Sels[0].E = lp.sfr.Fr.Sels[0].S
-				lp.ed.BufferRefresh(false)
+		if lp.ed != nil && (lp.ed.specialChan != nil) && lp.ed.specialExitOnReturn {
+			lp.ed.sfr.Fr.VisibleTick = true
+			lp.ed.ExitSpecial()
+			return
+		} else if lp.tagfr != nil {
+			if lp.tagfr.Sels[0].S == lp.tagfr.Sels[0].E {
+				lp.tagfr.Sels[0].S = lp.tagbuf.EditableStart
+				lp.tagfr.Sels[0].E = lp.tagbuf.Size()
+			} else {
+				lp.tagfr.Sels[0].S = lp.tagfr.Sels[0].E
 			}
+			if lp.ed != nil {
+				lp.ed.BufferRefresh(true)
+			} else if lp.col != nil {
+				lp.col.BufferRefresh(true)
+			} else {
+				Wnd.BufferRefresh(true)
+			}
+
+		} else if lp.ed != nil && lp.sfr != nil {
+			lp.sfr.Fr.Sels[0].E = lp.sfr.Fr.Sels[0].S
+			lp.ed.BufferRefresh(false)
 		}
 
 	case "return":

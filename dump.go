@@ -28,7 +28,7 @@ type DumpEditor struct {
 	Font    string
 	Special bool
 	TagText string
-	SelS int
+	SelS    int
 }
 
 type DumpBuffer struct {
