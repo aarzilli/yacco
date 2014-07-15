@@ -197,7 +197,7 @@ func DelCmd(ec ExecContext, arg string, confirmed bool) {
 		}
 		Log(bufferIndex(ec.ed.bodybuf), LOP_DEL, ec.ed.bodybuf)
 		col := ec.ed.Column()
-		col.Remove(col.IndexOf(ec.ed))
+		col.Remove(col.IndexOf(ec.ed), true)
 		ec.ed.Close()
 		removeBuffer(ec.ed.bodybuf)
 		Wnd.wnd.FlushImage()
@@ -658,7 +658,7 @@ func SortCmd(ec ExecContext, arg string) {
 	}
 
 	sort.Sort((*Editors)(&ec.col.editors))
-	ec.col.RecalcRects(ec.col.last)
+	ec.col.RecalcRects(ec.col.last, true)
 	ec.col.Redraw()
 	Wnd.wnd.FlushImage()
 }

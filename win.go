@@ -9,12 +9,10 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"time"
 	"yacco/buf"
 	"yacco/config"
-	"yacco/edit"
 	"yacco/edutil"
 	"yacco/textframe"
 	"yacco/util"
@@ -496,10 +494,10 @@ loop:
 					break
 				}
 			}
-
-			col.Remove(col.IndexOf(ed))
-			col.RecalcRects(col.last)
-
+			
+			col.Remove(col.IndexOf(ed), false)
+			col.RecalcRects(col.last, false)
+			
 			mlp := w.TranslatePosition(endPos, true)
 			dstcol := mlp.col
 			dsted := mlp.ed
@@ -513,16 +511,20 @@ loop:
 					dsted = col.editors[0]
 				}
 			}
+			
+			if dstcol != col {
+				col.RecalcRects(col.last, true)
+			}
 
 			if dsted == nil {
-				dstcol.AddAfter(ed, -1, 0.5)
+				dstcol.AddAfter(ed, -1, 0.5, false)
 				col = dstcol
 			} else {
 				dsth := endPos.Y - dsted.r.Min.Y
 				if dsth < 0 {
 					dsth = 0
 				}
-				dstcol.AddAfter(ed, dstcol.IndexOf(dsted), float32(dsth)/float32(dsted.Height()))
+				dstcol.AddAfter(ed, dstcol.IndexOf(dsted), float32(dsth)/float32(dsted.Height()), false)
 				col = dstcol
 			}
 			ed.BufferRefreshEx(true, false, false)
@@ -547,12 +549,16 @@ loop:
 				oed.frac = 0.0
 			}
 			ed.frac = 10.0
-			col.RecalcRects(col.last)
+			col.RecalcRects(col.last, true)
 			p := ed.r.Min
 			w.wnd.WarpMouse(p.Add(d))
 			col.Redraw()
 			w.wnd.FlushImage()
 		}
+	} else {
+		col.RecalcRects(col.last, true)
+		col.Redraw()
+		w.wnd.FlushImage()
 	}
 }
 
@@ -598,7 +604,7 @@ func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
 		}
 	}
 
-	col.RecalcRects(col.last)
+	col.RecalcRects(col.last, true)
 	col.Redraw()
 	w.wnd.FlushImage()
 	if d != nil {
@@ -821,13 +827,10 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		if e.Chord == "prior" {
 			dir = -1
 		}
-		if lp.ed != nil {
+		if lp.ed != nil && lp.sfr != nil {
 			n := int(float32(lp.ed.sfr.Fr.R.Max.Y-lp.ed.sfr.Fr.R.Min.Y)/(2*float32(lp.ed.sfr.Fr.Font.LineHeight()))) + 1
-			addr := edit.AddrList{
-				[]edit.Addr{&edit.AddrBase{"", strconv.Itoa(n), dir},
-					&edit.AddrBase{"#", "0", -1}}}
-			lp.ed.sfr.Fr.Sels[0] = addr.Eval(lp.ed.bodybuf, lp.ed.sfr.Fr.Sels[0])
-			lp.ed.BufferRefresh(false)
+			lp.sfr.Fr.Scroll(dir, n)
+			lp.sfr.Redraw(true)
 		}
 
 	case "tab":
