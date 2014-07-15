@@ -10,7 +10,6 @@ import (
 	"yacco/edutil"
 	"yacco/textframe"
 	"yacco/util"
-	"math"
 )
 
 type Col struct {
@@ -147,14 +146,7 @@ func (c *Col) RecalcRects(last bool) {
 			curh = remh
 			remh = 0
 		} else {
-			// round to closest number of lines
-			hb := eh - c.editors[i].MinHeight() - 1
-			lh := (c.editors[i].sfr.Fr.Font.LineHeightRaster() >> 8)
-			hb = int(math.Floor((float64(hb)/float64(lh) + 0.5))) * int(lh)
-			curh = hb + c.editors[i].MinHeight() + 1
-			if curh > remh {
-				curh = remh
-			}
+			curh = eh
 			remh -= curh
 		}
 
