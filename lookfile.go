@@ -61,6 +61,7 @@ func lookFileIntl(ed *Editor, ch chan string) {
 				}
 			} else {
 				needle := specialMsg[1:]
+				exact := exactMatch([]rune(needle))
 				displayResults(ed, resultList)
 				if needle != oldNeedle {
 					resultList = resultList[0:0]
@@ -68,8 +69,8 @@ func lookFileIntl(ed *Editor, ch chan string) {
 						resultChan = make(chan *lookFileResult, 1)
 						searchDone = make(chan struct{})
 						sideChan <- func() {
-							go fileSystemSearch(ed.tagbuf.Dir, resultChan, searchDone, needle)
-							go tagsSearch(resultChan, searchDone, needle)
+							go fileSystemSearch(ed.tagbuf.Dir, resultChan, searchDone, needle, exact)
+							go tagsSearch(resultChan, searchDone, needle, exact)
 						}
 					} else {
 						displayResults(ed, resultList)
@@ -116,7 +117,7 @@ func displayResults(ed *Editor, resultList []*lookFileResult) {
 	}
 }
 
-func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string) {
+func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool) {
 	x := util.ResolvePath(edDir, needle)
 	startDir := filepath.Dir(x)
 	needle = filepath.Base(x)
@@ -170,7 +171,12 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 			if fi[i].IsDir() {
 				queue = append(queue, filepath.Join(dir, fi[i].Name()))
 			}
-			n := strings.Index(fi[i].Name(), needle)
+			var n int
+			if exact {
+				n = strings.Index(fi[i].Name(), needle)
+			} else {
+				n = strings.Index(strings.ToLower(fi[i].Name()), needle)
+			}
 			if n >= 0 {
 				d := depth
 				if fi[i].IsDir() {
@@ -232,7 +238,7 @@ func indexOf(b []textframe.ColorRune, needle []rune) int {
 	return -1
 }
 
-func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string) {
+func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool) {
 	tagsLoadMaybe()
 
 	tagMu.Lock()
@@ -262,7 +268,12 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 			return
 		}
 
-		match := strings.Index(strings.ToLower(tags[i].tag), needle)
+		var match int
+		if exact {
+			match = strings.Index(tags[i].tag, needle)
+		} else {
+			match = strings.Index(strings.ToLower(tags[i].tag), needle)
+		}
 		if match < 0 {
 			continue
 		}

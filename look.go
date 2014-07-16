@@ -5,18 +5,22 @@ import (
 	"yacco/util"
 )
 
+func exactMatch(needle []rune) bool {
+	for _, r := range needle {
+		if unicode.IsUpper(r) {
+			return true
+		}
+	}
+	return false
+}
+
 func lookfwdEx(ed *Editor, needle []rune, start int, exact bool) bool {
 	if len(needle) <= 0 {
 		return true
 	}
 
 	if !exact {
-		for _, r := range needle {
-			if unicode.IsUpper(r) {
-				exact = true
-				break
-			}
-		}
+		exact = exactMatch(needle)
 	}
 
 	j := 0
