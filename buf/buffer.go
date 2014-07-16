@@ -49,8 +49,9 @@ type Buffer struct {
 
 	RefCount int
 
-	Words    []string
-	updcount int
+	Words       []string
+	WordsUpdate time.Time
+	updcount    int
 
 	EditMark, EditMarkNext bool
 
@@ -158,6 +159,7 @@ func (b *Buffer) Reload(create bool) error {
 		}
 		str := string(bytes)
 		b.Words = util.Dedup(nonwdRe.Split(str, -1))
+		b.WordsUpdate = time.Now()
 		b.ReplaceFull([]rune(str))
 		b.Modified = false
 		b.ul.Reset()
@@ -631,7 +633,7 @@ func (b *Buffer) Tospc(start int, dir int) int {
 }
 
 // Moves to the first position where f returns true
-func (b *Buffer) Tof(start int, dir int, f func(rune)bool) int {
+func (b *Buffer) Tof(start int, dir int, f func(rune) bool) int {
 	first := (dir < 0)
 	notfirst := !first
 	var i int
@@ -650,7 +652,6 @@ func (b *Buffer) Tof(start int, dir int, f func(rune)bool) int {
 	}
 	return i
 }
-
 
 // Moves to the beginning or end of something that looks like a file path
 func (b *Buffer) Tofp(start int, dir int) int {
@@ -777,6 +778,7 @@ func (b *Buffer) UpdateWords() {
 	newWordsA := nonwdRe.Split(sa, -1)
 	newWordsB := nonwdRe.Split(sb, -1)
 	b.Words = util.Dedup(append(newWordsA[:len(newWordsA)-1], newWordsB[:len(newWordsB)-1]...))
+	b.WordsUpdate = time.Now()
 }
 
 func (b *Buffer) Put() error {

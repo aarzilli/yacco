@@ -185,6 +185,8 @@ func (w *Window) EventLoop() {
 
 	w.curCursor = DEFAULT_CURSOR
 
+	lastWordUpdate := time.Now()
+
 	for {
 		runtime.Gosched()
 
@@ -203,6 +205,19 @@ func (w *Window) EventLoop() {
 						ed.refreshIntl()
 						ed.sfr.Redraw(true)
 					}
+				}
+			}
+		}
+
+		// update completions dictionary at least once every 10 minutes
+		if time.Now().Sub(lastWordUpdate) >= time.Duration(10*time.Minute) {
+			lastWordUpdate = time.Now()
+			for i := range buffers {
+				if buffers[i] == nil {
+					continue
+				}
+				if time.Now().Sub(buffers[i].WordsUpdate) >= time.Duration(10*time.Minute) {
+					buffers[i].UpdateWords()
 				}
 			}
 		}
