@@ -138,7 +138,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	util.Must(e.tagfr.Init(5), "Editor initialization failed")
 
 	e.GenTag()
-	e.tagbuf.Replace([]rune("Look Edit "), &util.Sel{e.tagbuf.Size(), e.tagbuf.Size()}, true, nil, util.EO_FILES, false)
+	e.tagbuf.Replace([]rune("Look "), &util.Sel{e.tagbuf.Size(), e.tagbuf.Size()}, true, nil, util.EO_FILES, false)
 	e.tagfr.Sels[0].S = e.tagbuf.Size()
 	e.tagfr.Sels[0].E = e.tagbuf.Size()
 

@@ -1,8 +1,8 @@
 package edit
 
 import (
-	"testing"
 	"fmt"
+	"testing"
 )
 
 func TestSStuck(t *testing.T) {

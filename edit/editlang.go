@@ -3,6 +3,7 @@ package edit
 import (
 	"fmt"
 	"yacco/buf"
+	"yacco/regexp"
 	"yacco/util"
 )
 
@@ -22,6 +23,7 @@ type cmd struct {
 	body      *cmd
 	bodytxt   string
 	fn        func(c *cmd, atsel util.Sel, ec EditContext)
+	sregexp   regexp.Regex
 }
 
 type EditContext struct {
@@ -92,6 +94,11 @@ func (ecmd *cmd) String() string {
 
 	if ecmd.body != nil {
 		s += fmt.Sprintf(" Body<%s>", ecmd.body.String())
+	}
+
+	if ecmd.sregexp != nil {
+		s += fmt.Sprintf("\nCompiled Regex:\n")
+		s += ecmd.sregexp.String()
 	}
 
 	return s

@@ -1,12 +1,15 @@
 package edit
 
 import (
+	"strings"
 	"testing"
 )
 
 func testParsed(t *testing.T, s string, tgt string) {
 	ecmd := Parse([]rune(s))
 	o := ecmd.String()
+	v := strings.SplitN(o, "\n", 2)
+	o = v[0]
 
 	if o != tgt {
 		t.Fatalf("Parsing of <%s> failed:\nGot: %s\nExp: %s\n", s, o, tgt)
@@ -39,7 +42,7 @@ func TestM(t *testing.T) {
 func TestX(t *testing.T) {
 	testParsed(t, ",x/regexp/c/blah/", "Range<Op<0 , $>> Cmd<x> Arg<regexp> Body<Range<.> Cmd<c> Arg<blah>>")
 	testParsed(t, ",xc/blah/", "Range<Op<0 , $>> Cmd<x> Body<Range<.> Cmd<c> Arg<blah>>")
-	testParsed(t, ",x/regexp/g/regexp2/c/blah/", "Range<Op<0 , $>> Cmd<x> Arg<regexp> Body<Range<.> Cmd<g> Arg<regexp2> Body<Range<.> Cmd<c> Arg<blah>>>")
+	testParsed(t, ",x/regexp/g/regexp2/c/blah/", "Range<Op<0 , $>> Cmd<x> Arg<regexp> Body<Range<.> Cmd<g> Arg<regexp2> Body<Range<.> Cmd<c> Arg<blah>>")
 }
 
 func TestSSpacesBug(t *testing.T) {

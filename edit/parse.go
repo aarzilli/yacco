@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+	"yacco/regexp"
 	"yacco/util"
 )
 
@@ -16,6 +17,7 @@ type cmdDef struct {
 	optxtarg bool
 	restargs bool
 	escarg   bool
+	rca1     bool
 	fn       func(c *cmd, atsel util.Sel, ec EditContext)
 }
 
@@ -24,15 +26,15 @@ var commands = map[rune]cmdDef{
 	'c': cmdDef{txtargs: 1, escarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(0, c, atsel, ec) }},
 	'i': cmdDef{txtargs: 1, escarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { inscmdfn(-1, c, atsel, ec) }},
 	'd': cmdDef{txtargs: 0, fn: func(c *cmd, atsel util.Sel, ec EditContext) { c.txtargs = []string{""}; inscmdfn(0, c, atsel, ec) }},
-	's': cmdDef{txtargs: 2, escarg: true, sarg: true, fn: scmdfn},
+	's': cmdDef{txtargs: 2, escarg: true, sarg: true, rca1: true, fn: scmdfn},
 	'm': cmdDef{txtargs: 0, addrarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { mtcmdfn(true, c, atsel, ec) }},
 	't': cmdDef{txtargs: 0, addrarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { mtcmdfn(false, c, atsel, ec) }},
 	'p': cmdDef{txtargs: 0, fn: pcmdfn},
 	'=': cmdDef{txtargs: 0, fn: eqcmdfn},
-	'x': cmdDef{txtargs: 1, bodyarg: true, optxtarg: true, fn: xcmdfn},
-	'y': cmdDef{txtargs: 1, bodyarg: true, fn: ycmdfn},
-	'g': cmdDef{txtargs: 1, bodyarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { gcmdfn(false, c, atsel, ec) }},
-	'v': cmdDef{txtargs: 1, bodyarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { gcmdfn(true, c, atsel, ec) }},
+	'x': cmdDef{txtargs: 1, bodyarg: true, optxtarg: true, rca1: true, fn: xcmdfn},
+	'y': cmdDef{txtargs: 1, bodyarg: true, rca1: true, fn: ycmdfn},
+	'g': cmdDef{txtargs: 1, rca1: true, bodyarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { gcmdfn(false, c, atsel, ec) }},
+	'v': cmdDef{txtargs: 1, rca1: true, bodyarg: true, fn: func(c *cmd, atsel util.Sel, ec EditContext) { gcmdfn(true, c, atsel, ec) }},
 	'<': cmdDef{restargs: true, fn: pipeincmdfn},
 	'>': cmdDef{restargs: true, fn: pipeoutcmdfn},
 	'|': cmdDef{restargs: true, fn: pipecmdfn},
@@ -143,6 +145,12 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*cmd, []run
 		}
 
 		rest = skipSpaces(rest)
+	}
+
+	if theCmdDef.rca1 {
+		if len(r.txtargs) > 0 {
+			r.sregexp = regexp.Compile(r.txtargs[0], true, false)
+		}
 	}
 
 	if theCmdDef.addrarg {

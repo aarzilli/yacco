@@ -2,7 +2,6 @@ package edit
 
 import (
 	"fmt"
-	"yacco/regexp"
 	"yacco/util"
 )
 
@@ -69,7 +68,7 @@ func eqcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 func scmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
 	ec.addrSave[0] = sel
-	re := regexp.Compile(c.txtargs[0], true, false)
+	re := c.sregexp
 	subs := []rune(c.txtargs[1])
 	first := ec.Buf.EditMark
 	count := 0
@@ -110,7 +109,7 @@ func xcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
 	ec.addrSave[0] = sel
 
-	re := regexp.Compile(c.txtargs[0], true, false)
+	re := c.sregexp
 	count := 0
 	ebn := ec.Buf.EditMarkNext
 	ec.Buf.EditMarkNext = false
@@ -141,7 +140,7 @@ func xcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 func ycmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
 	ec.addrSave[0] = sel
-	re := regexp.Compile(c.txtargs[0], true, false)
+	re := c.sregexp
 	count := 0
 	ebn := ec.Buf.EditMarkNext
 	ec.Buf.EditMarkNext = false
@@ -172,7 +171,7 @@ func ycmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 
 func gcmdfn(inv bool, c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
-	re := regexp.Compile(c.txtargs[0], true, false)
+	re := c.sregexp
 	loc := re.Match(ec.Buf, sel.S, sel.E, +1)
 	if (loc == nil) || (loc[0] != sel.S) || (loc[1] != sel.E) {
 		if inv {

@@ -84,6 +84,150 @@ func init() {
 	cmds["LookFile"] = LookFileCmd
 	cmds["Load"] = LoadCmd
 	cmds["Builtin"] = BuiltinCmd
+	cmds["Debug"] = DebugCmd
+	cmds["Help"] = HelpCmd
+}
+
+func HelpCmd(ec ExecContext, arg string) {
+	switch arg {
+	case "Edit":
+		Warn(`
+== Commands ==
+
+<addr>a/<text>/
+	Insert after
+<addr>c/<text>/
+	Replace
+<addr>i/<text>/
+	Insert before
+<addr>d
+	Delete addr
+
+<addr>s[<num>]/<regexp>/<text>/[g]
+	Replace all instances of <regexp> with <text>. If <num> is specified replaces only <num>-th occourence of <regexp>
+
+<addr>m<addr>
+	Move from one address to another
+<addr>t<addr>
+	Swap contents of the two addresses
+	
+<addr>p
+	Print contents of address
+<addr>=
+	Print current line/column
+	
+<addr>x/<regexp>/<command>
+	Executes command for every match of <regexp>
+<addr>y/<regexp>/<command>
+	Executes command for every sequence of text delimited by <regexp>
+<addr>g/<regexp>/<command>
+	Executes command if the address matches <regexp>
+<addr>v/<regexp>/<command>
+	Opposite of g
+
+<addr>"<"<command>	
+<addr>">"<command>	
+<addr>"|"<command>	
+	Executes external commands
+
+<addr>k
+	Saves address as current selection
+	
+== Addresses ==
+The initial <addr> can always be omitted, if it is it will default to "."
+
+Simple Addresses:
+#n			empty string after n-th character
+n			n-th line
+0			the point before the first character of the file
+$			the point after the last character
+#wn		empty string after the n-th word
+#?n			don't use this
+.			whatever is currently selected
+/regexp/
+?regexp?	forward or backward lookup for regexp match
+/@regexp/
+?@regexp?	just like /regexp/ and ?regexp? but suppresses errors
+
+Compound Addresses
+a1+a2		address a2 evaluated starting at the end of a1
+a1-a2		address a2 evaluated looking in the reverse direction starting at the beginning of a1
+a1,a2		substring starting at the start of a1 and ending at the end of a2
+a1;a2		like a1,a2 but with a2 evaluated after a1
+
+For + and - if a2 is missing it defaults to "1", if a1 is missing it defaults to ".".
+For , and ; if a2 is missing it defaults to "$", if a1 is missing it defaults to "0".
+The address "," represents the whole file.
+`)
+	default:
+		Warn(`
+== Files ==
+Get
+Put
+Putall
+Getall
+Exit
+
+== Editing ==
+Undo
+Redo
+Edit <…>		Runs sed-like editing commands, see Help Edit
+Look [<text>]	Search <text> or starts interactive search
+
+== Frames and Columns ==
+New
+Del
+Delete			Like Del but can not be blocked by an attached process
+Newcol
+Delcol
+Zerox			Duplicates current frame
+Sort			Sort frames in current column alphabetically
+Rename <name>
+LookFile			Opens special frame to search and open files interactively
+
+== Clipboard ==
+Cut
+Copy
+Snarf			Same as Copy
+Paste [primary|indent]
+
+== Session ==
+Dump [<name>]	Starts saving session to <name>
+Load [<name>]	Loads session from <name> (omit for a list of sessions)
+
+== Jobs ==
+| <ext. cmd.>	Runs selection through <ext. cmd.> replaces with output
+> <ext. cmd.>	Runs selection through <ext. cmd.>
+< <ext. cmd.>	Replaces selection with output of <ext. cmd.>
+Jobs			Lists currently running jobs
+Kill [<jobnum>]	Kill all jobs (or the one specified)
+Setenv <var> <val>
+Cd <dir>
+
+== External Utilities ==
+E <file>			Edits file
+Watch <cmd>	Executes command every time a file changes in current directory
+win <cmd>		Runs cmd within pty
+y9p				Filesystem interface access
+Font			Toggles alternate font
+Fs				Removes redundant spaces in current file
+Indent			Controls automatic indent and tab key behaviour
+Tab				Controls tab character width
+LookExact		Toggles smart case
+Mount			Invokes p9fuse
+a+, a-			indents/removes indent from selection
+g				recursive grep
+in <dir> <cmd>	execute <cmd> in <dir>
+
+== Misc ==
+Do <…>			Executes sequence of commands, one per line
+Rehash			Recalculates completions
+Send			Inserts clipboard or last selection in buffer
+Builtin <…>		Runs command as builtin (skip attached processes)
+Debug <…>		Run without arguments for informations
+Jump			Cycles through insetion points
+`)
+	}
 }
 
 func fakebuf(name string) bool {
@@ -922,5 +1066,49 @@ func RehashCmd(ec ExecContext, arg string) {
 				buffers[i].UpdateWords()
 			}
 		}
+	}
+}
+
+func DebugCmd(ec ExecContext, arg string) {
+	usage := func() {
+		Warn(`Debug command help:
+Debug trace
+Debug trace
+	Enables/disables trace on Edit errors
+	
+Debug compile <command>
+	Compiles Edit command, shows the result of the compilation
+`)
+	}
+	
+	v := strings.SplitN(arg, " ", 2)
+	
+	if len(v) < 1 {
+		usage()
+		return
+	}
+	
+	switch v[0] {
+	case "trace":
+		if len(v) != 1 {
+			usage()
+			return
+		}
+		config.EditErrorTrace = !config.EditErrorTrace
+		if config.EditErrorTrace {
+			Warn("Trace = on\n")
+		} else {
+			Warn("Trace = off\n")
+		}
+	case "compile":
+		if len(v) != 2 {
+			usage()
+			return
+		}
+		pgm := edit.Parse([]rune(v[1]))
+		Warn(pgm.String())
+	default:
+		usage()
+		return
 	}
 }
