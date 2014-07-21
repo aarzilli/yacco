@@ -543,6 +543,20 @@ func (buf *BufferConn) SetTag(newtag string) error {
 	return SetTag(buf.conn, buf.Id, newtag)
 }
 
+func (buf *BufferConn) GetTag() (string, error) {
+	fh, err := buf.conn.FOpen("/" + buf.Id + "/tag", p.OREAD)
+	if err != nil {
+		return "", err
+	}
+	defer fh.Close()
+	b := make([]byte, 1024)
+	n, err := fh.ReadAt(b, 0)
+	if err != nil {
+		return "", err
+	}
+	return string(b[:n]), nil
+}
+
 func (buf *BufferConn) ReadAddr() ([]int, error) {
 	b := make([]byte, 1024)
 	n, err := buf.AddrFd.ReadAt(b, 0)

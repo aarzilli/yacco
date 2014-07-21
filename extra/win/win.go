@@ -67,6 +67,10 @@ type NameMsg struct {
 type ShutDownMsg struct {
 }
 
+type FuncMsg struct {
+	fn func(buf *util.BufferConn)
+}
+
 func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReaderDone chan struct{}) {
 	bufout := bufio.NewReader(stdout)
 	escseq := []byte{}
@@ -247,9 +251,7 @@ func eventReader(controlChan chan<- interface{}, eventfd io.ReadWriter) {
 				}
 				util.Allergic3(debug, err, isDelSeen())
 			} else {
-				if signal, ok := signalCommands[arg]; ok {
-					controlChan <- SignalMsg{signal}
-				} else {
+				if !winInternalCommand(arg, controlChan) {
 					arg = strings.TrimRight(arg, "\n")
 					controlChan <- UserAppendMsg{[]byte(fmt.Sprintf("%s\n", arg))}
 					controlChan <- ExecUserMsg{-1}
@@ -274,6 +276,48 @@ func eventReader(controlChan chan<- interface{}, eventfd io.ReadWriter) {
 			}
 		}
 	}
+}
+
+func winInternalCommand(cmd string, controlChan chan<- interface{}) bool {
+	if signal, ok := signalCommands[cmd]; ok {
+		controlChan <- SignalMsg{signal}
+		return true
+	}
+
+	switch cmd {
+	case "clear":
+		controlChan <- DeleteAddrMsg{","}
+		return true
+	case "Sigs":
+		controlChan <- FuncMsg{func(buf *util.BufferConn) {
+			ct, err := buf.GetTag()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error changing tag: %v\n", err)
+				return
+			}
+			ctv := strings.SplitN(ct, " | ", 2)
+			cts := ""
+			if len(ctv) >= 2 {
+				cts = ctv[1]
+			}
+
+			if strings.Index(cts, "Sigs ") >= 0 {
+				cts = strings.Replace(cts, "Sigs ", "Sigterm Sigkill Sigint ", 1)
+			} else {
+				cts += " Sigterm Sigkill Sigint "
+			}
+			buf.SetTag(cts)
+		}}
+		return true
+	}
+
+	if strings.Index(cmd, "\"") == 0 {
+		r := historyCmd(cmd)
+		controlChan <- AppendMsg{[]byte(r)}
+		return true
+	}
+
+	return false
 }
 
 func getPrompt(s int, delete bool, buf *util.BufferConn) []byte {
@@ -418,6 +462,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 			if debug {
 				fmt.Printf("Sending: %s", command)
 			}
+			historyAppend(string(command))
 			pty.Write(command)
 
 		case SignalMsg:
@@ -458,6 +503,9 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 
 		case NameMsg:
 			buf.CtlFd.Write([]byte(fmt.Sprintf("name %s/+Win\n", msg.name)))
+
+		case FuncMsg:
+			msg.fn(buf)
 		}
 	}
 
@@ -541,7 +589,7 @@ func main() {
 
 	os.Setenv("bi", buf.Id)
 
-	util.SetTag(p9clnt, buf.Id, "Delete Sigkill Sigint Sigterm ")
+	util.SetTag(p9clnt, buf.Id, "\" Sigs ")
 
 	_, err = buf.AddrFd.Write([]byte(","))
 	util.Allergic3(debug, err, isDelSeen())
