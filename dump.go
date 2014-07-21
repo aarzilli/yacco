@@ -138,7 +138,7 @@ func LoadFrom(dumpDest string) bool {
 		Wnd.cols.cols[i].frac = dc.Frac
 	}
 
-	Wnd.GenTag()
+	Wnd.GenTag(false)
 	Wnd.tagbuf.Replace([]rune(dw.TagText), &util.Sel{Wnd.tagbuf.EditableStart, Wnd.tagbuf.Size()}, true, nil, util.EO_MOUSE, true)
 	Wnd.BufferRefresh(true)
 	Wnd.tagfr.Redraw(true)

@@ -92,13 +92,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 			Scroll:          nil,
 			ExpandSelection: edutil.MakeExpandSelectionFn(e.bodybuf),
 			VisibleTick:     false,
-			Colors: [][]image.Uniform{
-				config.TheColorScheme.EditorPlain,
-				config.TheColorScheme.EditorSel1,                // 0 first button selection
-				config.TheColorScheme.EditorSel2,                // 1 second button selection
-				config.TheColorScheme.EditorSel3,                // 2 third button selection
-				config.TheColorScheme.EditorMatchingParenthesis, // 3 matching parenthesis
-			},
+			Colors: editorColors,
 		},
 	}
 	e.otherSel = make([]util.Sel, NUM_OTHER_SEL)
@@ -114,12 +108,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 		Scroll:          func(sd, sl int) {},
 		ExpandSelection: edutil.MakeExpandSelectionFn(e.tagbuf),
 		VisibleTick:     false,
-		Colors: [][]image.Uniform{
-			config.TheColorScheme.TagPlain,
-			config.TheColorScheme.TagSel1,
-			config.TheColorScheme.TagSel2,
-			config.TheColorScheme.TagSel3,
-			config.TheColorScheme.TagMatchingParenthesis},
+		Colors: tagColors,
 	}
 
 	e.jumps = make([]util.Sel, NUM_JUMPS)

@@ -119,19 +119,14 @@ func (w *Window) Init(width, height int) (err error) {
 		Hackflags:       hf,
 		VisibleTick:     false,
 		Wnd:             w.wnd,
-		Colors: [][]image.Uniform{
-			config.TheColorScheme.TagPlain,
-			config.TheColorScheme.TagSel1,
-			config.TheColorScheme.TagSel2,
-			config.TheColorScheme.TagSel3,
-			config.TheColorScheme.TagMatchingParenthesis},
+		Colors: tagColors,
 	}
 
 	w.tagbuf.AddSels(&w.tagfr.Sels)
 	util.Must(err, "Editor initialization failed")
 	util.Must(w.tagfr.Init(5), "Editor initialization failed")
 
-	w.GenTag()
+	w.GenTag(true)
 
 	w.calcRects(screen)
 
@@ -1187,10 +1182,13 @@ func (w *Window) BufferRefresh(ontag bool) {
 	w.tagfr.Redraw(true)
 }
 
-func (w *Window) GenTag() {
+func (w *Window) GenTag(first bool) {
 	usertext := ""
 	if w.tagbuf.EditableStart >= 0 {
 		usertext = string(w.tagbuf.SelectionRunes(util.Sel{w.tagbuf.EditableStart, w.tagbuf.Size()}))
+	}
+	if first {
+		usertext = "Help"
 	}
 
 	w.tagfr.Sels[0].S = 0

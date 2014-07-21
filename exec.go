@@ -86,6 +86,7 @@ func init() {
 	cmds["Builtin"] = BuiltinCmd
 	cmds["Debug"] = DebugCmd
 	cmds["Help"] = HelpCmd
+	cmds["Theme"] = ThemeCmd
 }
 
 func HelpCmd(ec ExecContext, arg string) {
@@ -912,7 +913,7 @@ func CdCmd(ec ExecContext, arg string) {
 
 	cdIntl(arg)
 
-	Wnd.GenTag()
+	Wnd.GenTag(false)
 
 	pwd, _ := os.Getwd()
 	pwd = util.ShortPath(pwd, false)
@@ -1067,6 +1068,21 @@ func RehashCmd(ec ExecContext, arg string) {
 			}
 		}
 	}
+}
+
+func ThemeCmd(ec ExecContext, arg string) {
+	if arg == "" {
+		Warn(`
+Theme standard
+Theme evening
+Theme evening2
+Theme midnight
+Theme bw
+`)
+		return
+	}
+	setTheme(arg)
+	Wnd.Resized()
 }
 
 func DebugCmd(ec ExecContext, arg string) {

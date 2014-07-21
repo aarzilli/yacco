@@ -187,3 +187,34 @@ var AcmeBWColorScheme = ColorScheme{
 	HandleSpecialFG:  *DGreen,
 	HandleBG:         *image.Black,
 }
+
+var zbbord = *image.NewUniform(color.RGBA{18, 16, 15, 0xff})
+var zbtagbg = *image.NewUniform(color.RGBA{0x15, 0x12, 0x10, 0xFF})
+var zbtagfg = *image.NewUniform(color.RGBA{0x8a, 0x77, 0x6a, 0xFF})
+var zbedbg = *image.NewUniform(color.RGBA{0x18, 0x15, 0x12, 0xFF})
+var zbedfg = *image.NewUniform(color.RGBA{0xbe, 0xa4, 0x92, 0xFF})
+
+var ZenburnColorScheme = ColorScheme{
+	WindowBG: zbbord,
+
+	Border:    zbbord,
+	Scrollbar: zbbord,
+
+	EditorPlain:               []image.Uniform{zbedbg, zbedfg, darkergreen, bluebg},
+	EditorSel1:                []image.Uniform{*image.NewUniform(color.RGBA{0x8a, 0x77, 0x6a, 0xFF}), *image.NewUniform(color.RGBA{0x22, 0x22, 0x22, 0xFF}), darkergreen, *DDarkblue},
+	EditorSel2:                []image.Uniform{redsilver, zbedbg, zbedbg, zbedbg},
+	EditorSel3:                []image.Uniform{greensilver, zbedbg, zbedbg, zbedbg},
+	EditorMatchingParenthesis: []image.Uniform{zbedfg, zbedbg, zbedbg, zbedbg},
+	Compl: []image.Uniform{zbtagbg, zbtagfg},
+
+	TagPlain:               []image.Uniform{zbtagbg, zbtagfg},
+	TagSel1:                []image.Uniform{*image.NewUniform(color.RGBA{0x8a, 0x77, 0x6a, 0xFF}), *image.NewUniform(color.RGBA{0x22, 0x22, 0x22, 0xFF})},
+	TagSel2:                []image.Uniform{col2sel, bluebg},
+	TagSel3:                []image.Uniform{col3sel, bluebg},
+	TagMatchingParenthesis: []image.Uniform{zbtagfg, zbtagbg},
+
+	HandleFG:         zbtagbg,
+	HandleModifiedFG: *image.NewUniform(color.RGBA{0x9f, 0x71, 0x55, 0xFF}),
+	HandleSpecialFG:  *DMedgreen,
+	HandleBG:         zbbord,
+}

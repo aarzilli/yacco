@@ -247,7 +247,7 @@ func UpdateJobs(create bool) {
 	}
 	jobsMutex.Unlock()
 
-	Wnd.GenTag()
+	Wnd.GenTag(false)
 	Wnd.BufferRefresh(true)
 
 	ed, _ := EditFind(Wnd.tagbuf.Dir, "+Jobs", false, create)

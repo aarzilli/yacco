@@ -4,6 +4,7 @@ import (
 	"flag"
 	"github.com/skelterjohn/go.wde"
 	_ "github.com/skelterjohn/go.wde/init"
+	"image"
 	"log"
 	"os"
 	"strconv"
@@ -24,23 +25,54 @@ var dumpFlag = flag.String("d", "", "Dump file to load")
 var sizeFlag = flag.String("s", "", "Size of window")
 var configFlag = flag.String("c", "", "Configuration file (defaults to ~/.config/yacco/rc.json)")
 
-func realmain() {
-	if *themeFlag != "" {
-		switch *themeFlag {
-		default:
-			fallthrough
-		case "standard":
-			config.TheColorScheme = config.AcmeColorScheme
-		case "e", "evening":
-			config.TheColorScheme = config.AcmeEveningColorScheme
-		case "e2", "evening2":
-			config.TheColorScheme = config.AcmeEvening2ColorScheme
-		case "m", "midnight":
-			config.TheColorScheme = config.AcmeMidnightColorScheme
-		case "bw":
-			config.TheColorScheme = config.AcmeBWColorScheme
-		}
+var tagColors = [][]image.Uniform{
+	config.TheColorScheme.TagPlain,
+	config.TheColorScheme.TagSel1,
+	config.TheColorScheme.TagSel2,
+	config.TheColorScheme.TagSel3,
+	config.TheColorScheme.TagMatchingParenthesis,
+}
+var editorColors = [][]image.Uniform{
+	config.TheColorScheme.EditorPlain,
+	config.TheColorScheme.EditorSel1,                // 0 first button selection
+	config.TheColorScheme.EditorSel2,                // 1 second button selection
+	config.TheColorScheme.EditorSel3,                // 2 third button selection
+	config.TheColorScheme.EditorMatchingParenthesis, // 3 matching parenthesis
+}
+
+func setTheme(t string) {
+	switch t {
+	default:
+		fallthrough
+	case "standard":
+		config.TheColorScheme = config.AcmeColorScheme
+	case "e", "evening":
+		config.TheColorScheme = config.AcmeEveningColorScheme
+	case "e2", "evening2":
+		config.TheColorScheme = config.AcmeEvening2ColorScheme
+	case "m", "midnight":
+		config.TheColorScheme = config.AcmeMidnightColorScheme
+	case "bw":
+		config.TheColorScheme = config.AcmeBWColorScheme
+	case "zb":
+		config.TheColorScheme = config.ZenburnColorScheme
 	}
+
+	tagColors[0] = config.TheColorScheme.TagPlain
+	tagColors[1] = config.TheColorScheme.TagSel1
+	tagColors[2] = config.TheColorScheme.TagSel2
+	tagColors[3] = config.TheColorScheme.TagSel3
+	tagColors[4] = config.TheColorScheme.TagMatchingParenthesis
+
+	editorColors[0] = config.TheColorScheme.EditorPlain
+	editorColors[1] = config.TheColorScheme.EditorSel1
+	editorColors[2] = config.TheColorScheme.EditorSel2
+	editorColors[3] = config.TheColorScheme.EditorSel3
+	editorColors[4] = config.TheColorScheme.EditorMatchingParenthesis
+}
+
+func realmain() {
+	setTheme(*themeFlag)
 
 	width := 640
 	height := 480
