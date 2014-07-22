@@ -123,13 +123,17 @@ func realmain() {
 		}
 	}
 
+	startWinTag := "Help"
+
 	if !hasarg {
 		EditFind(wd, ".", false, false)
 		LoadCmd(ExecContext{}, "")
 	} else if len(flag.Args()) == 1 {
-		Wnd.tagbuf.Replace([]rune("Load"), &util.Sel{Wnd.tagbuf.Size(), Wnd.tagbuf.Size()}, true, nil, 0, true)
-		Wnd.BufferRefresh(true)
+		startWinTag += " Load"
 	}
+
+	Wnd.tagbuf.Replace([]rune(startWinTag), &util.Sel{Wnd.tagbuf.Size(), Wnd.tagbuf.Size()}, true, nil, 0, true)
+	Wnd.BufferRefresh(true)
 
 	Wnd.wnd.FlushImage()
 

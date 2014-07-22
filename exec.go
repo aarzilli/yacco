@@ -913,7 +913,7 @@ func CdCmd(ec ExecContext, arg string) {
 
 	cdIntl(arg)
 
-	Wnd.GenTag(false)
+	Wnd.GenTag()
 
 	pwd, _ := os.Getwd()
 	pwd = util.ShortPath(pwd, false)
@@ -1096,14 +1096,14 @@ Debug compile <command>
 	Compiles Edit command, shows the result of the compilation
 `)
 	}
-	
+
 	v := strings.SplitN(arg, " ", 2)
-	
+
 	if len(v) < 1 {
 		usage()
 		return
 	}
-	
+
 	switch v[0] {
 	case "trace":
 		if len(v) != 1 {

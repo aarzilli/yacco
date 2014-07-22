@@ -48,7 +48,7 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 		Scroll:          func(sd, sl int) {},
 		ExpandSelection: edutil.MakeExpandSelectionFn(c.tagbuf),
 		VisibleTick:     false,
-		Colors: tagColors,
+		Colors:          tagColors,
 	}
 	util.Must(c.tagfr.Init(5), "Column initialization failed")
 

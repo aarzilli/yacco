@@ -92,7 +92,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 			Scroll:          nil,
 			ExpandSelection: edutil.MakeExpandSelectionFn(e.bodybuf),
 			VisibleTick:     false,
-			Colors: editorColors,
+			Colors:          editorColors,
 		},
 	}
 	e.otherSel = make([]util.Sel, NUM_OTHER_SEL)
@@ -108,7 +108,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 		Scroll:          func(sd, sl int) {},
 		ExpandSelection: edutil.MakeExpandSelectionFn(e.tagbuf),
 		VisibleTick:     false,
-		Colors: tagColors,
+		Colors:          tagColors,
 	}
 
 	e.jumps = make([]util.Sel, NUM_JUMPS)
