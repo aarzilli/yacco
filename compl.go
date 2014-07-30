@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
+	"time"
 	"yacco/config"
 	"yacco/textframe"
 	"yacco/util"
@@ -146,7 +148,7 @@ func ComplStart(ec ExecContext) {
 			resName = filepath.Base(resPath)
 		}
 
-		compls = append(compls, getFsCompls(resDir, resName)...)
+		compls = append(compls, getFsComplsMaybe(resDir, resName)...)
 		hasFp = len(compls) > 0
 		//println("after dir:", len(compls))
 	}
@@ -224,6 +226,40 @@ func ComplStart(ec ExecContext) {
 	}
 }
 
+var fsComplRunning = map[string]bool{}
+var fsComplRunningLock sync.Mutex
+
+// returns completions for resName files in resDir, but bails out if reading the directory is too slow
+func getFsComplsMaybe(resDir, resName string) []string {
+	fsComplRunningLock.Lock()
+	if _, ok := fsComplRunning[resDir]; ok {
+		fsComplRunningLock.Unlock()
+		println("Skipping busy")
+		return []string{}
+	}
+	fsComplRunning[resDir] = true
+	fsComplRunningLock.Unlock()
+
+	done := make(chan []string)
+	t := time.NewTimer(200 * time.Millisecond)
+
+	go func() {
+		fscompls := getFsCompls(resDir, resName)
+		fsComplRunningLock.Lock()
+		delete(fsComplRunning, resDir)
+		fsComplRunningLock.Unlock()
+		done <- fscompls
+	}()
+
+	select {
+	case fscompls := <-done:
+		return fscompls
+	case <-t.C:
+		println("Failed")
+		return []string{}
+	}
+}
+
 func getComplWords(ec ExecContext) (fpwd, wdwd string) {
 	fs := ec.buf.Tofp(ec.fr.Sels[0].S-1, -1)
 	if ec.fr.Sels[0].S-fs >= 2 {
@@ -239,7 +275,6 @@ func getComplWords(ec ExecContext) (fpwd, wdwd string) {
 }
 
 func getFsCompls(resDir, resName string) []string {
-
 	//println("\tFs:", resDir, resName)
 
 	fh, err := os.Open(resDir)

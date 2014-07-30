@@ -323,10 +323,10 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 		}
 
 	case wde.MouseExitedEvent:
-		Wnd.HideAllTicks()
+		//Wnd.HideAllTicks()
 
 	case wde.MouseEnteredEvent:
-		HideCompl()
+		//HideCompl()
 		w.lastWhere = e.Where
 		Wnd.SetTick(e.Where)
 
