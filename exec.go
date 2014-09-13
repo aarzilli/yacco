@@ -1089,7 +1089,6 @@ func DebugCmd(ec ExecContext, arg string) {
 	usage := func() {
 		Warn(`Debug command help:
 Debug trace
-Debug trace
 	Enables/disables trace on Edit errors
 	
 Debug compile <command>

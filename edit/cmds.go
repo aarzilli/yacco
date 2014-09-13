@@ -3,10 +3,11 @@ package edit
 import (
 	"fmt"
 	"yacco/util"
+	"yacco/buf"
 )
 
 var Warnfn func(msg string)
-var NewJob func(wd, cmd, input string, resultChan chan<- string)
+var NewJob func(wd, cmd, input string, buf *buf.Buffer, resultChan chan<- string)
 
 const LOOP_LIMIT = 2000
 
@@ -186,7 +187,7 @@ func gcmdfn(inv bool, c *cmd, atsel util.Sel, ec EditContext) {
 
 func pipeincmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	resultChan := make(chan string)
-	NewJob(ec.Buf.Dir, c.bodytxt, "", resultChan)
+	NewJob(ec.Buf.Dir, c.bodytxt, "", ec.Buf, resultChan)
 	str := <-resultChan
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
 	ec.Buf.Replace([]rune(str), &sel, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE, true)
@@ -196,14 +197,14 @@ func pipeincmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 func pipeoutcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
 	str := string(ec.Buf.SelectionRunes(sel))
-	NewJob(ec.Buf.Dir, c.bodytxt, str, nil)
+	NewJob(ec.Buf.Dir, c.bodytxt, str, ec.Buf, nil)
 }
 
 func pipecmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, atsel)
 	str := string(ec.Buf.SelectionRunes(sel))
 	resultChan := make(chan string)
-	NewJob(ec.Buf.Dir, c.bodytxt, str, resultChan)
+	NewJob(ec.Buf.Dir, c.bodytxt, str, ec.Buf, resultChan)
 	str = <-resultChan
 	ec.Buf.Replace([]rune(str), &sel, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE, true)
 	ec.Buf.EditMark = ec.Buf.EditMarkNext

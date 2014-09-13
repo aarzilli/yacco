@@ -148,8 +148,8 @@ func main() {
 	KeysInit()
 
 	edit.Warnfn = Warn
-	edit.NewJob = func(wd, cmd, input string, resultChan chan<- string) {
-		NewJob(wd, cmd, input, nil, false, resultChan)
+	edit.NewJob = func(wd, cmd, input string, buf *buf.Buffer, resultChan chan<- string) {
+		NewJob(wd, cmd, input, &ExecContext{ buf: buf }, false, resultChan)
 	}
 
 	sideChan = make(chan func(), 5)

@@ -206,7 +206,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 			UpdateJobs(false)
 		}
 
-		if !doneSomething && ec.buf != nil && ec.ed != nil && ec.buf.IsDir() {
+		if !doneSomething && ec != nil && ec.buf != nil && ec.ed != nil && ec.buf.IsDir() {
 			sideChan <- func() {
 				found := false
 				editor_search:
