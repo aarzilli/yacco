@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cc=$(comment_char.sh)
+
+sed "s:^:$cc:"

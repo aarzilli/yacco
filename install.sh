@@ -7,7 +7,7 @@ cp -f extra/E/E $1/yaccodir/E
 cp -f extra/Watch/Watch $1/yaccodir/Watch
 cp -f extra/y9p/y9p $1/yaccodir/y9p
 cp -f bin/yacco $1/yaccodir/yacco
-for scpt in m g a+ a- Font Indent Tab Mount Fs in LookExact; do
+for scpt in m g a+ a- Font Indent Tab Mount Fs in LookExact comment_char.sh c+ c-; do
 	cp -f extra/$scpt $1/yaccodir/$scpt
 	chmod u+x $1/yaccodir/$scpt
 done
