@@ -208,15 +208,26 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 
 		if !doneSomething && ec.buf != nil && ec.ed != nil && ec.buf.IsDir() {
 			sideChan <- func() {
-				ec.ed.readDir()
-				ec.ed.BufferRefresh(false)
+				found := false
+				editor_search:
+				for i := range Wnd.cols.cols {
+					for j := range Wnd.cols.cols[i].editors {
+						if Wnd.cols.cols[i].editors[j] == ec.ed {
+							found = true
+							break editor_search
+						}
+					}
+				}
+				if found {
+					ec.ed.readDir()
+					ec.ed.BufferRefresh(false)
+				}
 			}
 		}
 	}()
 }
 
 func easyCommand(cmd string) bool {
-
 	for _, c := range cmd {
 		switch c {
 		case '#', ';', '&', '|', '^', '$', '=', '\'', '`', '{', '}', '(', ')', '<', '>', '[', ']', '*', '?', '~':
