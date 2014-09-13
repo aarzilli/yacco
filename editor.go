@@ -590,7 +590,7 @@ func (e *Editor) readDir() {
 		case fi.Mode()&0111 != 0:
 			n = "./" + n
 		default:
-			if strings.Index(n, " ") >= 0 || strings.Index(n, "\n") >= 0 {
+			if strings.Index(n, " ") >= 0 || strings.Index(n, "\n") >= 0 || !easyCommand(n) {
 				n = util.SingleQuote(n)
 			}
 		}
