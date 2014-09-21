@@ -28,7 +28,9 @@ func inscmdfn(dir int, c *cmd, atsel util.Sel, ec EditContext) {
 	ec.Buf.Replace([]rune(c.txtargs[0]), &sel, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE, false)
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 
-	ec.Sels[0] = sel
+	if c.cmdch == 'c' {
+		ec.Sels[0] = sel
+	}
 }
 
 func mtcmdfn(del bool, c *cmd, atsel util.Sel, ec EditContext) {
@@ -83,7 +85,8 @@ func scmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 		}
 		sel = util.Sel{loc[0], loc[1]}
 		if globalrepl || (c.numarg == nmatch) {
-			ec.Buf.Replace(subs, &sel, first, ec.EventChan, util.EO_MOUSE, false)
+			realSubs := resolveBackreferences(subs, ec.Buf, loc)
+			ec.Buf.Replace(realSubs, &sel, first, ec.EventChan, util.EO_MOUSE, false)
 			if !globalrepl {
 				break
 			}
@@ -104,6 +107,45 @@ func scmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	}
 	ec.Sels[0] = ec.addrSave[0]
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
+}
+
+func resolveBackreferences(subs []rune, b *buf.Buffer, loc []int) []rune {
+	var r []rune = nil
+	initR := func(src int) {
+		r = make([]rune, src, len(subs))
+		copy(r, subs[:src])
+	}
+	for src := 0; src < len(subs); src++ {
+		if (subs[src] == '\\') && (src+1 < len(subs)) {
+			switch subs[src+1] {
+			case '1', '2', '3', '4', '5', '6', '7', '8', '9':
+				if r == nil {
+					initR(src)
+				}
+				n := int(subs[src+1] - '0')
+				if 2*n+1 < len(loc) {
+					r = append(r, b.SelectionRunes(util.Sel{ loc[2*n], loc[2*n+1] })...)
+				} else {
+					panic(fmt.Errorf("Nonexistent backreference %d (%d)", n, len(loc)))
+				}
+				src++
+			case '\\':
+				if r == nil {
+					initR(src)
+				}
+				r = append(r, '\\')
+				src++
+			default:
+				//do nothing
+			}
+		} else if r != nil {
+			r = append(r, subs[src])
+		}
+	}
+	if r != nil {
+		return r
+	}
+	return subs
 }
 
 func xcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
@@ -130,6 +172,7 @@ func xcmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 		ec.Sels[0] = sel
 		c.body.fn(c.body, sel, ec)
 		sel.S = ec.Sels[0].E
+		sel.E = ec.Sels[0].E
 		count++
 		if count > LOOP_LIMIT {
 			Warnfn("x/y loop seems stuck\n")

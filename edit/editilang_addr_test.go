@@ -9,6 +9,9 @@ import (
 )
 
 func testEdit(t *testing.T, input, pgm, target string) {
+	Warnfn = func(s string) {
+		fmt.Println(s)
+	}
 	s := strings.Index(input, "<")
 	input = input[:s] + input[s+1:]
 	e := strings.Index(input, ">")

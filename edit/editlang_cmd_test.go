@@ -1,7 +1,6 @@
 package edit
 
 import (
-	"fmt"
 	"testing"
 )
 
@@ -35,6 +34,18 @@ func TestSEOLAppend(t *testing.T) {
 }
 
 func TestGBug(t *testing.T) {
-	fmt.Printf("TestGBug\n")
 	testEdit(t, "<bip i bang iii baip i bop>", `x/\w+/g/i/c/na/`, "<bip na bang iii baip na bop>")
+}
+
+func TestSWithBackrefEdit(t *testing.T) {
+	testEdit(t, "<01 12 23 34 45 56 67 78 89 9A AB BC CD DE EF\n>", `s/(\S\S)/0x\1/`, "<0x01 0x12 0x23 0x34 0x45 0x56 0x67 0x78 0x89 0x9A 0xAB 0xBC 0xCD 0xDE 0xEF\n>")
+}
+
+func TestXWithIEdit(t *testing.T) {
+	testEdit(t, "<01 12 23 34 45 56 67 78 89 9A AB BC CD DE EF\n>", `x/\S\S/i/0x/`, "<0x01 0x12 0x23 0x34 0x45 0x56 0x67 0x78 0x89 0x9A 0xAB 0xBC 0xCD 0xDE 0xEF\n>")
+	testEdit(t, "<01 12 23 34 45 56 67 78 89 9A AB BC CD DE EF\n>", `x/\S\S/a/,/`, "<01, 12, 23, 34, 45, 56, 67, 78, 89, 9A, AB, BC, CD, DE, EF,\n>")
+}
+
+func TestXOmit(t *testing.T) {
+	testEdit(t, "<bip i bang iii baip i bop>", `xg/i/c/na/`, "<bip na bang iii baip na bop>")
 }

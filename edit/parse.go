@@ -123,7 +123,7 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*cmd, []run
 			rest = skipSpaces(rest)
 		} else {
 			if !theCmdDef.optxtarg {
-				panic(fmt.Errorf("Expected argument to %c but character %c found", cmdch, rest[0]))
+				panic(fmt.Errorf("Expected argument to '%c' but character '%c' found", cmdch, rest[0]))
 			}
 		}
 	}
@@ -150,6 +150,8 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*cmd, []run
 	if theCmdDef.rca1 {
 		if len(r.txtargs) > 0 {
 			r.sregexp = regexp.Compile(r.txtargs[0], true, false)
+		} else if theCmdDef.optxtarg {
+			r.sregexp = regexp.Compile(`\w+`, true, false)
 		}
 	}
 
@@ -209,7 +211,7 @@ func readAddressTok(pgm []rune) (addrTok, []rune) {
 		return addrTok(n), rest
 	}
 
-	panic(fmt.Errorf("Unexpected character %c while parsing <%s>", pgm[0], pgm))
+	panic(fmt.Errorf("Unexpected character '%c' while parsing <%s>", pgm[0], string(pgm)))
 }
 
 func readNumber(rest []rune) (string, []rune) {
@@ -264,7 +266,7 @@ func readDelim(pgm []rune, endr rune, unescape bool) (string, []rune) {
 			escaping = false
 		}
 	}
-	panic(fmt.Errorf("Could not find matching %c while parsing <%s>", endr, string(pgm)))
+	panic(fmt.Errorf("Could not find matching '%c' while parsing <%s>", endr, string(pgm)))
 }
 
 func parseAddr(addrs []addrTok) Addr {
