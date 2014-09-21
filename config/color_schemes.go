@@ -47,14 +47,16 @@ func mix(color1 color.RGBA, color3 color.RGBA) image.Uniform {
 	return *image.NewUniform(color2)
 }
 
+var blahcol = *image.NewUniform(color.RGBA{ 0x78, 0x00, 0x3e, 0xff })
+
 var AcmeColorScheme = ColorScheme{
 	WindowBG: *image.White,
 
 	Border:    *image.Black,
 	Scrollbar: *image.NewUniform(color.RGBA{153, 153, 76, 0xff}),
 
-	EditorPlain:               []image.Uniform{yellowbg, *image.Black, darkergreen, *DDarkblue},
-	EditorSel1:                []image.Uniform{*DDarkyellow, *image.Black, darkergreen, *DDarkblue},
+	EditorPlain:               []image.Uniform{yellowbg, *image.Black, blahcol, *DDarkblue},
+	EditorSel1:                []image.Uniform{*DDarkyellow, *image.Black, blahcol, *DDarkblue},
 	EditorSel2:                []image.Uniform{col2sel, yellowbg, yellowbg, yellowbg},
 	EditorSel3:                []image.Uniform{col3sel, yellowbg, yellowbg, yellowbg},
 	EditorMatchingParenthesis: []image.Uniform{*image.Black, yellowbg, yellowbg, yellowbg},
