@@ -24,9 +24,13 @@ func indexFileFn(off int64) ([]byte, syscall.Errno) {
 				if ed.bodybuf.Modified {
 					mod = 1
 				}
+				dir := 0
+				if ed.bodybuf.IsDir() {
+					dir = 1
+				}
 				tc := filepath.Join(ed.bodybuf.Dir, ed.bodybuf.Name)
 				t += fmt.Sprintf("%11d %11d %11d %11d %11d %s\n",
-					idx, ed.tagbuf.Size(), ed.bodybuf.Size(), 0, mod, tc)
+					idx, ed.tagbuf.Size(), ed.bodybuf.Size(), dir, mod, tc)
 			}
 		}
 		done <- t
