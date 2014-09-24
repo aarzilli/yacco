@@ -310,6 +310,19 @@ func BuiltinCmd(ec ExecContext, arg string) {
 	execNoDefer(ec, arg)
 }
 
+func col2active(ec *ExecContext) {
+	if activeSel.zeroxEd == nil {
+		return
+	}
+
+	ec.ed = activeSel.zeroxEd
+	ec.br = activeSel.zeroxEd
+	ec.ontag = false
+	ec.fr = &ec.ed.sfr.Fr
+	ec.buf = ec.ed.bodybuf
+	ec.dir = ec.ed.bodybuf.Dir
+}
+
 func CopyCmd(ec ExecContext, arg string, del bool) {
 	exitConfirmed = false
 	if ec.ed != nil {
@@ -840,6 +853,7 @@ func ZeroxCmd(ec ExecContext, arg string) {
 
 func PipeCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
+	col2active(&ec)
 	if ec.ed == nil {
 		return
 	}
@@ -856,6 +870,7 @@ func PipeCmd(ec ExecContext, arg string) {
 
 func PipeInCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
+	col2active(&ec)
 	if ec.ed == nil {
 		return
 	}
@@ -872,6 +887,7 @@ func PipeInCmd(ec ExecContext, arg string) {
 
 func PipeOutCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
+	col2active(&ec)
 	if ec.ed == nil {
 		return
 	}
