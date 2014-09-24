@@ -1054,6 +1054,9 @@ func RenameCmd(ec ExecContext, arg string) {
 	abspath := util.ResolvePath(ec.buf.Dir, newName)
 	ec.buf.Name = filepath.Base(abspath)
 	ec.buf.Dir = filepath.Dir(abspath)
+	if newName[len(newName)-1] == '/' {
+		ec.buf.Name += "/"
+	}
 	ec.buf.Modified = true
 	ec.br.BufferRefresh(false)
 }

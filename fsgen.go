@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -304,6 +305,9 @@ func readMainPropFn(off int64) ([]byte, syscall.Errno) {
 	for k, v := range Wnd.Prop {
 		s += k + "=" + v + "\n"
 	}
+
+	wd, _ := os.Getwd()
+	s += "cwd=" + wd + "\n"
 	return []byte(s), 0
 }
 
@@ -316,6 +320,8 @@ func writeMainPropFn(data []byte, off int64) syscall.Errno {
 			} else {
 				Wnd.Prop["font"] = "main"
 			}
+		} else if v[0] == "cwd" {
+			CdCmd(ExecContext{buf: nil}, v[1])
 		} else {
 			Wnd.Prop[v[0]] = v[1]
 		}

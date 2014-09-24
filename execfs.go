@@ -35,6 +35,7 @@ func ExecFs(ec *ExecContext, cmd string) {
 		ec.br.BufferRefresh(false)
 
 	case "get":
+		ec.ed.bodybuf.Modified = false
 		GetCmd(*ec, "")
 
 	case "limit=addr":

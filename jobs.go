@@ -209,7 +209,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 		if !doneSomething && ec != nil && ec.buf != nil && ec.ed != nil && ec.buf.IsDir() {
 			sideChan <- func() {
 				found := false
-				editor_search:
+			editor_search:
 				for i := range Wnd.cols.cols {
 					for j := range Wnd.cols.cols[i].editors {
 						if Wnd.cols.cols[i].editors[j] == ec.ed {

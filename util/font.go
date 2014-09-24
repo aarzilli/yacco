@@ -7,9 +7,9 @@ import (
 	"gopcf"
 	"image"
 	"io/ioutil"
+	"math"
 	"os"
 	"strings"
-	"math"
 )
 
 type Font struct {

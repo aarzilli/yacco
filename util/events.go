@@ -6,8 +6,8 @@ import (
 	"io/ioutil"
 	"strconv"
 	"strings"
-	"unicode"
 	"time"
+	"unicode"
 )
 
 type EventOrigin rune
@@ -52,7 +52,7 @@ func fmteventEx(eventChan chan string, origin EventOrigin, istag bool, etype Eve
 	select {
 	case eventChan <- fmt.Sprintf("%c%c%d %d %d %d %s\n", origin, etype, s, e, flags, len(arg), arg):
 		return true
-	case <- t.C:
+	case <-t.C:
 		onfail()
 		return false
 	}

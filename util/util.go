@@ -358,6 +358,15 @@ type BufferConn struct {
 	PropFd  *clnt.File
 }
 
+type IndexEntry struct {
+	Idx      int
+	TagSize  int
+	BodySize int
+	IsDir    bool
+	IsMod    bool
+	Path     string
+}
+
 func (buf *BufferConn) Close() {
 	buf.CtlFd.Close()
 	buf.EventFd.Close()
@@ -459,22 +468,14 @@ func FindWinEx(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
 		return makeBufferConn(p9clnt, outbufid, ctlfd, eventfd)
 	}
 
-	fh, err := p9clnt.FOpen("/index", p.OREAD)
+	indexEntries, err := ReadIndex(p9clnt)
 	if err != nil {
 		return nil, err
 	}
-	defer fh.Close()
 
-	bin := bufio.NewReader(fh)
-
-	for {
-		line, err := bin.ReadString('\n')
-		if err != nil {
-			break
-		}
-		line = strings.TrimSuffix(line, "\n")
-		if strings.HasSuffix(line, name) {
-			id := strings.TrimSpace(line[:11])
+	for i := range indexEntries {
+		if strings.HasSuffix(indexEntries[i].Path, name) {
+			id := strconv.Itoa(indexEntries[i].Idx)
 			eventfd, err := p9clnt.FOpen("/"+id+"/event", p.ORDWR)
 			if err != nil {
 				continue
@@ -486,6 +487,7 @@ func FindWinEx(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
 			return makeBufferConn(p9clnt, id, ctlfd, eventfd)
 		}
 	}
+
 	ctlfd, err := p9clnt.FCreate("/new/ctl", 0666, p.ORDWR)
 	if err != nil {
 		return nil, err
@@ -500,6 +502,74 @@ func FindWinEx(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
 		return nil, err
 	}
 	return makeBufferConn(p9clnt, outbufid, ctlfd, eventfd)
+}
+
+func ReadIndex(p9clnt *clnt.Clnt) ([]IndexEntry, error) {
+	fh, err := p9clnt.FOpen("/index", p.OREAD)
+	if err != nil {
+		return nil, err
+	}
+	defer fh.Close()
+
+	r := []IndexEntry{}
+
+	bin := bufio.NewReader(fh)
+	for {
+		line, err := bin.ReadString('\n')
+		if err != nil {
+			break
+		}
+		line = strings.TrimSuffix(line, "\n")
+		if len(line) < 12+12+12+12+12+1 {
+			return nil, fmt.Errorf("Wrong number of fields in index file: <%s>", line)
+		}
+		v := []string{
+			line[:11],
+			line[12 : 12+11],
+			line[24 : 24+11],
+			line[36 : 36+11],
+			line[48 : 48+11],
+			line[60:],
+		}
+
+		var ie IndexEntry
+
+		n, err := strconv.ParseInt(strings.TrimSpace(v[0]), 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("Error parsing index column: %v", err)
+		}
+		ie.Idx = int(n)
+
+		n, err = strconv.ParseInt(strings.TrimSpace(v[1]), 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("Error parsing tag size column: %v", err)
+		}
+		ie.TagSize = int(n)
+
+		n, err = strconv.ParseInt(strings.TrimSpace(v[2]), 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("Error parsing body size column: %v", err)
+		}
+		ie.BodySize = int(n)
+
+		n, err = strconv.ParseInt(strings.TrimSpace(v[3]), 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("Error parsing isdir column: %v", err)
+		}
+		ie.IsDir = n != 0
+
+		n, err = strconv.ParseInt(strings.TrimSpace(v[4]), 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("Error parsing modified column: %v", err)
+		}
+		ie.IsMod = n != 0
+
+		ie.Path = v[5]
+
+		r = append(r, ie)
+	}
+
+	return r, nil
 }
 
 func YaccoConnect() (*clnt.Clnt, error) {
@@ -544,7 +614,7 @@ func (buf *BufferConn) SetTag(newtag string) error {
 }
 
 func (buf *BufferConn) GetTag() (string, error) {
-	fh, err := buf.conn.FOpen("/" + buf.Id + "/tag", p.OREAD)
+	fh, err := buf.conn.FOpen("/"+buf.Id+"/tag", p.OREAD)
 	if err != nil {
 		return "", err
 	}
