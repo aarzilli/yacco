@@ -9,6 +9,7 @@ import (
 	"yacco/config"
 	"yacco/edit"
 	"yacco/util"
+	"runtime"
 )
 
 func indexFileFn(off int64) ([]byte, syscall.Errno) {
@@ -37,6 +38,15 @@ func indexFileFn(off int64) ([]byte, syscall.Errno) {
 		done <- t
 	}
 	return []byte(<-done), 0
+}
+
+func stackFileFn(off int64) ([]byte, syscall.Errno) {
+	b := make([]byte, 5 * 1024 * 1024)
+	n := runtime.Stack(b, true)
+	if int(off) >= n {
+		return []byte{}, 0
+	}
+	return b[int(off):n], 0
 }
 
 func readAddrFn(i int, off int64) ([]byte, syscall.Errno) {
