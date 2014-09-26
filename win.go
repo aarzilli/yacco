@@ -897,7 +897,8 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 						ec.ed.bodybuf.Highlight(-1, false, ec.ed.otherSel[OS_TOP].E)
 					}
 				}
-			} else {
+			} else if ec.fr != nil {
+				// send command to the attached process, but we need to check that we at least are on a frame
 				cmd := config.KeyBindings[e.Chord]
 				cmd = strings.TrimSpace(cmd)
 				_, _, _, isintl := IntlCmd(cmd)
