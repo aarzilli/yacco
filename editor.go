@@ -347,7 +347,7 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur, scroll bool) {
 		e.tagfr.InsertColor(tb)
 
 		e.Redraw()
-		e.sfr.Wnd.FlushImage()
+		e.sfr.Wnd.FlushImage(e.r)
 
 		if (e.bodybuf.RefCount <= 1) || !recur {
 			return

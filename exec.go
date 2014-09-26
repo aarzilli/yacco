@@ -358,7 +358,7 @@ func DelCmd(ec ExecContext, arg string, confirmed bool) {
 		col.Remove(col.IndexOf(ec.ed))
 		ec.ed.Close()
 		removeBuffer(ec.ed.bodybuf)
-		Wnd.wnd.FlushImage()
+		Wnd.wnd.FlushImage(col.r)
 	} else {
 		ec.ed.confirmDel = true
 		Warn("File " + ec.ed.bodybuf.ShortName() + " has unsaved changes")
@@ -818,7 +818,7 @@ func SortCmd(ec ExecContext, arg string) {
 	sort.Sort((*Editors)(&ec.col.editors))
 	ec.col.RecalcRects(ec.col.last)
 	ec.col.Redraw()
-	Wnd.wnd.FlushImage()
+	Wnd.wnd.FlushImage(ec.col.r)
 }
 
 func UndoCmd(ec ExecContext, arg string) {

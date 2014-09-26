@@ -561,7 +561,7 @@ loop:
 			p := ed.r.Min
 			w.wnd.WarpMouse(p.Add(d))
 			col.Redraw()
-			w.wnd.FlushImage()
+			w.wnd.FlushImage(col.r)
 		}
 	}
 }
@@ -610,7 +610,7 @@ func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
 
 	col.RecalcRects(col.last)
 	col.Redraw()
-	w.wnd.FlushImage()
+	w.wnd.FlushImage(col.r)
 	if d != nil {
 		p := ed.r.Min
 		p = p.Add(image.Point{SCROLL_WIDTH / 2, int(ed.tagfr.Font.LineHeight() / 2)})
