@@ -1300,7 +1300,7 @@ func ReplaceMsg(ec *ExecContext, esel *util.Sel, append bool, txt string, origin
 		if !found {
 			return
 		}
-		HideCompl()
+		//HideCompl()
 		sel := esel
 		if sel == nil {
 			if append {
