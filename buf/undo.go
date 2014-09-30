@@ -19,8 +19,9 @@ type undoInfo struct {
 }
 
 type undoList struct {
-	cur int
-	lst []undoInfo
+	cur        int
+	lst        []undoInfo
+	nilIsSaved bool
 }
 
 var TYPING_INTERVAL = time.Duration(2 * time.Second)
@@ -94,11 +95,14 @@ func (ul *undoList) Redo() *undoInfo {
 
 // marks first as saved, removes every other saved mark
 func (ul *undoList) SetSaved() {
+	ul.nilIsSaved = false
 	for _, uit := range ul.lst {
 		uit.saved = false
 	}
 	if ul.cur > 0 {
 		ul.lst[ul.cur-1].saved = true
+	} else {
+		ul.nilIsSaved = true
 	}
 }
 

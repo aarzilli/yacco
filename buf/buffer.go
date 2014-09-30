@@ -71,7 +71,7 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 		gap:   0,
 		gapsz: SLOP,
 
-		ul: undoList{0, []undoInfo{}}}
+		ul: undoList{0, []undoInfo{}, true}}
 
 	dirfile, err := os.Open(dir)
 	if err != nil {
@@ -167,6 +167,7 @@ func (b *Buffer) Reload(create bool) error {
 		if create {
 			// doesn't exist, mark as modified
 			b.Modified = true
+			b.ul.nilIsSaved = false
 			b.ModTime = time.Now()
 		} else {
 			return fmt.Errorf("File doesn't exist: %s", path)
@@ -342,7 +343,11 @@ func (b *Buffer) Undo(sel *util.Sel, redo bool) {
 			mui = b.ul.PeekUndo()
 		}
 
-		b.Modified = (mui != nil) && !mui.saved
+		if mui == nil {
+			b.Modified = b.ul.nilIsSaved
+		} else {
+			b.Modified = mui.saved
+		}
 
 		if !redo {
 			if ui.solid {
@@ -818,6 +823,7 @@ func (b *Buffer) Put() error {
 	}
 
 	b.ModTime = fi.ModTime()
+	b.ul.SetSaved()
 
 	return nil
 }
