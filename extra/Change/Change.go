@@ -72,5 +72,5 @@ func openGuide(p9clnt *clnt.Clnt, newdir string) {
 	if err != nil {
 		return
 	}
-	openFile(p9clnt, guidefile)
+	openFile(p9clnt, "guide")
 }
