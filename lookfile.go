@@ -21,6 +21,7 @@ func lookFile(ed *Editor) {
 type lookFileResult struct {
 	score int
 	show  string
+	needle string
 }
 
 const MAX_RESULTS = 20
@@ -65,6 +66,7 @@ func lookFileIntl(ed *Editor, ch chan string) {
 				displayResults(ed, resultList)
 				if needle != oldNeedle {
 					resultList = resultList[0:0]
+					oldNeedle = needle
 					if needle != "" {
 						resultChan = make(chan *lookFileResult, 1)
 						searchDone = make(chan struct{})
@@ -79,6 +81,9 @@ func lookFileIntl(ed *Editor, ch chan string) {
 			}
 		case result := <-resultChan:
 			if result.score < 0 {
+				continue
+			}
+			if result.needle != oldNeedle {
 				continue
 			}
 			found := false
@@ -195,7 +200,7 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 				}
 
 				select {
-				case resultChan <- &lookFileResult{score, relPath}:
+				case resultChan <- &lookFileResult{score, relPath, needle}:
 				case <-searchDone:
 					return
 				}
@@ -286,7 +291,7 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 		}
 
 		select {
-		case resultChan <- &lookFileResult{score, x}:
+		case resultChan <- &lookFileResult{score, x, needle}:
 		case <-searchDone:
 			return
 		}
