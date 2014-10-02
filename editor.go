@@ -455,8 +455,46 @@ func (ed *Editor) Warp() {
 		return
 	}
 	p := ed.sfr.Fr.PointToCoord(ed.sfr.Fr.Sels[0].S)
-	ed.sfr.Fr.VisibleTick = true
+	if !ed.sfr.Fr.VisibleTick {
+		ed.sfr.Fr.VisibleTick = true
+		ed.sfr.Fr.Redraw(false)
+		Wnd.wnd.FlushImage(ed.sfr.Fr.R)
+	}
 	Wnd.wnd.WarpMouse(p)
+}
+
+func (ed *Editor) getDelPos() int {
+	sep := []rune(" Del ")
+	s := ed.tagbuf.SelectionRunes(util.Sel{0, ed.tagbuf.Size()})
+	for i := range s {
+		match := true
+		for j := range sep {
+			if s[i+j] != sep[j] {
+				match = false
+				break
+			}
+		}
+		if match {
+			return i + 1
+		}
+	}
+	return -1
+}
+
+func (ed *Editor) WarpToDel() {
+	delp := ed.getDelPos()
+	if delp < 0 {
+		return
+	}
+	delCoord := ed.tagfr.PointToCoord(delp)
+	if !ed.tagfr.VisibleTick {
+		ed.tagfr.VisibleTick = true
+		ed.tagfr.Redraw(false)
+		Wnd.wnd.FlushImage(ed.tagfr.R)
+	}
+	delCoord.Y -= 5
+	delCoord.X += 5
+	Wnd.wnd.WarpMouse(delCoord)
 }
 
 func (ed *Editor) EnterSpecial(specialChan chan string, specialTag string, exitOnReturn bool) bool {

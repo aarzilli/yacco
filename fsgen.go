@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"yacco/config"
 	"yacco/edit"
 	"yacco/util"
-	"runtime"
 )
 
 func indexFileFn(off int64) ([]byte, syscall.Errno) {
@@ -41,7 +41,7 @@ func indexFileFn(off int64) ([]byte, syscall.Errno) {
 }
 
 func stackFileFn(off int64) ([]byte, syscall.Errno) {
-	b := make([]byte, 5 * 1024 * 1024)
+	b := make([]byte, 5*1024*1024)
 	n := runtime.Stack(b, true)
 	if int(off) >= n {
 		return []byte{}, 0

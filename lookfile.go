@@ -19,8 +19,8 @@ func lookFile(ed *Editor) {
 }
 
 type lookFileResult struct {
-	score int
-	show  string
+	score  int
+	show   string
 	needle string
 }
 

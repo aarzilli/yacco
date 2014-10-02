@@ -203,13 +203,18 @@ func (c *Col) IndexOf(ed *Editor) int {
 	return -1
 }
 
-func (c *Col) Remove(i int) {
+func (c *Col) Remove(i int) *Editor {
+	var ned *Editor
 	if i == 0 {
 		if i+1 < len(c.editors) {
-			c.editors[i+1].frac += c.editors[i].frac
+			ned = c.editors[i+1]
 		}
 	} else {
-		c.editors[i-1].frac += c.editors[i].frac
+		ned = c.editors[i-1]
+	}
+
+	if ned != nil {
+		ned.frac += c.editors[i].frac
 	}
 
 	copy(c.editors[i:], c.editors[i+1:])
@@ -217,6 +222,7 @@ func (c *Col) Remove(i int) {
 
 	c.RecalcRects(c.last)
 	c.Redraw()
+	return ned
 }
 
 func (c *Col) Close() {
