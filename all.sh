@@ -26,3 +26,8 @@ cd -
 cd extra/y9p
 go build
 cd -
+
+# building Change
+cd extra/Change
+go build
+cd -
