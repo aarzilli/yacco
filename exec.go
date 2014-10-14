@@ -358,9 +358,10 @@ func DelCmd(ec ExecContext, arg string, confirmed bool) {
 		ned := col.Remove(col.IndexOf(ec.ed))
 		ec.ed.Close()
 		removeBuffer(ec.ed.bodybuf)
-		if ned != nil {
+		_ = ned
+		/*if ned != nil {
 			ned.WarpToDel()
-		}
+		}*/
 		Wnd.wnd.FlushImage(col.r)
 	} else {
 		ec.ed.confirmDel = true
