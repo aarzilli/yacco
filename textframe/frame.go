@@ -309,6 +309,19 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	return
 }
 
+func (fr *Frame) RefreshColors(a, b []ColorRune) {
+	for i := range fr.glyphs {
+		var crune ColorRune
+		if i < len(a) {
+			crune = a[i]
+		} else {
+			crune = b[i - len(a)]
+		}
+		fr.glyphs[i].r = crune.R
+		fr.glyphs[i].color = crune.C & 0x0f
+	}
+}
+
 // Mesures the length of the string
 func (fr *Frame) Measure(rs []rune) int {
 	ret := raster.Fix32(0)
@@ -914,4 +927,8 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
 	fr.Limit = limit
 
 	return
+}
+
+func (fr *Frame) Size() int {
+	return len(fr.glyphs)
 }

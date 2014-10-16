@@ -96,7 +96,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 		},
 	}
 	e.otherSel = make([]util.Sel, NUM_OTHER_SEL)
-	e.sfr.Fr.Scroll = edutil.MakeScrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr)
+	e.sfr.Fr.Scroll = edutil.MakeScrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, Highlight)
 	hf = textframe.HF_TRUNCATE
 	if config.QuoteHack {
 		hf |= textframe.HF_QUOTEHACK
@@ -127,7 +127,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	util.Must(e.tagfr.Init(5), "Editor initialization failed")
 
 	e.GenTag()
-	e.tagbuf.Replace([]rune("Look "), &util.Sel{e.tagbuf.Size(), e.tagbuf.Size()}, true, nil, util.EO_FILES, false)
+	e.tagbuf.Replace([]rune("Look "), &util.Sel{e.tagbuf.Size(), e.tagbuf.Size()}, true, nil, util.EO_FILES)
 	e.tagfr.Sels[0].S = e.tagbuf.Size()
 	e.tagfr.Sels[0].E = e.tagbuf.Size()
 
@@ -157,8 +157,6 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool) {
 	}
 	e.sfr.SetRects(b, sfrr)
 
-	e.bodybuf.DisplayLines = int(float64(sfrr.Max.Y-sfrr.Min.Y) / float64(e.sfr.Fr.Font.LineHeight()))
-
 	if (e.pw != e.r.Dx()) && e.bodybuf.IsDir() {
 		e.pw = e.r.Dx()
 		e.readDir()
@@ -169,6 +167,7 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool) {
 	ba, bb := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, e.bodybuf.Size()})
 	e.sfr.Fr.InsertColor(ba)
 	e.sfr.Fr.InsertColor(bb)
+	edutil.DoHighlightingConsistency(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, Highlight)
 
 	e.tagfr.R = r
 	e.tagfr.R.Min.Y += 2
@@ -189,8 +188,6 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool) {
 	e.rhandle.Max.X = e.rhandle.Min.X + SCROLL_WIDTH
 	e.rhandle.Max.Y = e.tagfr.R.Max.Y
 	e.rhandle = e.r.Intersect(e.rhandle)
-
-	e.bodybuf.Highlight(-1, false, e.otherSel[OS_TOP].E)
 }
 
 func (e *Editor) Close() {
@@ -292,7 +289,7 @@ func (e *Editor) GenTag() {
 		end = 0
 	}
 	e.tagbuf.EditableStart = -1
-	e.tagbuf.Replace([]rune(t), &util.Sel{0, e.tagbuf.Size()}, true, nil, 0, false)
+	e.tagbuf.Replace([]rune(t), &util.Sel{0, e.tagbuf.Size()}, true, nil, 0)
 	TagSetEditableStart(e.tagbuf)
 	e.tagfr.Sels[0].S = start + e.tagbuf.EditableStart
 	e.tagfr.Sels[0].E = end + e.tagbuf.EditableStart
@@ -308,6 +305,7 @@ func (e *Editor) refreshIntl() {
 	ba, bb := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, e.bodybuf.Size()})
 	e.sfr.Fr.InsertColor(ba)
 	e.sfr.Fr.InsertColor(bb)
+	edutil.DoHighlightingConsistency(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, Highlight)
 }
 
 func (e *Editor) BufferRefreshEx(ontag bool, recur, scroll bool) {
@@ -336,8 +334,7 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur, scroll bool) {
 			x := e.bodybuf.Tonl(e.sfr.Fr.Sels[0].E-2, -1)
 			e.otherSel[OS_TOP].E = x
 			e.refreshIntl()
-			edutil.Scrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, -1, e.sfr.Fr.LineNo()/4-1)
-			e.bodybuf.Highlight(-1, false, e.otherSel[OS_TOP].E)
+			edutil.Scrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, -1, e.sfr.Fr.LineNo()/4-1, Highlight)
 		}
 
 		e.GenTag()
@@ -505,7 +502,7 @@ func (ed *Editor) EnterSpecial(specialChan chan string, specialTag string, exitO
 	ed.specialTag = specialTag
 	ed.specialExitOnReturn = exitOnReturn
 	ed.savedTag = string(ed.tagbuf.SelectionRunes(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}))
-	ed.tagbuf.Replace([]rune{}, &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0, false)
+	ed.tagbuf.Replace([]rune{}, &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0)
 	ed.BufferRefresh(false)
 	return true
 }
@@ -514,7 +511,7 @@ func (ed *Editor) ExitSpecial() {
 	close(ed.specialChan)
 	ed.specialChan = nil
 	ed.specialTag = ""
-	ed.tagbuf.Replace([]rune(ed.savedTag), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0, false)
+	ed.tagbuf.Replace([]rune(ed.savedTag), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0)
 	ed.BufferRefresh(false)
 }
 
@@ -687,7 +684,7 @@ func (e *Editor) readDir() {
 
 	rr = append(rr, "\n")
 
-	e.bodybuf.Replace([]rune(strings.Join(rr, "")), &util.Sel{0, e.bodybuf.Size()}, true, nil, 0, false)
+	e.bodybuf.Replace([]rune(strings.Join(rr, "")), &util.Sel{0, e.bodybuf.Size()}, true, nil, 0)
 	e.bodybuf.Modified = false
 	e.bodybuf.UndoReset()
 	elasticTabs(e, true)

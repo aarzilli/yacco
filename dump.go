@@ -95,7 +95,7 @@ func LoadFrom(dumpDest string) bool {
 		}
 		b.Props = db.Props
 		if db.Text != "" {
-			b.Replace([]rune(db.Text), &util.Sel{0, b.Size()}, true, nil, util.EO_KBD, true)
+			b.Replace([]rune(db.Text), &util.Sel{0, b.Size()}, true, nil, util.EO_KBD)
 		}
 		buffers[i] = b
 		FsAddBuffer(i, b)
@@ -104,7 +104,7 @@ func LoadFrom(dumpDest string) bool {
 	for _, dc := range dw.Columns {
 		col := Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
 
-		col.tagbuf.Replace([]rune(dc.TagText), &util.Sel{0, col.tagbuf.Size()}, true, nil, util.EO_MOUSE, true)
+		col.tagbuf.Replace([]rune(dc.TagText), &util.Sel{0, col.tagbuf.Size()}, true, nil, util.EO_MOUSE)
 
 		for _, de := range dc.Editors {
 			b := buffers[de.Id]
@@ -122,7 +122,7 @@ func LoadFrom(dumpDest string) bool {
 				lookFile(ed)
 			}
 
-			ed.tagbuf.Replace([]rune(de.TagText), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, util.EO_MOUSE, true)
+			ed.tagbuf.Replace([]rune(de.TagText), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, util.EO_MOUSE)
 			if de.SelS != 0 {
 				ed.sfr.Fr.Sels[0].S = de.SelS
 				ed.sfr.Fr.Sels[0].E = de.SelS
@@ -139,7 +139,7 @@ func LoadFrom(dumpDest string) bool {
 	}
 
 	Wnd.GenTag()
-	Wnd.tagbuf.Replace([]rune(dw.TagText), &util.Sel{Wnd.tagbuf.EditableStart, Wnd.tagbuf.Size()}, true, nil, util.EO_MOUSE, true)
+	Wnd.tagbuf.Replace([]rune(dw.TagText), &util.Sel{Wnd.tagbuf.EditableStart, Wnd.tagbuf.Size()}, true, nil, util.EO_MOUSE)
 	Wnd.BufferRefresh(true)
 	Wnd.tagfr.Redraw(true)
 	Wnd.Resized()

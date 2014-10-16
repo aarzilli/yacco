@@ -53,7 +53,7 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 	util.Must(c.tagfr.Init(5), "Column initialization failed")
 
 	c.tagbuf.AddSels(&c.tagfr.Sels)
-	c.tagbuf.Replace(config.DefaultColumnTag, &c.tagfr.Sels[0], true, nil, 0, false)
+	c.tagbuf.Replace(config.DefaultColumnTag, &c.tagfr.Sels[0], true, nil, 0)
 	return c
 }
 

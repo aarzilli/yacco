@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	sysre "regexp"
 	"strings"
+	"runtime"
 	"yacco/config"
 	"yacco/edit"
 	"yacco/regexp"
@@ -40,6 +41,13 @@ func Load(ec ExecContext, origin int) {
 	defer func() {
 		if ierr := recover(); ierr != nil {
 			fmt.Printf("Error during Load: %v\n", ierr.(error).Error())
+			for i := 1; ; i++ {
+				_, file, line, ok := runtime.Caller(i)
+				if !ok {
+					break
+				}
+				fmt.Printf("  %s:%d\n", file, line)
+			}
 		}
 	}()
 	//println("\nin load")
@@ -141,7 +149,14 @@ func expandMatches(str string, matches []string) string {
 func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 	defer func() {
 		if ierr := recover(); ierr != nil {
-			fmt.Printf("Error during Load: %v\n", ierr.(error).Error())
+			fmt.Printf("Error during Load (exec): %v\n", ierr.(error).Error())
+			for i := 1; ; i++ {
+				_, file, line, ok := runtime.Caller(i)
+				if !ok {
+					break
+				}
+				fmt.Printf("  %s:%d\n", file, line)
+			}
 		}
 	}()
 	action := rule.Action[1:]

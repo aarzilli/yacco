@@ -116,7 +116,7 @@ func displayResults(ed *Editor, resultList []*lookFileResult) {
 
 	sideChan <- func() {
 		sel := util.Sel{0, ed.bodybuf.Size()}
-		ed.bodybuf.Replace([]rune(t), &sel, true, nil, 0, true)
+		ed.bodybuf.Replace([]rune(t), &sel, true, nil, 0)
 		elasticTabs(ed, true)
 		ed.BufferRefresh(false)
 	}

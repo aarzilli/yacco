@@ -56,7 +56,6 @@ type activeSelStruct struct {
 //const DEFAULT_CURSOR = wde.XTermCursor
 const DEFAULT_CURSOR = -1
 
-var highlightChan = make(chan *buf.Buffer, 10)
 var activeSel activeSelStruct
 var activeEditor *Editor = nil
 var activeCol *Col = nil
@@ -191,17 +190,6 @@ func (w *Window) EventLoop() {
 
 		case se := <-sideChan:
 			se()
-
-		case hbuf := <-highlightChan:
-			//println("Highlight refresh")
-			for _, col := range w.cols.cols {
-				for _, ed := range col.editors {
-					if ed.bodybuf == hbuf {
-						ed.refreshIntl()
-						ed.sfr.Redraw(true)
-					}
-				}
-			}
 		}
 
 		// update completions dictionary at least once every 10 minutes
@@ -824,9 +812,9 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			}
 
 			if (ec.buf != nil) && (ec.br != nil) {
-				ec.buf.Replace([]rune(nl), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD, true)
+				ec.buf.Replace([]rune(nl), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD)
 				if indent != "" {
-					ec.buf.Replace([]rune(indent), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD, true)
+					ec.buf.Replace([]rune(indent), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD)
 				}
 				ec.br.BufferRefresh(ec.ontag)
 			}
@@ -854,7 +842,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		ec := lp.asExecContext(true)
 		if ec.buf != nil {
 			if ComplWnd != nil {
-				ec.buf.Replace([]rune(complPrefixSuffix), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD, true)
+				ec.buf.Replace([]rune(complPrefixSuffix), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD)
 				ec.br.BufferRefresh(ec.ontag)
 				ComplStart(ec)
 			} else {
@@ -865,7 +853,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 					tch = ec.ed.bodybuf.Props["indentchar"]
 				}
 
-				ec.buf.Replace([]rune(tch), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD, true)
+				ec.buf.Replace([]rune(tch), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD)
 				ec.br.BufferRefresh(ec.ontag)
 				if (ec.ed != nil) && (ec.ed.specialChan != nil) {
 					tagstr := string(ec.ed.tagbuf.SelectionRunes(util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}))
@@ -887,16 +875,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			HideCompl()
 			//println("Execute command: <" + cmd + ">")
 			if (ec.eventChan == nil) || (cmd == "Delete") {
-				up := -1
-				if ec.ed != nil {
-					up = ec.ed.bodybuf.UndoWhere()
-				}
 				fcmd(ec)
-				if ec.ed != nil {
-					if up != ec.ed.bodybuf.UndoWhere() {
-						ec.ed.bodybuf.Highlight(-1, false, ec.ed.otherSel[OS_TOP].E)
-					}
-				}
 			} else if ec.fr != nil {
 				// send command to the attached process, but we need to check that we at least are on a frame
 				cmd := config.KeyBindings[e.Chord]
@@ -914,7 +893,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				activeCol = nil
 			}
 			if ec.buf != nil {
-				ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD, true)
+				ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD)
 				if ec.ed != nil {
 					ec.ed.otherSel[OS_TIP].E = ec.fr.Sels[0].S
 				}
@@ -1203,7 +1182,7 @@ func (w *Window) GenTag() {
 	}
 
 	w.tagbuf.EditableStart = -1
-	w.tagbuf.Replace([]rune(t), &w.tagfr.Sels[0], true, nil, 0, true)
+	w.tagbuf.Replace([]rune(t), &w.tagfr.Sels[0], true, nil, 0)
 	TagSetEditableStart(w.tagbuf)
 }
 
@@ -1310,7 +1289,7 @@ func ReplaceMsg(ec *ExecContext, esel *util.Sel, append bool, txt string, origin
 			}
 		}
 		oldS := sel.S
-		ec.ed.bodybuf.Replace([]rune(txt), sel, true, ec.eventChan, origin, true)
+		ec.ed.bodybuf.Replace([]rune(txt), sel, true, ec.eventChan, origin)
 		if reselect {
 			sel.S = oldS
 		}

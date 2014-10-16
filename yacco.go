@@ -132,7 +132,7 @@ func realmain() {
 		startWinTag += " Load"
 	}
 
-	Wnd.tagbuf.Replace([]rune(startWinTag), &util.Sel{Wnd.tagbuf.Size(), Wnd.tagbuf.Size()}, true, nil, 0, true)
+	Wnd.tagbuf.Replace([]rune(startWinTag), &util.Sel{Wnd.tagbuf.Size(), Wnd.tagbuf.Size()}, true, nil, 0)
 	Wnd.BufferRefresh(true)
 
 	Wnd.wnd.FlushImage()
@@ -165,7 +165,6 @@ func bufferAdd(b *buf.Buffer) {
 	if b.RefCount > 1 {
 		return
 	}
-	b.HighlightChan = highlightChan
 	for i := range buffers {
 		if buffers[i] == nil {
 			buffers[i] = b

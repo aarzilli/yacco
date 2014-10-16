@@ -132,7 +132,7 @@ func Warnfull(bufname, msg string, clear bool, selectit bool) {
 		ed.sfr.Fr.Sels[0].E = ed.bodybuf.Size()
 
 		s := ed.sfr.Fr.Sels[0].S
-		ed.bodybuf.Replace([]rune(msg), &ed.sfr.Fr.Sels[0], true, nil, 0, true)
+		ed.bodybuf.Replace([]rune(msg), &ed.sfr.Fr.Sels[0], true, nil, 0)
 		if selectit {
 			ed.sfr.Fr.Sels[0].S = s
 		}

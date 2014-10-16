@@ -21,7 +21,7 @@ func ExecFs(ec *ExecContext, cmd string) {
 		ec.br.BufferRefresh(false)
 
 	case "cleartag":
-		ec.ed.tagbuf.Replace([]rune{}, &util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}, true, nil, 0, false)
+		ec.ed.tagbuf.Replace([]rune{}, &util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}, true, nil, 0)
 		ec.br.BufferRefresh(true)
 
 	case "del":

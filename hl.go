@@ -1,43 +1,49 @@
-package buf
+package main
 
 import (
+	"fmt"
 	"path/filepath"
 	"yacco/config"
+	"yacco/buf"
 )
 
-func (b *Buffer) highlightIntl(start int, full bool, pinc int) {
-	b.Rdlock()
-	defer b.Rdunlock()
-	b.hlock.Lock()
-	defer b.hlock.Unlock()
+const TraceHighlight = false
 
-	if start < 0 {
-		start = b.lastCleanHl
+func equalAt(b *buf.Buffer, start int, needle []rune) bool {
+	if needle == nil {
+		return false
 	}
-
-	if start > 0 {
-		start = b.Tonl(start, -1)
-		if start >= 1 {
-			start--
+	var i int
+	for i = 0; (i+start < b.Size()) && (i < len(needle)); i++ {
+		if b.At(i+start).R != needle[i] {
+			return false
 		}
 	}
 
-	size := b.DisplayLines
-	if full {
-		size = -1
-	}
+	return i >= len(needle)
+}
 
-	//println("Highlight start", start, size)
-
-	if start >= b.Size() {
-		//println("Quick exit")
+func Highlight(b *buf.Buffer, end int) {
+	if !config.EnableHighlighting {
 		return
 	}
-
-	if b.HighlightChan != nil {
-		defer func() { b.HighlightChan <- b }()
+	
+	if  b.IsDir() {
+		return
 	}
-
+	
+	if (len(b.Name) == 0) || (b.Name[0] == '+') {
+		return
+	}
+	
+	if b.HlGood >= b.Size() {
+		return
+	}
+	
+	if TraceHighlight {
+		fmt.Printf("Highlighting from %d to %d (%d)\n", b.HlGood, end, b.Size())
+	}
+	
 	path := filepath.Join(b.Dir, b.Name)
 	amis := []int{}
 	for i, regionMatch := range config.RegionMatches {
@@ -48,30 +54,25 @@ func (b *Buffer) highlightIntl(start int, full bool, pinc int) {
 			amis = append(amis, i)
 		}
 	}
-
+	
+	start := b.HlGood
+	
 	status := uint8(0)
 	if start >= 0 {
 		status = b.At(start).C >> 4
 	} else {
 		start = 0
 	}
-
+	
+	if end >= b.Size() {
+		end = b.Size() - 1
+	}
+	
 	escaping := false
-	nlcount := 0
-	for i := start; i < b.Size(); i++ {
-		if (i > pinc) && (b.At(i).R == '\n') {
-			nlcount++
-		}
-		if ((size > 0) && (nlcount > size)) || (b.ReadersPleaseStop) {
-			//println("Exiting", nlcount, b.ReadersPleaseStop)
-			if b.lastCleanHl >= i {
-				b.lastCleanHl = i - 1
-			}
-			return
-		}
+	for i := start; i <= end; i++ {
 		if status == 0 {
 			for _, k := range amis {
-				if b.equalAt(i, config.RegionMatches[k].StartDelim) {
+				if equalAt(b, i, config.RegionMatches[k].StartDelim) {
 					status = uint8(k)
 					break
 				}
@@ -86,7 +87,7 @@ func (b *Buffer) highlightIntl(start int, full bool, pinc int) {
 				b.At(i).C = 0x01
 			}
 		} else {
-			if !escaping && b.equalAt(i, config.RegionMatches[status].EndDelim) {
+			if !escaping && equalAt(b, i, config.RegionMatches[status].EndDelim) {
 				for j := i; j < i+len(config.RegionMatches[status].EndDelim); j++ {
 					b.At(j).C = (status << 4) + uint8(config.RegionMatches[status].Type)
 				}
@@ -100,21 +101,6 @@ func (b *Buffer) highlightIntl(start int, full bool, pinc int) {
 				b.At(i).C = (status << 4) + uint8(config.RegionMatches[status].Type)
 			}
 		}
+		b.HlGood = i
 	}
-	//println("Full end")
-	b.lastCleanHl = b.Size()
-}
-
-func (b *Buffer) equalAt(start int, needle []rune) bool {
-	if needle == nil {
-		return false
-	}
-	var i int
-	for i = 0; (i+start < b.Size()) && (i < len(needle)); i++ {
-		if b.At(i+start).R != needle[i] {
-			return false
-		}
-	}
-
-	return i >= len(needle)
 }

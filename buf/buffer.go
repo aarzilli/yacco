@@ -39,13 +39,9 @@ type Buffer struct {
 
 	ul undoList
 
-	lock              sync.RWMutex
-	hlock             sync.Mutex
-	ReadersPleaseStop bool
+	lock sync.RWMutex
 
-	DisplayLines  int
-	lastCleanHl   int
-	HighlightChan chan *Buffer
+	HlGood int
 
 	RefCount int
 
@@ -67,6 +63,8 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 		EditableStart: -1,
 		Modified:      false,
 
+		HlGood: -1,
+
 		buf:   make([]textframe.ColorRune, SLOP),
 		gap:   0,
 		gapsz: SLOP,
@@ -85,8 +83,6 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 	if !dirinfo.IsDir() {
 		return nil, fmt.Errorf("Not a directory: %s", dir)
 	}
-
-	b.lastCleanHl = -1
 
 	if name[0] != '+' {
 		err := b.Reload(create)
@@ -219,7 +215,7 @@ func (b *Buffer) reloadDir(fh *os.File) error {
 		r = append(r, n)
 	}
 
-	b.Replace([]rune(strings.Join(r, "\t")), &util.Sel{0, b.Size()}, true, nil, 0, false)
+	b.Replace([]rune(strings.Join(r, "\t")), &util.Sel{0, b.Size()}, true, nil, 0)
 
 	b.Modified = false
 	return nil
@@ -227,13 +223,13 @@ func (b *Buffer) reloadDir(fh *os.File) error {
 
 func (b *Buffer) ReplaceFull(text []rune) {
 	saveSels := b.saveSels()
-	b.Replace(text, &util.Sel{0, b.Size()}, true, nil, 0, false)
+	b.Replace(text, &util.Sel{0, b.Size()}, true, nil, 0)
 	b.restoreSels(saveSels)
 }
 
 // Replaces text between sel.S and sel.E with text, updates sels AND sel accordingly
 // After the replacement the highlighter is restarted
-func (b *Buffer) Replace(text []rune, sel *util.Sel, solid bool, eventChan chan string, origin util.EventOrigin, dohl bool) {
+func (b *Buffer) Replace(text []rune, sel *util.Sel, solid bool, eventChan chan string, origin util.EventOrigin) {
 	if !b.Editable {
 		return
 	}
@@ -257,12 +253,6 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, solid bool, eventChan chan 
 	b.pushUndo(*sel, text, solid)
 	b.replaceIntl(text, sel)
 	b.updateSels(sel, len(text))
-
-	if dohl {
-		b.Highlight(sel.S-1, false, -1)
-	} else {
-		b.lastCleanHl = sel.S - 1
-	}
 
 	b.unlock()
 
@@ -355,7 +345,6 @@ func (b *Buffer) Undo(sel *util.Sel, redo bool) {
 			}
 		}
 	}
-	b.Highlight(-1, true, -1)
 }
 
 func (b *Buffer) Rdlock() {
@@ -368,41 +357,12 @@ func (b *Buffer) Rdunlock() {
 
 func (b *Buffer) wrlock() {
 	b.lock.RLock()
-	b.ReadersPleaseStop = true
 	b.lock.RUnlock()
 	b.lock.Lock()
-	b.ReadersPleaseStop = false
 }
 
 func (b *Buffer) unlock() {
 	b.lock.Unlock()
-}
-
-// Highlights buffers starting at "start"
-// If full is specified the highlighting will continue until the end of the buffer,
-// otherwise it will continue until after DisplayLines lines after pinc
-func (b *Buffer) Highlight(start int, full bool, pinc int) {
-	if !config.EnableHighlighting {
-		return
-	}
-
-	if b.IsDir() {
-		return
-	}
-
-	if (len(b.Name) == 0) || (b.Name[0] == '+') || (b.DisplayLines == 0) {
-		return
-	}
-
-	if (start < 0) && !full && (pinc >= 0) && ((pinc + 50*b.DisplayLines) < b.lastCleanHl) {
-		return
-	}
-
-	if (start < 0) && (b.lastCleanHl >= b.Size()) {
-		return
-	}
-
-	go b.highlightIntl(start, full, pinc)
 }
 
 // Replaces text between sel.S and sel.E with text, updates selections in sels except sel itself
@@ -425,6 +385,9 @@ func (b *Buffer) replaceIntl(text []rune, sel *util.Sel) {
 	}
 	b.gap += len(text)
 	b.gapsz -= len(text)
+	if sel.S-1 < b.HlGood {
+		b.HlGood = sel.S - 1
+	}
 }
 
 // Saves undo information for replacement of text between sel.S and sel.E with text
