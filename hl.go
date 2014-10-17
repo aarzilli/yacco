@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"path/filepath"
-	"yacco/config"
 	"yacco/buf"
+	"yacco/config"
 )
 
 const TraceHighlight = false
@@ -27,19 +27,19 @@ func Highlight(b *buf.Buffer, end int) {
 	if !config.EnableHighlighting {
 		return
 	}
-	
-	if  b.IsDir() {
+
+	if b.IsDir() {
 		return
 	}
-	
+
 	if (len(b.Name) == 0) || (b.Name[0] == '+') {
 		return
 	}
-	
+
 	if b.HlGood >= b.Size() {
 		return
 	}
-	
+
 	path := filepath.Join(b.Dir, b.Name)
 	amis := []int{}
 	for i, regionMatch := range config.RegionMatches {
@@ -50,18 +50,18 @@ func Highlight(b *buf.Buffer, end int) {
 			amis = append(amis, i)
 		}
 	}
-	
-	start := b.HlGood
-	
+
+	start := highlightingSyncPoint(b, b.HlGood)
+
 	status := uint8(0)
 	if start >= 0 {
 		status = b.At(start).C >> 4
 	}
-	
+
 	if end >= b.Size() {
 		end = b.Size() - 1
 	}
-	
+
 	if TraceHighlight {
 		ch := rune(0)
 		if start >= 0 {
@@ -70,9 +70,9 @@ func Highlight(b *buf.Buffer, end int) {
 		fmt.Printf("Highlighting from %d to %d\n", b.HlGood, end)
 		fmt.Printf("Starting status: %d starting character %c\n", status, ch)
 	}
-	
+
 	escaping := false
-	for i := start+1; i <= end; i++ {
+	for i := start + 1; i <= end; i++ {
 		if status == 0 {
 			for _, k := range amis {
 				if equalAt(b, i, config.RegionMatches[k].StartDelim) {
@@ -106,4 +106,19 @@ func Highlight(b *buf.Buffer, end int) {
 		}
 		b.HlGood = i
 	}
+}
+
+/*
+Because of how highlighting of strings and comments works only some points are safe synchronization points, the last character of a line is always clear (you could construct an artificial language where this is not true but it's a safe assumption in reality)
+*/
+func highlightingSyncPoint(b *buf.Buffer, s int) int {
+	if s-1 < 0 {
+		return -1
+	}
+	for i := s - 1; i >= 0; i-- {
+		if b.At(i).R == '\n' {
+			return i - 1
+		}
+	}
+	return 0
 }
