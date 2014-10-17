@@ -44,6 +44,7 @@ type Buffer struct {
 	HlGood int
 
 	RefCount int
+	RevCount int
 
 	Words       []string
 	WordsUpdate time.Time
@@ -64,6 +65,8 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 		Modified:      false,
 
 		HlGood: -1,
+
+		RevCount: 0,
 
 		buf:   make([]textframe.ColorRune, SLOP),
 		gap:   0,
@@ -388,6 +391,8 @@ func (b *Buffer) replaceIntl(text []rune, sel *util.Sel) {
 	if sel.S-1 < b.HlGood {
 		b.HlGood = sel.S - 1
 	}
+
+	b.RevCount++
 }
 
 // Saves undo information for replacement of text between sel.S and sel.E with text

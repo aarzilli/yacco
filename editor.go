@@ -46,6 +46,11 @@ type Editor struct {
 	jumps        []util.Sel
 	restoredJump int
 	jumpCount    int
+
+	refreshOpt struct {
+		top      int
+		revCount int
+	}
 }
 
 const SCROLL_WIDTH = 10
@@ -140,6 +145,9 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 
 	e.eventReader.Reset()
 
+	e.refreshOpt.top = -1
+	e.refreshOpt.revCount = -1
+
 	return e
 }
 
@@ -163,11 +171,7 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool) {
 	}
 	e.pw = e.r.Dx()
 
-	e.sfr.Fr.Clear()
-	ba, bb := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, e.bodybuf.Size()})
-	e.sfr.Fr.InsertColor(ba)
-	e.sfr.Fr.InsertColor(bb)
-	edutil.DoHighlightingConsistency(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, Highlight)
+	e.refreshIntl(true)
 
 	e.tagfr.R = r
 	e.tagfr.R.Min.Y += 2
@@ -296,7 +300,18 @@ func (e *Editor) GenTag() {
 	e.tagbuf.FixSel(&e.tagfr.Sels[0])
 }
 
-func (e *Editor) refreshIntl() {
+func (e *Editor) refreshIntl(full bool) {
+	/*Fast Path if
+	- full is not set
+	- e.otherSel[OS_TOP].E == e.sfr.Fr.Top
+	- buffer RevCount is the same as the last time we were here
+	- don't reload the buffer, just let the redraw happen (in this situation we could also do a minimal redraw)
+	*/
+	if !full && (e.otherSel[OS_TOP].E == e.refreshOpt.top) && (e.bodybuf.RevCount == e.refreshOpt.revCount) {
+		return
+	}
+	e.refreshOpt.top = e.otherSel[OS_TOP].E
+	e.refreshOpt.revCount = e.bodybuf.RevCount
 	e.sfr.Fr.Clear()
 	e.sfr.Set(e.otherSel[OS_TOP].E, e.bodybuf.Size())
 
@@ -329,11 +344,11 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur, scroll bool) {
 		}
 		e.tagfr.Redraw(true)
 	} else {
-		e.refreshIntl()
+		e.refreshIntl(false)
 		if !e.sfr.Fr.Inside(e.sfr.Fr.Sels[0].E) && recur && scroll {
 			x := e.bodybuf.Tonl(e.sfr.Fr.Sels[0].E-2, -1)
 			e.otherSel[OS_TOP].E = x
-			e.refreshIntl()
+			e.refreshIntl(false)
 			edutil.Scrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, -1, e.sfr.Fr.LineNo()/4-1, Highlight)
 		}
 
