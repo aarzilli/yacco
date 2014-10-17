@@ -143,13 +143,15 @@ func Highlight(b *buf.Buffer, end int) {
 
 	path := filepath.Join(b.Dir, b.Name)
 	var m *hlMachine = nil
+	found := false
 	for _, m = range hlMachines {
 		if m.nameRe.MatchString(path) {
+			found = true
 			break
 		}
 	}
 
-	if m == nil {
+	if !found {
 		return
 	}
 
