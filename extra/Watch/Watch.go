@@ -67,7 +67,7 @@ func startCommand(clean bool, buf *util.BufferConn) {
 				break
 			case <-killChan:
 				if err := cmd.Process.Kill(); err != nil {
-					buf.BodyFd.Write([]byte("Error killing process"))
+					fmt.Fprintf(buf.BodyFd, "Error killing process: %v", err)
 				}
 				break
 			}
@@ -183,6 +183,8 @@ func readEvents(buf *util.BufferConn) {
 				if canExecute() {
 					startCommand(true, buf)
 				}
+			} else if arg == "Stop" {
+				/*TODO: kill the process if it's running */
 			} else {
 				err := er.SendBack(buf.EventFd)
 				util.Allergic(debug, err)
@@ -221,7 +223,7 @@ func main() {
 	_, err = buf.CtlFd.Write([]byte("dumpdir " + wd + "\n"))
 	util.Allergic(debug, err)
 
-	util.SetTag(p9clnt, buf.Id, "Kill Delete Rerun ")
+	util.SetTag(p9clnt, buf.Id, "Kill Rerun ")
 
 	_, err = buf.AddrFd.Write([]byte(","))
 	util.Allergic(debug, err)
