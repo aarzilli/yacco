@@ -19,7 +19,7 @@ type Redrawable interface {
 }
 
 type ColorRune struct {
-	C uint8
+	C uint16
 	R rune
 }
 
@@ -62,6 +62,8 @@ type Frame struct {
 	ins      raster.Point
 	lastFull int
 }
+
+const COLORMASK = 0x0f
 
 /*
 ABOUT SELECTIONS AND COLORS
@@ -196,7 +198,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 				fontIndex: 0,
 				index:     spaceIndex,
 				p:         fr.ins,
-				color:     crune.C & 0x0f,
+				color:     uint8(crune.C & COLORMASK),
 				width:     raster.Fix32(fr.R.Max.X<<8) - fr.ins.X - fr.margin,
 				widthy:    lh}
 
@@ -213,7 +215,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 				fontIndex: 0,
 				index:     spaceIndex,
 				p:         fr.ins,
-				color:     crune.C & 0x0f,
+				color:     uint8(crune.C & COLORMASK),
 				width:     toNextCell}
 
 			fr.glyphs = append(fr.glyphs, g)
@@ -246,7 +248,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 				fontIndex: 0,
 				index:     spaceIndex,
 				p:         fr.ins,
-				color:     crune.C & 0x0f,
+				color:     uint8(crune.C & COLORMASK),
 				width:     width}
 
 			fr.glyphs = append(fr.glyphs, g)
@@ -283,7 +285,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 				fontIndex: fontIdx,
 				index:     index,
 				p:         fr.ins,
-				color:     crune.C & 0x0f,
+				color:     uint8(crune.C & COLORMASK),
 				kerning:   kerning,
 				width:     width}
 
@@ -318,7 +320,7 @@ func (fr *Frame) RefreshColors(a, b []ColorRune) {
 			crune = b[i - len(a)]
 		}
 		fr.glyphs[i].r = crune.R
-		fr.glyphs[i].color = crune.C & 0x0f
+		fr.glyphs[i].color = uint8(crune.C & COLORMASK)
 	}
 }
 
@@ -821,7 +823,7 @@ func (fr *Frame) PushUp(ln int) (newsize int) {
 		fr.glyphs = fr.glyphs[:len(fr.glyphs)-off-1]
 		fr.ins.X = g.p.X
 		fr.ins.Y = g.p.Y
-		fr.InsertColor([]ColorRune{ColorRune{g.color, g.r}})
+		fr.InsertColor([]ColorRune{ColorRune{uint16(g.color), g.r}})
 	} else {
 		fr.Top += len(fr.glyphs)
 		fr.glyphs = []glyph{}

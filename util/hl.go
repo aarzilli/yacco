@@ -1,9 +1,5 @@
 package util
 
-import (
-	"regexp"
-)
-
 type RegionMatchType int
 
 const (
@@ -12,7 +8,7 @@ const (
 )
 
 type RegionMatch struct {
-	NameRe     *regexp.Regexp
+	NameRe     string
 	StartDelim []rune
 	EndDelim   []rune
 	Escape     rune

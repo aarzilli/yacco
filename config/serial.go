@@ -29,7 +29,7 @@ type configFont struct {
 	Pixel     int
 	LineScale float64
 	Path      string
-	CopyFrom string
+	CopyFrom  string
 }
 
 type configLoadRules struct {

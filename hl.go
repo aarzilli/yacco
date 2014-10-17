@@ -5,27 +5,128 @@ import (
 	"path/filepath"
 	"yacco/buf"
 	"yacco/config"
+	"regexp"
+	"yacco/util"
 )
 
 const TraceHighlight = false
+const TraceHighlightExtra = false
 
-func equalAt(b *buf.Buffer, start int, needle []rune) bool {
-	if needle == nil {
-		return false
-	}
-	var i int
-	for i = 0; (i+start < b.Size()) && (i < len(needle)); i++ {
-		if b.At(i+start).R != needle[i] {
-			return false
+type hlMachine struct {
+	nameRe *regexp.Regexp
+	states []hlState
+}
+
+type hlState struct {
+	mark util.RegionMatchType
+	trans []hlTransition
+	failTrans hlTransition
+}
+
+type hlTransition struct {
+	match rune
+	mark util.RegionMatchType // color to mark this matched character
+	backMark int
+	next uint16 // next state
+}
+
+var hlMachines map[string]*hlMachine = nil
+
+func (s *hlState) addTransition(match rune, mark util.RegionMatchType, backMark int, next uint16) {
+	s.trans = append(s.trans, hlTransition{ match: match, mark: mark, backMark: backMark, next: next })
+}
+
+func (m *hlMachine) addState(mark util.RegionMatchType, failTrans hlTransition, trans ...hlTransition) uint16 {
+	m.states = append(m.states, hlState{ mark, trans, failTrans })
+	return uint16(len(m.states)-1)
+}
+
+func (m *hlMachine) addProgression(startState, endState uint16, startColor, endColor util.RegionMatchType, seq []rune) {
+	curState := startState
+	for i := range seq {
+		if i == len(seq)-1 {
+			m.states[curState].addTransition(seq[i], endColor, len(seq)-1, endState)
+		} else {
+			nextState := -1
+			for j := range m.states[curState].trans {
+				if m.states[curState].trans[j].match == seq[i] {
+					nextState = int(m.states[curState].trans[j].next)
+					break
+				}
+			}
+			if nextState < 0 {
+				nextState = int(m.addState(startColor, hlTransition{ 0, 0, 0, startState }))
+				m.states[curState].addTransition(seq[i], startColor, 0, uint16(nextState))
+			}
+			curState = uint16(nextState)
 		}
 	}
+}
 
-	return i >= len(needle)
+func (m *hlMachine) addEscape(state uint16, color util.RegionMatchType, r rune) {
+	escapeState := m.addState(color, hlTransition{ match: 0, mark: color, backMark: 0, next: state })
+	m.states[state].addTransition(r, color, 0, escapeState)
+}
+
+func compileHl() {
+	hlMachines = map[string]*hlMachine{}
+	for _, r := range config.RegionMatches {
+		if _, ok := hlMachines[r.NameRe]; !ok {
+			hlMachines[r.NameRe] = &hlMachine{ regexp.MustCompile(r.NameRe), []hlState{} }
+			hlMachines[r.NameRe].addState(0x01, hlTransition{ match: 0, mark: 0x01, backMark: 0, next: 0 }) // state 0
+		}
+		m := hlMachines[r.NameRe]
+		newState := m.addState(r.Type, hlTransition{ 0, r.Type, 0, 0 })
+		m.states[newState].failTrans.next = newState
+		m.addProgression(0, newState, 0x01, r.Type, r.StartDelim)
+		m.addProgression(newState, 0, r.Type, r.Type, r.EndDelim)
+		if r.Escape != 0 {
+			m.addEscape(newState, r.Type, r.Escape)
+		}
+	}
+	for _, m := range hlMachines {
+		if len(m.states) > 255 {
+			panic(fmt.Errorf("Too many highlighting states"))
+		}
+	}
+	if TraceHighlight {
+		for name, m := range hlMachines {
+			fmt.Printf("MACHINE: %s\n", name)
+			for i := range m.states {
+				for j := range m.states[i].trans {
+					t := m.states[i].trans[j]
+					normal := func() {
+						fmt.Printf("\t%02d: %c -> %02d (mark: %d %d)\n", i, t.match, t.next, t.mark, t.backMark)
+					}
+					if t.match == 0 {
+						if t.next == uint16(i) {
+							fmt.Printf("\t%02d: ERROR %d\n", i, t.mark)
+						} else if t.next == 0 && t.mark == 0 {
+							fmt.Printf("\t%02d: ERROR\n", i)
+						}
+					} else {
+						normal()
+					}
+				}
+				if m.states[i].failTrans.next == uint16(i) {
+					fmt.Printf("\t%02d: all %d\n", i, m.states[i].failTrans.mark)
+				} else if m.states[i].failTrans.mark != 0 {
+					fmt.Printf("\t%02d: all -> %d (%d)\n", i, m.states[i].failTrans.next, m.states[i].failTrans.mark)
+				} else {
+					fmt.Printf("\t%02d: fail %d\n", i, m.states[i].failTrans.next)
+				}
+			}
+		}
+	}
 }
 
 func Highlight(b *buf.Buffer, end int) {
 	if !config.EnableHighlighting {
 		return
+	}
+	
+	if hlMachines == nil {
+		compileHl()
 	}
 
 	if b.IsDir() {
@@ -41,19 +142,20 @@ func Highlight(b *buf.Buffer, end int) {
 	}
 
 	path := filepath.Join(b.Dir, b.Name)
-	amis := []int{}
-	for i, regionMatch := range config.RegionMatches {
-		if i == 0 {
-			continue
-		}
-		if regionMatch.NameRe.MatchString(path) {
-			amis = append(amis, i)
+	var m *hlMachine = nil
+	for _, m = range hlMachines {
+		if m.nameRe.MatchString(path) {
+			break
 		}
 	}
+	
+	if m == nil {
+		return
+	}
 
-	start := highlightingSyncPoint(b, b.HlGood)
+	start := b.HlGood
 
-	status := uint8(0)
+	status := uint16(0)
 	if start >= 0 {
 		status = b.At(start).C >> 4
 	}
@@ -70,55 +172,39 @@ func Highlight(b *buf.Buffer, end int) {
 		fmt.Printf("Highlighting from %d to %d\n", b.HlGood, end)
 		fmt.Printf("Starting status: %d starting character %c\n", status, ch)
 	}
-
-	escaping := false
-	for i := start + 1; i <= end; i++ {
-		if status == 0 {
-			for _, k := range amis {
-				if equalAt(b, i, config.RegionMatches[k].StartDelim) {
-					status = uint8(k)
-					break
+	
+	for i := start+1; i <= end; {
+		s := m.states[status]
+		r := b.At(i).R
+		if TraceHighlightExtra {
+			fmt.Printf("State %d char %c\n", status, r)
+		}
+		found := false
+		for _, t := range s.trans {
+			if t.match == r {
+				if TraceHighlightExtra {
+					fmt.Printf("\tTransition %c %d (%d) %d\n", t.match, t.mark, t.backMark, t.next)
 				}
-			}
-
-			if status != 0 {
-				for j := i; j < i+len(config.RegionMatches[status].StartDelim); j++ {
-					b.At(j).C = (status << 4) + uint8(config.RegionMatches[status].Type)
+				found = true
+				status = t.next
+				b.At(i).C = (status << 4) + uint16(t.mark)
+				for j := 0; j < t.backMark; j++ {
+					s := b.At(i-j-1).C & 0xfff0
+					b.At(i-j-1).C = s + uint16(t.mark)
 				}
-				i += len(config.RegionMatches[status].StartDelim) - 1
-			} else {
-				b.At(i).C = 0x01
-			}
-		} else {
-			if !escaping && equalAt(b, i, config.RegionMatches[status].EndDelim) {
-				for j := i; j < i+len(config.RegionMatches[status].EndDelim); j++ {
-					b.At(j).C = (status << 4) + uint8(config.RegionMatches[status].Type)
-				}
-				i += len(config.RegionMatches[status].EndDelim) - 1
-				status = 0
-			} else if !escaping && (b.At(i).R == config.RegionMatches[status].Escape) {
-				b.At(i).C = (status << 4) + uint8(config.RegionMatches[status].Type)
-				escaping = true
-			} else {
-				escaping = false
-				b.At(i).C = (status << 4) + uint8(config.RegionMatches[status].Type)
+				i++
+				break
 			}
 		}
-		b.HlGood = i
-	}
-}
-
-/*
-Because of how highlighting of strings and comments works only some points are safe synchronization points, the last character of a line is always clear (you could construct an artificial language where this is not true but it's a safe assumption in reality)
-*/
-func highlightingSyncPoint(b *buf.Buffer, s int) int {
-	if s-1 < 0 {
-		return -1
-	}
-	for i := s - 1; i >= 0; i-- {
-		if b.At(i).R == '\n' {
-			return i - 1
+		if !found {
+			if TraceHighlightExtra {
+				fmt.Printf("\tTransition fallback %d %d\n", s.failTrans.mark, s.failTrans.next)
+			}
+			status = s.failTrans.next
+			if s.failTrans.mark != 0 {
+				b.At(i).C = (status << 4) + uint16(s.failTrans.mark)
+				i++
+			}
 		}
 	}
-	return 0
 }

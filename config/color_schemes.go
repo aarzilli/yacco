@@ -47,7 +47,7 @@ func mix(color1 color.RGBA, color3 color.RGBA) image.Uniform {
 	return *image.NewUniform(color2)
 }
 
-var blahcol = *image.NewUniform(color.RGBA{ 0x78, 0x00, 0x3e, 0xff })
+var blahcol = *image.NewUniform(color.RGBA{0x78, 0x00, 0x3e, 0xff})
 
 var AcmeColorScheme = ColorScheme{
 	WindowBG: *image.White,
