@@ -54,7 +54,7 @@ func (sfr *ScrollFrame) SetRects(b draw.Image, r image.Rectangle) {
 func (sfr *ScrollFrame) Redraw(flush bool) {
 	drawingFuncs := GetOptimizedDrawing(sfr.b)
 
-	// background
+	// scrollbar background
 	bgr := sfr.r
 	bgr.Max.X = bgr.Min.X + sfr.Width
 	drawingFuncs.DrawFillSrc(sfr.b, sfr.r.Intersect(bgr), &sfr.Color)

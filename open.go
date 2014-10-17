@@ -110,9 +110,6 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 		}
 	}
 
-	Wnd.cols.RecalcRects()
-	ed.BufferRefreshEx(false, true, true)
-	col.Redraw()
 	Wnd.wnd.FlushImage()
 	if warp {
 		ed.Warp()

@@ -157,7 +157,9 @@ func (c *Col) Redraw() {
 	drawingFuncs := textframe.GetOptimizedDrawing(c.tagfr.B)
 
 	br := c.r
-	drawingFuncs.DrawFillSrc(c.tagfr.B, br, &config.TheColorScheme.WindowBG)
+	if len(c.editors) == 0 {
+		drawingFuncs.DrawFillSrc(c.tagfr.B, br, &config.TheColorScheme.WindowBG)
+	}
 
 	// border at the top of the column
 	br.Max.Y = br.Min.Y + 2

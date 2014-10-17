@@ -37,17 +37,21 @@ func LoadInit() {
 	}
 }
 
+func printStackTrace() {
+	for i := 1; ; i++ {
+		_, file, line, ok := runtime.Caller(i)
+		if !ok {
+			break
+		}
+		fmt.Printf("  %s:%d\n", file, line)
+	}
+}
+
 func Load(ec ExecContext, origin int) {
 	defer func() {
 		if ierr := recover(); ierr != nil {
 			fmt.Printf("Error during Load: %v\n", ierr.(error).Error())
-			for i := 1; ; i++ {
-				_, file, line, ok := runtime.Caller(i)
-				if !ok {
-					break
-				}
-				fmt.Printf("  %s:%d\n", file, line)
-			}
+			printStackTrace()
 		}
 	}()
 	//println("\nin load")
@@ -150,13 +154,7 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 	defer func() {
 		if ierr := recover(); ierr != nil {
 			fmt.Printf("Error during Load (exec): %v\n", ierr.(error).Error())
-			for i := 1; ; i++ {
-				_, file, line, ok := runtime.Caller(i)
-				if !ok {
-					break
-				}
-				fmt.Printf("  %s:%d\n", file, line)
-			}
+			printStackTrace()
 		}
 	}()
 	action := rule.Action[1:]

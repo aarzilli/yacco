@@ -170,6 +170,7 @@ func (w *Window) Resized() {
 	w.padDraw(screen)
 
 	w.cols.Redraw()
+	w.tagfr.Invalidate()
 	w.tagfr.Redraw(false)
 	w.wnd.FlushImage()
 }

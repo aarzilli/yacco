@@ -204,10 +204,9 @@ func (e *Editor) MinHeight() int {
 	return TagHeight(&e.tagfr) + 2
 }
 
-func (e *Editor) Redraw() {
+func (e *Editor) redrawResizeHandle() {
 	drawingFuncs := textframe.GetOptimizedDrawing(e.sfr.Fr.B)
 
-	// draw resize handle
 	drawingFuncs.DrawFillSrc(e.sfr.Fr.B, e.rhandle, &config.TheColorScheme.HandleBG)
 
 	hir := e.rhandle
@@ -226,6 +225,12 @@ func (e *Editor) Redraw() {
 		}
 	}
 	drawingFuncs.DrawFillSrc(e.sfr.Fr.B, hir, rhc)
+}
+
+func (e *Editor) Redraw() {
+	drawingFuncs := textframe.GetOptimizedDrawing(e.sfr.Fr.B)
+
+	e.redrawResizeHandle()
 
 	// draw text frames
 	e.tagfr.Redraw(false)
@@ -358,7 +363,9 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur, scroll bool) {
 		e.tagfr.InsertColor(ta)
 		e.tagfr.InsertColor(tb)
 
-		e.Redraw()
+		e.redrawResizeHandle()
+		e.tagfr.Redraw(false)
+		e.sfr.Redraw(false)
 		e.sfr.Wnd.FlushImage(e.r)
 
 		if (e.bodybuf.RefCount <= 1) || !recur {

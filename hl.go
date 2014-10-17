@@ -3,9 +3,9 @@ package main
 import (
 	"fmt"
 	"path/filepath"
+	"regexp"
 	"yacco/buf"
 	"yacco/config"
-	"regexp"
 	"yacco/util"
 )
 
@@ -18,27 +18,27 @@ type hlMachine struct {
 }
 
 type hlState struct {
-	mark util.RegionMatchType
-	trans []hlTransition
+	mark      util.RegionMatchType
+	trans     []hlTransition
 	failTrans hlTransition
 }
 
 type hlTransition struct {
-	match rune
-	mark util.RegionMatchType // color to mark this matched character
+	match    rune
+	mark     util.RegionMatchType // color to mark this matched character
 	backMark int
-	next uint16 // next state
+	next     uint16 // next state
 }
 
 var hlMachines map[string]*hlMachine = nil
 
 func (s *hlState) addTransition(match rune, mark util.RegionMatchType, backMark int, next uint16) {
-	s.trans = append(s.trans, hlTransition{ match: match, mark: mark, backMark: backMark, next: next })
+	s.trans = append(s.trans, hlTransition{match: match, mark: mark, backMark: backMark, next: next})
 }
 
 func (m *hlMachine) addState(mark util.RegionMatchType, failTrans hlTransition, trans ...hlTransition) uint16 {
-	m.states = append(m.states, hlState{ mark, trans, failTrans })
-	return uint16(len(m.states)-1)
+	m.states = append(m.states, hlState{mark, trans, failTrans})
+	return uint16(len(m.states) - 1)
 }
 
 func (m *hlMachine) addProgression(startState, endState uint16, startColor, endColor util.RegionMatchType, seq []rune) {
@@ -55,7 +55,7 @@ func (m *hlMachine) addProgression(startState, endState uint16, startColor, endC
 				}
 			}
 			if nextState < 0 {
-				nextState = int(m.addState(startColor, hlTransition{ 0, 0, 0, startState }))
+				nextState = int(m.addState(startColor, hlTransition{0, 0, 0, startState}))
 				m.states[curState].addTransition(seq[i], startColor, 0, uint16(nextState))
 			}
 			curState = uint16(nextState)
@@ -64,7 +64,7 @@ func (m *hlMachine) addProgression(startState, endState uint16, startColor, endC
 }
 
 func (m *hlMachine) addEscape(state uint16, color util.RegionMatchType, r rune) {
-	escapeState := m.addState(color, hlTransition{ match: 0, mark: color, backMark: 0, next: state })
+	escapeState := m.addState(color, hlTransition{match: 0, mark: color, backMark: 0, next: state})
 	m.states[state].addTransition(r, color, 0, escapeState)
 }
 
@@ -72,11 +72,11 @@ func compileHl() {
 	hlMachines = map[string]*hlMachine{}
 	for _, r := range config.RegionMatches {
 		if _, ok := hlMachines[r.NameRe]; !ok {
-			hlMachines[r.NameRe] = &hlMachine{ regexp.MustCompile(r.NameRe), []hlState{} }
-			hlMachines[r.NameRe].addState(0x01, hlTransition{ match: 0, mark: 0x01, backMark: 0, next: 0 }) // state 0
+			hlMachines[r.NameRe] = &hlMachine{regexp.MustCompile(r.NameRe), []hlState{}}
+			hlMachines[r.NameRe].addState(0x01, hlTransition{match: 0, mark: 0x01, backMark: 0, next: 0}) // state 0
 		}
 		m := hlMachines[r.NameRe]
-		newState := m.addState(r.Type, hlTransition{ 0, r.Type, 0, 0 })
+		newState := m.addState(r.Type, hlTransition{0, r.Type, 0, 0})
 		m.states[newState].failTrans.next = newState
 		m.addProgression(0, newState, 0x01, r.Type, r.StartDelim)
 		m.addProgression(newState, 0, r.Type, r.Type, r.EndDelim)
@@ -124,7 +124,7 @@ func Highlight(b *buf.Buffer, end int) {
 	if !config.EnableHighlighting {
 		return
 	}
-	
+
 	if hlMachines == nil {
 		compileHl()
 	}
@@ -148,7 +148,7 @@ func Highlight(b *buf.Buffer, end int) {
 			break
 		}
 	}
-	
+
 	if m == nil {
 		return
 	}
@@ -172,8 +172,8 @@ func Highlight(b *buf.Buffer, end int) {
 		fmt.Printf("Highlighting from %d to %d\n", b.HlGood, end)
 		fmt.Printf("Starting status: %d starting character %c\n", status, ch)
 	}
-	
-	for i := start+1; i <= end; {
+
+	for i := start + 1; i <= end; {
 		s := m.states[status]
 		r := b.At(i).R
 		if TraceHighlightExtra {
@@ -190,7 +190,7 @@ func Highlight(b *buf.Buffer, end int) {
 				b.At(i).C = (status << 4) + uint16(t.mark)
 				for j := 0; j < t.backMark; j++ {
 					s := b.At(i-j-1).C & 0xfff0
-					b.At(i-j-1).C = s + uint16(t.mark)
+					b.At(i - j - 1).C = s + uint16(t.mark)
 				}
 				i++
 				break
