@@ -851,6 +851,8 @@ func ZeroxCmd(ec ExecContext, arg string) {
 	ed.confirmSave = false
 	ed.bodybuf.RefCount++
 	ned := NewEditor(ed.bodybuf, true)
+	ned.sfr.Fr.Sels[0].S = ed.sfr.Fr.Sels[0].S
+	ned.sfr.Fr.Sels[0].E = ed.sfr.Fr.Sels[0].E
 	Log(bufferIndex(ed.bodybuf), LOP_ZEROX, ed.bodybuf)
 	HeuristicPlaceEditor(ned, true)
 }
