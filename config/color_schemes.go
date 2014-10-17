@@ -55,8 +55,8 @@ var AcmeColorScheme = ColorScheme{
 	Border:    *image.Black,
 	Scrollbar: *image.NewUniform(color.RGBA{153, 153, 76, 0xff}),
 
-	EditorPlain:               []image.Uniform{yellowbg, *image.Black, blahcol, *DDarkblue},
-	EditorSel1:                []image.Uniform{*DDarkyellow, *image.Black, blahcol, *DDarkblue},
+	EditorPlain:               []image.Uniform{yellowbg, *image.Black, darkergreen, *DDarkblue},
+	EditorSel1:                []image.Uniform{*DDarkyellow, *image.Black, darkergreen, *DDarkblue},
 	EditorSel2:                []image.Uniform{col2sel, yellowbg, yellowbg, yellowbg},
 	EditorSel3:                []image.Uniform{col3sel, yellowbg, yellowbg, yellowbg},
 	EditorMatchingParenthesis: []image.Uniform{*image.Black, yellowbg, yellowbg, yellowbg},

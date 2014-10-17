@@ -40,10 +40,6 @@ func Highlight(b *buf.Buffer, end int) {
 		return
 	}
 	
-	if TraceHighlight {
-		fmt.Printf("Highlighting from %d to %d (%d)\n", b.HlGood, end, b.Size())
-	}
-	
 	path := filepath.Join(b.Dir, b.Name)
 	amis := []int{}
 	for i, regionMatch := range config.RegionMatches {
@@ -60,16 +56,23 @@ func Highlight(b *buf.Buffer, end int) {
 	status := uint8(0)
 	if start >= 0 {
 		status = b.At(start).C >> 4
-	} else {
-		start = 0
 	}
 	
 	if end >= b.Size() {
 		end = b.Size() - 1
 	}
 	
+	if TraceHighlight {
+		ch := rune(0)
+		if start >= 0 {
+			ch = b.At(start).R
+		}
+		fmt.Printf("Highlighting from %d to %d\n", b.HlGood, end)
+		fmt.Printf("Starting status: %d starting character %c\n", status, ch)
+	}
+	
 	escaping := false
-	for i := start; i <= end; i++ {
+	for i := start+1; i <= end; i++ {
 		if status == 0 {
 			for _, k := range amis {
 				if equalAt(b, i, config.RegionMatches[k].StartDelim) {
