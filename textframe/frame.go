@@ -651,15 +651,18 @@ func (fr *Frame) deleteTick(glyphBounds truetype.Bounds, drawingFuncs DrawingFun
 	fr.VisibleTick = vt
 
 	if len(fr.glyphs) == 0 {
+		fr.Sels[0] = saved
 		return
 	}
-	if (fr.Sels[0].S-fr.Top >= 0) && (fr.Sels[0].S-fr.Top < len(fr.glyphs)) {
-		fr.drawSingleGlyph(&fr.glyphs[fr.Sels[0].S-fr.Top], 0, drawingFuncs)
-		if fr.Sels[0].S-fr.Top-1 >= 0 {
+	if fr.Sels[0].S == fr.Sels[0].E {
+		if (fr.Sels[0].S-fr.Top >= 0) && (fr.Sels[0].S-fr.Top < len(fr.glyphs)) {
+			fr.drawSingleGlyph(&fr.glyphs[fr.Sels[0].S-fr.Top], 0, drawingFuncs)
+			if fr.Sels[0].S-fr.Top-1 >= 0 {
+				fr.drawSingleGlyph(&fr.glyphs[fr.Sels[0].S-fr.Top-1], 0, drawingFuncs)
+			}
+		} else if (fr.Sels[0].S-fr.Top-1 >= 0) && (fr.Sels[0].S-fr.Top-1 < len(fr.glyphs)) {
 			fr.drawSingleGlyph(&fr.glyphs[fr.Sels[0].S-fr.Top-1], 0, drawingFuncs)
 		}
-	} else if (fr.Sels[0].S-fr.Top-1 >= 0) && (fr.Sels[0].S-fr.Top-1 < len(fr.glyphs)) {
-		fr.drawSingleGlyph(&fr.glyphs[fr.Sels[0].S-fr.Top-1], 0, drawingFuncs)
 	}
 	fr.Sels[0] = saved
 }
