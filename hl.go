@@ -44,16 +44,20 @@ func (m *hlMachine) addState(mark util.RegionMatchType, failTrans hlTransition, 
 func (m *hlMachine) addProgression(startState, endState uint16, startColor, endColor util.RegionMatchType, seq []rune) {
 	curState := startState
 	for i := range seq {
-		if i == len(seq)-1 {
-			m.states[curState].addTransition(seq[i], endColor, len(seq)-1, endState)
-		} else {
-			nextState := -1
-			for j := range m.states[curState].trans {
-				if m.states[curState].trans[j].match == seq[i] {
-					nextState = int(m.states[curState].trans[j].next)
-					break
-				}
+		nextState := -1
+		for j := range m.states[curState].trans {
+			if m.states[curState].trans[j].match == seq[i] {
+				nextState = int(m.states[curState].trans[j].next)
+				break
 			}
+		}
+		if i == len(seq)-1 {
+			if nextState < 0 {
+				m.states[curState].addTransition(seq[i], endColor, len(seq)-1, endState)
+			} else {
+				m.states[nextState].failTrans = hlTransition{match: 0, mark: endColor, backMark: len(seq) - 1, next: endState}
+			}
+		} else {
 			if nextState < 0 {
 				nextState = int(m.addState(startColor, hlTransition{0, 0, 0, startState}))
 				m.states[curState].addTransition(seq[i], startColor, 0, uint16(nextState))
