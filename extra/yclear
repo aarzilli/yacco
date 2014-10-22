@@ -1,0 +1,5 @@
+#!/bin/bash
+
+id=$(y9p find +Error)
+echo -n ',' | y9p write /$id/addr
+echo -en '\000' | y9p write /$id/data
