@@ -140,6 +140,8 @@ func (rx *Regex) Match(b *buf.Buffer, start, end int, dir int) []int {
 		var ch rune
 		if i >= b.Size() {
 			ch = 0
+		} else if i < 0 {
+			ch = 0
 		} else {
 			ch = b.At(i).R
 		}
@@ -152,7 +154,7 @@ func (rx *Regex) Match(b *buf.Buffer, start, end int, dir int) []int {
 				break
 			}
 		} else {
-			if i < 0 {
+			if i < -1 {
 				break
 			}
 			if (end >= 0) && (i <= end) {

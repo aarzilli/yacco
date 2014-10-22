@@ -18,7 +18,7 @@ func testEdit(t *testing.T, input, pgm, target string) {
 	input = input[:e] + input[e+1:]
 
 	buf, _ := buf.NewBuffer("/", "+Tag", true, " ")
-	buf.Replace([]rune(input), &util.Sel{0, 0}, true, nil, util.EO_MOUSE, false)
+	buf.Replace([]rune(input), &util.Sel{0, 0}, true, nil, util.EO_MOUSE)
 
 	sels := []util.Sel{util.Sel{s, e}, util.Sel{0, 0}, util.Sel{0, 0}, util.Sel{0, 0}}
 	buf.AddSels(&sels)
@@ -30,7 +30,7 @@ func testEdit(t *testing.T, input, pgm, target string) {
 	output = output[:sels[0].S] + "<" + output[sels[0].S:sels[0].E] + ">" + output[sels[0].E:]
 
 	if target != output {
-		fmt.Printf("Differing output and target:\ntarget: [%s]\noutput: [%s]\n", target, output)
+		fmt.Printf("Differing output and target for [%s]:\ntarget: [%s]\noutput: [%s]\n", pgm, target, output)
 		t.Fatalf("Differing output and target")
 	}
 }
@@ -66,4 +66,12 @@ func TestEndCmd(t *testing.T) {
 	testEdit(t, "prova\n<>\n", END_ADDR, "prova\n<>\n")
 	testEdit(t, "prova\n\n<>", END_ADDR, "prova\n\n<>")
 
+}
+
+func TestRegexpAddrCmd(t *testing.T) {
+	testEdit(t, "re blah <>blah re blah", "/re/", "re blah blah <re> blah")
+	testEdit(t, "re blah blah re bla<>h", "?re?", "re blah blah <re> blah")
+	testEdit(t, "a re blah blah <re> blah", "?re?", "a <re> blah blah re blah")
+	testEdit(t, "re blah <>blah re blah", "?re?", "<re> blah blah re blah")
+	testEdit(t, "re blah blah re <>blah re", "/re/", "re blah blah re blah <re>")
 }

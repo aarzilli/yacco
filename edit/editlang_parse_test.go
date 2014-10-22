@@ -23,7 +23,8 @@ func TestAddrs(t *testing.T) {
 	testParsed(t, "-+", "Range<List<. -1 +1 >> Cmd< >")
 	testParsed(t, "0/regexp/", "Range<List<0 +/regexp >> Cmd< >")
 	testParsed(t, ",", "Range<Op<0 , $>> Cmd< >")
-	testParsed(t, ",/regexp/", "Range<Op<0 , /regexp>> Cmd< >")
+	testParsed(t, ",/regexp/", "Range<Op<0 , +/regexp>> Cmd< >")
+	testParsed(t, "/regexp/", "Range<+/regexp> Cmd< >")
 }
 
 func TestAddrless(t *testing.T) {

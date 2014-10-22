@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"unicode"
 	"yacco/buf"
 )
 
@@ -110,7 +111,11 @@ type Regex []instr
 func (ix *instr) String() string {
 	switch ix.op {
 	case RX_CHAR:
-		return fmt.Sprintf("char %d", ix.c)
+		ch := "-"
+		if unicode.IsPrint(ix.c) {
+			ch = fmt.Sprintf("%c", ix.c)
+		}
+		return fmt.Sprintf("char %d %s", ix.c, ch)
 	case RX_CLASS:
 		return fmt.Sprintf("class %s", ix.cname)
 	case RX_ASSERT:

@@ -392,8 +392,8 @@ func parseAddrBase(addrs []addrTok) (Addr, []addrTok) {
 			return &AddrBase{"", f, 0}, addrs[1:]
 		}
 
-		if (f[0] == '/') || (f[0] == '?') {
-			return &AddrBase{string(f[0]), f[1 : len(f)-1], 0}, addrs[1:]
+		if f[0] == '/' || f[0] == '?' {
+			return &AddrBase{string(f[0]), f[1 : len(f)-1], +1}, addrs[1:]
 		}
 
 		return &addrEmpty{}, addrs

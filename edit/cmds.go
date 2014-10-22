@@ -2,8 +2,8 @@ package edit
 
 import (
 	"fmt"
-	"yacco/util"
 	"yacco/buf"
+	"yacco/util"
 )
 
 var Warnfn func(msg string)
@@ -124,7 +124,7 @@ func resolveBackreferences(subs []rune, b *buf.Buffer, loc []int) []rune {
 				}
 				n := int(subs[src+1] - '0')
 				if 2*n+1 < len(loc) {
-					r = append(r, b.SelectionRunes(util.Sel{ loc[2*n], loc[2*n+1] })...)
+					r = append(r, b.SelectionRunes(util.Sel{loc[2*n], loc[2*n+1]})...)
 				} else {
 					panic(fmt.Errorf("Nonexistent backreference %d (%d)", n, len(loc)))
 				}

@@ -180,7 +180,7 @@ func (e *AddrBase) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 		rsel.E = rsel.S
 
 	case "?":
-		rsel = setStartSel(e.Dir, sel)
+		rsel = setStartSel(-e.Dir, sel)
 		rsel = regexpEval(b, rsel, e.Value, -e.Dir)
 
 	case "/":
