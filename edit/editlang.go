@@ -22,14 +22,13 @@ type cmd struct {
 	argaddr   Addr
 	body      *cmd
 	bodytxt   string
-	fn        func(c *cmd, atsel util.Sel, ec EditContext)
+	fn        func(c *cmd, atsel *util.Sel, ec EditContext)
 	sregexp   regexp.Regex
 }
 
 type EditContext struct {
 	Buf       *buf.Buffer
 	Sels      []util.Sel
-	addrSave  []util.Sel
 	EventChan chan string
 	PushJump  func()
 }
@@ -44,12 +43,7 @@ func (ecmd *cmd) Exec(ec EditContext) {
 		panic(fmt.Errorf("Command '%c' not implemented", ecmd.cmdch))
 	}
 
-	ec.addrSave = make([]util.Sel, 2)
-
-	ec.Buf.AddSels(&ec.addrSave)
-	defer ec.Buf.RmSels(&ec.addrSave)
-
-	ecmd.fn(ecmd, ec.Sels[0], ec)
+	ecmd.fn(ecmd, &ec.Sels[0], ec)
 }
 
 func AddrEval(pgm string, b *buf.Buffer, sel util.Sel) util.Sel {

@@ -49,3 +49,9 @@ func TestXWithIEdit(t *testing.T) {
 func TestXOmit(t *testing.T) {
 	testEdit(t, "<bip i bang iii baip i bop>", `xg/i/c/na/`, "<bip na bang iii baip na bop>")
 }
+
+func TestXWithAddrAndC(t *testing.T) {
+	testEdit(t, "<>bip bop bappa bump", `,x/\w+/ c/M/`, "<M M M >M")
+	testEdit(t, "<>bip bop bappa bump", `,x/\w+/ c/M12345/`, "<M12345 M12345 M12345 >M12345")
+	testEdit(t, "<>bip bop bappa bump", `,x/\w+/ -#0;+#1 c/M/`, "<Mip Mop Mappa Mump>")
+}
