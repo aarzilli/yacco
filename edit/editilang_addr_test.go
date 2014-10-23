@@ -75,3 +75,7 @@ func TestRegexpAddrCmd(t *testing.T) {
 	testEdit(t, "re blah <>blah re blah", "?re?", "<re> blah blah re blah")
 	testEdit(t, "re blah blah re <>blah re", "/re/", "re blah blah re blah <re>")
 }
+
+func TestSemicolon(t *testing.T) {
+	testEdit(t, "re blah <blah> re blah", "-#0;+#1", "re blah <b>lah re blah")
+}

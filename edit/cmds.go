@@ -250,6 +250,8 @@ func pipecmdfn(c *cmd, atsel util.Sel, ec EditContext) {
 	NewJob(ec.Buf.Dir, c.bodytxt, str, ec.Buf, resultChan)
 	str = <-resultChan
 	ec.Buf.Replace([]rune(str), &sel, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE)
+	ec.Sels[0].S = sel.S
+	ec.Sels[0].E = sel.E
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 }
 
