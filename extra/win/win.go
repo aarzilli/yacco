@@ -157,8 +157,12 @@ func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReader
 				switch escseq[1] {
 				case ';':
 					label := string(escseq[2 : len(escseq)-1])
-					v := strings.SplitN(label, "-", 2)
-					controlChan <- NameMsg{v[0]}
+					i := strings.LastIndex(label, "-")
+					if i < 0 {
+						controlChan <- NameMsg{label}
+					} else {
+						controlChan <- NameMsg{label[:i]}
+					}
 				}
 			}
 
