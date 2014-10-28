@@ -45,6 +45,37 @@ var xgbDrawingFuncs = DrawingFuncs{
 		}
 	},
 
+	DrawCopy: func(gdst draw.Image, r image.Rectangle, gsrc draw.Image, sp image.Point) {
+		if r.Empty() {
+			return
+		}
+		dst := gdst.(*xgb.Image)
+		src := gsrc.(*xgb.Image)
+
+		// Copyied from drawCopySrc
+		n, dy := 4*r.Dx(), r.Dy()
+		d0 := dst.PixOffset(r.Min.X, r.Min.Y)
+		s0 := src.PixOffset(sp.X, sp.Y)
+		var ddelta, sdelta int
+		if r.Min.Y <= sp.Y {
+			ddelta = dst.Stride
+			sdelta = src.Stride
+		} else {
+			// If the source start point is higher than the destination start point, then we compose the rows
+			// in bottom-up order instead of top-down. Unlike the drawCopyOver function, we don't have to
+			// check the x co-ordinates because the built-in copy function can handle overlapping slices.
+			d0 += (dy - 1) * dst.Stride
+			s0 += (dy - 1) * src.Stride
+			ddelta = -dst.Stride
+			sdelta = -src.Stride
+		}
+		for ; dy > 0; dy-- {
+			copy(dst.Pix[d0:d0+n], src.Pix[s0:s0+n])
+			d0 += ddelta
+			s0 += sdelta
+		}
+	},
+
 	DrawGlyphOver: func(b draw.Image, r image.Rectangle, src *image.Uniform, mask *image.Alpha, mp image.Point) {
 		if r.Empty() {
 			return

@@ -23,6 +23,8 @@ type ColorRune struct {
 	R rune
 }
 
+const debugRedraw = false
+
 // Callback when the frame needs to scroll its text
 // If scrollDir is 0 then n is the absolute position to move to
 // If scrollDir is -1 the text should be scrolled back by n lines
@@ -66,6 +68,8 @@ type Frame struct {
 		drawnVisibleTick bool
 		drawnSels        []util.Sel
 		reloaded         bool
+		scrollStart      int
+		scrollEnd        int
 	}
 }
 
@@ -140,6 +144,8 @@ func (fr *Frame) Clear() {
 	fr.glyphs = fr.glyphs[:0]
 	fr.lastFull = 0
 	fr.redrawOpt.reloaded = true
+	fr.redrawOpt.scrollStart = -1
+	fr.redrawOpt.scrollEnd = -1
 }
 
 func (fr *Frame) Invalidate() {
@@ -674,6 +680,8 @@ func (fr *Frame) updateRedrawOpt() {
 	}
 	copy(fr.redrawOpt.drawnSels, fr.Sels)
 	fr.redrawOpt.reloaded = false
+	fr.redrawOpt.scrollStart = -1
+	fr.redrawOpt.scrollEnd = -1
 }
 
 func (fr *Frame) redrawOptMatch() int {
@@ -701,6 +709,16 @@ func (fr *Frame) redrawOptMatch() int {
 	}
 }
 
+func (fr *Frame) allSelectionsEmpty() bool {
+	for i := range fr.Sels {
+		if fr.Sels[i].S != fr.Sels[i].E {
+			return false
+		}
+	}
+
+	return true
+}
+
 func (fr *Frame) Redraw(flush bool) {
 	glyphBounds := fr.Font.Bounds()
 	rightMargin := raster.Fix32(fr.R.Max.X<<8) - fr.margin
@@ -708,7 +726,7 @@ func (fr *Frame) Redraw(flush bool) {
 
 	drawingFuncs := GetOptimizedDrawing(fr.B)
 
-	// FAST PATH
+	// FAST PATH 1
 	// Followed only if:
 	// - the frame wasn't reloaded (Clear, InsertColor weren't called) since last draw
 	// - at most the tick changed position
@@ -717,6 +735,9 @@ func (fr *Frame) Redraw(flush bool) {
 		case -1: // no match go to slow path
 			break
 		case 0: // draw tick
+			if debugRedraw {
+				fmt.Printf("%p Redrawing (tick)\n", fr)
+			}
 			fr.drawTick(glyphBounds, drawingFuncs, 1)
 			fr.updateRedrawOpt()
 			if flush && (fr.Wnd != nil) {
@@ -724,6 +745,9 @@ func (fr *Frame) Redraw(flush bool) {
 			}
 			return
 		case 1: // draw tick (had old tick too)
+			if debugRedraw {
+				fmt.Printf("%p Redrawing (tick2)\n", fr)
+			}
 			fr.deleteTick(glyphBounds, drawingFuncs)
 			fr.drawTick(glyphBounds, drawingFuncs, 1)
 			fr.updateRedrawOpt()
@@ -734,11 +758,49 @@ func (fr *Frame) Redraw(flush bool) {
 		}
 
 	}
+
+	// FAST PATH 2
+	// Followed only after a scroll operation and there are no active selections
+	// Bitmaps are copied directly
+	if fr.redrawOpt.scrollStart >= 0 {
+		if debugRedraw {
+			fmt.Printf("%p Redrawing (scroll)\n", fr)
+		}
+		if fr.redrawOpt.scrollEnd < 0 {
+			fr.redrawOpt.scrollEnd = len(fr.glyphs)
+		}
+		fr.redrawIntl(fr.glyphs[fr.redrawOpt.scrollStart:fr.redrawOpt.scrollEnd], glyphBounds, rightMargin, leftMargin, drawingFuncs)
+		if fr.Sels[0].S >= fr.redrawOpt.scrollStart && fr.Sels[0].S <= fr.redrawOpt.scrollEnd {
+			fr.drawTick(glyphBounds, drawingFuncs, 1)
+		}
+		fr.updateRedrawOpt()
+		if flush && (fr.Wnd != nil) {
+			fr.Wnd.FlushImage(fr.R)
+		}
+		return
+	}
+
 	fr.updateRedrawOpt()
+
+	// NORMAL PATH HERE
+	if debugRedraw {
+		fmt.Printf("%p Redrawing (FULL)\n", fr)
+	}
 
 	// background
 	drawingFuncs.DrawFillSrc(fr.B, fr.R, &fr.Colors[0][0])
 
+	fr.redrawIntl(fr.glyphs, glyphBounds, rightMargin, leftMargin, drawingFuncs)
+
+	// Tick drawing
+	fr.drawTick(glyphBounds, drawingFuncs, 1)
+
+	if flush && (fr.Wnd != nil) {
+		fr.Wnd.FlushImage(fr.R)
+	}
+}
+
+func (fr *Frame) redrawIntl(glyphs []glyph, glyphBounds truetype.Bounds, rightMargin, leftMargin raster.Fix32, drawingFuncs DrawingFuncs) {
 	ssel := 0
 	var cury raster.Fix32 = 0
 	if len(fr.glyphs) > 0 {
@@ -746,7 +808,7 @@ func (fr *Frame) Redraw(flush bool) {
 	}
 	newline := true
 
-	for i, g := range fr.glyphs {
+	for i, g := range glyphs {
 		// Selection drawing
 		if ssel != 0 {
 			if i+fr.Top >= fr.Sels[ssel-1].E {
@@ -803,13 +865,6 @@ func (fr *Frame) Redraw(flush bool) {
 			drawingFuncs.DrawGlyphOver(fr.B, dr, color, mask, mp)
 		}
 	}
-
-	// Tick drawing
-	fr.drawTick(glyphBounds, drawingFuncs, 1)
-
-	if flush && (fr.Wnd != nil) {
-		fr.Wnd.FlushImage(fr.R)
-	}
 }
 
 func (fr *Frame) drawSingleGlyph(g *glyph, ssel int, drawingFuncs DrawingFuncs) {
@@ -849,13 +904,11 @@ func (fr *Frame) scrollDir(recalcPos image.Point) int {
 func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *wde.MouseUpEvent {
 	if e.Which == wde.WheelUpButton {
 		f.Scroll(-1, 1)
-		f.Redraw(true)
 		return nil
 	}
 
 	if e.Which == wde.WheelDownButton {
 		f.Scroll(+1, 1)
-		f.Redraw(true)
 		return nil
 	}
 
@@ -918,7 +971,7 @@ func (fr *Frame) PhisicalLines() []int {
 
 // Pushes text graphically up by "ln" phisical lines
 // Returns the number of glyphs left in the frame
-func (fr *Frame) PushUp(ln int) (newsize int) {
+func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 	fr.ins = fr.initialInsPoint()
 
 	lh := fr.Font.LineHeightRaster()
@@ -955,6 +1008,31 @@ func (fr *Frame) PushUp(ln int) (newsize int) {
 	}
 
 	fr.lastFull = len(fr.glyphs)
+
+	if fr.allSelectionsEmpty() && drawOpt {
+		drawingFuncs := GetOptimizedDrawing(fr.B)
+
+		h := ln * int(lh>>8)
+
+		for fr.redrawOpt.scrollStart = len(fr.glyphs) - 1; fr.redrawOpt.scrollStart > 0; fr.redrawOpt.scrollStart-- {
+			g := fr.glyphs[fr.redrawOpt.scrollStart]
+			if int((g.p.Y+lh)>>8) < (fr.R.Max.Y - h) {
+				break
+			}
+		}
+		fr.redrawOpt.scrollEnd = -1
+
+		p := fr.R.Min
+		p.Y += h
+		r := fr.R
+		r.Max.Y -= h
+		drawingFuncs.DrawCopy(fr.B, r, fr.B, p)
+
+		r = fr.R
+		r.Min.Y = r.Max.Y - h
+		drawingFuncs.DrawFillSrc(fr.B, r, &fr.Colors[0][0])
+	}
+
 	return len(fr.glyphs)
 }
 
@@ -984,7 +1062,7 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
 
 		added := len(fr.glyphs) - ng
 
-		fr.PushUp(len(pl) - ln)
+		fr.PushUp(len(pl)-ln, false)
 
 		if added <= 0 {
 			break
@@ -1004,6 +1082,22 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
 	}
 
 	lh := fr.Font.LineHeightRaster()
+
+	if fr.allSelectionsEmpty() {
+		drawingFuncs := GetOptimizedDrawing(fr.B)
+
+		fr.redrawOpt.scrollStart = 0
+		fr.redrawOpt.scrollEnd = len(fr.glyphs)
+
+		h := ln * int(lh>>8)
+		r := fr.R
+		r.Min.Y += h
+		drawingFuncs.DrawCopy(fr.B, r, fr.B, fr.R.Min)
+
+		r = fr.R
+		r.Max.Y = r.Min.Y + h
+		drawingFuncs.DrawFillSrc(fr.B, r, &fr.Colors[0][0])
+	}
 
 	leftMargin := raster.Fix32(fr.R.Min.X<<8) + fr.margin
 	bottom := raster.Fix32(fr.R.Max.Y<<8) + lh

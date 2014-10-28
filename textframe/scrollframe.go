@@ -51,6 +51,12 @@ func (sfr *ScrollFrame) SetRects(b draw.Image, r image.Rectangle) {
 	sfr.Fr.R.Min.X += sfr.Width
 }
 
+/*
+Redraws frame.
+rdir and rpar are optimization parameters for partial redrawing of the frame during scrolling
+When rdir > 0, rpar is the number of glyphs that don't need to be redrawn
+When rdir < 0, rpar is the first glyph that doesn't need to be redrawn
+*/
 func (sfr *ScrollFrame) Redraw(flush bool) {
 	drawingFuncs := GetOptimizedDrawing(sfr.b)
 
@@ -133,7 +139,7 @@ func (sfr *ScrollFrame) ScrollClick(e util.MouseDownEvent, events <-chan interfa
 		case wde.RightButton:
 			sfr.Fr.Scroll(1, c)
 		}
-		sfr.Redraw(true)
+		//sfr.Scroll(true)
 	}
 
 	scroll()

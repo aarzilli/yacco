@@ -308,7 +308,6 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 			} else {
 				lp.sfr.Fr.Scroll(-1, -2*e.Count)
 			}
-			lp.sfr.Redraw(true)
 		}
 
 	case wde.MouseExitedEvent:
@@ -433,10 +432,6 @@ func (w *Window) SetTick(p image.Point) {
 
 	if (&w.tagfr != lp.tagfr) && w.tagfr.VisibleTick {
 		w.tagfr.VisibleTick = false
-		w.tagfr.Redraw(true)
-	}
-
-	if w.tagfr.VisibleTick {
 		w.tagfr.Redraw(true)
 	}
 

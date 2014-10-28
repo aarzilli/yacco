@@ -45,7 +45,7 @@ func Scrollfn(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame, sd, sl
 		sfr.Fr.InsertColor(b)
 
 	case sd > 0:
-		n := sfr.Fr.PushUp(sl)
+		n := sfr.Fr.PushUp(sl, true)
 		top.E = sfr.Fr.Top
 		a, b := buf.Selection(util.Sel{top.E + n, sz})
 		sfr.Fr.InsertColor(a)
