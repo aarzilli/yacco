@@ -126,6 +126,7 @@ func (fr *Frame) Init(margin int) error {
 }
 
 func (fr *Frame) ReinitFont() {
+	fr.Invalidate()
 }
 
 func (fr *Frame) initialInsPoint() raster.Point {

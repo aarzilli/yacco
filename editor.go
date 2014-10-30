@@ -552,6 +552,7 @@ func (ed *Editor) PropTrigger() {
 		ed.sfr.Fr.ReinitFont()
 	}
 
+	ed.refreshIntl(true)
 	ed.BufferRefresh(false)
 }
 
