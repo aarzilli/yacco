@@ -354,6 +354,7 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur, scroll bool) {
 			x := e.bodybuf.Tonl(e.sfr.Fr.Sels[0].E-2, -1)
 			e.otherSel[OS_TOP].E = x
 			e.refreshIntl(false)
+			e.sfr.Redraw(true) // NEEDED, otherwise every other redraw is optimized and is not performed correctly
 			edutil.Scrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, -1, e.sfr.Fr.LineNo()/4-1, Highlight)
 		}
 
