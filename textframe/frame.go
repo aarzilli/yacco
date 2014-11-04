@@ -1090,7 +1090,7 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
 		fr.redrawOpt.scrollStart = 0
 		fr.redrawOpt.scrollEnd = len(fr.glyphs)
 
-		h := ln * int(lh>>8)
+		h := len(fr.PhisicalLines()) * int(lh>>8)
 		r := fr.R
 		r.Min.Y += h
 		drawingFuncs.DrawCopy(fr.B, r, fr.B, fr.R.Min)
