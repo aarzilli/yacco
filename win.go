@@ -870,7 +870,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			cmd := config.KeyBindings[e.Chord]
 			HideCompl()
 			//println("Execute command: <" + cmd + ">")
-			if (ec.eventChan == nil) || (cmd == "Delete") {
+			if (ec.eventChan == nil) || (cmd == "Delete") || (strings.Index(cmd, "Edit ") == 0) {
 				fcmd(ec)
 			} else if ec.fr != nil {
 				// send command to the attached process, but we need to check that we at least are on a frame
