@@ -14,11 +14,11 @@ func ExecFs(ec *ExecContext, cmd string) {
 
 	case "clean":
 		ec.buf.Modified = false
-		ec.br.BufferRefresh(false)
+		sideChan <- RefreshMsg(ec.buf, ec.br, true)
 
 	case "dirty":
 		ec.buf.Modified = true
-		ec.br.BufferRefresh(false)
+		sideChan <- RefreshMsg(ec.buf, ec.br, true)
 
 	case "cleartag":
 		ec.ed.tagbuf.Replace([]rune{}, &util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}, true, nil, 0)
@@ -32,7 +32,7 @@ func ExecFs(ec *ExecContext, cmd string) {
 
 	case "dot=addr":
 		ec.fr.Sels[0] = ec.ed.otherSel[OS_ADDR]
-		ec.br.BufferRefresh(false)
+		sideChan <- RefreshMsg(ec.buf, ec.br, true)
 
 	case "get":
 		ec.ed.bodybuf.Modified = false
@@ -51,11 +51,11 @@ func ExecFs(ec *ExecContext, cmd string) {
 		PutCmd(*ec, "")
 
 	case "show":
-		ec.ed.BufferRefresh(false)
+		sideChan <- RefreshMsg(ec.buf, ec.br, true)
 
 	case "tabadj":
 		elasticTabs(ec.ed, true)
-		ec.ed.BufferRefresh(false)
+		sideChan <- RefreshMsg(ec.buf, ec.br, true)
 
 	case "disconnect":
 		if ec.ed.eventChan != nil {

@@ -1289,12 +1289,6 @@ func ReplaceMsg(ec *ExecContext, esel *util.Sel, append bool, txt string, origin
 		if reselect {
 			sel.S = oldS
 		}
-		for _, col := range Wnd.cols.cols {
-			for _, e := range col.editors {
-				if e.bodybuf == ec.ed.bodybuf {
-					e.BufferRefreshEx(false, false, scroll)
-				}
-			}
-		}
+		sideChan <- RefreshMsg(ec.ed.bodybuf, nil, scroll)
 	}
 }
