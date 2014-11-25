@@ -1097,6 +1097,7 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
 
 		r = fr.R
 		r.Max.Y = r.Min.Y + h
+		r = r.Intersect(fr.R)
 		drawingFuncs.DrawFillSrc(fr.B, r, &fr.Colors[0][0])
 	}
 
