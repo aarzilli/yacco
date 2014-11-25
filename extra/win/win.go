@@ -16,7 +16,7 @@ import (
 	"yacco/util"
 )
 
-const FLOAT_START_WINDOW_MS = 0
+const FLOAT_START_WINDOW_MS = 100
 
 var debug = false
 var stopping int32 = 0
