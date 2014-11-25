@@ -16,6 +16,8 @@ import (
 	"yacco/util"
 )
 
+const FLOAT_START_WINDOW_MS = 0
+
 var debug = false
 var stopping int32 = 0
 var delSeenSupport int32 = 0
@@ -416,7 +418,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 			}
 			maybeWriteBody(msg.s)
 			if !floating {
-				if time.Since(lastUpdate) > time.Millisecond*100 {
+				if time.Since(lastUpdate) > time.Millisecond*FLOAT_START_WINDOW_MS {
 					updCount = 0
 				}
 				if updCount < 10 {
@@ -495,7 +497,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 				break
 			}
 
-			if time.Since(lastUpdate) < time.Millisecond*90 {
+			if time.Since(lastUpdate) < time.Millisecond*(FLOAT_START_WINDOW_MS-10) {
 				go func() {
 					defer recover()
 					time.Sleep(time.Millisecond * 100)
