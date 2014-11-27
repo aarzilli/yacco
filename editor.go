@@ -650,7 +650,7 @@ func (e *Editor) readDir() {
 			n = "./" + n
 		default:
 			if strings.Index(n, " ") >= 0 || strings.Index(n, "\n") >= 0 || !easyCommand(n) {
-				n = util.SingleQuote(n)
+				n = strconv.Quote(n)
 			}
 		}
 		r = append(r, n)
