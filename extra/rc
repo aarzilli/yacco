@@ -1,0 +1,45 @@
+[Core]
+EnableHighlighting=true
+HideHidden=true
+ServeTCP=false
+QuoteHack=false
+
+[Fonts "Main"]
+Pixel=16
+LineScale=1.0
+Path="$HOME/.config/yacco/lucsans.8.font.pcf.gz"
+
+[Fonts "Tag"]
+CopyFrom=Main
+
+[Fonts "Alt"]
+Pixel=14
+LineScale=1.0
+Path="$HOME/.config/yacco/pelm.8.font.pcf.gz"
+
+[Fonts "Compl"]
+CopyFrom=Main
+
+[Load]
+### Directory
+/	['"]?[^\t]*?\.(pdf|ps|cbr|cbz)['"]?	Xokular $0 >/dev/null 2>&1
+/	['"]?[^\t]*?\.epub['"]?	Xokular $0 >/dev/null 2>&1
+/	['"]?[^\t]*?\.ods['"]?	Xsoffice '$0'
+/	['"]?[^\t]*?\.(jpg|png|gif|JPG|GIF)['"]?	Xfeh $0
+/	['"]?[^\t]*?\.(mp4|avi|flv|m4v|mkv|mpg|webm|wmv)['"]?	Xsmplayer $0 >/dev/null 2>&1
+/	['"]?[^\t]*?\.mp3["']?	Xsmplayer $0 >/dev/null 2>&1
+/	.+	L$0
+
+### Other rules
+.	https?://\S+	Xxdg-open $0 >/dev/null 2>&1
+.	([^:\s\(\)]+):(\d+):(\d+)	L$1:$2-+#$3
+.	([^:\s\(\)]+):(\d+)	L$1:$2
+.	File "(.+?)", line (\d+)	L$1:$2
+.	at (\S+) line (\d+)	L$1:$2
+.	in (\S+) on line (\d+)	L$1:$2
+.	([^:\s\(\)]+):\[(\d+),(\d+)\]	L$1:$2-+#$3
+.	([^:\s\(\)]+):\t?/(.*)/	L$1:/$2/
+.	[^:\s\(\)]+	L$0
+.	\S+	L$0
+.	\w+	XLook $l0
+.	.+	XLook $l0
