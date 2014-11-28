@@ -93,6 +93,14 @@ func HelpCmd(ec ExecContext, arg string) {
 	switch arg {
 	case "Edit":
 		Warn(`
+		
+== Mouse ==
+
+Select = left click
+Execute = middle click, control + left click
+Search = right click, shift + left click
+Execute with argument = shift + middle click, super + left click, control + right click, shift+control+left click
+
 == Commands ==
 
 <addr>a/<text>/
