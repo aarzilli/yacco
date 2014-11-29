@@ -94,7 +94,7 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 			switch *which {
 			case wde.LeftButton:
 				switch modifiers {
-				case "shift+":
+				case "alt+":
 					*which = wde.RightButton
 				case "control+":
 					*which = wde.MiddleButton

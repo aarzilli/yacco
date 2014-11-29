@@ -96,9 +96,9 @@ func HelpCmd(ec ExecContext, arg string) {
 		
 == Mouse ==
 
-Select = left click
+Select = left click (and drag)
 Execute = middle click, control + left click
-Search = right click, shift + left click
+Search = right click, alt + left click
 Execute with argument = shift + middle click, super + left click, control + right click, shift+control+left click
 
 == Commands ==
