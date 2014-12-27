@@ -1021,7 +1021,7 @@ func sendEventOrExec(ec ExecContext, cmd string, original int) {
 func clickExec2extra(lp LogicalPos, e util.MouseDownEvent) {
 	cmd, original := expandedSelection(lp, 1)
 	ec := lp.asExecContext(false)
-	cmd = cmd
+	cmd = strings.TrimSpace(cmd)
 	if ec.eventChan == nil {
 		Exec(ec, cmd+" "+activeSel.txt)
 	} else {

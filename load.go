@@ -193,7 +193,7 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 					recover()
 					// do nothing, doesn't matter anyway
 				}()
-				newed.sfr.Fr.Sels[0] = util.Sel{ 0, 0 }
+				newed.sfr.Fr.Sels[0] = util.Sel{0, 0}
 				newed.sfr.Fr.Sels[0] = edit.AddrEval(addrExpr, newed.bodybuf, newed.sfr.Fr.Sels[0])
 				newed.PushJump()
 			}()
