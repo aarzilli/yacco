@@ -356,20 +356,20 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 
 func DelCmd(ec ExecContext, arg string, confirmed bool) {
 	exitConfirmed = false
-	if !ec.ed.bodybuf.Modified || fakebuf(ec.ed.bodybuf.Name) || confirmed || ec.ed.confirmDel {
+	clearToRemove := !ec.ed.bodybuf.Modified || fakebuf(ec.ed.bodybuf.Name) || confirmed || ec.ed.confirmDel
+	if !clearToRemove {
+		clearToRemove = ec.ed.bodybuf.RefCount > 1
+	}
+	if clearToRemove {
 		if ec.ed.eventChan != nil {
 			close(ec.ed.eventChan)
 			ec.ed.eventChan = nil
 		}
 		Log(bufferIndex(ec.ed.bodybuf), LOP_DEL, ec.ed.bodybuf)
 		col := ec.ed.Column()
-		ned := col.Remove(col.IndexOf(ec.ed))
+		col.Remove(col.IndexOf(ec.ed))
 		ec.ed.Close()
 		removeBuffer(ec.ed.bodybuf)
-		_ = ned
-		/*if ned != nil {
-			ned.WarpToDel()
-		}*/
 		Wnd.wnd.FlushImage(col.r)
 	} else {
 		ec.ed.confirmDel = true
@@ -857,7 +857,6 @@ func ZeroxCmd(ec ExecContext, arg string) {
 	}
 	ed.confirmDel = false
 	ed.confirmSave = false
-	ed.bodybuf.RefCount++
 	ned := NewEditor(ed.bodybuf, true)
 	ned.sfr.Fr.Sels[0].S = ed.sfr.Fr.Sels[0].S
 	ned.sfr.Fr.Sels[0].E = ed.sfr.Fr.Sels[0].E
