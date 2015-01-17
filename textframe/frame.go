@@ -771,7 +771,8 @@ func (fr *Frame) Redraw(flush bool) {
 			fr.redrawOpt.scrollEnd = len(fr.glyphs)
 		}
 		fr.redrawIntl(fr.glyphs[fr.redrawOpt.scrollStart:fr.redrawOpt.scrollEnd], glyphBounds, rightMargin, leftMargin, drawingFuncs)
-		if fr.Sels[0].S >= fr.redrawOpt.scrollStart && fr.Sels[0].S <= fr.redrawOpt.scrollEnd {
+		tp := fr.Sels[0].S-fr.Top
+		if tp >= fr.redrawOpt.scrollStart && tp <= fr.redrawOpt.scrollEnd {
 			fr.drawTick(glyphBounds, drawingFuncs, 1)
 		}
 		fr.updateRedrawOpt()
