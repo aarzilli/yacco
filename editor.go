@@ -19,13 +19,13 @@ import (
 
 type Editor struct {
 	r       image.Rectangle
-	btnr    image.Rectangle
 	rhandle image.Rectangle
 	frac    float64
 	last    bool
 
-	sfr   textframe.ScrollFrame
-	tagfr textframe.Frame
+	sfr         textframe.ScrollFrame
+	tagfr       textframe.Frame
+	expandedTag bool
 
 	bodybuf     *buf.Buffer
 	tagbuf      *buf.Buffer
@@ -79,6 +79,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 
 	e.bodybuf = bodybuf
 	e.tagbuf, _ = buf.NewBuffer(bodybuf.Dir, "+Tag", true, Wnd.Prop["indentchar"])
+	e.expandedTag = true
 
 	if addBuffer {
 		bufferAdd(bodybuf)
@@ -102,7 +103,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	}
 	e.otherSel = make([]util.Sel, NUM_OTHER_SEL)
 	e.sfr.Fr.Scroll = edutil.MakeScrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, Highlight)
-	hf = textframe.HF_TRUNCATE
+	hf = textframe.HF_MARKSOFTWRAP | textframe.HF_NOVERTSTOP
 	if config.QuoteHack {
 		hf |= textframe.HF_QUOTEHACK
 	}
@@ -151,15 +152,53 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	return e
 }
 
-func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool) {
+func (e *Editor) setTagRectsIntl() {
+	e.tagfr.R = e.r.Intersect(e.tagfr.R)
+	e.tagfr.Clear()
+	ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
+	e.tagfr.InsertColor(ta)
+	e.tagfr.InsertColor(tb)
+}
+
+func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool, simpleRecalc bool) {
 	e.last = last
 	e.r = r
-	e.btnr = r
-	e.btnr.Max.X = e.btnr.Min.X + SCROLL_WIDTH
-	e.btnr.Max.Y = e.btnr.Min.Y + TagHeight(&e.tagfr) + 3
 
+	th := TagHeight(&e.tagfr)
+
+	// TAG
+	e.tagfr.R = r
+	e.tagfr.R.Min.Y += 2
+	e.tagfr.R.Min.X += SCROLL_WIDTH
+	if !last {
+		e.tagfr.R.Max.X -= 2
+	}
+	e.tagfr.R.Max.Y = e.tagfr.R.Min.Y + th
+	if e.expandedTag {
+		if !simpleRecalc {
+			e.setTagRectsIntl()
+		}
+
+		if e.tagfr.Limit.Y > e.r.Max.Y-th {
+			e.expandedTag = false
+		} else {
+			gb := e.tagfr.Font.Bounds()
+			e.tagfr.R.Max.Y = e.tagfr.Limit.Y - int(gb.YMin)
+		}
+	}
+	e.tagfr.B = b
+	e.setTagRectsIntl()
+
+	// HANDLE
+	e.rhandle = r
+	e.rhandle.Min.Y++
+	e.rhandle.Max.X = e.rhandle.Min.X + SCROLL_WIDTH
+	e.rhandle.Max.Y = e.tagfr.R.Max.Y
+	e.rhandle = e.r.Intersect(e.rhandle)
+
+	// BODY
 	sfrr := r
-	sfrr.Min.Y = sfrr.Min.Y + TagHeight(&e.tagfr) + 3
+	sfrr.Min.Y = e.tagfr.R.Max.Y + 1
 	if !last {
 		sfrr.Max.X -= 2
 	}
@@ -172,26 +211,6 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool) {
 	e.pw = e.r.Dx()
 
 	e.refreshIntl(true)
-
-	e.tagfr.R = r
-	e.tagfr.R.Min.Y += 2
-	e.tagfr.R.Min.X += SCROLL_WIDTH
-	if !last {
-		e.tagfr.R.Max.X -= 2
-	}
-	e.tagfr.R.Max.Y = e.tagfr.R.Min.Y + TagHeight(&e.tagfr)
-	e.tagfr.R = e.r.Intersect(e.tagfr.R)
-	e.tagfr.B = b
-	e.tagfr.Clear()
-	ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
-	e.tagfr.InsertColor(ta)
-	e.tagfr.InsertColor(tb)
-
-	e.rhandle = r
-	e.rhandle.Min.Y++
-	e.rhandle.Max.X = e.rhandle.Min.X + SCROLL_WIDTH
-	e.rhandle.Max.Y = e.tagfr.R.Max.Y
-	e.rhandle = e.r.Intersect(e.rhandle)
 }
 
 func (e *Editor) Close() {
@@ -247,8 +266,14 @@ func (e *Editor) Redraw() {
 		drawingFuncs.DrawFillSrc(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.Border)
 	}
 
+	e.redrawTagBorder()
+}
+
+func (e *Editor) redrawTagBorder() {
+	drawingFuncs := textframe.GetOptimizedDrawing(e.sfr.Fr.B)
+
 	// draw one-pixel tag border
-	border = e.r
+	border := e.r
 	if !e.last {
 		border.Max.X -= 2
 	}
@@ -344,10 +369,27 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur, scroll bool) {
 
 	if ontag {
 		e.tagRefreshIntl()
-		if e.tagRecenterIntl() {
-			e.tagRefreshIntl()
+
+		bounds := e.sfr.Fr.Font.Bounds()
+		ly := e.tagfr.Limit.Y - int(bounds.YMin)
+
+		recalcExpansion := e.expandedTag && (e.tagfr.R.Max.Y-ly) != 0
+		if !recalcExpansion {
+			if !e.expandedTag && (e.tagfr.R.Max.Y != e.tagfr.R.Min.Y+TagHeight(&e.tagfr)) {
+				recalcExpansion = true
+			}
 		}
-		e.tagfr.Redraw(true)
+
+		if recalcExpansion {
+			e.SetRects(e.tagfr.B, e.r, e.last, true)
+			e.redrawResizeHandle()
+			e.tagfr.Redraw(false)
+			e.sfr.Redraw(false)
+			e.redrawTagBorder()
+			e.sfr.Wnd.FlushImage(e.r)
+		} else {
+			e.tagfr.Redraw(true)
+		}
 	} else {
 		e.refreshIntl(false)
 		if !e.sfr.Fr.Inside(e.sfr.Fr.Sels[0].E) && recur && scroll {
@@ -388,37 +430,6 @@ func (e *Editor) tagRefreshIntl() {
 	ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
 	e.tagfr.InsertColor(ta)
 	e.tagfr.InsertColor(tb)
-}
-
-func (e *Editor) tagRecenterIntl() bool {
-	tagtxt := e.tagbuf.SelectionRunes(util.Sel{0, e.tagbuf.Size()})
-	taglen := e.tagfr.Measure(tagtxt)
-	if taglen < e.tagfr.R.Dx()-10 {
-		if e.tagfr.Offset != 0 {
-			e.tagfr.Offset = 0
-			return true
-		} else {
-			return false
-		}
-	}
-
-	p := e.tagfr.PointToCoord(e.tagfr.Sels[0].S)
-	if e.tagfr.Inside(e.tagfr.Sels[0].S) && p.In(e.tagfr.R) {
-		return false
-	}
-
-	dst := (e.tagfr.R.Max.X - e.tagfr.R.Min.X) / 2
-	nm := -(p.X - e.tagfr.R.Min.X + e.tagfr.Offset) + dst
-	if nm > 0 {
-		nm = 0
-	}
-
-	if e.tagfr.Offset != nm {
-		e.tagfr.Offset = nm
-		return true
-	} else {
-		return false
-	}
 }
 
 func (e *Editor) BufferRefresh(ontag bool) {

@@ -71,7 +71,7 @@ func (c *Col) AddAfter(ed *Editor, n int, h float32) {
 	if len(c.editors) == 0 {
 		ed.SetWnd(c.wnd)
 		ed.frac = 10.0
-		ed.SetRects(screen, c.r, c.last)
+		ed.SetRects(screen, c.r, c.last, false)
 		c.editors = append(c.editors, ed)
 	} else {
 		if n < 0 {
@@ -149,7 +149,7 @@ func (c *Col) RecalcRects(last bool) {
 		r.Min.Y = y
 		r.Max.Y = y + curh
 		y += curh
-		c.editors[i].SetRects(screen, c.r.Intersect(r), last)
+		c.editors[i].SetRects(screen, c.r.Intersect(r), last, false)
 	}
 }
 

@@ -308,6 +308,9 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 			} else {
 				lp.sfr.Fr.Scroll(-1, -2*e.Count)
 			}
+		} else if (lp.ed != nil) && (lp.tagfr != nil) {
+			lp.ed.expandedTag = e.Count > 0
+			lp.ed.BufferRefreshEx(true, false, false)
 		}
 
 	case wde.MouseExitedEvent:
@@ -401,7 +404,7 @@ func (w *Window) TranslatePosition(p image.Point, abideSpecial bool) (lp Logical
 				}
 			}
 
-			lp.onButton = p.In(lp.ed.btnr)
+			lp.onButton = p.In(lp.ed.rhandle)
 
 			return
 		}
@@ -865,6 +868,9 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		}
 
 	default:
+		if e.Chord == "shift+return" {
+			e.Glyph = "\n"
+		}
 		ec := lp.asExecContext(true)
 		if fcmd, ok := KeyBindings[e.Chord]; ok {
 			cmd := config.KeyBindings[e.Chord]

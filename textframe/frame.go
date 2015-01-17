@@ -37,6 +37,7 @@ const (
 	HF_MARKSOFTWRAP
 	HF_QUOTEHACK
 	HF_TRUNCATE // truncates instead of softwrapping
+	HF_NOVERTSTOP // Insert and InsertColor don't stop after they are past the bottom of the visible area
 )
 
 type Frame struct {
@@ -135,12 +136,6 @@ func (fr *Frame) initialInsPoint() raster.Point {
 }
 
 func (fr *Frame) Clear() {
-	/*println("Frame", fr, "cleared")
-	_, file, line, _ := runtime.Caller(1)
-	println("\t", file, ":", line, "")
-	_, file, line, _ = runtime.Caller(2)
-	println("\t", file, ":", line, "\n")*/
-
 	fr.ins = fr.initialInsPoint()
 	fr.glyphs = fr.glyphs[:0]
 	fr.lastFull = 0
@@ -201,7 +196,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	limit.Y = int(fr.ins.Y >> 8)
 
 	for i, crune := range runes {
-		if fr.ins.Y > bottom {
+		if fr.ins.Y > bottom && (fr.Hackflags & HF_NOVERTSTOP == 0) {
 			fr.Limit = limit
 			return
 		}

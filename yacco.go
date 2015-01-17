@@ -23,7 +23,7 @@ var AutoDumpPath string
 var themeFlag = flag.String("t", "", "Theme to use (standard, evening, midnight, bw)")
 var dumpFlag = flag.String("d", "", "Dump file to load")
 var sizeFlag = flag.String("s", "", "Size of window")
-var configFlag = flag.String("c", "", "Configuration file (defaults to ~/.config/yacco/rc.json)")
+var configFlag = flag.String("c", "", "Configuration file (defaults to ~/.config/yacco/rc)")
 
 var tagColors = [][]image.Uniform{
 	config.TheColorScheme.TagPlain,
