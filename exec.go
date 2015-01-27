@@ -564,6 +564,7 @@ func LookCmd(ec ExecContext, arg string) {
 	if arg != "" {
 		lookfwd(ec.ed, []rune(arg), true, true, Wnd.Prop["lookexact"] == "yes")
 	} else {
+		ec.fr = &ec.ed.sfr.Fr
 		go lookproc(ec)
 	}
 }
