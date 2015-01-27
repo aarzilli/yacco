@@ -535,9 +535,7 @@ func KillCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	arg = strings.TrimSpace(arg)
 	if arg == "" {
-		for i := range jobs {
-			jobKill(i)
-		}
+		jobKillLast()
 	} else {
 		n, _ := strconv.Atoi(arg)
 		jobKill(n)

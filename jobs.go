@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 	"yacco/util"
 )
 
@@ -17,6 +18,8 @@ type jobrec struct {
 	cmd        *exec.Cmd
 	outstr     string
 	writeToBuf bool
+
+	startTime time.Time
 
 	done chan bool
 }
@@ -37,6 +40,8 @@ func removeEmpty(v []string) []string {
 
 func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan chan<- string) {
 	job := &jobrec{}
+
+	job.startTime = time.Now()
 
 	i := -1
 	if ec.ed != nil {
@@ -240,6 +245,25 @@ func jobKill(i int) {
 	}
 
 	jobs[i].cmd.Process.Kill()
+}
+
+func jobKillLast() {
+	lastIdx := -1
+	for i := range jobs {
+		if jobs[i] == nil {
+			continue
+		}
+
+		if lastIdx < 0 {
+			lastIdx = i
+		}
+
+		if jobs[i].startTime.After(jobs[lastIdx].startTime) {
+			lastIdx = i
+		}
+	}
+
+	jobKill(lastIdx)
 }
 
 func UpdateJobs(create bool) {
