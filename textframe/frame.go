@@ -36,7 +36,7 @@ const (
 	HF_BOLSPACES uint32 = 1 << iota
 	HF_MARKSOFTWRAP
 	HF_QUOTEHACK
-	HF_TRUNCATE // truncates instead of softwrapping
+	HF_TRUNCATE   // truncates instead of softwrapping
 	HF_NOVERTSTOP // Insert and InsertColor don't stop after they are past the bottom of the visible area
 )
 
@@ -72,6 +72,8 @@ type Frame struct {
 		scrollStart      int
 		scrollEnd        int
 	}
+
+	scrubGlyph image.Alpha
 }
 
 const COLORMASK = 0x0f
@@ -196,7 +198,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	limit.Y = int(fr.ins.Y >> 8)
 
 	for i, crune := range runes {
-		if fr.ins.Y > bottom && (fr.Hackflags & HF_NOVERTSTOP == 0) {
+		if fr.ins.Y > bottom && (fr.Hackflags&HF_NOVERTSTOP == 0) {
 			fr.Limit = limit
 			return
 		}
@@ -760,13 +762,13 @@ func (fr *Frame) Redraw(flush bool) {
 	// Bitmaps are copied directly
 	if fr.redrawOpt.scrollStart >= 0 {
 		if debugRedraw {
-			fmt.Printf("%p Redrawing (scroll)\n", fr)
+			fmt.Printf("%p Redrawing (scroll) scrollStart: %d\n", fr, fr.redrawOpt.scrollStart)
 		}
 		if fr.redrawOpt.scrollEnd < 0 {
 			fr.redrawOpt.scrollEnd = len(fr.glyphs)
 		}
 		fr.redrawIntl(fr.glyphs[fr.redrawOpt.scrollStart:fr.redrawOpt.scrollEnd], glyphBounds, rightMargin, leftMargin, drawingFuncs)
-		tp := fr.Sels[0].S-fr.Top
+		tp := fr.Sels[0].S - fr.Top
 		if tp >= fr.redrawOpt.scrollStart && tp <= fr.redrawOpt.scrollEnd {
 			fr.drawTick(glyphBounds, drawingFuncs, 1)
 		}
@@ -875,9 +877,30 @@ func (fr *Frame) drawSingleGlyph(g *glyph, ssel int, drawingFuncs DrawingFuncs) 
 		//println("Glyph", string([]rune{ g.r }), "pos", (g.p.X>>8), "rect X", dr.Min.X, dr.Max.X, glyphRect.Min.X)
 		mp := image.Point{dr.Min.X - glyphRect.Min.X, dr.Min.Y - glyphRect.Min.Y}
 		color := &fr.Colors[1][1]
+		bgcolor := &fr.Colors[1][0]
 		if (ssel >= 0) && (ssel < len(fr.Colors)) && (g.color >= 0) && (int(g.color) < len(fr.Colors[ssel])) {
 			color = &fr.Colors[ssel][g.color]
+			bgcolor = &fr.Colors[ssel][0]
 		}
+
+		// Clear old glyph
+		if fr.scrubGlyph.Pix == nil || len(mask.Pix) > cap(fr.scrubGlyph.Pix) {
+			fr.scrubGlyph.Pix = make([]uint8, len(mask.Pix))
+		} else {
+			fr.scrubGlyph.Pix = fr.scrubGlyph.Pix[:len(mask.Pix)]
+		}
+		fr.scrubGlyph.Stride = mask.Stride
+		fr.scrubGlyph.Rect = mask.Rect
+		for i := range mask.Pix {
+			if mask.Pix[i] > 0 {
+				fr.scrubGlyph.Pix[i] = 0xff
+			} else {
+				fr.scrubGlyph.Pix[i] = 0x00
+			}
+		}
+		drawingFuncs.DrawGlyphOver(fr.B, dr, bgcolor, &fr.scrubGlyph, mp)
+
+		// Redraw glyph
 		drawingFuncs.DrawGlyphOver(fr.B, dr, color, mask, mp)
 	}
 }
@@ -1026,7 +1049,12 @@ func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 		drawingFuncs.DrawCopy(fr.B, r, fr.B, p)
 
 		r = fr.R
-		r.Min.Y = r.Max.Y - h
+		if fr.redrawOpt.scrollStart < len(fr.glyphs) {
+			bounds := fr.Font.Bounds()
+			r.Min.Y = int(fr.glyphs[fr.redrawOpt.scrollStart].p.Y>>8) - int(bounds.YMin)
+		} else {
+			r.Min.Y = fr.R.Max.Y - h
+		}
 		drawingFuncs.DrawFillSrc(fr.B, r, &fr.Colors[0][0])
 	}
 
