@@ -413,7 +413,7 @@ func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interfac
 
 					p := fr.CoordToPoint(e.Where)
 					fr.SetSelect(idx, kind, fix, p)
-					fr.Redraw(true)
+					fr.Redraw(true, nil)
 				} else {
 					if autoscrollTicker == nil {
 						autoscrollTicker = time.NewTicker(100 * time.Millisecond)
@@ -439,7 +439,7 @@ func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interfac
 				} else if sd > 0 {
 					fr.SetSelect(idx, kind, len(fr.glyphs)+fr.Top, fix)
 				}
-				fr.Redraw(true)
+				fr.Redraw(true, nil)
 			}
 		}
 	}
@@ -599,9 +599,9 @@ func (fr *Frame) reallyVisibleTick() bool {
 	return true
 }
 
-func (fr *Frame) drawTick(glyphBounds truetype.Bounds, drawingFuncs DrawingFuncs, idx int) {
+func (fr *Frame) drawTick(glyphBounds truetype.Bounds, drawingFuncs DrawingFuncs, idx int) image.Rectangle {
 	if !fr.reallyVisibleTick() {
-		return
+		return image.Rectangle{fr.R.Min, fr.R.Min}
 	}
 
 	var x, y int
@@ -644,9 +644,14 @@ func (fr *Frame) drawTick(glyphBounds truetype.Bounds, drawingFuncs DrawingFuncs
 	r2.Max.X += 1
 	r2.Min.Y = r2.Max.Y - 3
 	drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r2), &fr.Colors[0][idx])
+
+	rr := r
+	rr.Min.X -= 1
+	rr.Max.X += 1
+	return rr
 }
 
-func (fr *Frame) deleteTick(glyphBounds truetype.Bounds, drawingFuncs DrawingFuncs) {
+func (fr *Frame) deleteTick(glyphBounds truetype.Bounds, drawingFuncs DrawingFuncs) image.Rectangle {
 	saved := fr.Sels[0]
 	fr.Sels[0] = fr.redrawOpt.drawnSels[0]
 	vt := fr.VisibleTick
@@ -656,19 +661,27 @@ func (fr *Frame) deleteTick(glyphBounds truetype.Bounds, drawingFuncs DrawingFun
 
 	if len(fr.glyphs) == 0 {
 		fr.Sels[0] = saved
-		return
+		return image.Rectangle{fr.R.Min, fr.R.Min}
 	}
+	var y int
 	if fr.Sels[0].S == fr.Sels[0].E {
 		if (fr.Sels[0].S-fr.Top >= 0) && (fr.Sels[0].S-fr.Top < len(fr.glyphs)) {
 			fr.drawSingleGlyph(&fr.glyphs[fr.Sels[0].S-fr.Top], 0, drawingFuncs)
 			if fr.Sels[0].S-fr.Top-1 >= 0 {
 				fr.drawSingleGlyph(&fr.glyphs[fr.Sels[0].S-fr.Top-1], 0, drawingFuncs)
 			}
+			y = int(fr.glyphs[fr.Sels[0].S-fr.Top].p.Y >> 8)
 		} else if (fr.Sels[0].S-fr.Top-1 >= 0) && (fr.Sels[0].S-fr.Top-1 < len(fr.glyphs)) {
 			fr.drawSingleGlyph(&fr.glyphs[fr.Sels[0].S-fr.Top-1], 0, drawingFuncs)
+			y = int((fr.glyphs[fr.Sels[0].S-fr.Top-1].p.Y + fr.glyphs[fr.Sels[0].S-fr.Top-1].widthy) >> 8)
 		}
 	}
 	fr.Sels[0] = saved
+
+	r := fr.R
+	r.Min.Y = y - int(fr.Font.SpacingFix(glyphBounds.YMax))
+	r.Max.Y = y - int(glyphBounds.YMin)
+	return r
 }
 
 func (fr *Frame) updateRedrawOpt() {
@@ -717,7 +730,7 @@ func (fr *Frame) allSelectionsEmpty() bool {
 	return true
 }
 
-func (fr *Frame) Redraw(flush bool) {
+func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	glyphBounds := fr.Font.Bounds()
 	rightMargin := raster.Fix32(fr.R.Max.X<<8) - fr.margin
 	leftMargin := raster.Fix32(fr.R.Min.X<<8) + fr.margin
@@ -736,21 +749,27 @@ func (fr *Frame) Redraw(flush bool) {
 			if debugRedraw {
 				fmt.Printf("%p Redrawing (tick)\n", fr)
 			}
-			fr.drawTick(glyphBounds, drawingFuncs, 1)
+			tickrect := fr.drawTick(glyphBounds, drawingFuncs, 1)
 			fr.updateRedrawOpt()
 			if flush && (fr.Wnd != nil) {
-				fr.Wnd.FlushImage(fr.R)
+				fr.Wnd.FlushImage(tickrect)
+			}
+			if predrawRects != nil {
+				*predrawRects = append(*predrawRects, tickrect)
 			}
 			return
 		case 1: // draw tick (had old tick too)
 			if debugRedraw {
 				fmt.Printf("%p Redrawing (tick2)\n", fr)
 			}
-			fr.deleteTick(glyphBounds, drawingFuncs)
-			fr.drawTick(glyphBounds, drawingFuncs, 1)
+			oldtickrect := fr.deleteTick(glyphBounds, drawingFuncs)
+			newtickrect := fr.drawTick(glyphBounds, drawingFuncs, 1)
 			fr.updateRedrawOpt()
 			if flush && (fr.Wnd != nil) {
-				fr.Wnd.FlushImage(fr.R)
+				fr.Wnd.FlushImage(oldtickrect, newtickrect)
+			}
+			if predrawRects != nil {
+				*predrawRects = append(*predrawRects, oldtickrect, newtickrect)
 			}
 			return
 		}
@@ -776,6 +795,9 @@ func (fr *Frame) Redraw(flush bool) {
 		if flush && (fr.Wnd != nil) {
 			fr.Wnd.FlushImage(fr.R)
 		}
+		if predrawRects != nil {
+			*predrawRects = append(*predrawRects, fr.R)
+		}
 		return
 	}
 
@@ -796,6 +818,10 @@ func (fr *Frame) Redraw(flush bool) {
 
 	if flush && (fr.Wnd != nil) {
 		fr.Wnd.FlushImage(fr.R)
+	}
+
+	if predrawRects != nil {
+		*predrawRects = append(*predrawRects, fr.R)
 	}
 }
 
@@ -950,9 +976,9 @@ func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *wde.M
 		} else {
 			f.setSelectEx(sel, e.Count, p, p, false)
 		}
-		f.Redraw(true)
+		f.Redraw(true, nil)
 		ee := f.Select(sel, e.Count, e.Which, events)
-		f.Redraw(true)
+		f.Redraw(true, nil)
 		return ee
 	}
 

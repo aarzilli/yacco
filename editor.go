@@ -51,6 +51,8 @@ type Editor struct {
 		top      int
 		revCount int
 	}
+
+	redrawRects []image.Rectangle
 }
 
 const SCROLL_WIDTH = 10
@@ -148,6 +150,8 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 
 	e.refreshOpt.top = -1
 	e.refreshOpt.revCount = -1
+
+	e.redrawRects = make([]image.Rectangle, 0, 8)
 
 	return e
 }
@@ -252,8 +256,8 @@ func (e *Editor) Redraw() {
 	e.redrawResizeHandle()
 
 	// draw text frames
-	e.tagfr.Redraw(false)
-	e.sfr.Redraw(false)
+	e.tagfr.Redraw(false, nil)
+	e.sfr.Redraw(false, nil)
 
 	// draw two-pixel border at the top and at the right of the editor
 	border := e.r
@@ -383,12 +387,12 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur, scroll bool) {
 		if recalcExpansion {
 			e.SetRects(e.tagfr.B, e.r, e.last, true)
 			e.redrawResizeHandle()
-			e.tagfr.Redraw(false)
-			e.sfr.Redraw(false)
+			e.tagfr.Redraw(false, nil)
+			e.sfr.Redraw(false, nil)
 			e.redrawTagBorder()
 			e.sfr.Wnd.FlushImage(e.r)
 		} else {
-			e.tagfr.Redraw(true)
+			e.tagfr.Redraw(true, nil)
 		}
 	} else {
 		e.refreshIntl(false)
@@ -396,7 +400,7 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur, scroll bool) {
 			x := e.bodybuf.Tonl(e.sfr.Fr.Sels[0].E-2, -1)
 			e.otherSel[OS_TOP].E = x
 			e.refreshIntl(false)
-			e.sfr.Redraw(true) // NEEDED, otherwise every other redraw is optimized and is not performed correctly
+			e.sfr.Redraw(true, nil) // NEEDED, otherwise every other redraw is optimized and is not performed correctly
 			edutil.Scrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, -1, e.sfr.Fr.LineNo()/4-1, Highlight)
 		}
 
@@ -407,9 +411,11 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur, scroll bool) {
 		e.tagfr.InsertColor(tb)
 
 		e.redrawResizeHandle()
-		e.tagfr.Redraw(false)
-		e.sfr.Redraw(false)
-		e.sfr.Wnd.FlushImage(e.r)
+		e.redrawRects = append(e.redrawRects, e.rhandle)
+		e.tagfr.Redraw(false, &e.redrawRects)
+		e.sfr.Redraw(false, &e.redrawRects)
+		e.sfr.Wnd.FlushImage(e.redrawRects...)
+		e.redrawRects = e.redrawRects[0:0]
 
 		if (e.bodybuf.RefCount <= 1) || !recur {
 			return
@@ -488,7 +494,7 @@ func (ed *Editor) Warp() {
 	p := ed.sfr.Fr.PointToCoord(ed.sfr.Fr.Sels[0].S)
 	if !ed.sfr.Fr.VisibleTick {
 		ed.sfr.Fr.VisibleTick = true
-		ed.sfr.Fr.Redraw(false)
+		ed.sfr.Fr.Redraw(false, nil)
 		Wnd.wnd.FlushImage(ed.sfr.Fr.R)
 	}
 	Wnd.wnd.WarpMouse(p)
@@ -520,7 +526,7 @@ func (ed *Editor) WarpToDel() {
 	delCoord := ed.tagfr.PointToCoord(delp)
 	if !ed.tagfr.VisibleTick {
 		ed.tagfr.VisibleTick = true
-		ed.tagfr.Redraw(false)
+		ed.tagfr.Redraw(false, nil)
 		Wnd.wnd.FlushImage(ed.tagfr.R)
 	}
 	delCoord.Y -= 5

@@ -57,7 +57,7 @@ rdir and rpar are optimization parameters for partial redrawing of the frame dur
 When rdir > 0, rpar is the number of glyphs that don't need to be redrawn
 When rdir < 0, rpar is the first glyph that doesn't need to be redrawn
 */
-func (sfr *ScrollFrame) Redraw(flush bool) {
+func (sfr *ScrollFrame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	drawingFuncs := GetOptimizedDrawing(sfr.b)
 
 	// scrollbar background
@@ -76,10 +76,14 @@ func (sfr *ScrollFrame) Redraw(flush bool) {
 	posr.Max.Y = posz + posr.Min.Y
 	drawingFuncs.DrawFillSrc(sfr.b, sfr.r.Intersect(posr), &sfr.Fr.Colors[0][0])
 
-	sfr.Fr.Redraw(false)
+	sfr.Fr.Redraw(false, predrawRects)
 
 	if flush && (sfr.Wnd != nil) {
 		sfr.Wnd.FlushImage(sfr.r)
+	}
+
+	if predrawRects != nil {
+		*predrawRects = append(*predrawRects, bgr)
 	}
 }
 
@@ -90,7 +94,7 @@ func (sfr *ScrollFrame) scrollSetClick(event util.MouseDownEvent, events <-chan 
 	set := func(where image.Point) {
 		p := int(float32(where.Y-sfr.r.Min.Y) / float32(sfr.r.Max.Y-sfr.r.Min.Y) * float32(sfr.bodyLen))
 		sfr.Fr.Scroll(0, p)
-		sfr.Redraw(true)
+		sfr.Redraw(true, nil)
 	}
 
 	set(event.Where)
@@ -174,6 +178,6 @@ func (sfr *ScrollFrame) OnClick(e util.MouseDownEvent, events <-chan interface{}
 	}
 
 	ee := sfr.Fr.OnClick(e, events)
-	sfr.Redraw(true)
+	sfr.Redraw(true, nil)
 	return true, ee
 }

@@ -69,7 +69,7 @@ func Scrollfn(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame, sd, sl
 
 	DoHighlightingConsistency(buf, top, sfr, hlf)
 	sfr.Set(top.E, sz)
-	sfr.Redraw(true)
+	sfr.Redraw(true, nil)
 }
 
 func MakeScrollfn(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame, hlf HighlightFn) func (sd, sl int) {

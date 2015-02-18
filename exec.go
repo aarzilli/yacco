@@ -949,7 +949,7 @@ func CdCmd(ec ExecContext, arg string) {
 	Wnd.BufferRefresh(true)
 
 	Wnd.cols.Redraw()
-	Wnd.tagfr.Redraw(false)
+	Wnd.tagfr.Redraw(false, nil)
 	Wnd.wnd.FlushImage()
 }
 

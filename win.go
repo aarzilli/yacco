@@ -130,7 +130,7 @@ func (w *Window) Init(width, height int) (err error) {
 	w.calcRects(screen)
 
 	w.padDraw(screen)
-	w.tagfr.Redraw(false)
+	w.tagfr.Redraw(false, nil)
 	w.cols.Redraw()
 
 	return nil
@@ -171,7 +171,7 @@ func (w *Window) Resized() {
 
 	w.cols.Redraw()
 	w.tagfr.Invalidate()
-	w.tagfr.Redraw(false)
+	w.tagfr.Redraw(false, nil)
 	w.wnd.FlushImage()
 }
 
@@ -267,7 +267,7 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 			clickExec(lp, e, ee, events)
 			if (lp.tagfr.Sels[0].S == 0) && (lp.tagfr.Sels[0].E == lp.tagbuf.Size()) && (lp.tagbuf.EditableStart >= 0) {
 				lp.tagfr.Sels[0].S = lp.tagbuf.EditableStart
-				lp.tagfr.Redraw(true)
+				lp.tagfr.Redraw(true, nil)
 			}
 			break
 		}
@@ -345,11 +345,11 @@ func (w *Window) HideAllTicks() {
 		for _, editor := range col.editors {
 			if editor.tagfr.VisibleTick {
 				editor.tagfr.VisibleTick = false
-				editor.tagfr.Redraw(true)
+				editor.tagfr.Redraw(true, nil)
 			}
 			if editor.sfr.Fr.VisibleTick {
 				editor.sfr.Fr.VisibleTick = false
-				editor.sfr.Fr.Redraw(true)
+				editor.sfr.Fr.Redraw(true, nil)
 			}
 		}
 	}
@@ -423,34 +423,34 @@ func (w *Window) SetTick(p image.Point) {
 	if lp.tagfr != nil {
 		if !lp.tagfr.VisibleTick {
 			lp.tagfr.VisibleTick = true
-			lp.tagfr.Redraw(true)
+			lp.tagfr.Redraw(true, nil)
 		}
 	}
 	if lp.sfr != nil {
 		if !lp.sfr.Fr.VisibleTick {
 			lp.sfr.Fr.VisibleTick = true
-			lp.sfr.Redraw(true)
+			lp.sfr.Redraw(true, nil)
 		}
 	}
 
 	if (&w.tagfr != lp.tagfr) && w.tagfr.VisibleTick {
 		w.tagfr.VisibleTick = false
-		w.tagfr.Redraw(true)
+		w.tagfr.Redraw(true, nil)
 	}
 
 	for _, col := range w.cols.cols {
 		if col.tagfr.VisibleTick && (&col.tagfr != lp.tagfr) {
 			col.tagfr.VisibleTick = false
-			col.tagfr.Redraw(true)
+			col.tagfr.Redraw(true, nil)
 		}
 		for _, editor := range col.editors {
 			if editor.tagfr.VisibleTick && (&editor.tagfr != lp.tagfr) {
 				editor.tagfr.VisibleTick = false
-				editor.tagfr.Redraw(true)
+				editor.tagfr.Redraw(true, nil)
 			}
 			if editor.sfr.Fr.VisibleTick && (&editor.sfr != lp.sfr) {
 				editor.sfr.Fr.VisibleTick = false
-				editor.sfr.Fr.Redraw(true)
+				editor.sfr.Fr.Redraw(true, nil)
 			}
 		}
 	}
@@ -1087,7 +1087,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 	var frame *textframe.Frame
 	var buf *buf.Buffer
 	var expandToLine, expandToTabs bool
-	var redraw func(bool)
+	var redraw func(bool, *[]image.Rectangle)
 
 	if lp.sfr != nil {
 		frame = &lp.sfr.Fr
@@ -1120,7 +1120,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 	if (frame.Sels[0].S != frame.Sels[0].E) && (frame.Sels[0].S-1 <= sel.S) && (sel.S <= frame.Sels[0].E+1) {
 		// takes over main selection
 		frame.SetSelect(idx, 1, frame.Sels[0].S, frame.Sels[0].E)
-		redraw(true)
+		redraw(true, nil)
 	} else {
 		// expand selection
 		original = sel.S
@@ -1129,14 +1129,14 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 			e := buf.Tonl(sel.S, +1)
 			frame.SetSelect(0, 1, s, e)
 			frame.SetSelect(idx, 1, s, e)
-			redraw(true)
+			redraw(true, nil)
 		} else if expandToTabs {
 			f := func(r rune) bool { return (r == '\t') || (r == '\n') }
 			s := buf.Tof(sel.S-1, -1, f)
 			e := buf.Tof(sel.S, +1, f)
 			frame.SetSelect(0, 1, s, e)
 			frame.SetSelect(idx, 1, s, e)
-			redraw(true)
+			redraw(true, nil)
 		} else {
 			var s int
 			if sel.S >= buf.Size() {
@@ -1161,7 +1161,7 @@ func (w *Window) BufferRefresh(ontag bool) {
 	ta, tb := w.tagbuf.Selection(util.Sel{0, w.tagbuf.Size()})
 	w.tagfr.InsertColor(ta)
 	w.tagfr.InsertColor(tb)
-	w.tagfr.Redraw(true)
+	w.tagfr.Redraw(true, nil)
 }
 
 func (w *Window) GenTag() {
@@ -1203,7 +1203,7 @@ func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, 
 	endfn := func(match int) (*wde.MouseUpEvent, bool) {
 		sel.E = match + 1
 
-		fr.Redraw(true)
+		fr.Redraw(true, nil)
 
 		for ee := range events {
 			switch eei := ee.(type) {

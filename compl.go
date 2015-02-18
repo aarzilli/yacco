@@ -42,7 +42,7 @@ func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 	}
 	fr.Init(5)
 	limit := fr.Insert([]rune(str))
-	fr.Redraw(false)
+	fr.Redraw(false, nil)
 
 	limit.X += 10
 	limit.Y += 10

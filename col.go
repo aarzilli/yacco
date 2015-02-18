@@ -180,7 +180,7 @@ func (c *Col) Redraw() {
 	}
 	drawingFuncs.DrawFillSrc(c.tagfr.B, br, &config.TheColorScheme.Border)
 
-	c.tagfr.Redraw(false)
+	c.tagfr.Redraw(false, nil)
 
 	for i, _ := range c.editors {
 		c.editors[i].Redraw()
@@ -192,7 +192,7 @@ func (c *Col) BufferRefresh(ontag bool) {
 	ta, tb := c.tagbuf.Selection(util.Sel{0, c.tagbuf.Size()})
 	c.tagfr.InsertColor(ta)
 	c.tagfr.InsertColor(tb)
-	c.tagfr.Redraw(true)
+	c.tagfr.Redraw(true, nil)
 }
 
 func (c *Col) IndexOf(ed *Editor) int {
