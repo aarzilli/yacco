@@ -27,6 +27,7 @@ type ExecContext struct {
 	eventChan chan string
 
 	dir string
+	norefresh bool
 }
 
 var KeyBindings = map[string]func(ec ExecContext){}
@@ -347,7 +348,9 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 	}
 	if del {
 		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
-		ec.br.BufferRefresh(ec.ontag)
+		if !ec.norefresh {
+			ec.br.BufferRefresh(ec.ontag)
+		}
 	}
 	Wnd.wnd.SetClipboard(s)
 	Wnd.wnd.SetPrimarySelection(s)
@@ -502,7 +505,9 @@ func EditCmd(ec ExecContext, arg string) {
 	}
 
 	edit.Edit(arg, edc)
-	ec.br.BufferRefresh(ec.ontag)
+	if !ec.norefresh {
+		ec.br.BufferRefresh(ec.ontag)
+	}
 }
 
 func ExitCmd(ec ExecContext, arg string) {
@@ -606,7 +611,9 @@ func GetCmd(ec ExecContext, arg string) {
 	} else {
 		ec.ed.bodybuf.Reload(true)
 	}
-	ec.ed.BufferRefresh(false)
+	if !ec.norefresh {
+		ec.ed.BufferRefresh(false)
+	}
 }
 
 func NewCmd(ec ExecContext, arg string) {
@@ -650,7 +657,9 @@ func PasteCmd(ec ExecContext, arg string) {
 	}
 
 	ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
-	ec.br.BufferRefresh(ec.ontag)
+	if !ec.norefresh {
+		ec.br.BufferRefresh(ec.ontag)
+	}
 }
 
 func PasteIndentCmd(ec ExecContext, arg string) {
@@ -666,7 +675,9 @@ func PasteIndentCmd(ec ExecContext, arg string) {
 
 	if (ec.fr.Sels[0].S == 0) || (ec.fr.Sels[0].S != ec.fr.Sels[0].E) || (ec.ed == nil) || (ec.buf != ec.ed.bodybuf) {
 		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
-		ec.br.BufferRefresh(ec.ontag)
+		if !ec.norefresh {
+			ec.br.BufferRefresh(ec.ontag)
+		}
 		return
 	}
 
@@ -689,7 +700,9 @@ tgtIndentSearch:
 
 	if failed {
 		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
-		ec.br.BufferRefresh(ec.ontag)
+		if !ec.norefresh {
+			ec.br.BufferRefresh(ec.ontag)
+		}
 		return
 	}
 
@@ -716,7 +729,9 @@ tgtIndentSearch:
 
 	ecb := strings.Join(pasteLines, "\n")
 	ec.buf.Replace([]rune(ecb), &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
-	ec.br.BufferRefresh(ec.ontag)
+	if !ec.norefresh {
+		ec.br.BufferRefresh(ec.ontag)
+	}
 }
 
 func PutCmd(ec ExecContext, arg string) {
@@ -741,7 +756,9 @@ func PutCmd(ec ExecContext, arg string) {
 	if err != nil {
 		Warn(fmt.Sprintf("Put: Couldn't save %s: %s", ec.ed.bodybuf.ShortName(), err.Error()))
 	}
-	ec.ed.BufferRefresh(false)
+	if !ec.norefresh {
+		ec.ed.BufferRefresh(false)
+	}
 	if AutoDumpPath != "" {
 		DumpTo(AutoDumpPath)
 	}
@@ -759,7 +776,9 @@ func PutallCmd(ec ExecContext, arg string) {
 					t += ed.bodybuf.ShortName() + ": " + err.Error() + "\n"
 					nerr++
 				}
-				ed.BufferRefresh(false)
+				if !ec.norefresh {
+					ed.BufferRefresh(false)
+				}
 			}
 		}
 	}
@@ -780,7 +799,9 @@ func GetallCmd(ec ExecContext, arg string) {
 					nerr++
 				} else {
 					ed.bodybuf.Reload(true)
-					ed.BufferRefresh(false)
+					if !ec.norefresh {
+						ed.BufferRefresh(false)
+					}
 				}
 			}
 		}
@@ -798,7 +819,9 @@ func RedoCmd(ec ExecContext, arg string) {
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
 	ec.buf.Undo(&ec.fr.Sels[0], true)
-	ec.br.BufferRefresh(ec.ontag)
+	if !ec.norefresh {
+		ec.br.BufferRefresh(ec.ontag)
+	}
 }
 
 func SendCmd(ec ExecContext, arg string) {
@@ -816,7 +839,9 @@ func SendCmd(ec ExecContext, arg string) {
 	}
 	ec.ed.sfr.Fr.Sels[0] = util.Sel{ec.buf.Size(), ec.buf.Size()}
 	ec.ed.bodybuf.Replace(txt, &ec.ed.sfr.Fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
-	ec.ed.BufferRefresh(false)
+	if !ec.norefresh {
+		ec.ed.BufferRefresh(false)
+	}
 }
 
 func SortCmd(ec ExecContext, arg string) {
@@ -839,7 +864,7 @@ func UndoCmd(ec ExecContext, arg string) {
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
 	ec.buf.Undo(&ec.fr.Sels[0], false)
-	if ec.br != nil {
+	if ec.br != nil && !ec.norefresh {
 		ec.br.BufferRefresh(ec.ontag)
 	}
 }
@@ -955,7 +980,11 @@ func CdCmd(ec ExecContext, arg string) {
 
 func DoCmd(ec ExecContext, arg string) {
 	cmds := strings.Split(arg, "\n")
-	for _, cmd := range cmds {
+	ec.norefresh = true
+	for i, cmd := range cmds {
+		if i == len(cmds) - 1 {
+			ec.norefresh = false
+		}
 		execNoDefer(ec, cmd)
 	}
 }
@@ -1039,7 +1068,9 @@ func CompileCmd(cmdstr string) func(ec ExecContext) {
 				PushJump:  pj,
 			}
 			pgm.Exec(edc)
-			ec.br.BufferRefresh(ec.ontag)
+			if !ec.norefresh {
+				ec.br.BufferRefresh(ec.ontag)
+			}
 		}
 	} else if cmdname == "Do" {
 		cmds := strings.Split(arg, "\n")
@@ -1048,7 +1079,11 @@ func CompileCmd(cmdstr string) func(ec ExecContext) {
 			fcmds[i] = CompileCmd(cmds[i])
 		}
 		return func(ec ExecContext) {
-			for _, fcmd := range fcmds {
+			ec.norefresh = true
+			for i, fcmd := range fcmds {
+				if i == len(fcmds) - 1 {
+					ec.norefresh = false
+				}
 				fcmd(ec)
 			}
 		}
@@ -1085,7 +1120,9 @@ func RenameCmd(ec ExecContext, arg string) {
 		ec.buf.Name += "/"
 	}
 	ec.buf.Modified = true
-	ec.br.BufferRefresh(false)
+	if !ec.norefresh {
+		ec.br.BufferRefresh(false)
+	}
 }
 
 func RehashCmd(ec ExecContext, arg string) {
