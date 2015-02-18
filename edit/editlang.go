@@ -13,16 +13,16 @@ const (
 	G_FLAG = 1 << iota
 )
 
-type cmd struct {
+type Cmd struct {
 	cmdch     rune
 	rangeaddr Addr
 	txtargs   []string
 	numarg    int
 	flags     commandFlag
 	argaddr   Addr
-	body      *cmd
+	body      *Cmd
 	bodytxt   string
-	fn        func(c *cmd, atsel *util.Sel, ec EditContext)
+	fn        func(c *Cmd, atsel *util.Sel, ec EditContext)
 	sregexp   regexp.Regex
 }
 
@@ -38,7 +38,7 @@ func Edit(pgm string, ec EditContext) {
 	ppgm.Exec(ec)
 }
 
-func (ecmd *cmd) Exec(ec EditContext) {
+func (ecmd *Cmd) Exec(ec EditContext) {
 	if ecmd.fn == nil {
 		panic(fmt.Errorf("Command '%c' not implemented", ecmd.cmdch))
 	}
@@ -61,7 +61,7 @@ func AddrEval(pgm string, b *buf.Buffer, sel util.Sel) util.Sel {
 	return addr.Eval(b, sel)
 }
 
-func (ecmd *cmd) String() string {
+func (ecmd *Cmd) String() string {
 	s := ""
 
 	if ecmd.rangeaddr != nil {
@@ -96,4 +96,14 @@ func (ecmd *cmd) String() string {
 	}
 
 	return s
+}
+
+func ToMark(pgm *Cmd) *Cmd {
+	if pgm.cmdch != ' ' {
+		return nil
+	}
+
+	pgm.fn = Mcmdfn
+	pgm.cmdch = 'M'
+	return pgm
 }

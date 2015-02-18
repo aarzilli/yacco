@@ -26,17 +26,11 @@ const END_CMD = "Edit +0-#?1"
 
 var KeyBindings = map[string]string{
 	"left_arrow":                "Edit -#1",
-	"shift+left_arrow":          "Edit -#1,.",
 	"right_arrow":               "Edit +#1",
-	"shift+right_arrow":         "Edit .,+#1",
 	"up_arrow":                  "Edit --#0+/@[^\t ]/-#0",
-	"shift+up_arrow":            "Edit -1,.",
 	"down_arrow":                "Edit +-#0+/@[^\t ]/-#0",
-	"shift+down_arrow":          "Edit .,+#0+-#0",
 	"control+right_arrow":       "Edit +#w1+#0",
-	"control+shift+right_arrow": "Edit .,+#w1+#0",
 	"control+left_arrow":        "Edit -#w1-#0",
-	"control+shift+left_arrow":  "Edit -#w1,.",
 	"control+backspace":         "Edit -#w1,. c//",
 	"control+home":              "Edit #0 k",
 	"control+end":               "Edit $ k",

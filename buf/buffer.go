@@ -52,6 +52,9 @@ type Buffer struct {
 
 	EditMark, EditMarkNext bool
 
+	// used to implement shift+movement selection actions
+	Markat int
+
 	DumpCmd, DumpDir string
 }
 
@@ -71,6 +74,8 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 		buf:   make([]textframe.ColorRune, SLOP),
 		gap:   0,
 		gapsz: SLOP,
+
+		Markat: -1,
 
 		ul: undoList{0, []undoInfo{}, true}}
 

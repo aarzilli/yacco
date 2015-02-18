@@ -7,15 +7,15 @@ import (
 )
 
 var Warnfn func(msg string)
-var NewJob func(wd, cmd, input string, buf *buf.Buffer, resultChan chan<- string)
+var NewJob func(wd, Cmd, input string, buf *buf.Buffer, resultChan chan<- string)
 
 const LOOP_LIMIT = 2000
 
-func nilcmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
+func nilcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
 }
 
-func inscmdfn(dir int, c *cmd, atsel *util.Sel, ec EditContext) {
+func inscmdfn(dir int, c *Cmd, atsel *util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, *atsel)
 
 	switch c.cmdch {
@@ -33,7 +33,7 @@ func inscmdfn(dir int, c *cmd, atsel *util.Sel, ec EditContext) {
 	}
 }
 
-func mtcmdfn(del bool, c *cmd, atsel *util.Sel, ec EditContext) {
+func mtcmdfn(del bool, c *Cmd, atsel *util.Sel, ec EditContext) {
 	selfrom := c.rangeaddr.Eval(ec.Buf, *atsel)
 	selto := c.argaddr.Eval(ec.Buf, *atsel).E
 
@@ -50,13 +50,13 @@ func mtcmdfn(del bool, c *cmd, atsel *util.Sel, ec EditContext) {
 	}
 }
 
-func pcmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
+func pcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
 	txt := ec.Buf.SelectionRunes(*atsel)
 	Warnfn(string(txt))
 }
 
-func eqcmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
+func eqcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
 	sline, scol := ec.Buf.GetLine(atsel.S)
 	eline, ecol := ec.Buf.GetLine(atsel.E)
@@ -67,7 +67,7 @@ func eqcmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
 	}
 }
 
-func scmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
+func scmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, *atsel)
 	var addrSave = []util.Sel{{sel.S, sel.E}}
 	ec.Buf.AddSels(&addrSave)
@@ -152,7 +152,7 @@ func resolveBackreferences(subs []rune, b *buf.Buffer, loc []int) []rune {
 	return subs
 }
 
-func xcmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
+func xcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
 	var xAddrs = []util.Sel{{atsel.S, atsel.E}, {atsel.S, atsel.S}, {atsel.S, atsel.S}}
 	ec.Buf.AddSels(&xAddrs)
@@ -188,7 +188,7 @@ func xcmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
 	}
 }
 
-func ycmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
+func ycmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
 	var yAddrs = []util.Sel{{atsel.S, atsel.E}, {atsel.S, atsel.E}}
 	ec.Buf.AddSels(&yAddrs)
@@ -221,7 +221,7 @@ func ycmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
 	}
 }
 
-func gcmdfn(inv bool, c *cmd, atsel *util.Sel, ec EditContext) {
+func gcmdfn(inv bool, c *Cmd, atsel *util.Sel, ec EditContext) {
 	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
 	re := c.sregexp
 	loc := re.Match(ec.Buf, atsel.S, atsel.E, +1)
@@ -236,7 +236,7 @@ func gcmdfn(inv bool, c *cmd, atsel *util.Sel, ec EditContext) {
 	}
 }
 
-func pipeincmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
+func pipeincmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 	resultChan := make(chan string)
 	NewJob(ec.Buf.Dir, c.bodytxt, "", ec.Buf, resultChan)
 	str := <-resultChan
@@ -245,13 +245,13 @@ func pipeincmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 }
 
-func pipeoutcmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
+func pipeoutcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
 	str := string(ec.Buf.SelectionRunes(*atsel))
 	NewJob(ec.Buf.Dir, c.bodytxt, str, ec.Buf, nil)
 }
 
-func pipecmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
+func pipecmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
 	str := string(ec.Buf.SelectionRunes(*atsel))
 	resultChan := make(chan string)
@@ -261,8 +261,36 @@ func pipecmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 }
 
-func kcmdfn(c *cmd, atsel *util.Sel, ec EditContext) {
+func kcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
 	ec.Sels[0] = *atsel
 	ec.PushJump()
+}
+
+func Mcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
+	var p int
+
+	if (*atsel).S == ec.Buf.Markat {
+		p = (*atsel).E
+	} else if (*atsel).E == ec.Buf.Markat {
+		p = (*atsel).S
+	} else {
+		// arbitrary
+		p = (*atsel).E
+		ec.Buf.Markat = (*atsel).S
+	}
+
+	ms := c.rangeaddr.Eval(ec.Buf, util.Sel{p, p})
+
+	if ms.S != ms.E {
+		panic("M command called on non-empty selection")
+	}
+
+	if ms.S > ec.Buf.Markat {
+		(*atsel).S = ec.Buf.Markat
+		(*atsel).E = ms.S
+	} else {
+		(*atsel).S = ms.S
+		(*atsel).E = ec.Buf.Markat
+	}
 }

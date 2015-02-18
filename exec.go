@@ -26,7 +26,7 @@ type ExecContext struct {
 	buf       *buf.Buffer
 	eventChan chan string
 
-	dir string
+	dir       string
 	norefresh bool
 }
 
@@ -982,7 +982,7 @@ func DoCmd(ec ExecContext, arg string) {
 	cmds := strings.Split(arg, "\n")
 	ec.norefresh = true
 	for i, cmd := range cmds {
-		if i == len(cmds) - 1 {
+		if i == len(cmds)-1 {
 			ec.norefresh = false
 		}
 		execNoDefer(ec, cmd)
@@ -1037,7 +1037,38 @@ func JumpCmd(ec ExecContext, arg string) {
 func KeysInit() {
 	for k := range config.KeyBindings {
 		KeyBindings[k] = CompileCmd(config.KeyBindings[k])
+		maybeAddSelExtension(k, config.KeyBindings[k])
 	}
+}
+
+// Adds to KeyBindings a version of cmdstr with +shift+ that extends the current selection
+func maybeAddSelExtension(k, cmdstr string) {
+	// if there is already a shift in the modifier list we can not add a shifted version
+	kcomps := strings.Split(k, "+")
+	for _, kcomp := range kcomps {
+		if kcomp == "shift" {
+			return
+		}
+	}
+
+	_, arg, cmdname, isintl := IntlCmd(cmdstr)
+
+	if !isintl || (cmdname != "Edit") {
+		return
+	}
+
+	pgm := edit.Parse([]rune(arg))
+	pgm = edit.ToMark(pgm)
+	if pgm == nil {
+		return
+	}
+
+	kcomps = append(kcomps, kcomps[len(kcomps)-1])
+	kcomps[len(kcomps)-2] = "shift"
+	sort.Strings(kcomps[:len(kcomps)-1])
+	newk := strings.Join(kcomps, "+")
+
+	KeyBindings[newk] = editPgmToFunc(pgm)
 }
 
 func CompileCmd(cmdstr string) func(ec ExecContext) {
@@ -1049,29 +1080,7 @@ func CompileCmd(cmdstr string) func(ec ExecContext) {
 		}
 	} else if cmdname == "Edit" {
 		pgm := edit.Parse([]rune(arg))
-		return func(ec ExecContext) {
-			defer execGuard()
-
-			if (ec.buf == nil) || (ec.fr == nil) {
-				return
-			}
-
-			var pj func() = nil
-			if ec.ed != nil {
-				pj = ec.ed.PushJump
-			}
-
-			edc := edit.EditContext{
-				Buf:       ec.buf,
-				Sels:      ec.fr.Sels,
-				EventChan: ec.eventChan,
-				PushJump:  pj,
-			}
-			pgm.Exec(edc)
-			if !ec.norefresh {
-				ec.br.BufferRefresh(ec.ontag)
-			}
-		}
+		return editPgmToFunc(pgm)
 	} else if cmdname == "Do" {
 		cmds := strings.Split(arg, "\n")
 		fcmds := make([]func(ec ExecContext), len(cmds))
@@ -1081,7 +1090,7 @@ func CompileCmd(cmdstr string) func(ec ExecContext) {
 		return func(ec ExecContext) {
 			ec.norefresh = true
 			for i, fcmd := range fcmds {
-				if i == len(fcmds) - 1 {
+				if i == len(fcmds)-1 {
 					ec.norefresh = false
 				}
 				fcmd(ec)
@@ -1093,6 +1102,32 @@ func CompileCmd(cmdstr string) func(ec ExecContext) {
 		return func(ec ExecContext) {
 			defer execGuard()
 			xcmd(ec, arg)
+		}
+	}
+}
+
+func editPgmToFunc(pgm *edit.Cmd) func(ec ExecContext) {
+	return func(ec ExecContext) {
+		defer execGuard()
+
+		if (ec.buf == nil) || (ec.fr == nil) {
+			return
+		}
+
+		var pj func() = nil
+		if ec.ed != nil {
+			pj = ec.ed.PushJump
+		}
+
+		edc := edit.EditContext{
+			Buf:       ec.buf,
+			Sels:      ec.fr.Sels,
+			EventChan: ec.eventChan,
+			PushJump:  pj,
+		}
+		pgm.Exec(edc)
+		if !ec.norefresh {
+			ec.br.BufferRefresh(ec.ontag)
 		}
 	}
 }
