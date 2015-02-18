@@ -54,6 +54,8 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 	//job.ec = ec
 	job.done = make(chan bool, 10)
 
+	isec := false
+
 	if strings.HasPrefix(cmd, "win ") || strings.HasPrefix(cmd, "win\t") {
 		job.descr = cmd
 		vcmd := strings.SplitN(cmd, " ", 2)
@@ -63,6 +65,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 			job.cmd = exec.Command("win")
 		}
 	} else if easyCommand(cmd) {
+		isec = true
 		vcmd := removeEmpty(strings.Split(cmd, " "))
 		job.descr = cmd
 		name := vcmd[0]
@@ -107,6 +110,9 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 
 	err = job.cmd.Start()
 	if err != nil {
+		if isec && (os.IsNotExist(err) || os.IsPermission(err)) {
+			return
+		}
 		panic(fmt.Errorf("Error running external process: %v", err))
 	}
 
