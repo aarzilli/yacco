@@ -2,18 +2,27 @@ package main
 
 import (
 	"code.google.com/p/go9p/p"
+	"code.google.com/p/go9p/p/clnt"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"syscall"
 	"yacco/util"
 )
 
 var debug = false
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "y9p ls <path>\ny9p read <path>\ny9p write <path>\ny9p find <buffer name>\ny9p new <buffer name>\n")
+	fmt.Fprintf(os.Stderr, "y9p inst\t\t\tlist instances\n")
+	fmt.Fprintf(os.Stderr, "y9p ls <path>\t\t\tlist directory\n")
+	fmt.Fprintf(os.Stderr, "y9p read <path>\t\t\tread file\n")
+	fmt.Fprintf(os.Stderr, "y9p write <path>\t\twrite file\n")
+	fmt.Fprintf(os.Stderr, "y9p find <buffer name>\t\tfind buffer\n")
+	fmt.Fprintf(os.Stderr, "y9p new <buffer name>\t\tcreate buffer\n")
+	fmt.Fprintf(os.Stderr, "y9p exec <yacco command>\texecute command\n")
 }
 
 func read(fd io.Reader) (string, error) {
@@ -25,23 +34,45 @@ func read(fd io.Reader) (string, error) {
 	return string(b[:n]), nil
 }
 
-func main() {
+func argCheck(n int, connect bool) *clnt.Clnt {
+	if n >= 0 {
+		if len(os.Args) != n {
+			fmt.Fprintf(os.Stderr, "Wrong number of arguments\n")
+			usage()
+			os.Exit(1)
+		}
+	}
+	if !connect {
+		return nil
+	}
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)
-	defer p9clnt.Unmount()
+	return p9clnt
+}
 
-	if len(os.Args) < 3 {
+func main() {
+	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "Wrong number of arguments\n")
 		usage()
 		os.Exit(1)
 	}
 
 	cmd := os.Args[1]
-	arg := os.Args[2]
 
 	switch cmd {
+	case "help":
+		argCheck(2, false)
+		usage()
+
+	case "inst":
+		argCheck(2, false)
+		instList()
+
 	case "ls":
-		fd, err := p9clnt.FOpen(resolvePath(arg), p.OREAD)
+		p9clnt := argCheck(3, true)
+		defer p9clnt.Unmount()
+
+		fd, err := p9clnt.FOpen(resolvePath(os.Args[2]), p.OREAD)
 		util.Allergic(debug, err)
 		defer fd.Close()
 		entries, err := fd.Readdir(0)
@@ -59,13 +90,19 @@ func main() {
 		}
 
 	case "read":
-		fd, err := p9clnt.FOpen(resolvePath(arg), p.OREAD)
+		p9clnt := argCheck(3, true)
+		defer p9clnt.Unmount()
+
+		fd, err := p9clnt.FOpen(resolvePath(os.Args[2]), p.OREAD)
 		util.Allergic(debug, err)
 		defer fd.Close()
 		io.Copy(os.Stdout, fd)
 
 	case "write":
-		fd, err := p9clnt.FOpen(resolvePath(arg), p.OWRITE)
+		p9clnt := argCheck(3, true)
+		defer p9clnt.Unmount()
+
+		fd, err := p9clnt.FOpen(resolvePath(os.Args[2]), p.OWRITE)
 		util.Allergic(debug, err)
 		defer fd.Close()
 		_, err = util.P9Copy(fd, os.Stdin)
@@ -74,20 +111,26 @@ func main() {
 		}
 
 	case "exec":
+		p9clnt := argCheck(-1, true)
+		defer p9clnt.Unmount()
+
 		fd, err := p9clnt.FOpen(resolvePath("buf/event"), p.OWRITE)
 		util.Allergic(debug, err)
 		defer fd.Close()
-		arg = strings.Join(os.Args[2:], " ")
+		arg := strings.Join(os.Args[2:], " ")
 		_, err = fd.Writen([]byte(fmt.Sprintf("EX0 0 0 %d %s\n", len(arg), arg)), 0)
 		if err != nil {
 			fmt.Printf("Error: %s\n", err.Error())
 		}
 
 	case "find":
-		wd, _ := os.Getwd()
-		dst := filepath.Join(wd, arg)
+		p9clnt := argCheck(3, true)
+		defer p9clnt.Unmount()
 
-		buf, err := util.FindWinEx(arg, p9clnt)
+		wd, _ := os.Getwd()
+		dst := filepath.Join(wd, os.Args[2])
+
+		buf, err := util.FindWinEx(os.Args[2], p9clnt)
 		util.Allergic(debug, err)
 		defer buf.Close()
 		_, err = buf.CtlFd.Write([]byte("name " + dst))
@@ -95,8 +138,11 @@ func main() {
 		fmt.Printf("%s\n", buf.Id)
 
 	case "new":
+		p9clnt := argCheck(3, true)
+		defer p9clnt.Unmount()
+
 		wd, _ := os.Getwd()
-		dst := filepath.Join(wd, arg)
+		dst := filepath.Join(wd, os.Args[2])
 
 		ctlfd, err := p9clnt.FCreate("/new/ctl", 0666, p.ORDWR)
 		util.Allergic(debug, err)
@@ -110,6 +156,8 @@ func main() {
 
 	default:
 		fmt.Fprintf(os.Stderr, "Wrong command %s", cmd)
+		usage()
+		os.Exit(1)
 	}
 }
 
@@ -127,4 +175,92 @@ func resolvePath(in string) string {
 	}
 
 	return "/" + os.Getenv("bi") + in[3:]
+}
+
+const YACCO_PREFIX = "yacco."
+
+func instList() {
+	ns := os.Getenv("NAMESPACE")
+	if ns == "" {
+		ns = fmt.Sprintf("/tmp/ns.%s.%s", os.Getenv("USER"), os.Getenv("DISPLAY"))
+		fmt.Printf("Using default namespace: %s\n", ns)
+	} else {
+		fmt.Printf("Using NAMESPACE: %s\n", ns)
+	}
+
+	dh, err := os.Open(ns)
+	util.Allergic(debug, err)
+	defer dh.Close()
+
+	files, err := dh.Readdir(-1)
+	util.Allergic(debug, err)
+
+	for i := range files {
+		n := files[i].Name()
+		p := filepath.Join(ns, n)
+
+		if !strings.HasPrefix(n, YACCO_PREFIX) {
+			continue
+		}
+
+		pid, err := strconv.Atoi(n[len(YACCO_PREFIX):])
+		if err != nil {
+			continue
+		}
+
+		if processExists(pid) {
+			showInst(p)
+		} else {
+			removeDeadSocket(p)
+		}
+	}
+}
+
+func processExists(pid int) bool {
+	proc, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+
+	err = proc.Signal(syscall.Signal(0))
+	if err != nil {
+		return false
+	}
+
+	return true
+}
+
+func removeDeadSocket(p string) {
+	fmt.Printf("Removing dead socket %s\n", p)
+	err := os.Remove(p)
+	if err != nil {
+		fmt.Printf("Could not remove %s: %v\n", p, err)
+	}
+}
+
+func showInst(p string) {
+	util.Allergic(debug, os.Setenv("yp9", p))
+	p9clnt, err := util.YaccoConnect()
+	if err != nil {
+		removeDeadSocket(p)
+	}
+	defer p9clnt.Unmount()
+
+	fmt.Printf("export yp9=%s\n", p)
+
+	props, err := util.ReadProps(p9clnt)
+	util.Allergic(debug, err)
+
+	if adp, ok := props["AutoDumpPath"]; ok && adp != "" {
+		fmt.Printf("\t%s\n", adp)
+	}
+
+	index, err := util.ReadIndex(p9clnt)
+	util.Allergic(debug, err)
+
+	for i := range index {
+		fmt.Printf("\t%d %s\n", index[i].Idx, index[i].Path)
+	}
+
+	fmt.Printf("\n")
 }

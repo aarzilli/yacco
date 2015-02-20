@@ -8,6 +8,7 @@ import (
 	"github.com/skelterjohn/go.wde"
 	"image"
 	"io"
+	"io/ioutil"
 	"math"
 	"os"
 	"path/filepath"
@@ -508,6 +509,33 @@ func FindWinEx(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
 		return nil, err
 	}
 	return makeBufferConn(p9clnt, outbufid, ctlfd, eventfd)
+}
+
+func ReadProps(p9clnt *clnt.Clnt) (map[string]string, error) {
+	fh, err := p9clnt.FOpen("/prop", p.OREAD)
+	if err != nil {
+		return nil, err
+	}
+	defer fh.Close()
+
+	bs, err := ioutil.ReadAll(fh)
+	if err != nil {
+		return nil, err
+	}
+
+	propv := strings.Split(string(bs), "\n")
+
+	r := map[string]string{}
+
+	for i := range propv {
+		v := strings.SplitN(propv[i], "=", 2)
+		if len(v) != 2 {
+			continue
+		}
+		r[v[0]] = v[1]
+	}
+
+	return r, nil
 }
 
 func ReadIndex(p9clnt *clnt.Clnt) ([]IndexEntry, error) {
