@@ -1075,7 +1075,7 @@ func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 		drawingFuncs.DrawCopy(fr.B, r, fr.B, p)
 
 		r = fr.R
-		if fr.redrawOpt.scrollStart < len(fr.glyphs) {
+		if (fr.redrawOpt.scrollStart >= 0) && (fr.redrawOpt.scrollStart < len(fr.glyphs)) {
 			bounds := fr.Font.Bounds()
 			r.Min.Y = int(fr.glyphs[fr.redrawOpt.scrollStart].p.Y>>8) - int(bounds.YMin)
 		} else {
