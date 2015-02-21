@@ -12,6 +12,8 @@ for scpt in m g a+ a- Font Indent Tab Mount Fs in LookExact comment_char.sh c+ c
 	cp -f extra/$scpt $1/yaccodir/$scpt
 	chmod u+x $1/yaccodir/$scpt
 done
+
+
 if [ ! -e $1/yacco ]; then
 	cat >$1/yacco <<EOF
 #!/bin/bash
@@ -25,6 +27,31 @@ EOF
 chmod u+x $1/yacco
 fi
 mkdir -p $HOME/.config/yacco/
+
+if [ ! -e $HOME/.config/yacco/rc ]; then
+	cat >$HOME/.config/yacco/rc <<EOF
+[Core]
+EnableHighlighting=true
+HideHidden=true
+ServeTCP=false
+QuoteHack=false
+
+[Fonts "Main"]
+Pixel=16
+LineScale=0.8
+Path="\$HOME/.config/yacco/DejaVuSans.ttf"
+
+[Fonts "Alt"]
+Pixel=14
+LineScale=1.0
+Path="\$HOME/.config/yacco/pelm.8.font.pcf.gz"
+
+[Fonts "Compl"]
+CopyFrom=Main
+
+EOF
+fi
+
 cp config/DejaVuSans.ttf $HOME/.config/yacco/
 cp config/luxisr.ttf $HOME/.config/yacco/
 cp config/luximr.ttf $HOME/.config/yacco/
