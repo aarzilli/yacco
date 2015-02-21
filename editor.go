@@ -45,7 +45,6 @@ type Editor struct {
 	otherSel     []util.Sel
 	jumps        []util.Sel
 	restoredJump int
-	jumpCount    int
 
 	refreshOpt struct {
 		top      int
@@ -120,6 +119,10 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	}
 
 	e.jumps = make([]util.Sel, NUM_JUMPS)
+	for i := range e.jumps {
+		e.jumps[i].S = -1
+		e.jumps[i].E = -1
+	}
 
 	e.otherSel[OS_TOP].E = 0
 	e.otherSel[OS_TIP].E = 0
@@ -328,6 +331,7 @@ func (e *Editor) GenTag() {
 	}
 	e.tagbuf.EditableStart = -1
 	e.tagbuf.Replace([]rune(t), &util.Sel{0, e.tagbuf.Size()}, true, nil, 0)
+	e.tagbuf.FlushUndo()
 	TagSetEditableStart(e.tagbuf)
 	e.tagfr.Sels[0].S = start + e.tagbuf.EditableStart
 	e.tagfr.Sels[0].E = end + e.tagbuf.EditableStart
@@ -596,42 +600,29 @@ func (ed *Editor) Dump() DumpEditor {
 }
 
 func (ed *Editor) PushJump() {
-	for i := len(ed.jumps) - 2; i >= 0; i-- {
-		ed.jumps[i+1] = ed.jumps[i]
+	for i := 1; i < len(ed.jumps); i++ {
+		ed.jumps[i-1] = ed.jumps[i]
 	}
-	ed.jumps[0].S = ed.sfr.Fr.Sels[0].S
-	ed.restoredJump = 0
-	ed.jumpCount++
+
+	ed.jumps[len(ed.jumps)-1].S = ed.sfr.Fr.Sels[0].S
 }
 
 func (ed *Editor) RestoreJump() {
-	if ed.jumpCount == 0 {
-		return
+	start := 0
+	for i := range ed.jumps {
+		if ed.jumps[i].S == ed.sfr.Fr.Sels[0].S {
+			start = i + 1
+		}
 	}
 
-	// if we haven't recently restored a jump since the last push, refer to the last pushed jump
-	if ed.restoredJump < 0 {
-		ed.restoredJump = 0
+	for i := range ed.jumps {
+		k := (i + start) % len(ed.jumps)
+		if ed.jumps[k].S != -1 {
+			ed.sfr.Fr.Sels[0].S = ed.jumps[k].S
+			ed.sfr.Fr.Sels[0].E = ed.jumps[k].S
+			return
+		}
 	}
-
-	// if we moved since the last restored (or pushed jump)
-	if ed.sfr.Fr.Sels[0].S != ed.jumps[ed.restoredJump].S {
-		// we push the current position, then restore the previously last jump done
-		ed.PushJump()
-		ed.sfr.Fr.Sels[0].S = ed.jumps[1].S
-		ed.sfr.Fr.Sels[0].E = ed.jumps[1].S
-		ed.restoredJump = 1
-		return
-	}
-
-	// we are on the last restored jump, cycle through jump
-	ed.restoredJump++
-	if (ed.restoredJump >= len(ed.jumps)) || (ed.restoredJump >= ed.jumpCount) {
-		ed.restoredJump = 0
-	}
-
-	ed.sfr.Fr.Sels[0].S = ed.jumps[ed.restoredJump].S
-	ed.sfr.Fr.Sels[0].E = ed.jumps[ed.restoredJump].S
 }
 
 func (ed *Editor) LastJump() int {

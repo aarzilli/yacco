@@ -731,6 +731,8 @@ func (lp *LogicalPos) bufferRefreshable() BufferRefreshable {
 }
 
 func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
+	ec := lp.asExecContext(true)
+
 	switch e.Chord {
 	case "escape":
 		HideCompl()
@@ -738,24 +740,17 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			lp.ed.sfr.Fr.VisibleTick = true
 			lp.ed.ExitSpecial()
 			return
-		} else if lp.tagfr != nil {
-			if lp.tagfr.Sels[0].S == lp.tagfr.Sels[0].E {
-				lp.tagfr.Sels[0].S = lp.tagbuf.EditableStart
-				lp.tagfr.Sels[0].E = lp.tagbuf.Size()
-			} else {
-				lp.tagfr.Sels[0].S = lp.tagfr.Sels[0].E
+		} else if ec.buf != nil {
+			var fr *textframe.Frame
+			if lp.tagfr != nil {
+				fr = lp.tagfr
+			} else if lp.sfr != nil {
+				fr = &lp.sfr.Fr
 			}
-			if lp.ed != nil {
-				lp.ed.BufferRefresh(true)
-			} else if lp.col != nil {
-				lp.col.BufferRefresh(true)
-			} else {
-				Wnd.BufferRefresh(true)
+			if fr != nil {
+				escapeSel(&fr.Sels[0], ec.buf.LastTypePos())
+				ec.br.BufferRefresh(ec.ontag)
 			}
-
-		} else if lp.ed != nil && lp.sfr != nil {
-			lp.sfr.Fr.Sels[0].E = lp.sfr.Fr.Sels[0].S
-			lp.ed.BufferRefresh(false)
 		}
 
 	case "return":
@@ -790,7 +785,6 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				sendEventOrExec(ec, cmd, -1)
 			}
 		} else {
-			ec := lp.asExecContext(true)
 			nl := "\n"
 			indent := ""
 
@@ -1185,6 +1179,7 @@ func (w *Window) GenTag() {
 
 	w.tagbuf.EditableStart = -1
 	w.tagbuf.Replace([]rune(t), &w.tagfr.Sels[0], true, nil, 0)
+	w.tagbuf.FlushUndo()
 	TagSetEditableStart(w.tagbuf)
 }
 
@@ -1296,5 +1291,18 @@ func ReplaceMsg(ec *ExecContext, esel *util.Sel, append bool, txt string, origin
 			sel.S = oldS
 		}
 		sideChan <- RefreshMsg(ec.ed.bodybuf, nil, scroll)
+	}
+}
+
+func escapeSel(sel *util.Sel, start int) {
+	if sel.S != sel.E {
+		sel.S = sel.E
+		return
+	}
+
+	if start < sel.S {
+		sel.S = start
+	} else {
+		sel.E = start
 	}
 }

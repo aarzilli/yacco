@@ -355,6 +355,15 @@ func (b *Buffer) Undo(sel *util.Sel, redo bool) {
 	}
 }
 
+func (b *Buffer) LastEdit() time.Time {
+	ui := b.ul.PeekUndo()
+	if ui == nil {
+		return time.Unix(0, 0)
+	} else {
+		return ui.ts
+	}
+}
+
 func (b *Buffer) Rdlock() {
 	b.lock.RLock()
 }
@@ -402,9 +411,6 @@ func (b *Buffer) replaceIntl(text []rune, sel *util.Sel) {
 
 // Saves undo information for replacement of text between sel.S and sel.E with text
 func (b *Buffer) pushUndo(sel util.Sel, text []rune, solid bool) {
-	if b.Name == "+Tag" {
-		return
-	}
 	var ui undoInfo
 	ui.before.S = sel.S
 	ui.before.E = sel.E
@@ -950,4 +956,45 @@ func (b *Buffer) restoreSels(ssels []util.Sel) {
 			k++
 		}
 	}
+}
+
+func (b *Buffer) FlushUndo() {
+	b.ul.cur = 0
+	b.ul.lst = b.ul.lst[0:0]
+}
+
+func (b *Buffer) LastTypePos() int {
+	j := -1
+
+	for i := b.ul.cur - 1; i >= 0; i-- {
+		if j < 0 {
+			j = i
+		}
+
+		if b.ul.lst[j].ts.Sub(b.ul.lst[i].ts) > 10*time.Second {
+			break
+		}
+
+		j = i
+	}
+
+	if j < 0 {
+		if b.EditableStart < 0 {
+			return 0
+		}
+		return b.EditableStart
+	}
+
+	start := b.ul.lst[j].before.S
+
+	for i := j + 1; i < b.ul.cur; i++ {
+		if start == b.ul.lst[i].before.E {
+			start = b.ul.lst[i].before.S
+		}
+	}
+
+	if start < 0 || start >= b.Size() {
+		return 0
+	}
+	return start
 }

@@ -54,6 +54,7 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 
 	c.tagbuf.AddSels(&c.tagfr.Sels)
 	c.tagbuf.Replace(config.DefaultColumnTag, &c.tagfr.Sels[0], true, nil, 0)
+	c.tagbuf.FlushUndo()
 	return c
 }
 
