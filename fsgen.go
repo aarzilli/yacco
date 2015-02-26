@@ -274,7 +274,7 @@ func readPropFn(i int, off int64) ([]byte, syscall.Errno) {
 	ec.buf.Rdlock()
 	defer ec.buf.Rdunlock()
 
-	s := "AutoDumpPath=" + AutoDumpPath
+	s := "AutoDumpPath=" + AutoDumpPath + "\n"
 
 	for k, v := range ec.buf.Props {
 		s += k + "=" + v + "\n"

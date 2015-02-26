@@ -82,12 +82,15 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 	if i < 0 {
 		os.Setenv("bi", "")
 		os.Setenv("p", "")
+		os.Setenv("%", "")
 	} else {
 		os.Setenv("bi", fmt.Sprintf("%d", i))
 		if buffers[i] != nil {
 			os.Setenv("p", filepath.Join(buffers[i].Dir, buffers[i].Name))
+			os.Setenv("%", filepath.Join(buffers[i].Dir, buffers[i].Name))
 		} else {
 			os.Setenv("p", "")
+			os.Setenv("%", "")
 		}
 	}
 
