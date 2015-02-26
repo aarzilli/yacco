@@ -735,21 +735,22 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 
 	switch e.Chord {
 	case "escape":
-		HideCompl()
-		if lp.ed != nil && (lp.ed.specialChan != nil) && lp.ed.specialExitOnReturn {
-			lp.ed.sfr.Fr.VisibleTick = true
-			lp.ed.ExitSpecial()
-			return
-		} else if ec.buf != nil {
-			var fr *textframe.Frame
-			if lp.tagfr != nil {
-				fr = lp.tagfr
-			} else if lp.sfr != nil {
-				fr = &lp.sfr.Fr
-			}
-			if fr != nil {
-				escapeSel(&fr.Sels[0], ec.buf.LastTypePos())
-				ec.br.BufferRefresh(ec.ontag)
+		if !HideCompl() {
+			if lp.ed != nil && (lp.ed.specialChan != nil) && lp.ed.specialExitOnReturn {
+				lp.ed.sfr.Fr.VisibleTick = true
+				lp.ed.ExitSpecial()
+				return
+			} else if ec.buf != nil {
+				var fr *textframe.Frame
+				if lp.tagfr != nil {
+					fr = lp.tagfr
+				} else if lp.sfr != nil {
+					fr = &lp.sfr.Fr
+				}
+				if fr != nil {
+					escapeSel(&fr.Sels[0], ec.buf.LastTypePos())
+					ec.br.BufferRefresh(ec.ontag)
+				}
 			}
 		}
 

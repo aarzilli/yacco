@@ -96,11 +96,13 @@ func ComplWndEventLoop(eventLoopExit chan struct{}) {
 	//println("Loop done")
 }
 
-func HideCompl() {
+func HideCompl() bool {
 	if ComplWnd != nil {
 		ComplWnd.Hide()
 		ComplWnd = nil
+		return true
 	}
+	return false
 }
 
 func ComplDraw(b *image.RGBA, r image.Rectangle) {
