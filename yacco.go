@@ -24,6 +24,7 @@ var themeFlag = flag.String("t", "", "Theme to use (standard, evening, midnight,
 var dumpFlag = flag.String("d", "", "Dump file to load")
 var sizeFlag = flag.String("s", "", "Size of window")
 var configFlag = flag.String("c", "", "Configuration file (defaults to ~/.config/yacco/rc)")
+var acmeCompatFlag = flag.Bool("acme", false, "Uses acme file to listen")
 
 var tagColors = [][]image.Uniform{
 	config.TheColorScheme.TagPlain,

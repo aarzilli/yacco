@@ -6,22 +6,26 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"yacco/buf"
 	"yacco/config"
 )
 
+const debugP9 = false
+
 var p9ListenAddr string
-var p9Srv *srv.Fsrv
+var p9Srv *CustomP9Server
 var p9root *srv.File
 var p9il net.Listener
 
 func fs9PInit() {
 	var err error
 
-	if config.ServeTCP {
+	if config.ServeTCP || *acmeCompatFlag {
 		p9il, err = net.Listen("tcp4", "127.0.0.1:0")
 		if err != nil {
 			fmt.Printf("Could not start 9p server: %v\n", err)
@@ -32,13 +36,28 @@ func fs9PInit() {
 		os.Setenv("yp9", p9ListenAddr)
 
 		p9il = &ListenLocalOnly{p9il}
-	} else {
-		ns := os.Getenv("NAMESPACE")
-		if ns == "" {
-			ns = fmt.Sprintf("/tmp/ns.%s.%s", os.Getenv("USER"), os.Getenv("DISPLAY"))
-			os.MkdirAll(ns, 0700)
+
+		if *acmeCompatFlag {
+			cmdArgs := []string{"9pserve", "-u", "unix!" + makeP9Addr("acme")}
+			_, err := exec.LookPath(cmdArgs[0])
+			if err != nil {
+				na := make([]string, 0, len(cmdArgs)+1)
+				na = append(na, "9")
+				na = append(na, cmdArgs...)
+				cmdArgs = na
+				_, err := exec.LookPath(cmdArgs[0])
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "Could not start compatibility mode: 9 or 9pserve not found\n")
+					cmdArgs = nil
+				}
+			}
+
+			if cmdArgs != nil {
+				acmeCompatStart(cmdArgs[0], cmdArgs[1:])
+			}
 		}
-		addr := filepath.Join(ns, fmt.Sprintf("yacco.%d", os.Getpid()))
+	} else {
+		addr := makeP9Addr(fmt.Sprintf("yacco.%d", os.Getpid()))
 		os.Remove(addr)
 		p9il, err = net.Listen("unix", addr)
 		if err != nil {
@@ -65,12 +84,12 @@ func fs9PInit() {
 	prop.Add(p9root, "prop", user, nil, 0666, prop)
 	log := &ReadOpenP9{srv.File{}, openLogFileFn, readLogFileFn, clunkLogFileFn}
 	log.Add(p9root, "log", user, nil, 0666, log)
-	newdir := &NewP9{}
-	newdir.Add(p9root, "new", user, nil, p.DMDIR|0770, newdir)
 
-	p9Srv = srv.NewFileSrv(p9root)
+	p9Srv = &CustomP9Server{srv.NewFileSrv(p9root)}
 	p9Srv.Dotu = true
-	//p9Srv.Debuglevel = srv.DbgPrintPackets|srv.DbgPrintFcalls
+	if debugP9 {
+		p9Srv.Debuglevel = srv.DbgPrintPackets | srv.DbgPrintFcalls
+	}
 	p9Srv.Start(p9Srv)
 
 	go func() {
@@ -88,6 +107,15 @@ func fs9PQuit() {
 
 type ListenLocalOnly struct {
 	l net.Listener
+}
+
+func makeP9Addr(name string) string {
+	ns := os.Getenv("NAMESPACE")
+	if ns == "" {
+		ns = fmt.Sprintf("/tmp/ns.%s.%s", os.Getenv("USER"), os.Getenv("DISPLAY"))
+		os.MkdirAll(ns, 0700)
+	}
+	return filepath.Join(ns, name)
 }
 
 func (l *ListenLocalOnly) Accept() (c net.Conn, err error) {
@@ -172,36 +200,14 @@ func fs9PRemoveBuffer(n int) {
 	}
 }
 
-type ReadOnlyP9 struct {
-	srv.File
-	readFn func(off int64) ([]byte, syscall.Errno)
+type CustomP9Server struct {
+	*srv.Fsrv
 }
 
-func (fh *ReadOnlyP9) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
-	b, r := fh.readFn(int64(offset))
-	copy(buf, b)
-	if r == 0 {
-		return len(b), nil
-	} else {
-		return 0, r
-	}
-}
-
-type NewP9 struct {
-	srv.File
-}
-
-func (fh *NewP9) Create(fid *srv.FFid, name string, perm uint32) (*srv.File, error) {
-	valid := false
-	for _, vn := range []string{"addr", "body", "ctl", "data", "errors", "event", "tag", "xdata"} {
-		if name == vn {
-			valid = true
-			break
-		}
-	}
-
-	if !valid {
-		return nil, &p.Error{"Not a valid name", p.EPERM}
+func (s *CustomP9Server) Walk(req *srv.Req) {
+	if req.Fid.Aux.(*srv.FFid).F != p9root || len(req.Tc.Wname) <= 0 || req.Tc.Wname[0] != "new" {
+		s.Fsrv.Walk(req)
+		return
 	}
 
 	done := make(chan int)
@@ -219,17 +225,38 @@ func (fh *NewP9) Create(fid *srv.FFid, name string, perm uint32) (*srv.File, err
 	bidx := <-done
 
 	if bidx < 0 {
-		return nil, &p.Error{"Internal error", p.EIO}
+		fmt.Fprintf(os.Stderr, "Internal error, could not create buffer\n")
 	}
 
-	bufn := fmt.Sprintf("%d", bidx)
-	bufdir := p9root.Find(bufn)
-	if bufdir == nil {
-		return nil, &p.Error{fmt.Sprintf("Could not find buffer %d", bufn), p.EIO}
+	req.Tc.Wname[0] = strconv.Itoa(bidx)
+	s.Fsrv.Walk(req)
+}
+
+type P9RootFile struct {
+	srv.File
+}
+
+type ReadOnlyP9 struct {
+	srv.File
+	readFn func(off int64) ([]byte, syscall.Errno)
+}
+
+func readhelp(buf, b []byte, r syscall.Errno) (int, error) {
+	if r != 0 {
+		return 0, r
 	}
 
-	file := bufdir.Find(name)
-	return file, nil
+	copy(buf, b)
+	if len(b) < len(buf) {
+		return len(b), nil
+	} else {
+		return len(buf), nil
+	}
+}
+
+func (fh *ReadOnlyP9) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
+	b, r := fh.readFn(int64(offset))
+	return readhelp(buf, b, r)
 }
 
 type ReadWriteP9 struct {
@@ -240,12 +267,7 @@ type ReadWriteP9 struct {
 
 func (fh *ReadWriteP9) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
 	b, r := fh.readFn(int64(offset))
-	copy(buf, b)
-	if r == 0 {
-		return len(b), nil
-	} else {
-		return 0, r
-	}
+	return readhelp(buf, b, r)
 }
 
 func (fh *ReadWriteP9) Write(fid *srv.FFid, data []byte, offset uint64) (int, error) {
@@ -296,12 +318,7 @@ func (fh *ReadWriteExclP9) Clunk(fid *srv.FFid) error {
 
 func (fh *ReadWriteExclP9) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
 	b, r := fh.readFn(int64(offset), fh.interrupted)
-	copy(buf, b)
-	if r == 0 {
-		return len(b), nil
-	} else {
-		return 0, r
-	}
+	return readhelp(buf, b, r)
 }
 
 func (fh *ReadWriteExclP9) Write(fid *srv.FFid, data []byte, offset uint64) (int, error) {
@@ -330,14 +347,32 @@ func (fh *ReadOpenP9) Open(fid *srv.FFid, mode uint8) error {
 
 func (fh *ReadOpenP9) Read(fid *srv.FFid, buf []byte, offset uint64) (int, error) {
 	b, r := fh.readFn(fidToId(fid))
-	copy(buf, b)
-	if r == 0 {
-		return len(b), nil
-	} else {
-		return 0, r
-	}
+	return readhelp(buf, b, r)
 }
 
 func (fh *ReadOpenP9) Clunk(fid *srv.FFid) error {
 	return fh.clunkFn(fidToId(fid))
+}
+
+func acmeCompatStart(cmdName string, cmdArgs []string) {
+	cmd := exec.Command(cmdName, cmdArgs...)
+	conn, err := net.Dial("tcp4", p9ListenAddr)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not open connection for 9pserve: %v\n", err)
+		return
+	}
+	f, err := conn.(*net.TCPConn).File()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not open connection for 9pserve (fd): %v\n", err)
+		return
+	}
+	cmd.Stdin = f
+	cmd.Stdout = f
+	cmd.Stderr = os.Stderr
+	go func() {
+		err := cmd.Run()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error in 9pserve: %v\n", err)
+		}
+	}()
 }

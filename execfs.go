@@ -2,12 +2,17 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"strings"
+	"syscall"
 	"yacco/util"
 )
 
-func ExecFs(ec *ExecContext, cmd string) {
+func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 	cmd = strings.TrimSpace(cmd)
+	if cmd == "" {
+		return 0
+	}
 	switch cmd {
 	case "addr=dot":
 		ec.ed.otherSel[OS_ADDR] = ec.fr.Sels[0]
@@ -39,7 +44,7 @@ func ExecFs(ec *ExecContext, cmd string) {
 		GetCmd(*ec, "")
 
 	case "limit=addr":
-		//XXX limit=addr not implemented
+		fmt.Fprintf(os.Stderr, "limit=addr not implemented\n")
 
 	case "mark":
 		ec.buf.EditMarkNext = true
@@ -72,7 +77,9 @@ func ExecFs(ec *ExecContext, cmd string) {
 		} else if strings.HasPrefix(cmd, "name ") {
 			RenameCmd(*ec, cmd[len("name"):])
 		} else {
-			fmt.Printf("Unrecognized ctl command <%s>\n", cmd)
+			debugfsf("Unrecognized ctl command <%s>\n", cmd)
+			return syscall.EINVAL
 		}
 	}
+	return 0
 }

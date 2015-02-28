@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -12,7 +13,18 @@ import (
 	"yacco/util"
 )
 
+const debugFs = true
+
+func debugfsf(fmtstr string, args ...interface{}) {
+	if !debugFs {
+		return
+	}
+
+	log.Printf(fmtstr, args...)
+}
+
 func indexFileFn(off int64) ([]byte, syscall.Errno) {
+	debugfsf("Read index %d\n", off)
 	if off > 0 {
 		return []byte{}, 0
 	}
@@ -68,6 +80,7 @@ func readAddrFn(i int, off int64) ([]byte, syscall.Errno) {
 		t = fmt.Sprintf("%d,%d", ec.ed.otherSel[OS_ADDR].S, ec.ed.otherSel[OS_ADDR].E)
 	}
 	<-done
+	debugfsf("Read addr %s\n", t)
 	return []byte(t), 0
 }
 
@@ -78,6 +91,8 @@ func writeAddrFn(i int, data []byte, off int64) (code syscall.Errno) {
 	}
 
 	addrstr := string(data)
+
+	debugfsf("Write addr %s\n", addrstr)
 
 	sideChan <- func() {
 		defer func() {
@@ -111,7 +126,13 @@ func readBodyFn(i int, off int64) ([]byte, syscall.Errno) {
 		}
 	}
 
-	return <-resp, 0
+	r := <-resp
+
+	if debugFs {
+		debugfsf("Read body <%s>\n", string(r))
+	}
+
+	return r, 0
 }
 
 func writeBodyFn(i int, data []byte, off int64) syscall.Errno {
@@ -123,6 +144,7 @@ func writeBodyFn(i int, data []byte, off int64) syscall.Errno {
 	if (len(data) == 1) && (data[0] == 0) {
 		sdata = ""
 	}
+	debugfsf("Write body <%s>\n", sdata)
 	sideChan <- ReplaceMsg(ec, nil, true, sdata, util.EO_BODYTAG, false, false)
 	return 0
 }
@@ -154,6 +176,9 @@ func readCtlFn(i int, off int64) ([]byte, syscall.Errno) {
 
 	t := fmt.Sprintf("%11d %11d %11d %11d %11d %11d %11s %11d %s\n",
 		i, ec.ed.tagbuf.Size(), ec.ed.bodybuf.Size(), 0, mod, wwidth, fontName, tabWidth, tc)
+
+	debugfsf("Read ctl <%s>\n", t)
+
 	return []byte(t), 0
 }
 
@@ -162,9 +187,20 @@ func writeCtlFn(i int, data []byte, off int64) syscall.Errno {
 	if ec == nil {
 		return syscall.ENOENT
 	}
-	cmd := string(data)
-	sideChan <- func() { ExecFs(ec, cmd) }
-	return 0
+	cmds := strings.Split(string(data), "\n")
+	debugfsf("Write ctl %s\n", cmds)
+	out := make(chan syscall.Errno)
+	sideChan <- func() {
+		var r syscall.Errno = 0
+		for i := range cmds {
+			cr := ExecFs(ec, cmds[i])
+			if cr != 0 {
+				r = cr
+			}
+		}
+		out <- r
+	}
+	return <-out
 }
 
 func readDataFn(i int, off int64, stopAtAddrEnd bool) ([]byte, syscall.Errno) {
@@ -191,7 +227,13 @@ func readDataFn(i int, off int64, stopAtAddrEnd bool) ([]byte, syscall.Errno) {
 		}
 	}
 
-	return <-resp, 0
+	r := <-resp
+
+	if debugFs {
+		debugfsf("Read data <%s>\n", string(r))
+	}
+
+	return r, 0
 }
 
 func writeDataFn(i int, data []byte, off int64) syscall.Errno {
@@ -201,8 +243,10 @@ func writeDataFn(i int, data []byte, off int64) syscall.Errno {
 	}
 	sdata := string(data)
 	if (len(data) == 1) && (data[0] == 0) {
+		debugfsf("Adjusted data\n")
 		sdata = ""
 	}
+	debugfsf("Write data <%s>\n", sdata)
 	sideChan <- ReplaceMsg(ec, &ec.ed.otherSel[OS_ADDR], false, sdata, util.EO_FILES, false, false)
 	return 0
 }
@@ -215,6 +259,10 @@ func writeErrorsFn(i int, data []byte, off int64) syscall.Errno {
 	ec := bufferExecContext(i)
 	if ec == nil {
 		return syscall.ENOENT
+	}
+
+	if debugFs {
+		debugfsf("Write errors <%s>\n", string(data))
 	}
 
 	sideChan <- func() {
@@ -241,13 +289,23 @@ func readTagFn(i int, off int64) ([]byte, syscall.Errno) {
 		}
 	}
 
-	return <-resp, 0
+	r := <-resp
+
+	if debugFs {
+		debugfsf("Read tag <%s>\n", string(r))
+	}
+
+	return r, 0
 }
 
 func writeTagFn(i int, data []byte, off int64) syscall.Errno {
 	ec := bufferExecContext(i)
 	if ec == nil {
 		return syscall.ENOENT
+	}
+
+	if debugFs {
+		debugfsf("Write tag <%s>\n", string(data))
 	}
 
 	sideChan <- func() {
@@ -385,6 +443,7 @@ func readEventFn(i int, off int64, interrupted chan struct{}) ([]byte, syscall.E
 		if !ok {
 			return []byte{}, 0
 		}
+		debugfsf("Read event <%s>\n", event)
 		return []byte(event), 0
 	}
 }
@@ -397,6 +456,8 @@ func writeEventFn(i int, data []byte, off int64) syscall.Errno {
 	if ec.ed == nil {
 		return syscall.EIO
 	}
+
+	debugfsf("Write event <%s>\n", data)
 
 	ec.ed.eventReader.Insert(string(data))
 
@@ -469,6 +530,8 @@ func openEventsFn(i int) bool {
 		return false
 	}
 
+	debugfsf("Open events\n")
+
 	done := make(chan bool)
 	sideChan <- func() {
 		if ec.ed.eventChan != nil {
@@ -490,6 +553,8 @@ func releaseEventsFn(i int) {
 	if ec == nil {
 		return
 	}
+
+	debugfsf("Release events\n")
 
 	sideChan <- func() {
 		if ec.ed.eventChan == nil {

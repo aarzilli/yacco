@@ -495,7 +495,7 @@ func FindWinEx(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
 		}
 	}
 
-	ctlfd, err := p9clnt.FCreate("/new/ctl", 0666, p.ORDWR)
+	ctlfd, err := p9clnt.FOpen("/new/ctl", p.ORDWR)
 	if err != nil {
 		return nil, err
 	}
