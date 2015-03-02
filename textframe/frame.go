@@ -74,6 +74,8 @@ type Frame struct {
 	}
 
 	scrubGlyph image.Alpha
+
+	debugRedraw bool
 }
 
 const COLORMASK = 0x0f
@@ -540,7 +542,7 @@ func (fr *Frame) PointToCoord(p int) image.Point {
 	}
 }
 
-func (fr *Frame) redrawSelection(s, e int, color *image.Uniform) {
+func (fr *Frame) redrawSelection(s, e int, color *image.Uniform, invalid *[]image.Rectangle) {
 	if s < 0 {
 		s = 0
 	}
@@ -574,17 +576,24 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform) {
 
 	if ss.p.Y == se.p.Y {
 		r := image.Rectangle{sp, ep}
-		drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r), color)
+		r = fr.R.Intersect(r)
+		if invalid != nil {
+			*invalid = append(*invalid, r)
+		}
+		drawingFuncs.DrawFillSrc(fr.B, r, color)
 	} else {
-		rs := image.Rectangle{sp, image.Point{int(rightMargin >> 8), int((ss.p.Y)>>8) - int(glyphBounds.YMin)}}
-		re := image.Rectangle{sep, ep}
-		rb := image.Rectangle{
+		rs := fr.R.Intersect(image.Rectangle{sp, image.Point{int(rightMargin >> 8), int((ss.p.Y)>>8) - int(glyphBounds.YMin)}})
+		re := fr.R.Intersect(image.Rectangle{sep, ep})
+		rb := fr.R.Intersect(image.Rectangle{
 			image.Point{sep.X, int((ss.p.Y)>>8) - int(glyphBounds.YMin)},
 			image.Point{int(rightMargin >> 8), sep.Y},
+		})
+		if invalid != nil {
+			*invalid = append(*invalid, rs, re, rb)
 		}
-		drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(rs), color)
-		drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(re), color)
-		drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(rb), color)
+		drawingFuncs.DrawFillSrc(fr.B, rs, color)
+		drawingFuncs.DrawFillSrc(fr.B, re, color)
+		drawingFuncs.DrawFillSrc(fr.B, rb, color)
 	}
 }
 
@@ -695,29 +704,126 @@ func (fr *Frame) updateRedrawOpt() {
 	fr.redrawOpt.scrollEnd = -1
 }
 
-func (fr *Frame) redrawOptMatch() int {
-	for i := 1; i < len(fr.redrawOpt.drawnSels); i++ {
-		if fr.redrawOpt.drawnSels[i].S != fr.Sels[i].S {
-			return -1
+func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFuncs DrawingFuncs, leftMargin, rightMargin raster.Fix32) (bool, []image.Rectangle) {
+	invalid := make([]image.Rectangle, 0, 3)
+
+	if debugRedraw && fr.debugRedraw {
+		fmt.Printf("%p Attempting to run optimized redraw\n", fr)
+	}
+
+	idx := 0
+	for i := range fr.redrawOpt.drawnSels {
+		changed := (fr.redrawOpt.drawnSels[i].S != fr.Sels[i].S) || (fr.redrawOpt.drawnSels[i].E != fr.Sels[i].E)
+		if changed {
+			if idx != 0 {
+				// failed, we want only one selection changed
+				idx = -1
+				break
+			} else {
+				idx = i
+			}
 		}
-		if fr.redrawOpt.drawnSels[i].E != fr.Sels[i].E {
-			return -1
+	}
+
+	if idx < 0 {
+		if debugRedraw && fr.debugRedraw {
+			fmt.Printf("\tFailed: multiple changed\n")
+		}
+		return false, nil
+	}
+
+	action := 0
+	cs, ce := -1, -1
+
+	fromnil := fr.redrawOpt.drawnSels[idx].S == fr.redrawOpt.drawnSels[idx].E
+	tonil := fr.Sels[idx].S == fr.Sels[idx].E
+
+	if fromnil && tonil {
+		if idx == 0 {
+			if debugRedraw && fr.debugRedraw {
+				fmt.Printf("%p Redrawing tick move\n", fr)
+			}
+			if fr.redrawOpt.drawnVisibleTick {
+				invalid = append(invalid, fr.deleteTick(glyphBounds, drawingFuncs))
+			}
+
+			invalid = append(invalid, fr.drawTick(glyphBounds, drawingFuncs, 1))
+		}
+		return true, invalid
+	} else if fromnil && !tonil {
+		if idx == 0 && fr.redrawOpt.drawnVisibleTick {
+			invalid = append(invalid, fr.deleteTick(glyphBounds, drawingFuncs))
+		}
+		cs = fr.Sels[idx].S
+		ce = fr.Sels[idx].E
+		action = 1
+	} else if !fromnil && tonil {
+		cs = fr.redrawOpt.drawnSels[idx].S
+		ce = fr.redrawOpt.drawnSels[idx].E
+		action = -1
+	} else if !fromnil && !tonil {
+		// attempt to extend selection in one of two possible directions
+		if fr.redrawOpt.drawnSels[idx].S == fr.Sels[idx].S {
+			cs = fr.redrawOpt.drawnSels[idx].E
+			ce = fr.Sels[idx].E
+			action = ce - cs
+		} else if fr.redrawOpt.drawnSels[idx].E == fr.Sels[idx].E {
+			cs = fr.redrawOpt.drawnSels[idx].S
+			ce = fr.Sels[idx].S
+			action = cs - ce
+		}
+
+		if cs > ce {
+			t := cs
+			cs = ce
+			ce = t
 		}
 	}
 
-	if (fr.redrawOpt.drawnSels[0].S == fr.Sels[0].S) && (fr.redrawOpt.drawnSels[0].E == fr.Sels[0].E) {
-		return 1
+	if cs < 0 {
+		if debugRedraw && fr.debugRedraw {
+			fmt.Printf("\tFailed: noncontiguous selection\n")
+		}
+		return false, nil
 	}
 
-	if (fr.redrawOpt.drawnSels[0].S != fr.redrawOpt.drawnSels[0].E) || (fr.Sels[0].S != fr.Sels[0].E) {
-		return -1
+	rs := cs - fr.Top
+	if rs < 0 {
+		rs = 0
+	} else if rs >= len(fr.glyphs) {
+		rs = len(fr.glyphs) - 1
 	}
 
-	if fr.redrawOpt.drawnVisibleTick {
-		return 1
-	} else {
-		return 0
+	re := ce - fr.Top
+	if re < 0 {
+		re = 0
+	} else if re >= len(fr.glyphs) {
+		re = len(fr.glyphs) - 1
 	}
+
+	if rs != re {
+		if debugRedraw && fr.debugRedraw {
+			fmt.Printf("%p Redrawing selection %d change (%d %d)\n", fr, idx, cs, ce)
+		}
+
+		ssel := idx + 1
+		if action < 0 {
+			if found, nssel := fr.getSsel(cs); found {
+				ssel = nssel
+			} else {
+				ssel = 0
+			}
+		}
+
+		fr.redrawSelection(cs-fr.Top, ce-fr.Top, &fr.Colors[ssel][0], &invalid)
+		fr.redrawIntl(fr.glyphs[rs:re], false, rs, glyphBounds, rightMargin, leftMargin, drawingFuncs)
+	}
+
+	if tonil {
+		invalid = append(invalid, fr.drawTick(glyphBounds, drawingFuncs, 1))
+	}
+
+	return true, invalid
 }
 
 func (fr *Frame) allSelectionsEmpty() bool {
@@ -742,51 +848,29 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	// - the frame wasn't reloaded (Clear, InsertColor weren't called) since last draw
 	// - at most the tick changed position
 	if !fr.redrawOpt.reloaded {
-		switch fr.redrawOptMatch() {
-		case -1: // no match go to slow path
-			break
-		case 0: // draw tick
-			if debugRedraw {
-				fmt.Printf("%p Redrawing (tick)\n", fr)
-			}
-			tickrect := fr.drawTick(glyphBounds, drawingFuncs, 1)
+		if success, invalid := fr.redrawOptSelectionMoved(glyphBounds, drawingFuncs, leftMargin, rightMargin); success {
 			fr.updateRedrawOpt()
 			if flush && (fr.Wnd != nil) {
-				fr.Wnd.FlushImage(tickrect)
+				fr.Wnd.FlushImage(invalid...)
 			}
 			if predrawRects != nil {
-				*predrawRects = append(*predrawRects, tickrect)
-			}
-			return
-		case 1: // draw tick (had old tick too)
-			if debugRedraw {
-				fmt.Printf("%p Redrawing (tick2)\n", fr)
-			}
-			oldtickrect := fr.deleteTick(glyphBounds, drawingFuncs)
-			newtickrect := fr.drawTick(glyphBounds, drawingFuncs, 1)
-			fr.updateRedrawOpt()
-			if flush && (fr.Wnd != nil) {
-				fr.Wnd.FlushImage(oldtickrect, newtickrect)
-			}
-			if predrawRects != nil {
-				*predrawRects = append(*predrawRects, oldtickrect, newtickrect)
+				*predrawRects = append(*predrawRects, invalid...)
 			}
 			return
 		}
-
 	}
 
 	// FAST PATH 2
 	// Followed only after a scroll operation and there are no active selections
 	// Bitmaps are copied directly
 	if fr.redrawOpt.scrollStart >= 0 {
-		if debugRedraw {
+		if debugRedraw && fr.debugRedraw {
 			fmt.Printf("%p Redrawing (scroll) scrollStart: %d\n", fr, fr.redrawOpt.scrollStart)
 		}
 		if fr.redrawOpt.scrollEnd < 0 {
 			fr.redrawOpt.scrollEnd = len(fr.glyphs)
 		}
-		fr.redrawIntl(fr.glyphs[fr.redrawOpt.scrollStart:fr.redrawOpt.scrollEnd], glyphBounds, rightMargin, leftMargin, drawingFuncs)
+		fr.redrawIntl(fr.glyphs[fr.redrawOpt.scrollStart:fr.redrawOpt.scrollEnd], true, fr.redrawOpt.scrollStart, glyphBounds, rightMargin, leftMargin, drawingFuncs)
 		tp := fr.Sels[0].S - fr.Top
 		if tp >= fr.redrawOpt.scrollStart && tp <= fr.redrawOpt.scrollEnd {
 			fr.drawTick(glyphBounds, drawingFuncs, 1)
@@ -804,14 +888,14 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	fr.updateRedrawOpt()
 
 	// NORMAL PATH HERE
-	if debugRedraw {
+	if debugRedraw && fr.debugRedraw {
 		fmt.Printf("%p Redrawing (FULL)\n", fr)
 	}
 
 	// background
 	drawingFuncs.DrawFillSrc(fr.B, fr.R, &fr.Colors[0][0])
 
-	fr.redrawIntl(fr.glyphs, glyphBounds, rightMargin, leftMargin, drawingFuncs)
+	fr.redrawIntl(fr.glyphs, true, 0, glyphBounds, rightMargin, leftMargin, drawingFuncs)
 
 	// Tick drawing
 	fr.drawTick(glyphBounds, drawingFuncs, 1)
@@ -825,7 +909,19 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	}
 }
 
-func (fr *Frame) redrawIntl(glyphs []glyph, glyphBounds truetype.Bounds, rightMargin, leftMargin raster.Fix32, drawingFuncs DrawingFuncs) {
+func (fr *Frame) getSsel(i int) (bool, int) {
+	for j := range fr.Sels {
+		if j+1 >= len(fr.Colors) {
+			break
+		}
+		if (i >= fr.Sels[j].S) && (i < fr.Sels[j].E) {
+			return true, j + 1
+		}
+	}
+	return false, -1
+}
+
+func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int, glyphBounds truetype.Bounds, rightMargin, leftMargin raster.Fix32, drawingFuncs DrawingFuncs) {
 	ssel := 0
 	var cury raster.Fix32 = 0
 	if len(fr.glyphs) > 0 {
@@ -836,17 +932,14 @@ func (fr *Frame) redrawIntl(glyphs []glyph, glyphBounds truetype.Bounds, rightMa
 	for i, g := range glyphs {
 		// Selection drawing
 		if ssel != 0 {
-			if i+fr.Top >= fr.Sels[ssel-1].E {
+			if i+fr.Top+n >= fr.Sels[ssel-1].E {
 				ssel = 0
 			}
 		} else {
-			for j := range fr.Sels {
-				if j+1 >= len(fr.Colors) {
-					break
-				}
-				if /*((fr.Colors[j+1][0] != fr.Colors[0][0]) || (fr.Colors[j+1][1] != fr.Colors[0][1])) && */ (i+fr.Top >= fr.Sels[j].S) && (i+fr.Top < fr.Sels[j].E) {
-					ssel = j + 1
-					fr.redrawSelection(fr.Sels[j].S-fr.Top, fr.Sels[j].E-fr.Top, &fr.Colors[ssel][0])
+			if found, nssel := fr.getSsel(i + fr.Top + n); found {
+				ssel = nssel
+				if drawSels {
+					fr.redrawSelection(fr.Sels[ssel-1].S-fr.Top, fr.Sels[ssel-1].E-fr.Top, &fr.Colors[ssel][0], nil)
 				}
 			}
 		}

@@ -30,6 +30,7 @@ func (sfr *ScrollFrame) Init(margin int) error {
 	if sfr.Width < 2 {
 		return fmt.Errorf("ScrollFrame not wide enough")
 	}
+	sfr.Fr.debugRedraw = true
 	return sfr.Fr.Init(margin)
 }
 
