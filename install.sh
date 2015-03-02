@@ -22,7 +22,7 @@ export PATH=$1/yaccodir:\$PATH
 export yaccoshell=/bin/bash
 unset PROMPT_COMMAND
 export PS1='\e];\w\a% '
-exec $1/yaccodir/yacco -s=1168x900 -t=e2 \$*
+exec $1/yaccodir/yacco -s=1168x900 -t=e2 $*
 EOF
 chmod u+x $1/yacco
 fi
@@ -44,9 +44,12 @@ Path="\$HOME/.config/yacco/DejaVuSans.ttf"
 [Fonts "Alt"]
 Pixel=14
 LineScale=1.0
-Path="\$HOME/.config/yacco/pelm.8.font.pcf.gz"
+Path="\$HOME/.config/yacco/luximr.ttf"
 
 [Fonts "Compl"]
+CopyFrom=Main
+
+[Fonts "Tag"]
 CopyFrom=Main
 
 EOF
