@@ -871,7 +871,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			cmd := config.KeyBindings[e.Chord]
 			HideCompl()
 			//println("Execute command: <" + cmd + ">")
-			if (ec.eventChan == nil) || (cmd == "Delete") || (strings.Index(cmd, "Edit ") == 0) {
+			if (ec.eventChan == nil) || (cmd == "Delete") || (strings.Index(cmd, "Edit ") == 0) || *acmeCompatFlag {
 				fcmd(ec)
 			} else if ec.fr != nil {
 				// send command to the attached process, but we need to check that we at least are on a frame
@@ -1002,6 +1002,7 @@ func clickExec1(lp LogicalPos, e util.MouseDownEvent) {
 func clickExec2(lp LogicalPos, e util.MouseDownEvent) {
 	cmd, original := expandedSelection(lp, 1)
 	ec := lp.asExecContext(false)
+	ec.ontag = (lp.tagfr != nil)
 	sendEventOrExec(ec, cmd, original)
 }
 
@@ -1120,8 +1121,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 		// expand selection
 		original = sel.S
 		if expandToLine {
-			s := buf.Tonl(sel.S-1, -1)
-			e := buf.Tonl(sel.S, +1)
+			s, e := expandSelToLine(buf, *sel)
 			frame.SetSelect(0, 1, s, e)
 			frame.SetSelect(idx, 1, s, e)
 			redraw(true, nil)
@@ -1133,13 +1133,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 			frame.SetSelect(idx, 1, s, e)
 			redraw(true, nil)
 		} else {
-			var s int
-			if sel.S >= buf.Size() {
-				s = buf.Tospc(sel.S-1, -1)
-			} else {
-				s = buf.Tospc(sel.S, -1)
-			}
-			e := buf.Tospc(sel.S, +1)
+			s, e := expandSelToWord(buf, *sel)
 			sel = &util.Sel{s, e}
 			if idx == 2 {
 				frame.SetSelect(0, 1, s, e)
@@ -1149,6 +1143,22 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 	}
 
 	return string(buf.SelectionRunes(*sel)), original
+}
+
+func expandSelToWord(buf *buf.Buffer, sel util.Sel) (s, e int) {
+	if sel.S >= buf.Size() {
+		s = buf.Tospc(sel.S-1, -1)
+	} else {
+		s = buf.Tospc(sel.S, -1)
+	}
+	e = buf.Tospc(sel.S, +1)
+	return
+}
+
+func expandSelToLine(buf *buf.Buffer, sel util.Sel) (s, e int) {
+	s = buf.Tonl(sel.S-1, -1)
+	e = buf.Tonl(sel.S, +1)
+	return
 }
 
 func (w *Window) BufferRefresh(ontag bool) {

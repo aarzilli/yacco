@@ -232,6 +232,25 @@ func (s *CustomP9Server) Walk(req *srv.Req) {
 	s.Fsrv.Walk(req)
 }
 
+func (s *CustomP9Server) Flush(req *srv.Req) {
+	f, ok := req.Fid.Aux.(*srv.FFid).F.Ops.(*ReadWriteExclP9)
+	if !ok {
+		if debugP9 {
+			fmt.Printf("Flush discarded, not a ReadWriteExcl file\n")
+		}
+		return
+	}
+
+	if f.owner == req.Fid.Fconn {
+		f.owner = nil
+		close(f.interrupted)
+		f.closeFn()
+		if debugP9 {
+			fmt.Printf("Flush for a ReadWriteExcl file\n")
+		}
+	}
+}
+
 type P9RootFile struct {
 	srv.File
 }
@@ -310,6 +329,7 @@ func (fh *ReadWriteExclP9) Open(fid *srv.FFid, mode uint8) error {
 
 func (fh *ReadWriteExclP9) Clunk(fid *srv.FFid) error {
 	if fh.owner == fid.Fid.Fconn {
+		fh.owner = nil
 		close(fh.interrupted)
 		fh.closeFn()
 	}

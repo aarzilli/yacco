@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 )
 
 type EventOrigin rune
@@ -15,7 +16,7 @@ type EventType rune
 type EventFlag int
 
 // original p9 value is 256
-const MAX_EVENT_TEXT_LENGTH = 1024
+const MAX_EVENT_TEXT_LENGTH = 256
 
 const (
 	EO_BODYTAG = EventOrigin('E')
@@ -50,7 +51,7 @@ func fmteventEx(eventChan chan string, origin EventOrigin, istag bool, etype Eve
 	t := time.NewTimer(100 * time.Millisecond)
 	defer t.Stop()
 	select {
-	case eventChan <- fmt.Sprintf("%c%c%d %d %d %d %s\n", origin, etype, s, e, flags, len(arg), arg):
+	case eventChan <- fmt.Sprintf("%c%c%d %d %d %d %s\n", origin, etype, s, e, flags, utf8.RuneCountInString(arg), arg):
 		return true
 	case <-t.C:
 		onfail()
@@ -59,7 +60,7 @@ func fmteventEx(eventChan chan string, origin EventOrigin, istag bool, etype Eve
 }
 
 func FmteventBase(eventChan chan string, origin EventOrigin, istag bool, etype EventType, s, e int, arg string, onfail func()) {
-	if len(arg) >= MAX_EVENT_TEXT_LENGTH {
+	if utf8.RuneCountInString(arg) >= MAX_EVENT_TEXT_LENGTH {
 		arg = ""
 	}
 	fmteventEx(eventChan, origin, istag, etype, s, e, 0, arg, onfail)
@@ -123,6 +124,8 @@ type EventReader struct {
 	// extra argument
 	xs, xe      int
 	xpath, xtxt string
+
+	compat bool
 }
 
 // Adds an event message to the event reader
@@ -152,6 +155,8 @@ func (er *EventReader) Reset() {
 	er.etype = EventType(0)
 	er.origin = EventOrigin(0)
 	er.bltin = false
+
+	er.compat = false
 
 	// basic argument
 	er.p = -1
@@ -223,7 +228,11 @@ func (er *EventReader) Points() (p, s, e int) {
 
 // The text was too big to be included in the message, we will need to fetch it using addr and data files
 func (er *EventReader) ShouldFetchText() bool {
-	return (er.etype != ET_BODYDEL) && (er.etype != ET_TAGDEL) && (er.s != er.e) && (er.txt == "")
+	return (er.etype != ET_BODYDEL) && (er.etype != ET_TAGDEL) && (((er.s != er.e) && (er.txt == "")) || er.compat)
+}
+
+func (er *EventReader) IsCompat() bool {
+	return er.compat
 }
 
 // If the event is an execute event and the command is a builtin command then true is returned otherwise false is returned
@@ -285,9 +294,14 @@ func (er *EventReader) SetText(s string) {
 
 func erBaseInsert(er *EventReader, msg string) eventReaderState {
 	var flags EventFlag
-	er.origin, er.etype, er.s, er.e, flags, er.txt, er.perr = parseOne(msg)
+	er.origin, er.etype, er.s, er.e, flags, er.txt, er.compat, er.perr = parseOne(msg)
 
 	if er.perr != "" {
+		er.done = true
+		return nil
+	}
+
+	if er.compat {
 		er.done = true
 		return nil
 	}
@@ -334,7 +348,7 @@ func erExpandInsert(er *EventReader, msg string) eventReaderState {
 	var etype EventType
 	var flags EventFlag
 
-	origin, etype, er.s, er.e, flags, er.txt, er.perr = parseOne(msg)
+	origin, etype, er.s, er.e, flags, er.txt, _, er.perr = parseOne(msg)
 
 	if er.perr != "" {
 		er.done = true
@@ -356,7 +370,7 @@ func erExtraInsert(er *EventReader, msg string) eventReaderState {
 	var etype EventType
 	var flags EventFlag
 
-	origin, etype, _, _, flags, er.xtxt, er.perr = parseOne(msg)
+	origin, etype, _, _, flags, er.xtxt, _, er.perr = parseOne(msg)
 
 	if er.perr != "" {
 		er.done = true
@@ -378,7 +392,7 @@ func erExtra2Insert(er *EventReader, msg string) eventReaderState {
 	var flags EventFlag
 	var arg string
 
-	origin, etype, _, _, flags, arg, er.perr = parseOne(msg)
+	origin, etype, _, _, flags, arg, _, er.perr = parseOne(msg)
 
 	if er.perr != "" {
 		er.done = true
@@ -443,11 +457,13 @@ func erExpandAndExtraInsert(er *EventReader, msg string) eventReaderState {
 	return erExtraInsert
 }
 
-func parseOne(eventstr string) (origin EventOrigin, etype EventType, s, e int, flag EventFlag, arg string, perr string) {
+func parseOne(eventstr string) (origin EventOrigin, etype EventType, s, e int, flag EventFlag, arg string, compat bool, perr string) {
 	origin = EventOrigin(eventstr[0])
 	etype = EventType(eventstr[1])
 
 	v := strings.SplitN(eventstr[2:], " ", 5)
+
+	v[1] = strings.TrimSpace(v[1])
 
 	var err error
 	s, err = strconv.Atoi(v[0])
@@ -461,6 +477,12 @@ func parseOne(eventstr string) (origin EventOrigin, etype EventType, s, e int, f
 		perr = err.Error()
 		return
 	}
+
+	if len(v) == 2 {
+		compat = true
+		return
+	}
+
 	nf, err := strconv.Atoi(v[2])
 	if err != nil {
 		perr = err.Error()
@@ -482,8 +504,8 @@ func parseOne(eventstr string) (origin EventOrigin, etype EventType, s, e int, f
 	}
 	arg = arg[:len(arg)-1]
 
-	if len(arg) != arglen {
-		perr = fmt.Sprintf("Mismatched argument length, specified %d found %d", arglen, len(arg))
+	if utf8.RuneCountInString(arg) != arglen {
+		perr = fmt.Sprintf("Mismatched argument length, specified %d found %d", arglen, utf8.RuneCountInString(arg))
 		return
 	}
 

@@ -13,7 +13,7 @@ import (
 	"yacco/util"
 )
 
-const debugFs = true
+const debugFs = false
 
 func debugfsf(fmtstr string, args ...interface{}) {
 	if !debugFs {
@@ -247,7 +247,21 @@ func writeDataFn(i int, data []byte, off int64) syscall.Errno {
 		sdata = ""
 	}
 	debugfsf("Write data <%s>\n", sdata)
-	sideChan <- ReplaceMsg(ec, &ec.ed.otherSel[OS_ADDR], false, sdata, util.EO_FILES, false, false)
+	f := ReplaceMsg(ec, &ec.ed.otherSel[OS_ADDR], false, sdata, util.EO_FILES, false, false)
+	sideChan <- func() {
+		matchS := ec.ed.otherSel[OS_ADDR].S == ec.ed.sfr.Fr.Sels[0].S
+		matchE := ec.ed.otherSel[OS_ADDR].E == ec.ed.sfr.Fr.Sels[0].E
+		f()
+
+		if matchS {
+			ec.ed.sfr.Fr.Sels[0].S = ec.ed.otherSel[OS_ADDR].S
+		}
+
+		if matchE {
+			ec.ed.sfr.Fr.Sels[0].E = ec.ed.otherSel[OS_ADDR].E
+		}
+
+	}
 	return 0
 }
 
@@ -504,7 +518,17 @@ func writeEventFn(i int, data []byte, off int64) syscall.Errno {
 		sideChan <- func() {
 			if er.ShouldFetchText() {
 				_, sp, ep := er.Points()
-				er.SetText(string(ec.ed.bodybuf.SelectionRunes(util.Sel{sp, ep})))
+				if sp == ep && er.IsCompat() {
+					if er.Type() == util.ET_TAGEXEC {
+						sp, ep = expandSelToWord(ec.ed.tagbuf, util.Sel{sp, ep})
+						er.SetText(string(ec.ed.tagbuf.SelectionRunes(util.Sel{sp, ep})))
+					} else {
+						sp, ep = expandSelToLine(ec.ed.bodybuf, util.Sel{sp, ep})
+						er.SetText(string(ec.ed.bodybuf.SelectionRunes(util.Sel{sp, ep})))
+					}
+				} else {
+					er.SetText(string(ec.ed.bodybuf.SelectionRunes(util.Sel{sp, ep})))
+				}
 			}
 			if er.MissingExtraArg() {
 				xpath, xs, xe, _ := er.ExtraArg()

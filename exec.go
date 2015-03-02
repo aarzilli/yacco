@@ -240,7 +240,7 @@ Jump			Cycles through insetion points
 }
 
 func fakebuf(name string) bool {
-	return (len(name) == 0) || (name[0] == '+') || (name[len(name)-1] == '/')
+	return (len(name) == 0) || (name[0] == '+') || (name[0] == '-') || (name[len(name)-1] == '/')
 }
 
 func IntlCmd(cmd string) (Cmd, string, string, bool) {
