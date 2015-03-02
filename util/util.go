@@ -170,7 +170,7 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 					out <- ei
 
 				case wde.KeyUpEvent:
-					if e.Key == "Multi_key" {
+					if e.Key == "Multi_key" || e.Key == wde.KeyRightAlt {
 						alting = true
 						altingSeq = ""
 					}
