@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"unicode/utf8"
 	"yacco/util"
 )
 
@@ -23,6 +24,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "y9p find <buffer name>\t\tfind buffer\n")
 	fmt.Fprintf(os.Stderr, "y9p new <buffer name>\t\tcreate buffer\n")
 	fmt.Fprintf(os.Stderr, "y9p exec <yacco command>\texecute command\n")
+	fmt.Fprintf(os.Stderr, "y9p eventloop <buffer id>\treads event file, writes event function calls\n")
 }
 
 func read(fd io.Reader) (string, error) {
@@ -98,6 +100,63 @@ func main() {
 		defer fd.Close()
 		io.Copy(os.Stdout, fd)
 
+	case "eventloop":
+		p9clnt := argCheck(3, true)
+		defer p9clnt.Unmount()
+
+		fd, err := p9clnt.FOpen(fmt.Sprintf("/%s/event", os.Args[2]), p.OREAD)
+		util.Allergic(debug, err)
+		defer fd.Close()
+		rbuf := make([]byte, 1024)
+		var er util.EventReader
+		for {
+			n, err := fd.Read(rbuf)
+			if err != nil {
+				break
+			}
+			if n < 2 {
+				fmt.Fprintf(os.Stderr, "Not enough read form event file\n")
+				os.Exit(1)
+			}
+			er.Reset()
+			er.Insert(string(rbuf[:n]))
+
+			for !er.Done() {
+				n, err := fd.Read(rbuf)
+				util.Allergic(debug, err)
+				er.Insert(string(rbuf[:n]))
+			}
+
+			if ok, perr := er.Valid(); !ok {
+				fmt.Fprintf(os.Stderr, "Error parsing event message(s): %s\n", perr)
+				continue
+			}
+
+			p, s, e := er.Points()
+
+			ps, pe := s, e
+			if p >= 0 {
+				ps, pe = p, p
+			}
+
+			txt, err := er.Text(nil, nil, nil)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Error retrieving event text: %s\n", err)
+			}
+			xpath, _, _, xtxt := er.ExtraArg()
+
+			fmt.Printf("event\t%c\t%c\t%d\t%d\t%d\t%d\t%d\t%d\t%s\t%s\t%s\n",
+				er.Origin(),
+				er.Type(),
+				ps, pe,
+				s, e,
+				er.Flags(),
+				utf8.RuneCountInString(txt),
+				util.SingleQuote(txt),
+				util.SingleQuote(xtxt),
+				util.SingleQuote(xpath))
+		}
+
 	case "write":
 		p9clnt := argCheck(3, true)
 		defer p9clnt.Unmount()
@@ -144,7 +203,7 @@ func main() {
 		wd, _ := os.Getwd()
 		dst := filepath.Join(wd, os.Args[2])
 
-		ctlfd, err := p9clnt.FCreate("/new/ctl", 0666, p.ORDWR)
+		ctlfd, err := p9clnt.FOpen("/new/ctl", p.ORDWR)
 		util.Allergic(debug, err)
 		defer ctlfd.Close()
 		ctlln, err := read(ctlfd)

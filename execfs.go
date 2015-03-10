@@ -62,6 +62,11 @@ func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 		elasticTabs(ec.ed, true)
 		sideChan <- RefreshMsg(ec.buf, ec.br, true)
 
+	case "compat":
+		if ec.ed != nil {
+			ec.ed.AcmeCompat = true
+		}
+
 	case "disconnect":
 		if ec.ed.eventChan != nil {
 			ec.ed.eventChan <- ""

@@ -52,6 +52,7 @@ type Editor struct {
 	}
 
 	redrawRects []image.Rectangle
+	AcmeCompat  bool
 }
 
 const SCROLL_WIDTH = 10

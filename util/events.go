@@ -115,6 +115,7 @@ type EventReader struct {
 
 	etype  EventType
 	origin EventOrigin
+	flags  EventFlag
 	bltin  bool
 
 	// basic argument
@@ -151,6 +152,7 @@ func (er *EventReader) Reset() {
 	er.done = false
 	er.insertfn = erBaseInsert
 	er.perr = ""
+	er.flags = 0
 
 	er.etype = EventType(0)
 	er.origin = EventOrigin(0)
@@ -214,6 +216,10 @@ func (er *EventReader) SendBack(fh io.Writer) error {
 // Type of the read event
 func (er *EventReader) Type() EventType {
 	return er.etype
+}
+
+func (er *EventReader) Flags() EventFlag {
+	return er.flags
 }
 
 // Origin of the read event
@@ -293,8 +299,7 @@ func (er *EventReader) SetText(s string) {
 }
 
 func erBaseInsert(er *EventReader, msg string) eventReaderState {
-	var flags EventFlag
-	er.origin, er.etype, er.s, er.e, flags, er.txt, er.compat, er.perr = parseOne(msg)
+	er.origin, er.etype, er.s, er.e, er.flags, er.txt, er.compat, er.perr = parseOne(msg)
 
 	if er.perr != "" {
 		er.done = true
@@ -312,25 +317,25 @@ func erBaseInsert(er *EventReader, msg string) eventReaderState {
 		return nil
 
 	case ET_BODYEXEC, ET_TAGEXEC:
-		if flags&EFX_BUILTIN != 0 {
+		if er.flags&EFX_BUILTIN != 0 {
 			er.bltin = true
 		}
 		switch {
-		case (flags&EFX_EXPANDED != 0) && (flags&EFX_EXTRAARG != 0):
+		case (er.flags&EFX_EXPANDED != 0) && (er.flags&EFX_EXTRAARG != 0):
 			er.p = er.s
 			return erExpandAndExtraInsert
-		case (flags&EFX_EXPANDED != 0) && (flags&EFX_EXTRAARG == 0):
+		case (er.flags&EFX_EXPANDED != 0) && (er.flags&EFX_EXTRAARG == 0):
 			er.p = er.s
 			return erExpandInsert
-		case (flags&EFX_EXPANDED == 0) && (flags&EFX_EXTRAARG != 0):
+		case (er.flags&EFX_EXPANDED == 0) && (er.flags&EFX_EXTRAARG != 0):
 			return erExtraInsert
-		case (flags&EFX_EXPANDED == 0) && (flags&EFX_EXTRAARG == 0):
+		case (er.flags&EFX_EXPANDED == 0) && (er.flags&EFX_EXTRAARG == 0):
 			er.done = true
 			return nil
 		}
 
 	case ET_BODYLOAD, ET_TAGLOAD:
-		if flags&EFL_EXPANDED != 0 {
+		if er.flags&EFL_EXPANDED != 0 {
 			er.p = er.s
 			return erExpandInsert
 		} else {
