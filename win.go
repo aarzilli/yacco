@@ -1301,7 +1301,11 @@ func ReplaceMsg(ec *ExecContext, esel *util.Sel, append bool, txt string, origin
 		if reselect {
 			sel.S = oldS
 		}
-		sideChan <- RefreshMsg(ec.ed.bodybuf, nil, scroll)
+		select {
+		case sideChan <- RefreshMsg(ec.ed.bodybuf, nil, scroll):
+		default:
+			// Probably too many updates are being sent, dropping is necessary to avoid deadlocks
+		}
 	}
 }
 
