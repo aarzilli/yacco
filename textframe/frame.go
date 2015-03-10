@@ -711,13 +711,15 @@ func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFun
 		fmt.Printf("%p Attempting to run optimized redraw\n", fr)
 	}
 
-	idx := 0
+	idx := -1
+	failed := false
 	for i := range fr.redrawOpt.drawnSels {
 		changed := (fr.redrawOpt.drawnSels[i].S != fr.Sels[i].S) || (fr.redrawOpt.drawnSels[i].E != fr.Sels[i].E)
 		if changed {
-			if idx != 0 {
+			if idx >= 0 {
 				// failed, we want only one selection changed
 				idx = -1
+				failed = true
 				break
 			} else {
 				idx = i
@@ -725,11 +727,15 @@ func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFun
 		}
 	}
 
-	if idx < 0 {
+	if failed {
 		if debugRedraw && fr.debugRedraw {
 			fmt.Printf("\tFailed: multiple changed\n")
 		}
 		return false, nil
+	}
+
+	if idx < 0 {
+		idx = 0
 	}
 
 	action := 0
@@ -797,8 +803,8 @@ func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFun
 	re := ce - fr.Top
 	if re < 0 {
 		re = 0
-	} else if re >= len(fr.glyphs) {
-		re = len(fr.glyphs) - 1
+	} else if re > len(fr.glyphs) {
+		re = len(fr.glyphs)
 	}
 
 	if rs != re {
@@ -815,7 +821,7 @@ func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFun
 			}
 		}
 
-		fr.redrawSelection(cs-fr.Top, ce-fr.Top, &fr.Colors[ssel][0], &invalid)
+		fr.redrawSelection(rs, re, &fr.Colors[ssel][0], &invalid)
 		fr.redrawIntl(fr.glyphs[rs:re], false, rs, glyphBounds, rightMargin, leftMargin, drawingFuncs)
 	}
 
@@ -910,10 +916,7 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 }
 
 func (fr *Frame) getSsel(i int) (bool, int) {
-	for j := range fr.Sels {
-		if j+1 >= len(fr.Colors) {
-			break
-		}
+	for j := len(fr.Colors) - 2; j >= 0; j-- {
 		if (i >= fr.Sels[j].S) && (i < fr.Sels[j].E) {
 			return true, j + 1
 		}
