@@ -376,6 +376,18 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur, scroll bool) {
 		e.sfr.Fr.Sels[PMATCHSEL].S = e.sfr.Fr.Sels[PMATCHSEL].E
 	}
 
+	if e.sfr.Fr.Sels[1].S != e.sfr.Fr.Sels[1].E {
+		if (e.sfr.Fr.Sels[0].S != e.sfr.Fr.Sels[1].S) || (e.sfr.Fr.Sels[0].E != e.sfr.Fr.Sels[1].E) {
+			e.sfr.Fr.Sels[1].E = e.sfr.Fr.Sels[1].S
+		}
+	}
+
+	if e.sfr.Fr.Sels[2].S != e.sfr.Fr.Sels[2].E {
+		if (e.sfr.Fr.Sels[0].S != e.sfr.Fr.Sels[2].S) || (e.sfr.Fr.Sels[0].E != e.sfr.Fr.Sels[2].E) {
+			e.sfr.Fr.Sels[2].E = e.sfr.Fr.Sels[2].S
+		}
+	}
+
 	if ontag {
 		e.tagRefreshIntl()
 

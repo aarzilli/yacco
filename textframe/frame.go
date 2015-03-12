@@ -727,6 +727,10 @@ func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFun
 		}
 	}
 
+	if debugRedraw {
+		fmt.Printf("%v -> %v\n", fr.redrawOpt.drawnSels, fr.Sels)
+	}
+
 	if failed {
 		if debugRedraw && fr.debugRedraw {
 			fmt.Printf("\tFailed: multiple changed\n")
@@ -738,7 +742,6 @@ func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFun
 		idx = 0
 	}
 
-	action := 0
 	cs, ce := -1, -1
 
 	fromnil := fr.redrawOpt.drawnSels[idx].S == fr.redrawOpt.drawnSels[idx].E
@@ -762,21 +765,17 @@ func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFun
 		}
 		cs = fr.Sels[idx].S
 		ce = fr.Sels[idx].E
-		action = 1
 	} else if !fromnil && tonil {
 		cs = fr.redrawOpt.drawnSels[idx].S
 		ce = fr.redrawOpt.drawnSels[idx].E
-		action = -1
 	} else if !fromnil && !tonil {
 		// attempt to extend selection in one of two possible directions
 		if fr.redrawOpt.drawnSels[idx].S == fr.Sels[idx].S {
 			cs = fr.redrawOpt.drawnSels[idx].E
 			ce = fr.Sels[idx].E
-			action = ce - cs
 		} else if fr.redrawOpt.drawnSels[idx].E == fr.Sels[idx].E {
 			cs = fr.redrawOpt.drawnSels[idx].S
 			ce = fr.Sels[idx].S
-			action = cs - ce
 		}
 
 		if cs > ce {
@@ -796,8 +795,8 @@ func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFun
 	rs := cs - fr.Top
 	if rs < 0 {
 		rs = 0
-	} else if rs >= len(fr.glyphs) {
-		rs = len(fr.glyphs) - 1
+	} else if rs > len(fr.glyphs) {
+		rs = len(fr.glyphs)
 	}
 
 	re := ce - fr.Top
@@ -808,17 +807,15 @@ func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFun
 	}
 
 	if rs != re {
-		if debugRedraw && fr.debugRedraw {
-			fmt.Printf("%p Redrawing selection %d change (%d %d)\n", fr, idx, cs, ce)
+		ssel := idx + 1
+		if found, nssel := fr.getSsel(cs); found {
+			ssel = nssel
+		} else {
+			ssel = 0
 		}
 
-		ssel := idx + 1
-		if action < 0 {
-			if found, nssel := fr.getSsel(cs); found {
-				ssel = nssel
-			} else {
-				ssel = 0
-			}
+		if debugRedraw && fr.debugRedraw {
+			fmt.Printf("%p Redrawing selection %d change (%d %d) %d\n", fr, idx, cs, ce, ssel)
 		}
 
 		fr.redrawSelection(rs, re, &fr.Colors[ssel][0], &invalid)
