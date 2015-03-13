@@ -48,7 +48,7 @@ func closeOpenEditors(p9clnt *clnt.Clnt) {
 }
 
 func openFile(p9clnt *clnt.Clnt, path string) {
-	ctlfd, err := p9clnt.FCreate("/new/ctl", 0666, p.OWRITE)
+	ctlfd, err := p9clnt.FOpen("/new/ctl", p.OWRITE)
 	util.Allergic(debug, err)
 	defer ctlfd.Close()
 	_, err = fmt.Fprintf(ctlfd, "name %s", path)
