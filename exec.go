@@ -506,7 +506,7 @@ func EditCmd(ec ExecContext, arg string) {
 
 	edit.Edit(arg, edc)
 	if !ec.norefresh {
-		ec.br.BufferRefresh(ec.ontag)
+		ec.br.BufferRefresh(false)
 	}
 }
 
