@@ -53,7 +53,7 @@ func lookFileIntl(ed *Editor, ch chan string) {
 
 			if specialMsg == "T\n" {
 				if len(resultList) > 0 {
-					ec := ExecContext{col: nil, ed: ed, br: ed, ontag: false, fr: &ed.sfr.Fr, buf: ed.bodybuf, eventChan: nil}
+					ec := ExecContext{col: nil, ed: ed, br: ed.BufferRefresh, fr: &ed.sfr.Fr, buf: ed.bodybuf, eventChan: nil}
 					sideChan <- func() {
 						ec.fr.Sels[2].S = 0
 						ec.fr.Sels[2].E = ed.bodybuf.Tonl(1, +1)
@@ -118,7 +118,7 @@ func displayResults(ed *Editor, resultList []*lookFileResult) {
 		sel := util.Sel{0, ed.bodybuf.Size()}
 		ed.bodybuf.Replace([]rune(t), &sel, true, nil, 0)
 		elasticTabs(ed, true)
-		ed.BufferRefresh(false)
+		ed.BufferRefresh()
 	}
 }
 

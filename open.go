@@ -134,7 +134,7 @@ func Warnfull(bufname, msg string, clear bool, selectit bool) {
 			ed.sfr.Fr.Sels[0].S = s
 		}
 
-		ed.BufferRefresh(false)
+		ed.BufferRefresh()
 	}
 }
 

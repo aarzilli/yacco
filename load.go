@@ -186,7 +186,7 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 		}
 		ec.fr.Sels[2] = util.Sel{s, e}
 		ec.fr.Sels[0] = ec.fr.Sels[2]
-		ec.br.BufferRefresh(ec.ontag)
+		ec.br()
 		if addrExpr != "" {
 			func() {
 				defer func() {
@@ -197,7 +197,7 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 				newed.sfr.Fr.Sels[0] = edit.AddrEval(addrExpr, newed.bodybuf, newed.sfr.Fr.Sels[0])
 				newed.PushJump()
 			}()
-			newed.BufferRefresh(false)
+			newed.BufferRefresh()
 		}
 		newed.Warp()
 		return true

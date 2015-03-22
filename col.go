@@ -188,7 +188,7 @@ func (c *Col) Redraw() {
 	}
 }
 
-func (c *Col) BufferRefresh(ontag bool) {
+func (c *Col) BufferRefresh() {
 	c.tagfr.Clear()
 	ta, tb := c.tagbuf.Selection(util.Sel{0, c.tagbuf.Size()})
 	c.tagfr.InsertColor(ta)

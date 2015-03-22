@@ -233,7 +233,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 				}
 				if found {
 					ec.ed.readDir()
-					ec.ed.BufferRefresh(false)
+					ec.ed.BufferRefresh()
 				}
 			}
 		}
@@ -291,7 +291,7 @@ func UpdateJobs(create bool) {
 	jobsMutex.Unlock()
 
 	Wnd.GenTag()
-	Wnd.BufferRefresh(true)
+	Wnd.BufferRefresh()
 
 	ed, _ := EditFind(Wnd.tagbuf.Dir, "+Jobs", false, create)
 	if ed == nil {
@@ -304,10 +304,8 @@ func UpdateJobs(create bool) {
 
 	if create {
 		ed.tagbuf.Replace([]rune("Kill"), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0)
-		ed.BufferRefresh(false)
-	} else {
-		ed.BufferRefresh(false)
 	}
+	ed.BufferRefresh()
 }
 
 func JobsNum() int {

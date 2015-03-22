@@ -329,7 +329,7 @@ func writeTagFn(i int, data []byte, off int64) syscall.Errno {
 		ec.ed.tagbuf.Replace([]rune(string(data)), &util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}, true, ec.eventChan, util.EO_BODYTAG)
 		ec.ed.tagfr.Sels[0].S = ec.ed.tagbuf.Size()
 		ec.ed.tagfr.Sels[0].E = ec.ed.tagfr.Sels[0].S
-		ec.ed.BufferRefresh(true)
+		ec.ed.TagRefresh()
 	}
 
 	return 0
@@ -511,7 +511,6 @@ func writeEventFn(i int, data []byte, off int64) syscall.Errno {
 		if er.Origin() == util.EO_KBD {
 			ec.buf = ec.ed.tagbuf
 			ec.fr = &ec.ed.tagfr
-			ec.ontag = true
 		}
 		fallthrough
 	case util.ET_BODYEXEC:

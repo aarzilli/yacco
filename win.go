@@ -42,10 +42,6 @@ type LogicalPos struct {
 	onButton       bool
 }
 
-type BufferRefreshable interface {
-	BufferRefresh(ontag bool)
-}
-
 type activeSelStruct struct {
 	ed      *Editor
 	zeroxEd *Editor
@@ -149,7 +145,7 @@ func (w *Window) calcRects(screen draw.Image) {
 	w.tagfr.R.Max.Y = w.tagfr.R.Min.Y + TagHeight(&w.tagfr)
 	w.tagfr.R = r.Intersect(w.tagfr.R)
 	w.tagfr.B = screen
-	w.BufferRefresh(true)
+	w.BufferRefresh()
 }
 
 func (w *Window) padDraw(screen draw.Image) {
@@ -310,7 +306,7 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 			}
 		} else if (lp.ed != nil) && (lp.tagfr != nil) {
 			lp.ed.expandedTag = e.Count > 0
-			lp.ed.BufferRefreshEx(true, false, false)
+			lp.ed.TagRefresh()
 		}
 
 	case wde.MouseExitedEvent:
@@ -522,7 +518,6 @@ loop:
 				dstcol.AddAfter(ed, dstcol.IndexOf(dsted), float32(dsth)/float32(dsted.Height()))
 				col = dstcol
 			}
-			ed.BufferRefreshEx(true, false, false)
 			w.wnd.FlushImage()
 		}
 	}
@@ -691,25 +686,22 @@ func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
 	// the activeEditor is the last editor where a command was executed, or text was typed
 	// selecting stuff is not enough to make an editor the active editor
 	if chord {
-		ec.br = lp.bufferRefreshable()
-
 		if lp.tagfr != nil {
-			ec.ontag = true
 			ec.fr = lp.tagfr
 			ec.buf = lp.tagbuf
+			ec.br = lp.bufferRefreshable(true)
 		} else if lp.sfr != nil {
-			ec.ontag = false
 			ec.fr = &lp.sfr.Fr
 			ec.buf = lp.bodybuf
+			ec.br = lp.bufferRefreshable(false)
 		}
 	} else {
-		ec.ontag = false
 		if lp.ed != nil {
-			ec.br = lp.ed
+			ec.br = lp.ed.BufferRefresh
 			ec.fr = &lp.ed.sfr.Fr
 			ec.buf = lp.ed.bodybuf
 		} else if lp.tagfr != &Wnd.tagfr {
-			ec.br = activeEditor
+			ec.br = activeEditor.BufferRefresh
 			if activeEditor != nil {
 				ec.fr = &activeEditor.sfr.Fr
 				ec.buf = activeEditor.bodybuf
@@ -720,13 +712,17 @@ func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
 	return ec
 }
 
-func (lp *LogicalPos) bufferRefreshable() BufferRefreshable {
+func (lp *LogicalPos) bufferRefreshable(ontag bool) func() {
 	if lp.ed != nil {
-		return lp.ed
+		if ontag {
+			return lp.ed.TagRefresh
+		} else {
+			return lp.ed.BufferRefresh
+		}
 	} else if lp.col != nil {
-		return lp.col
+		return lp.col.BufferRefresh
 	} else {
-		return &Wnd
+		return Wnd.BufferRefresh
 	}
 }
 
@@ -749,7 +745,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				}
 				if fr != nil {
 					escapeSel(&fr.Sels[0], ec.buf.LastTypePos())
-					ec.br.BufferRefresh(ec.ontag)
+					ec.br()
 				}
 			}
 		}
@@ -776,14 +772,14 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 					lp.tagfr.Sels[1] = lp.tagfr.Sels[0]
 				}
 				if lp.ed != nil {
-					lp.ed.BufferRefresh(true)
+					lp.ed.TagRefresh()
 				} else if lp.col != nil {
-					lp.col.BufferRefresh(true)
+					lp.col.BufferRefresh()
 				} else {
-					Wnd.BufferRefresh(true)
+					Wnd.BufferRefresh()
 				}
 				cmd := string(lp.tagbuf.SelectionRunes(lp.tagfr.Sels[1]))
-				sendEventOrExec(ec, cmd, -1)
+				sendEventOrExec(ec, cmd, true, -1)
 			}
 		} else {
 			nl := "\n"
@@ -810,11 +806,11 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				if indent != "" {
 					ec.buf.Replace([]rune(indent), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD)
 				}
-				ec.br.BufferRefresh(ec.ontag)
+				ec.br()
 			}
 		}
 		if lp.sfr != nil {
-			lp.ed.BufferRefresh(false)
+			lp.ed.BufferRefresh()
 		}
 
 	case "next", "prior":
@@ -829,7 +825,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				[]edit.Addr{&edit.AddrBase{"", strconv.Itoa(n), dir},
 					&edit.AddrBase{"#", "0", -1}}}
 			lp.ed.sfr.Fr.Sels[0] = addr.Eval(lp.ed.bodybuf, lp.ed.sfr.Fr.Sels[0])
-			lp.ed.BufferRefresh(false)
+			lp.ed.BufferRefresh()
 		}
 
 	case "tab":
@@ -837,7 +833,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		if ec.buf != nil {
 			if ComplWnd != nil {
 				ec.buf.Replace([]rune(complPrefixSuffix), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD)
-				ec.br.BufferRefresh(ec.ontag)
+				ec.br()
 				ComplStart(ec)
 			} else {
 				HideCompl()
@@ -848,7 +844,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				}
 
 				ec.buf.Replace([]rune(tch), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD)
-				ec.br.BufferRefresh(ec.ontag)
+				ec.br()
 				if (ec.ed != nil) && (ec.ed.specialChan != nil) {
 					tagstr := string(ec.ed.tagbuf.SelectionRunes(util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}))
 					ec.ed.specialChan <- "T" + tagstr
@@ -886,10 +882,10 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				if ec.ed != nil {
 					onfail = ec.ed.closeEventChan
 				}
-				util.Fmtevent2(ec.eventChan, util.EO_KBD, ec.ontag, isintl, false, -1, ec.fr.Sels[0].S, ec.fr.Sels[0].E, cmd, onfail)
+				util.Fmtevent2(ec.eventChan, util.EO_KBD, lp.tagfr != nil, isintl, false, -1, ec.fr.Sels[0].S, ec.fr.Sels[0].E, cmd, onfail)
 			}
 		} else if e.Glyph != "" {
-			if !ec.ontag && ec.ed != nil {
+			if lp.tagfr == nil && ec.ed != nil {
 				activeEditor = ec.ed
 				activeCol = nil
 			}
@@ -898,7 +894,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				if ec.ed != nil {
 					ec.ed.otherSel[OS_TIP].E = ec.fr.Sels[0].S
 				}
-				ec.br.BufferRefresh(ec.ontag)
+				ec.br()
 				ComplStart(ec)
 			}
 		}
@@ -980,13 +976,12 @@ func completeClick(events <-chan interface{}, completeAction, cancelAction wde.B
 }
 
 func clickExec1(lp LogicalPos, e util.MouseDownEvent) {
-	br := lp.bufferRefreshable()
 	if lp.sfr != nil {
 		lp.sfr.Fr.DisableOtherSelections(0)
 		activeSel.Set(lp)
 		activeEditor = lp.ed
 		activeCol = nil
-		br.BufferRefresh(false)
+		lp.bufferRefreshable(false)()
 
 		d := lp.ed.LastJump() - lp.sfr.Fr.Sels[0].S
 		if d < 0 {
@@ -998,7 +993,7 @@ func clickExec1(lp LogicalPos, e util.MouseDownEvent) {
 	}
 	if lp.tagfr != nil {
 		lp.tagfr.DisableOtherSelections(0)
-		br.BufferRefresh(true)
+		lp.bufferRefreshable(true)()
 	}
 }
 
@@ -1006,11 +1001,10 @@ func clickExec1(lp LogicalPos, e util.MouseDownEvent) {
 func clickExec2(lp LogicalPos, e util.MouseDownEvent) {
 	cmd, original := expandedSelection(lp, 1)
 	ec := lp.asExecContext(false)
-	ec.ontag = (lp.tagfr != nil)
-	sendEventOrExec(ec, cmd, original)
+	sendEventOrExec(ec, cmd, lp.tagfr != nil, original)
 }
 
-func sendEventOrExec(ec ExecContext, cmd string, original int) {
+func sendEventOrExec(ec ExecContext, cmd string, tagorigin bool, original int) {
 	if (ec.eventChan == nil) || (cmd == "Delete") || (cmd == "Builtin") {
 		Exec(ec, cmd)
 	} else {
@@ -1019,7 +1013,7 @@ func sendEventOrExec(ec ExecContext, cmd string, original int) {
 		if ec.ed != nil {
 			onfail = ec.ed.closeEventChan
 		}
-		util.Fmtevent2(ec.eventChan, util.EO_MOUSE, ec.ontag, isintl, false, original, ec.fr.Sels[1].S, ec.fr.Sels[1].E, cmd, onfail)
+		util.Fmtevent2(ec.eventChan, util.EO_MOUSE, tagorigin, isintl, false, original, ec.fr.Sels[1].S, ec.fr.Sels[1].E, cmd, onfail)
 	}
 }
 
@@ -1036,8 +1030,8 @@ func clickExec2extra(lp LogicalPos, e util.MouseDownEvent) {
 		if ec.ed != nil {
 			onfail = ec.ed.closeEventChan
 		}
-		util.Fmtevent2(ec.eventChan, util.EO_MOUSE, ec.ontag, isintl, true, original, ec.fr.Sels[1].S, ec.fr.Sels[1].E, cmd, onfail)
-		util.Fmtevent2extra(ec.eventChan, util.EO_MOUSE, ec.ontag, activeSel.ed.sfr.Fr.Sels[0].S, activeSel.ed.sfr.Fr.Sels[0].E, activeSel.path, activeSel.txt, onfail)
+		util.Fmtevent2(ec.eventChan, util.EO_MOUSE, lp.tagfr != nil, isintl, true, original, ec.fr.Sels[1].S, ec.fr.Sels[1].E, cmd, onfail)
+		util.Fmtevent2extra(ec.eventChan, util.EO_MOUSE, lp.tagfr != nil, activeSel.ed.sfr.Fr.Sels[0].S, activeSel.ed.sfr.Fr.Sels[0].E, activeSel.path, activeSel.txt, onfail)
 	}
 }
 
@@ -1165,7 +1159,7 @@ func expandSelToLine(buf *buf.Buffer, sel util.Sel) (s, e int) {
 	return
 }
 
-func (w *Window) BufferRefresh(ontag bool) {
+func (w *Window) BufferRefresh() {
 	w.tagfr.Clear()
 	ta, tb := w.tagbuf.Selection(util.Sel{0, w.tagbuf.Size()})
 	w.tagfr.InsertColor(ta)

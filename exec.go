@@ -20,8 +20,7 @@ type ExecContext struct {
 	col *Col
 	ed  *Editor
 
-	br        BufferRefreshable
-	ontag     bool
+	br        func()
 	fr        *textframe.Frame
 	buf       *buf.Buffer
 	eventChan chan string
@@ -324,8 +323,7 @@ func col2active(ec *ExecContext) {
 	}
 
 	ec.ed = activeSel.zeroxEd
-	ec.br = activeSel.zeroxEd
-	ec.ontag = false
+	ec.br = activeSel.zeroxEd.BufferRefresh
 	ec.fr = &ec.ed.sfr.Fr
 	ec.buf = ec.ed.bodybuf
 	ec.dir = ec.ed.bodybuf.Dir
@@ -349,7 +347,7 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 	if del {
 		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
 		if !ec.norefresh {
-			ec.br.BufferRefresh(ec.ontag)
+			ec.br()
 		}
 	}
 	Wnd.wnd.SetClipboard(s)
@@ -506,7 +504,7 @@ func EditCmd(ec ExecContext, arg string) {
 
 	edit.Edit(arg, edc)
 	if !ec.norefresh {
-		ec.br.BufferRefresh(false)
+		ec.br()
 	}
 }
 
@@ -612,7 +610,8 @@ func GetCmd(ec ExecContext, arg string) {
 		ec.ed.bodybuf.Reload(true)
 	}
 	if !ec.norefresh {
-		ec.ed.BufferRefresh(false)
+		ec.ed.TagRefresh()
+		ec.ed.BufferRefresh()
 	}
 }
 
@@ -658,7 +657,7 @@ func PasteCmd(ec ExecContext, arg string) {
 
 	ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
 	if !ec.norefresh {
-		ec.br.BufferRefresh(ec.ontag)
+		ec.br()
 	}
 }
 
@@ -676,7 +675,7 @@ func PasteIndentCmd(ec ExecContext, arg string) {
 	if (ec.fr.Sels[0].S == 0) || (ec.fr.Sels[0].S != ec.fr.Sels[0].E) || (ec.ed == nil) || (ec.buf != ec.ed.bodybuf) {
 		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
 		if !ec.norefresh {
-			ec.br.BufferRefresh(ec.ontag)
+			ec.br()
 		}
 		return
 	}
@@ -701,7 +700,7 @@ tgtIndentSearch:
 	if failed {
 		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
 		if !ec.norefresh {
-			ec.br.BufferRefresh(ec.ontag)
+			ec.br()
 		}
 		return
 	}
@@ -730,7 +729,7 @@ tgtIndentSearch:
 	ecb := strings.Join(pasteLines, "\n")
 	ec.buf.Replace([]rune(ecb), &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
 	if !ec.norefresh {
-		ec.br.BufferRefresh(ec.ontag)
+		ec.br()
 	}
 }
 
@@ -757,7 +756,7 @@ func PutCmd(ec ExecContext, arg string) {
 		Warn(fmt.Sprintf("Put: Couldn't save %s: %s", ec.ed.bodybuf.ShortName(), err.Error()))
 	}
 	if !ec.norefresh {
-		ec.ed.BufferRefresh(false)
+		ec.ed.BufferRefresh()
 	}
 	if AutoDumpPath != "" {
 		DumpTo(AutoDumpPath)
@@ -777,7 +776,7 @@ func PutallCmd(ec ExecContext, arg string) {
 					nerr++
 				}
 				if !ec.norefresh {
-					ed.BufferRefresh(false)
+					ed.BufferRefresh()
 				}
 			}
 		}
@@ -800,7 +799,7 @@ func GetallCmd(ec ExecContext, arg string) {
 				} else {
 					ed.bodybuf.Reload(true)
 					if !ec.norefresh {
-						ed.BufferRefresh(false)
+						ed.BufferRefresh()
 					}
 				}
 			}
@@ -820,7 +819,7 @@ func RedoCmd(ec ExecContext, arg string) {
 	ec.ed.confirmSave = false
 	ec.buf.Undo(&ec.fr.Sels[0], true)
 	if !ec.norefresh {
-		ec.br.BufferRefresh(ec.ontag)
+		ec.br()
 	}
 }
 
@@ -840,7 +839,7 @@ func SendCmd(ec ExecContext, arg string) {
 	ec.ed.sfr.Fr.Sels[0] = util.Sel{ec.buf.Size(), ec.buf.Size()}
 	ec.ed.bodybuf.Replace(txt, &ec.ed.sfr.Fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
 	if !ec.norefresh {
-		ec.ed.BufferRefresh(false)
+		ec.ed.BufferRefresh()
 	}
 }
 
@@ -865,7 +864,7 @@ func UndoCmd(ec ExecContext, arg string) {
 	ec.ed.confirmSave = false
 	ec.buf.Undo(&ec.fr.Sels[0], false)
 	if ec.br != nil && !ec.norefresh {
-		ec.br.BufferRefresh(ec.ontag)
+		ec.br()
 	}
 }
 
@@ -948,7 +947,7 @@ func cdIntl(arg string) {
 	for _, col := range Wnd.cols.cols {
 		col.tagbuf.Dir = wd
 		for _, ed := range col.editors {
-			ed.BufferRefresh(false)
+			ed.BufferRefresh()
 		}
 	}
 }
@@ -971,7 +970,7 @@ func CdCmd(ec ExecContext, arg string) {
 	pwd = util.ShortPath(pwd, false)
 	Wnd.wnd.SetTitle("Yacco " + pwd)
 
-	Wnd.BufferRefresh(true)
+	Wnd.BufferRefresh()
 
 	Wnd.cols.Redraw()
 	Wnd.tagfr.Redraw(false, nil)
@@ -1031,7 +1030,7 @@ func JumpCmd(ec ExecContext, arg string) {
 		ec.ed.confirmSave = false
 		ec.ed.RestoreJump()
 	}
-	ec.ed.BufferRefresh(false)
+	ec.ed.BufferRefresh()
 }
 
 func KeysInit() {
@@ -1127,7 +1126,7 @@ func editPgmToFunc(pgm *edit.Cmd) func(ec ExecContext) {
 		}
 		pgm.Exec(edc)
 		if !ec.norefresh {
-			ec.br.BufferRefresh(ec.ontag)
+			ec.br()
 		}
 	}
 }
@@ -1156,7 +1155,7 @@ func RenameCmd(ec ExecContext, arg string) {
 	}
 	ec.buf.Modified = true
 	if !ec.norefresh {
-		ec.br.BufferRefresh(false)
+		ec.br()
 	}
 }
 

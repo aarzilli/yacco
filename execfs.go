@@ -19,15 +19,15 @@ func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 
 	case "clean":
 		ec.buf.Modified = false
-		sideChan <- RefreshMsg(ec.buf, ec.br, true)
+		sideChan <- RefreshMsg(ec.buf, ec.ed, true)
 
 	case "dirty":
 		ec.buf.Modified = true
-		sideChan <- RefreshMsg(ec.buf, ec.br, true)
+		sideChan <- RefreshMsg(ec.buf, ec.ed, true)
 
 	case "cleartag":
 		ec.ed.tagbuf.Replace([]rune{}, &util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}, true, nil, 0)
-		ec.br.BufferRefresh(true)
+		ec.ed.TagRefresh()
 
 	case "del":
 		DelCmd(*ec, "", false)
@@ -37,7 +37,7 @@ func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 
 	case "dot=addr":
 		ec.fr.Sels[0] = ec.ed.otherSel[OS_ADDR]
-		sideChan <- RefreshMsg(ec.buf, ec.br, true)
+		sideChan <- RefreshMsg(ec.buf, ec.ed, true)
 
 	case "get":
 		ec.ed.bodybuf.Modified = false
@@ -56,11 +56,11 @@ func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 		PutCmd(*ec, "")
 
 	case "show":
-		sideChan <- RefreshMsg(ec.buf, ec.br, true)
+		sideChan <- RefreshMsg(ec.buf, ec.ed, true)
 
 	case "tabadj":
 		elasticTabs(ec.ed, true)
-		sideChan <- RefreshMsg(ec.buf, ec.br, true)
+		sideChan <- RefreshMsg(ec.buf, ec.ed, true)
 
 	case "compat":
 		if ec.ed != nil {

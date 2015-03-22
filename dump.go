@@ -140,7 +140,7 @@ func LoadFrom(dumpDest string) bool {
 
 	Wnd.GenTag()
 	Wnd.tagbuf.Replace([]rune(dw.TagText), &util.Sel{Wnd.tagbuf.EditableStart, Wnd.tagbuf.Size()}, true, nil, util.EO_MOUSE)
-	Wnd.BufferRefresh(true)
+	Wnd.BufferRefresh()
 	Wnd.tagfr.Redraw(true, nil)
 	Wnd.Resized()
 
@@ -162,7 +162,7 @@ func LoadFrom(dumpDest string) bool {
 
 	for i := range Wnd.cols.cols {
 		for j := range Wnd.cols.cols[i].editors {
-			Wnd.cols.cols[i].editors[j].BufferRefreshEx(false, true, true)
+			Wnd.cols.cols[i].editors[j].BufferRefreshEx(true, true)
 		}
 	}
 

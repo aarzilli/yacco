@@ -134,7 +134,7 @@ func realmain() {
 	}
 
 	Wnd.tagbuf.Replace([]rune(startWinTag), &util.Sel{Wnd.tagbuf.Size(), Wnd.tagbuf.Size()}, true, nil, 0)
-	Wnd.BufferRefresh(true)
+	Wnd.BufferRefresh()
 
 	Wnd.wnd.FlushImage()
 
@@ -215,8 +215,7 @@ func bufferExecContext(i int) *ExecContext {
 					done <- &ExecContext{
 						col:       col,
 						ed:        ed,
-						br:        ed,
-						ontag:     false,
+						br:        ed.BufferRefresh,
 						fr:        &ed.sfr.Fr,
 						buf:       ed.bodybuf,
 						eventChan: ed.eventChan,

@@ -139,7 +139,7 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	util.Must(e.tagfr.Init(5), "Editor initialization failed")
 
 	e.GenTag()
-	e.tagbuf.Replace([]rune("Look "), &util.Sel{e.tagbuf.Size(), e.tagbuf.Size()}, true, nil, util.EO_FILES)
+	e.tagbuf.Replace([]rune("Look Edit "), &util.Sel{e.tagbuf.Size(), e.tagbuf.Size()}, true, nil, util.EO_FILES)
 	e.tagfr.Sels[0].S = e.tagbuf.Size()
 	e.tagfr.Sels[0].E = e.tagbuf.Size()
 
@@ -290,20 +290,13 @@ func (e *Editor) redrawTagBorder() {
 	drawingFuncs.DrawFillSrc(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.HandleBG)
 }
 
-func (e *Editor) GenTag() {
+func (e *Editor) GenTag() bool {
 	usertext := ""
 	if e.tagbuf.EditableStart >= 0 {
 		usertext = string(e.tagbuf.SelectionRunes(util.Sel{e.tagbuf.EditableStart, e.tagbuf.Size()}))
 	}
 
 	t := e.bodybuf.ShortName()
-
-	if e.sfr.Fr.Sels[0].E <= 10000 {
-		line, col := e.bodybuf.GetLine(e.sfr.Fr.Sels[0].E)
-		//t += fmt.Sprintf(":%d:%d#%d", line, col, e.sfr.Fr.Sels[0].E)
-		_ = col
-		t += fmt.Sprintf(":%d", line)
-	}
 
 	if e.specialChan == nil {
 		t += config.DefaultEditorTag
@@ -324,6 +317,13 @@ func (e *Editor) GenTag() {
 	}
 
 	t += " | " + usertext
+	
+	curtext := string(e.tagbuf.SelectionRunes(util.Sel{ 0, e.tagbuf.Size() }))
+	
+	if t == curtext {
+		return false
+	}
+	
 	start := e.tagfr.Sels[0].S - e.tagbuf.EditableStart
 	end := e.tagfr.Sels[0].E - e.tagbuf.EditableStart
 	if start < 0 || end < 0 {
@@ -337,6 +337,7 @@ func (e *Editor) GenTag() {
 	e.tagfr.Sels[0].S = start + e.tagbuf.EditableStart
 	e.tagfr.Sels[0].E = end + e.tagbuf.EditableStart
 	e.tagbuf.FixSel(&e.tagfr.Sels[0])
+	return true
 }
 
 func (e *Editor) refreshIntl(full bool) {
@@ -362,7 +363,34 @@ func (e *Editor) refreshIntl(full bool) {
 	edutil.DoHighlightingConsistency(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, Highlight)
 }
 
-func (e *Editor) BufferRefreshEx(ontag bool, recur, scroll bool) {
+func (e *Editor) TagRefresh() {
+	e.tagRefreshIntl()
+
+	bounds := e.sfr.Fr.Font.Bounds()
+	ly := e.tagfr.Limit.Y - int(bounds.YMin)
+
+	recalcExpansion := e.expandedTag && (e.tagfr.R.Max.Y-ly) != 0
+	if !recalcExpansion {
+		if !e.expandedTag && (e.tagfr.R.Max.Y != e.tagfr.R.Min.Y+TagHeight(&e.tagfr)) {
+			recalcExpansion = true
+		}
+	}
+
+	if recalcExpansion {
+		e.SetRects(e.tagfr.B, e.r, e.last, true)
+		e.redrawResizeHandle()
+		e.tagfr.Redraw(false, nil)
+		e.sfr.Redraw(false, nil)
+		e.redrawTagBorder()
+		e.sfr.Wnd.FlushImage(e.r)
+	} else {
+		e.tagfr.Redraw(false, &e.redrawRects)
+		e.sfr.Wnd.FlushImage(e.redrawRects...)
+		e.redrawRects = e.redrawRects[0:0]
+	}
+}
+
+func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 	match := findPMatch(e.tagbuf, e.tagfr.Sels[0])
 	if match.S >= 0 {
 		e.tagfr.Sels[PMATCHSEL] = match
@@ -388,61 +416,34 @@ func (e *Editor) BufferRefreshEx(ontag bool, recur, scroll bool) {
 		}
 	}
 
-	if ontag {
-		e.tagRefreshIntl()
-
-		bounds := e.sfr.Fr.Font.Bounds()
-		ly := e.tagfr.Limit.Y - int(bounds.YMin)
-
-		recalcExpansion := e.expandedTag && (e.tagfr.R.Max.Y-ly) != 0
-		if !recalcExpansion {
-			if !e.expandedTag && (e.tagfr.R.Max.Y != e.tagfr.R.Min.Y+TagHeight(&e.tagfr)) {
-				recalcExpansion = true
-			}
-		}
-
-		if recalcExpansion {
-			e.SetRects(e.tagfr.B, e.r, e.last, true)
-			e.redrawResizeHandle()
-			e.tagfr.Redraw(false, nil)
-			e.sfr.Redraw(false, nil)
-			e.redrawTagBorder()
-			e.sfr.Wnd.FlushImage(e.r)
-		} else {
-			e.tagfr.Redraw(true, nil)
-		}
-	} else {
+	e.refreshIntl(false)
+	if !e.sfr.Fr.Inside(e.sfr.Fr.Sels[0].E) && recur && scroll {
+		x := e.bodybuf.Tonl(e.sfr.Fr.Sels[0].E-2, -1)
+		e.otherSel[OS_TOP].E = x
 		e.refreshIntl(false)
-		if !e.sfr.Fr.Inside(e.sfr.Fr.Sels[0].E) && recur && scroll {
-			x := e.bodybuf.Tonl(e.sfr.Fr.Sels[0].E-2, -1)
-			e.otherSel[OS_TOP].E = x
-			e.refreshIntl(false)
-			e.sfr.Redraw(true, nil) // NEEDED, otherwise every other redraw is optimized and is not performed correctly
-			edutil.Scrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, -1, e.sfr.Fr.LineNo()/4-1, Highlight)
-		}
+		e.sfr.Redraw(true, nil) // NEEDED, otherwise every other redraw is optimized and is not performed correctly
+		edutil.Scrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, -1, e.sfr.Fr.LineNo()/4-1, Highlight)
+	}
 
-		e.GenTag()
-		e.tagfr.Clear()
-		ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
-		e.tagfr.InsertColor(ta)
-		e.tagfr.InsertColor(tb)
+	if e.GenTag() {
+		e.tagRefreshIntl()
+	}
+	
+	e.redrawResizeHandle()
+	e.redrawRects = append(e.redrawRects, e.rhandle)
+	e.tagfr.Redraw(false, &e.redrawRects)
+	e.sfr.Redraw(false, &e.redrawRects)
+	e.sfr.Wnd.FlushImage(e.redrawRects...)
+	e.redrawRects = e.redrawRects[0:0]
 
-		e.redrawResizeHandle()
-		e.redrawRects = append(e.redrawRects, e.rhandle)
-		e.tagfr.Redraw(false, &e.redrawRects)
-		e.sfr.Redraw(false, &e.redrawRects)
-		e.sfr.Wnd.FlushImage(e.redrawRects...)
-		e.redrawRects = e.redrawRects[0:0]
+	if (e.bodybuf.RefCount <= 1) || !recur {
+		return
+	}
 
-		if (e.bodybuf.RefCount <= 1) || !recur {
-			return
-		}
-
-		for _, col := range Wnd.cols.cols {
-			for _, oe := range col.editors {
-				if (oe.bodybuf == e.bodybuf) && (oe != e) {
-					oe.BufferRefreshEx(false, false, false)
-				}
+	for _, col := range Wnd.cols.cols {
+		for _, oe := range col.editors {
+			if (oe.bodybuf == e.bodybuf) && (oe != e) {
+				oe.BufferRefreshEx(false, false)
 			}
 		}
 	}
@@ -455,8 +456,8 @@ func (e *Editor) tagRefreshIntl() {
 	e.tagfr.InsertColor(tb)
 }
 
-func (e *Editor) BufferRefresh(ontag bool) {
-	e.BufferRefreshEx(ontag, true, true)
+func (e *Editor) BufferRefresh() {
+	e.BufferRefreshEx(true, true)
 }
 
 func findPMatch(b *buf.Buffer, sel0 util.Sel) util.Sel {
@@ -560,7 +561,7 @@ func (ed *Editor) EnterSpecial(specialChan chan string, specialTag string, exitO
 	ed.specialExitOnReturn = exitOnReturn
 	ed.savedTag = string(ed.tagbuf.SelectionRunes(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}))
 	ed.tagbuf.Replace([]rune{}, &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0)
-	ed.BufferRefresh(false)
+	ed.BufferRefresh()
 	return true
 }
 
@@ -569,7 +570,7 @@ func (ed *Editor) ExitSpecial() {
 	ed.specialChan = nil
 	ed.specialTag = ""
 	ed.tagbuf.Replace([]rune(ed.savedTag), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0)
-	ed.BufferRefresh(false)
+	ed.BufferRefresh()
 }
 
 func (ed *Editor) PropTrigger() {
@@ -588,7 +589,7 @@ func (ed *Editor) PropTrigger() {
 	}
 
 	ed.refreshIntl(true)
-	ed.BufferRefresh(false)
+	ed.BufferRefresh()
 }
 
 func (ed *Editor) Dump() DumpEditor {
