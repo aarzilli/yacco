@@ -574,8 +574,8 @@ func LookAgainCmd(ec ExecContext, arg string) {
 	if ec.ed == nil {
 		return
 	}
-	if ec.ed.specialChan != nil {
-		ec.ed.specialChan <- "!Again"
+	if ec.ed.eventChanSpecial && ec.ed.eventChan != nil {
+		SpecialSendCmd(ec, "Look!Again")
 	} else {
 		lookfwd(ec.ed, lastNeedle, true, true, Wnd.Prop["lookexact"] == "yes")
 	}
@@ -583,12 +583,12 @@ func LookAgainCmd(ec ExecContext, arg string) {
 
 func SpecialSendCmd(ec ExecContext, msg string) {
 	exitConfirmed = false
-	if (ec.ed == nil) || (ec.ed.specialChan == nil) {
+	if (ec.ed == nil) || !ec.ed.eventChanSpecial || (ec.ed.eventChan == nil) {
 		return
 	}
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
-	ec.ed.specialChan <- msg
+	util.Fmtevent2(ec.ed.eventChan, util.EO_KBD, true, false, false, 0, 0, 0, msg, nil)
 }
 
 func GetCmd(ec ExecContext, arg string) {
@@ -1011,8 +1011,9 @@ func LookFileCmd(ec ExecContext, arg string) {
 		return
 	}
 
-	if ed.specialChan == nil {
-		lookFile(ed)
+	if ed.eventChan == nil {
+		ed.sfr.Fr.Hackflags |= textframe.HF_TRUNCATE
+		go lookfileproc(ed)
 	} else {
 		ed.tagfr.Sels[0] = util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}
 	}

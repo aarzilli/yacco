@@ -249,8 +249,8 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 		lp := w.TranslatePosition(e.Where, true)
 
 		if (lp.tagfr != nil) && lp.notReallyOnTag && (lp.ed != nil) {
-			if lp.ed.specialExitOnReturn {
-				lp.ed.ExitSpecial()
+			if lp.ed.eventChanSpecial {
+				util.FmteventBase(lp.ed.eventChan, util.EO_MOUSE, false, util.ET_BODYINS, 0, 0, "", nil)
 			}
 			lp = w.TranslatePosition(e.Where, false)
 		}
@@ -390,7 +390,7 @@ func (w *Window) TranslatePosition(p image.Point, abideSpecial bool) (lp Logical
 			}
 
 			if lp.ed.sfr.Under(p) {
-				if (lp.ed.specialChan) != nil && abideSpecial {
+				if lp.ed.eventChanSpecial && abideSpecial {
 					lp.tagfr = &lp.ed.tagfr
 					lp.tagbuf = lp.ed.tagbuf
 					lp.notReallyOnTag = true
@@ -732,9 +732,9 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 	switch e.Chord {
 	case "escape":
 		if !HideCompl() {
-			if lp.ed != nil && (lp.ed.specialChan != nil) && lp.ed.specialExitOnReturn {
+			if lp.ed != nil && lp.ed.eventChanSpecial {
 				lp.ed.sfr.Fr.VisibleTick = true
-				lp.ed.ExitSpecial()
+				util.Fmtevent2(ec.ed.eventChan, util.EO_KBD, true, false, false, 0, 0, 0, "Escape", nil)
 				return
 			} else if ec.buf != nil {
 				var fr *textframe.Frame
@@ -752,13 +752,8 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 
 	case "return":
 		HideCompl()
-		if (lp.ed != nil) && (lp.ed.specialChan != nil) {
-			if lp.ed.specialExitOnReturn {
-				lp.ed.sfr.Fr.VisibleTick = true
-				lp.ed.ExitSpecial()
-			} else {
-				lp.ed.specialChan <- "T\n"
-			}
+		if (lp.ed != nil) && lp.ed.eventChanSpecial {
+			util.Fmtevent2(ec.ed.eventChan, util.EO_KBD, true, false, false, 0, 0, 0, "Return", nil)
 			return
 		}
 
@@ -845,10 +840,6 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 
 				ec.buf.Replace([]rune(tch), &ec.fr.Sels[0], true, ec.eventChan, util.EO_KBD)
 				ec.br()
-				if (ec.ed != nil) && (ec.ed.specialChan != nil) {
-					tagstr := string(ec.ed.tagbuf.SelectionRunes(util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}))
-					ec.ed.specialChan <- "T" + tagstr
-				}
 			}
 		}
 
@@ -864,26 +855,9 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 		}
 		ec := lp.asExecContext(true)
 		if fcmd, ok := KeyBindings[e.Chord]; ok {
-			cmd := config.KeyBindings[e.Chord]
 			HideCompl()
 			//println("Execute command: <" + cmd + ">")
-			compat := *acmeCompatFlag
-			if ec.ed != nil {
-				compat = compat || ec.ed.AcmeCompat
-			}
-			if (ec.eventChan == nil) || (cmd == "Delete") || (strings.Index(cmd, "Edit ") == 0) || compat {
-				fcmd(ec)
-			} else if ec.fr != nil {
-				// send command to the attached process, but we need to check that we at least are on a frame
-				cmd := config.KeyBindings[e.Chord]
-				cmd = strings.TrimSpace(cmd)
-				_, _, _, isintl := IntlCmd(cmd)
-				onfail := func() {}
-				if ec.ed != nil {
-					onfail = ec.ed.closeEventChan
-				}
-				util.Fmtevent2(ec.eventChan, util.EO_KBD, lp.tagfr != nil, isintl, false, -1, ec.fr.Sels[0].S, ec.fr.Sels[0].E, cmd, onfail)
-			}
+			fcmd(ec)
 		} else if e.Glyph != "" {
 			if lp.tagfr == nil && ec.ed != nil {
 				activeEditor = ec.ed
@@ -896,13 +870,6 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				}
 				ec.br()
 				ComplStart(ec)
-			}
-		}
-		if (ec.ed != nil) && (ec.ed.specialChan != nil) {
-			tagstr := string(ec.ed.tagbuf.SelectionRunes(util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}))
-			select {
-			case ec.ed.specialChan <- "T" + tagstr:
-			case <-time.After(1 * time.Second):
 			}
 		}
 	}

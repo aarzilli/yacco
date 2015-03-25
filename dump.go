@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"yacco/buf"
 	"yacco/config"
+	"yacco/textframe"
 	"yacco/util"
 )
 
@@ -26,7 +27,6 @@ type DumpEditor struct {
 	Id      int
 	Frac    float64
 	Font    string
-	Special bool
 	TagText string
 	SelS    int
 }
@@ -118,8 +118,9 @@ func LoadFrom(dumpDest string) bool {
 			}
 			col.AddAfter(ed, -1, 0.5)
 
-			if de.Special && (b.Name == "+LookFile") {
-				lookFile(ed)
+			if b.Name == "+LookFile" {
+				ed.sfr.Fr.Hackflags |= textframe.HF_TRUNCATE
+				go lookfileproc(ed)
 			}
 
 			ed.tagbuf.Replace([]rune(de.TagText), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, util.EO_MOUSE)

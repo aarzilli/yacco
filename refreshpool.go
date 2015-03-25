@@ -6,8 +6,8 @@ import (
 )
 
 type refreshRequest struct {
-	kb        *buf.Buffer         // buffer to refresh
-	eds       []*Editor // editors to scroll
+	kb        *buf.Buffer // buffer to refresh
+	eds       []*Editor   // editors to scroll
 	scrollAll bool
 }
 

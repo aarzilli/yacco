@@ -72,45 +72,63 @@ var lastNeedle []rune
 func lookproc(ec ExecContext) {
 	ch := make(chan string, 5)
 
-	exch := make(chan *bool)
-	sideChan <- func() {
-		if !ec.ed.EnterSpecial(ch, " Look!Quit Look!Prev Look!Again", true) {
-			exch <- nil
-			return
-		}
-		b := Wnd.Prop["lookexact"] == "yes"
-		exch <- &b
-	}
-	ee := <-exch
-	if ee == nil {
+	ok, savedTag, savedEventChan := ec.ed.EnterSpecial(ch)
+	if !ok {
 		return
 	}
-	exact := *ee
+	defer func() {
+		sideChan <- func() {
+			ec.ed.PushJump()
+		}
+	}()
+
+	exact := Wnd.Prop["lookexact"] == "yes"
+
+	var er util.EventReader
 
 	needle := []rune{}
 	matches := []util.Sel{}
 	for {
-		specialMsg, ok := <-ch
+		eventMsg, ok := <-ch
 		if !ok {
-			ec.ed.PushJump()
-			break
+			return
 		}
-		switch specialMsg[0] {
-		case '!':
-			switch specialMsg[1:] {
-			case "Again":
+
+		er.Reset()
+		er.Insert(eventMsg)
+		for !er.Done() {
+			eventMsg, ok = <-ch
+			if !ok {
+				ec.ed.ExitSpecial(savedTag, savedEventChan)
+				return
+			}
+			er.Insert(eventMsg)
+		}
+
+		switch er.Type() {
+		case util.ET_BODYDEL, util.ET_BODYINS:
+			ec.ed.ExitSpecial(savedTag, savedEventChan)
+			return
+
+		case util.ET_BODYLOAD, util.ET_TAGLOAD:
+			executeEventReader(&ec, er)
+
+		case util.ET_BODYEXEC, util.ET_TAGEXEC:
+			cmd, _ := er.Text(nil, nil, nil)
+			switch cmd {
+			case "Look!Again":
 				sideChan <- func() {
 					lookfwd(ec.ed, needle, true, false, exact)
 					if ec.fr.Sels[0].S != ec.fr.Sels[0].E {
 						matches = append(matches, ec.fr.Sels[0])
 					}
 				}
-			case "Quit":
-				sideChan <- func() {
-					ec.ed.ExitSpecial()
-					ec.ed.PushJump()
-				}
-			case "Prev":
+
+			case "Look!Quit", "Escape", "Return":
+				ec.ed.ExitSpecial(savedTag, savedEventChan)
+				return
+
+			case "Look!Prev":
 				if len(matches) > 1 {
 					sideChan <- func() {
 						ec.fr.Sels[0] = matches[len(matches)-2]
@@ -119,9 +137,15 @@ func lookproc(ec ExecContext) {
 						ec.ed.Warp()
 					}
 				}
+
+			default:
+				ec.ed.ExitSpecial(savedTag, savedEventChan)
+				executeEventReader(&ec, er)
+				return
 			}
-		case 'T':
-			newNeedle := []rune(specialMsg[1:])
+
+		case util.ET_TAGINS, util.ET_TAGDEL:
+			newNeedle := getTagText(ec.ed)
 			doAppend := false
 			if !runeEquals(newNeedle, needle) {
 				doAppend = true
@@ -137,6 +161,16 @@ func lookproc(ec ExecContext) {
 			}
 		}
 	}
+
+	ec.ed.ExitSpecial(savedTag, savedEventChan)
+}
+
+func getTagText(ed *Editor) []rune {
+	done := make(chan []rune)
+	sideChan <- func() {
+		done <- ed.tagbuf.SelectionRunes(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()})
+	}
+	return <-done
 }
 
 func runeEquals(a, b []rune) bool {

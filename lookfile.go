@@ -9,15 +9,6 @@ import (
 	"yacco/util"
 )
 
-func lookFile(ed *Editor) {
-	ch := make(chan string, 5)
-	if !ed.EnterSpecial(ch, " Del LookFile", false) {
-		return
-	}
-	ed.sfr.Fr.Hackflags |= textframe.HF_TRUNCATE
-	go lookFileIntl(ed, ch)
-}
-
 type lookFileResult struct {
 	score  int
 	show   string
@@ -27,41 +18,75 @@ type lookFileResult struct {
 const MAX_RESULTS = 20
 const MAX_FS_RECUR_DEPTH = 11
 
-func lookFileIntl(ed *Editor, ch chan string) {
-	defer ed.ExitSpecial()
+func lookfileproc(ed *Editor) {
+	ch := make(chan string, 5)
+	ok, savedTag, savedEventChan := ed.EnterSpecial(ch)
+	if !ok {
+		return
+	}
+	defer ed.ExitSpecial(savedTag, savedEventChan)
+
 	var resultChan chan *lookFileResult
 	var searchDone chan struct{}
 	var resultList = []*lookFileResult{}
+	var er util.EventReader
 	oldNeedle := ""
+	ec := ExecContext{col: nil, ed: ed, br: ed.BufferRefresh, fr: &ed.sfr.Fr, buf: ed.bodybuf, eventChan: nil}
 	for {
 		select {
-		case specialMsg, ok := <-ch:
+		case eventMsg, ok := <-ch:
 			if !ok {
 				break
 			}
 
-			if specialMsg[0] != 'T' {
-				continue
-			}
-
-			if searchDone != nil {
-				close(searchDone)
-				searchDone = nil
-			}
-
-			//println("Message received", specialMsg)
-
-			if specialMsg == "T\n" {
-				if len(resultList) > 0 {
-					ec := ExecContext{col: nil, ed: ed, br: ed.BufferRefresh, fr: &ed.sfr.Fr, buf: ed.bodybuf, eventChan: nil}
-					sideChan <- func() {
-						ec.fr.Sels[2].S = 0
-						ec.fr.Sels[2].E = ed.bodybuf.Tonl(1, +1)
-						Load(ec, 0)
-					}
+			er.Reset()
+			er.Insert(eventMsg)
+			for !er.Done() {
+				eventMsg, ok = <-ch
+				if !ok {
+					return
 				}
-			} else {
-				needle := specialMsg[1:]
+				er.Insert(eventMsg)
+			}
+
+			switch er.Type() {
+			case util.ET_BODYDEL, util.ET_BODYINS:
+				// nothing
+
+			case util.ET_BODYLOAD, util.ET_TAGLOAD:
+				executeEventReader(&ec, er)
+
+			case util.ET_BODYEXEC, util.ET_TAGEXEC:
+				cmd, _ := er.Text(nil, nil, nil)
+				switch cmd {
+				case "Escape":
+					// nothing
+
+				case "Return":
+					if searchDone != nil {
+						close(searchDone)
+						searchDone = nil
+					}
+
+					if len(resultList) > 0 {
+						sideChan <- func() {
+							ec.fr.Sels[2].S = 0
+							ec.fr.Sels[2].E = ed.bodybuf.Tonl(1, +1)
+							Load(ec, 0)
+						}
+					}
+
+				default:
+					executeEventReader(&ec, er)
+				}
+
+			case util.ET_TAGINS, util.ET_TAGDEL:
+				if searchDone != nil {
+					close(searchDone)
+					searchDone = nil
+				}
+
+				needle := string(getTagText(ed))
 				exact := exactMatch([]rune(needle))
 				displayResults(ed, resultList)
 				if needle != oldNeedle {
@@ -79,6 +104,7 @@ func lookFileIntl(ed *Editor, ch chan string) {
 					}
 				}
 			}
+
 		case result := <-resultChan:
 			if result.score < 0 {
 				continue

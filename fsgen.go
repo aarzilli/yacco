@@ -479,8 +479,6 @@ func writeEventFn(i int, data []byte, off int64) syscall.Errno {
 		return 0
 	}
 
-	etype := ec.ed.eventReader.Type()
-
 	ok, perr := ec.ed.eventReader.Valid()
 	if !ok {
 		fmt.Println("Event parsing error:", perr)
@@ -490,9 +488,15 @@ func writeEventFn(i int, data []byte, off int64) syscall.Errno {
 	er := ec.ed.eventReader
 	ec.ed.eventReader.Reset()
 
-	switch etype {
+	executeEventReader(ec, er)
+
+	return 0
+}
+
+func executeEventReader(ec *ExecContext, er util.EventReader) {
+	switch er.Type() {
 	case util.ET_BODYDEL, util.ET_TAGDEL, util.ET_BODYINS, util.ET_TAGINS:
-		return 0
+		return
 
 	case util.ET_TAGLOAD:
 		if ec.ed != nil {
@@ -543,8 +547,6 @@ func writeEventFn(i int, data []byte, off int64) syscall.Errno {
 			Exec(*ec, txt+" "+xtxt)
 		}
 	}
-
-	return 0
 }
 
 func openEventsFn(i int) bool {

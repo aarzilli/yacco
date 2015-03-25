@@ -119,7 +119,7 @@ func ComplStart(ec ExecContext) {
 		HideCompl()
 		return
 	}
-	if (ec.buf.Name == "+Tag") && (ec.ed != nil) && (ec.ed.specialChan != nil) {
+	if (ec.buf.Name == "+Tag") && (ec.ed != nil) && ec.ed.eventChanSpecial {
 		HideCompl()
 		return
 	}

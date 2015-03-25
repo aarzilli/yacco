@@ -32,13 +32,9 @@ type Editor struct {
 	confirmDel  bool
 	confirmSave bool
 
-	eventChan   chan string
-	eventReader util.EventReader
-
-	specialTag          string
-	savedTag            string
-	specialChan         chan string
-	specialExitOnReturn bool
+	eventChan        chan string
+	eventChanSpecial bool
+	eventReader      util.EventReader
 
 	pw int
 
@@ -52,7 +48,6 @@ type Editor struct {
 	}
 
 	redrawRects []image.Rectangle
-	AcmeCompat  bool
 }
 
 const SCROLL_WIDTH = 10
@@ -242,7 +237,7 @@ func (e *Editor) redrawResizeHandle() {
 	hir.Min.Y += 2
 	hir.Max.Y -= 1
 	var rhc *image.Uniform
-	if e.specialChan != nil {
+	if e.eventChanSpecial {
 		rhc = &config.TheColorScheme.HandleSpecialFG
 	} else {
 		if e.bodybuf.Modified {
@@ -298,32 +293,28 @@ func (e *Editor) GenTag() bool {
 
 	t := e.bodybuf.ShortName()
 
-	if e.specialChan == nil {
-		t += config.DefaultEditorTag
-		if e.bodybuf.Modified && (e.bodybuf.Name[0] != '+' && !e.bodybuf.IsDir()) {
-			t += " Put"
-		}
-		if e.bodybuf.HasUndo() {
-			t += " Undo"
-		}
-		if e.bodybuf.HasRedo() {
-			t += " Redo"
-		}
-		if e.bodybuf.IsDir() {
-			t += " Get"
-		}
-	} else {
-		t += e.specialTag
+	t += config.DefaultEditorTag
+	if e.bodybuf.Modified && (e.bodybuf.Name[0] != '+' && !e.bodybuf.IsDir()) {
+		t += " Put"
+	}
+	if e.bodybuf.HasUndo() {
+		t += " Undo"
+	}
+	if e.bodybuf.HasRedo() {
+		t += " Redo"
+	}
+	if e.bodybuf.IsDir() {
+		t += " Get"
 	}
 
 	t += " | " + usertext
-	
-	curtext := string(e.tagbuf.SelectionRunes(util.Sel{ 0, e.tagbuf.Size() }))
-	
+
+	curtext := string(e.tagbuf.SelectionRunes(util.Sel{0, e.tagbuf.Size()}))
+
 	if t == curtext {
 		return false
 	}
-	
+
 	start := e.tagfr.Sels[0].S - e.tagbuf.EditableStart
 	end := e.tagfr.Sels[0].E - e.tagbuf.EditableStart
 	if start < 0 || end < 0 {
@@ -428,7 +419,7 @@ func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 	if e.GenTag() {
 		e.tagRefreshIntl()
 	}
-	
+
 	e.redrawResizeHandle()
 	e.redrawRects = append(e.redrawRects, e.rhandle)
 	e.tagfr.Redraw(false, &e.redrawRects)
@@ -552,25 +543,39 @@ func (ed *Editor) WarpToDel() {
 	Wnd.wnd.WarpMouse(delCoord)
 }
 
-func (ed *Editor) EnterSpecial(specialChan chan string, specialTag string, exitOnReturn bool) bool {
-	if ed.specialChan != nil {
-		return false
+func (ed *Editor) EnterSpecial(eventChan chan string) (bool, string, chan string) {
+	if ed.eventChanSpecial {
+		return false, "", nil
 	}
-	ed.specialChan = specialChan
-	ed.specialTag = specialTag
-	ed.specialExitOnReturn = exitOnReturn
-	ed.savedTag = string(ed.tagbuf.SelectionRunes(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}))
-	ed.tagbuf.Replace([]rune{}, &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0)
-	ed.BufferRefresh()
-	return true
+
+	var savedTag string
+	var savedEventChan chan string
+
+	done := make(chan struct{})
+	sideChan <- func() {
+		savedEventChan = ed.eventChan
+		ed.eventChan = eventChan
+		ed.eventChanSpecial = true
+		savedTag = string(ed.tagbuf.SelectionRunes(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}))
+		ed.tagbuf.Replace([]rune{}, &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0)
+		ed.TagRefresh()
+		ed.BufferRefresh()
+		done <- struct{}{}
+	}
+	<-done
+
+	return true, savedTag, savedEventChan
 }
 
-func (ed *Editor) ExitSpecial() {
-	close(ed.specialChan)
-	ed.specialChan = nil
-	ed.specialTag = ""
-	ed.tagbuf.Replace([]rune(ed.savedTag), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0)
-	ed.BufferRefresh()
+func (ed *Editor) ExitSpecial(savedTag string, eventChan chan string) {
+	sideChan <- func() {
+		close(ed.eventChan)
+		ed.eventChan = eventChan
+		ed.eventChanSpecial = false
+		ed.tagbuf.Replace([]rune(savedTag), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0)
+		ed.TagRefresh()
+		ed.BufferRefresh()
+	}
 }
 
 func (ed *Editor) PropTrigger() {
@@ -607,7 +612,6 @@ func (ed *Editor) Dump() DumpEditor {
 		bufferIndex(ed.bodybuf),
 		ed.frac,
 		fontName,
-		ed.specialChan != nil,
 		string(ed.tagbuf.SelectionRunes(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()})),
 		ed.sfr.Fr.Sels[0].S,
 	}
