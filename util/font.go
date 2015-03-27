@@ -87,6 +87,7 @@ func (f *Font) createContexts() {
 		f.cs[i].SetDPI(f.dpi)
 		f.cs[i].SetFont(f.fonts[i])
 		f.cs[i].SetFontSize(f.Size)
+		f.cs[i].SetHinting(freetype.FullHinting)
 	}
 }
 
