@@ -5,8 +5,13 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-	"yacco/buf"
+	"yacco/textframe"
 )
+
+type Matchable interface {
+	Size() int
+	At(int) *textframe.ColorRune
+}
 
 type node interface {
 	String() string
@@ -58,7 +63,7 @@ func (n *nodeRep) String() string {
 
 type nodeAssert struct {
 	name  string
-	check func(b *buf.Buffer, start, end, i int) bool
+	check func(b Matchable, start, end, i int) bool
 }
 
 func (n *nodeAssert) String() string {
@@ -103,7 +108,7 @@ type instr struct {
 	inv     bool                              // for RX_CLASS
 	set     map[rune]bool                     // for RX_CLASS
 	special []func(rune) bool                 // for RX_CLASS
-	check   func(buf *buf.Buffer, start, end, i int) bool // for RX_ASSERT
+	check   func(buf Matchable, start, end, i int) bool // for RX_ASSERT
 }
 
 type Regex []instr
@@ -143,4 +148,14 @@ func (rx *Regex) String() string {
 		r = append(r, []byte(fmt.Sprintf("%04d\t%s\n", i, (*rx)[i].String()))...)
 	}
 	return string(r)
+}
+
+type RuneArrayMatchable []rune
+
+func (ram RuneArrayMatchable) At(i int) *textframe.ColorRune {
+	return &textframe.ColorRune{ R: ram[i], C: 0x00 }
+}
+
+func (ram RuneArrayMatchable) Size() int {
+	return len(ram)
 }

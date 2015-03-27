@@ -490,19 +490,8 @@ func EditCmd(ec ExecContext, arg string) {
 	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
 		return
 	}
-	var pj func() = nil
-	if ec.ed != nil {
-		pj = ec.ed.PushJump
-	}
 
-	edc := edit.EditContext{
-		Buf:       ec.buf,
-		Sels:      ec.fr.Sels,
-		EventChan: ec.eventChan,
-		PushJump:  pj,
-	}
-
-	edit.Edit(arg, edc)
+	edit.Edit(arg, makeEditContext(ec.buf, ec.fr.Sels, ec.eventChan, ec.ed))
 	if !ec.norefresh {
 		ec.br()
 	}
@@ -1114,18 +1103,7 @@ func editPgmToFunc(pgm *edit.Cmd) func(ec ExecContext) {
 			return
 		}
 
-		var pj func() = nil
-		if ec.ed != nil {
-			pj = ec.ed.PushJump
-		}
-
-		edc := edit.EditContext{
-			Buf:       ec.buf,
-			Sels:      ec.fr.Sels,
-			EventChan: ec.eventChan,
-			PushJump:  pj,
-		}
-		pgm.Exec(edc)
+		pgm.Exec(makeEditContext(ec.buf, ec.fr.Sels, ec.eventChan, ec.ed))
 		if !ec.norefresh {
 			ec.br()
 		}
@@ -1228,4 +1206,55 @@ Debug compile <command>
 		usage()
 		return
 	}
+}
+
+func makeEditContext(buf *buf.Buffer, sels []util.Sel, eventChan chan string, ed *Editor) edit.EditContext {
+	var pj func() = nil
+	if ed != nil {
+		pj = ed.PushJump
+	}
+
+	return edit.EditContext{
+		Buf:       buf,
+		Sels:      sels,
+		EventChan: eventChan,
+		PushJump:  pj,
+		BufMan:    &BufMan{},
+	}
+}
+
+type BufMan struct {
+}
+
+func (bm *BufMan) Open(name string) *buf.Buffer {
+	ed, err := HeuristicOpen(name, true, true)
+	if err != nil {
+		Warn("New: " + err.Error())
+	}
+	if ed != nil {
+		return ed.bodybuf
+	} else {
+		return nil
+	}
+}
+
+func (bm *BufMan) List() []*buf.Buffer {
+	return buffers
+}
+
+func (bm *BufMan) Close(buf *buf.Buffer) {
+	if buf == nil {
+		return
+	}
+	for _, col := range Wnd.cols.cols {
+		for _, ed := range col.editors {
+			if ed.bodybuf == buf {
+				col.Remove(col.IndexOf(ed))
+				ed.Close()
+			}
+		}
+	}
+	removeBuffer(buf)
+	Wnd.wnd.FlushImage()
+
 }

@@ -741,6 +741,10 @@ func (b *Buffer) ShortName() string {
 	return util.ShortPath(filepath.Join(b.Dir, b.Name), true)
 }
 
+func (b *Buffer) Path() string {
+	return filepath.Join(b.Dir, b.Name)
+}
+
 func (b *Buffer) FixSel(sel *util.Sel) {
 	if sel.S < 0 {
 		sel.S = 0

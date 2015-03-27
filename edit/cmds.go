@@ -2,7 +2,11 @@ package edit
 
 import (
 	"fmt"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
 	"yacco/buf"
+	"yacco/regexp"
 	"yacco/util"
 )
 
@@ -11,12 +15,12 @@ var NewJob func(wd, Cmd, input string, buf *buf.Buffer, resultChan chan<- string
 
 const LOOP_LIMIT = 2000
 
-func nilcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
-	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
+func nilcmdfn(c *Cmd, ec *EditContext) {
+	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
 }
 
-func inscmdfn(dir int, c *Cmd, atsel *util.Sel, ec EditContext) {
-	sel := c.rangeaddr.Eval(ec.Buf, *atsel)
+func inscmdfn(dir int, c *Cmd, ec *EditContext) {
+	sel := c.rangeaddr.Eval(ec.Buf, *ec.atsel)
 
 	switch c.cmdch {
 	case 'a':
@@ -29,13 +33,13 @@ func inscmdfn(dir int, c *Cmd, atsel *util.Sel, ec EditContext) {
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 
 	if c.cmdch == 'c' {
-		*atsel = sel
+		*ec.atsel = sel
 	}
 }
 
-func mtcmdfn(del bool, c *Cmd, atsel *util.Sel, ec EditContext) {
-	selfrom := c.rangeaddr.Eval(ec.Buf, *atsel)
-	selto := c.argaddr.Eval(ec.Buf, *atsel).E
+func mtcmdfn(del bool, c *Cmd, ec *EditContext) {
+	selfrom := c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	selto := c.argaddr.Eval(ec.Buf, *ec.atsel).E
 
 	txt := ec.Buf.SelectionRunes(selfrom)
 
@@ -50,30 +54,50 @@ func mtcmdfn(del bool, c *Cmd, atsel *util.Sel, ec EditContext) {
 	}
 }
 
-func pcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
-	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
-	txt := ec.Buf.SelectionRunes(*atsel)
+func pcmdfn(c *Cmd, ec *EditContext) {
+	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	txt := ec.Buf.SelectionRunes(*ec.atsel)
 	Warnfn(string(txt))
 }
 
-func eqcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
-	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
-	sline, scol := ec.Buf.GetLine(atsel.S)
-	eline, ecol := ec.Buf.GetLine(atsel.E)
-	if (sline == eline) && (scol == ecol) {
-		Warnfn(fmt.Sprintf("%d:%d", sline, scol))
+func eqcmdfn(c *Cmd, ec *EditContext) {
+	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+
+	var charpos bool
+
+	switch c.bodytxt {
+	case "#":
+		charpos = true
+	case "":
+		charpos = false
+	default:
+		Warnfn("Wrong argument to =")
+	}
+
+	if charpos {
+		if ec.atsel.S == ec.atsel.E {
+			Warnfn(fmt.Sprintf("%s:#%d\n", ec.Buf.Path(), ec.atsel.S))
+		} else {
+			Warnfn(fmt.Sprintf("%s:#%d,#%d\n", ec.Buf.Path(), ec.atsel.S, ec.atsel.E))
+		}
 	} else {
-		Warnfn(fmt.Sprintf("%d:%d %d:%d", sline, scol, eline, ecol))
+		sln, _ := ec.Buf.GetLine(ec.atsel.S)
+		eln, _ := ec.Buf.GetLine(ec.atsel.E)
+		if ec.atsel.S == ec.atsel.E {
+			Warnfn(fmt.Sprintf("%s:%d\n", ec.Buf.Path(), sln))
+		} else {
+			Warnfn(fmt.Sprintf("%s:%d,%d\n", ec.Buf.Path(), sln, eln))
+		}
 	}
 }
 
-func scmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
-	sel := c.rangeaddr.Eval(ec.Buf, *atsel)
+func scmdfn(c *Cmd, ec *EditContext) {
+	sel := c.rangeaddr.Eval(ec.Buf, *ec.atsel)
 	var addrSave = []util.Sel{{sel.S, sel.E}}
 	ec.Buf.AddSels(&addrSave)
 	defer func() {
 		ec.Buf.RmSels(&addrSave)
-		*atsel = addrSave[0]
+		*ec.atsel = addrSave[0]
 		ec.Buf.EditMark = ec.Buf.EditMarkNext
 	}()
 
@@ -152,14 +176,14 @@ func resolveBackreferences(subs []rune, b *buf.Buffer, loc []int) []rune {
 	return subs
 }
 
-func xcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
-	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
-	var xAddrs = []util.Sel{{atsel.S, atsel.E}, {atsel.S, atsel.S}, {atsel.S, atsel.S}}
+func xcmdfn(c *Cmd, ec *EditContext) {
+	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	var xAddrs = []util.Sel{{ec.atsel.S, ec.atsel.E}, {ec.atsel.S, ec.atsel.S}, {ec.atsel.S, ec.atsel.S}}
 	ec.Buf.AddSels(&xAddrs)
 	ebn := ec.Buf.EditMarkNext
 	ec.Buf.EditMarkNext = false
 	defer func() {
-		*atsel = xAddrs[0]
+		*ec.atsel = xAddrs[0]
 		ec.Buf.EditMarkNext = ebn
 		ec.Buf.EditMark = ec.Buf.EditMarkNext
 		ec.Buf.RmSels(&xAddrs)
@@ -175,7 +199,8 @@ func xcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 		}
 		xAddrs[1].S, xAddrs[1].E = loc[0], loc[1]
 		xAddrs[2] = xAddrs[1]
-		c.body.fn(c.body, &xAddrs[2], ec)
+		subec := ec.subec(ec.Buf, &xAddrs[2])
+		c.body.fn(c.body, &subec)
 		if xAddrs[1].S == xAddrs[1].E {
 			xAddrs[1] = xAddrs[2]
 		}
@@ -188,14 +213,14 @@ func xcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 	}
 }
 
-func ycmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
-	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
-	var yAddrs = []util.Sel{{atsel.S, atsel.E}, {atsel.S, atsel.E}}
+func ycmdfn(c *Cmd, ec *EditContext) {
+	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	var yAddrs = []util.Sel{{ec.atsel.S, ec.atsel.E}, {ec.atsel.S, ec.atsel.E}}
 	ec.Buf.AddSels(&yAddrs)
 	ebn := ec.Buf.EditMarkNext
 	ec.Buf.EditMarkNext = false
 	defer func() {
-		*atsel = yAddrs[0]
+		*ec.atsel = yAddrs[0]
 		ec.Buf.EditMarkNext = ebn
 		ec.Buf.EditMark = ec.Buf.EditMarkNext
 		ec.Buf.RmSels(&yAddrs)
@@ -210,7 +235,8 @@ func ycmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 			return
 		}
 		yAddrs[1].E = loc[0]
-		c.body.fn(c.body, &yAddrs[1], ec)
+		subec := ec.subec(ec.Buf, &yAddrs[1])
+		c.body.fn(c.body, &subec)
 		yAddrs[1].S = yAddrs[1].S + (loc[1] - loc[0])
 		yAddrs[1].E = yAddrs[1].S
 		count++
@@ -221,63 +247,65 @@ func ycmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 	}
 }
 
-func gcmdfn(inv bool, c *Cmd, atsel *util.Sel, ec EditContext) {
-	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
+func gcmdfn(inv bool, c *Cmd, ec *EditContext) {
+	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
 	re := c.sregexp
-	loc := re.Match(ec.Buf, atsel.S, atsel.E, +1)
-	if (loc == nil) || (loc[0] != atsel.S) || (loc[1] != atsel.E) {
+	loc := re.Match(ec.Buf, ec.atsel.S, ec.atsel.E, +1)
+	if (loc == nil) || (loc[0] != ec.atsel.S) || (loc[1] != ec.atsel.E) {
 		if inv {
-			c.body.fn(c.body, atsel, ec)
+			c.body.fn(c.body, ec)
 		}
 	} else {
 		if !inv {
-			c.body.fn(c.body, atsel, ec)
+			c.body.fn(c.body, ec)
 		}
 	}
 }
 
-func pipeincmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
+func pipeincmdfn(c *Cmd, ec *EditContext) {
 	resultChan := make(chan string)
 	NewJob(ec.Buf.Dir, c.bodytxt, "", ec.Buf, resultChan)
 	str := <-resultChan
-	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
-	ec.Buf.Replace([]rune(str), atsel, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE)
+	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	ec.Buf.Replace([]rune(str), ec.atsel, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE)
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 }
 
-func pipeoutcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
-	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
-	str := string(ec.Buf.SelectionRunes(*atsel))
+func pipeoutcmdfn(c *Cmd, ec *EditContext) {
+	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	str := string(ec.Buf.SelectionRunes(*ec.atsel))
 	NewJob(ec.Buf.Dir, c.bodytxt, str, ec.Buf, nil)
 }
 
-func pipecmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
-	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
-	str := string(ec.Buf.SelectionRunes(*atsel))
+func pipecmdfn(c *Cmd, ec *EditContext) {
+	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	str := string(ec.Buf.SelectionRunes(*ec.atsel))
 	resultChan := make(chan string)
 	NewJob(ec.Buf.Dir, c.bodytxt, str, ec.Buf, resultChan)
 	str = <-resultChan
-	ec.Buf.Replace([]rune(str), atsel, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE)
+	ec.Buf.Replace([]rune(str), ec.atsel, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE)
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 }
 
-func kcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
-	*atsel = c.rangeaddr.Eval(ec.Buf, *atsel)
-	ec.Sels[0] = *atsel
+func kcmdfn(c *Cmd, ec *EditContext) {
+	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	if ec.Sels != nil {
+		ec.Sels[0] = *ec.atsel
+	}
 	ec.PushJump()
 }
 
-func Mcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
+func Mcmdfn(c *Cmd, ec *EditContext) {
 	var p int
 
-	if (*atsel).S == ec.Buf.Markat {
-		p = (*atsel).E
-	} else if (*atsel).E == ec.Buf.Markat {
-		p = (*atsel).S
+	if (*ec.atsel).S == ec.Buf.Markat {
+		p = (*ec.atsel).E
+	} else if (*ec.atsel).E == ec.Buf.Markat {
+		p = (*ec.atsel).S
 	} else {
 		// arbitrary
-		p = (*atsel).E
-		ec.Buf.Markat = (*atsel).S
+		p = (*ec.atsel).E
+		ec.Buf.Markat = (*ec.atsel).S
 	}
 
 	ms := c.rangeaddr.Eval(ec.Buf, util.Sel{p, p})
@@ -287,10 +315,145 @@ func Mcmdfn(c *Cmd, atsel *util.Sel, ec EditContext) {
 	}
 
 	if ms.S > ec.Buf.Markat {
-		(*atsel).S = ec.Buf.Markat
-		(*atsel).E = ms.S
+		(*ec.atsel).S = ec.Buf.Markat
+		(*ec.atsel).E = ms.S
 	} else {
-		(*atsel).S = ms.S
-		(*atsel).E = ec.Buf.Markat
+		(*ec.atsel).S = ms.S
+		(*ec.atsel).E = ec.Buf.Markat
+	}
+}
+
+func bcmdfn(openOthers bool, c *Cmd, ec *EditContext) {
+	fileNames := processFileList(ec, c.bodytxt)
+	open := bufferMap(ec)
+
+	first := true
+
+	for i := range fileNames {
+		buf, ok := open[fileNames[i]]
+
+		if openOthers && !ok {
+			buf = ec.BufMan.Open(fileNames[i])
+		}
+
+		if buf != nil && first {
+			nec := ec.subec(buf, &util.Sel{0, 0})
+			ec = &nec
+			first = false
+			if !openOthers {
+				break
+			}
+		}
+	}
+}
+
+func Dcmdfn(c *Cmd, ec *EditContext) {
+	fileNames := processFileList(ec, c.bodytxt)
+	open := bufferMap(ec)
+
+	for i := range fileNames {
+		buf, ok := open[fileNames[i]]
+		if ok {
+			ec.BufMan.Close(buf)
+		}
+	}
+}
+
+func processFileList(ec *EditContext, body string) []string {
+	body = strings.TrimSpace(body)
+	var fileNames []string
+
+	if body[0] == '<' {
+		resultChan := make(chan string)
+		NewJob(ec.Buf.Dir, body[1:], "", ec.Buf, resultChan)
+		body = <-resultChan
+		fileNames = util.QuotedSplit(body)
+	} else {
+		sources := util.QuotedSplit(body)
+		fileNames = make([]string, 0, len(sources))
+		for i := range sources {
+			files, err := filepath.Glob(sources[i])
+			if err == nil {
+				fileNames = append(fileNames, files...)
+			}
+		}
+	}
+
+	for i := range fileNames {
+		fileNames[i] = util.ResolvePath(ec.Buf.Dir, fileNames[i])
+	}
+
+	return fileNames
+}
+
+func bufferMap(ec *EditContext) map[string]*buf.Buffer {
+	open := map[string]*buf.Buffer{}
+	buffers := ec.BufMan.List()
+	for i := range buffers {
+		open[buffers[i].Path()] = buffers[i]
+	}
+	return open
+}
+
+func extreplcmdfn(all bool, c *Cmd, ec *EditContext) {
+	if all {
+		ec.atsel.S = 0
+		ec.atsel.E = ec.Buf.Size()
+	} else {
+		*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	}
+
+	c.bodytxt = strings.TrimSpace(c.bodytxt)
+
+	bytes, err := ioutil.ReadFile(util.ResolvePath(ec.Buf.Dir, c.bodytxt))
+	if err != nil {
+		Warnfn(fmt.Sprintf("Couldn't read file: %v\n", err))
+	}
+
+	ec.Buf.Replace([]rune(string(bytes)), ec.atsel, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE)
+	ec.Buf.EditMark = ec.Buf.EditMarkNext
+
+	if all {
+		ec.atsel.S = 0
+		ec.atsel.E = 0
+	}
+}
+
+func wcmdfn(c *Cmd, ec *EditContext) {
+	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	if ec.atsel.S == ec.atsel.E {
+		ec.atsel.S = 0
+		ec.atsel.E = ec.Buf.Size()
+	}
+	c.bodytxt = strings.TrimSpace(c.bodytxt)
+	str := []byte(string(ec.Buf.SelectionRunes(*ec.atsel)))
+	err := ioutil.WriteFile(util.ResolvePath(ec.Buf.Dir, c.bodytxt), str, 0666)
+	if err != nil {
+		Warnfn(fmt.Sprintf("Couldn't write file: %v\n", err))
+	}
+}
+
+func XYcmdfn(inv bool, c *Cmd, ec *EditContext) {
+	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+
+	buffers := ec.BufMan.List()
+
+	for i := range buffers {
+		p := []rune(buffers[i].Path())
+		loc := c.sregexp.Match(regexp.RuneArrayMatchable(p), 0, len(p), +1)
+		match := loc != nil
+		if inv {
+			match = !match
+		}
+		if match {
+			subec := ec.subec(buffers[i], &util.Sel{0, 0})
+			c.body.fn(c.body, &subec)
+		}
+	}
+}
+
+func blockcmdfn(c *Cmd, ec *EditContext) {
+	for i := range c.mbody {
+		c.mbody[i].fn(c.mbody[i], ec)
 	}
 }

@@ -2,6 +2,7 @@ package edit
 
 import (
 	"fmt"
+	"strings"
 	"yacco/buf"
 	"yacco/regexp"
 	"yacco/util"
@@ -21,16 +22,25 @@ type Cmd struct {
 	flags     commandFlag
 	argaddr   Addr
 	body      *Cmd
+	mbody     []*Cmd
 	bodytxt   string
-	fn        func(c *Cmd, atsel *util.Sel, ec EditContext)
+	fn        func(c *Cmd, ec *EditContext)
 	sregexp   regexp.Regex
 }
 
 type EditContext struct {
 	Buf       *buf.Buffer
 	Sels      []util.Sel
+	atsel     *util.Sel
 	EventChan chan string
 	PushJump  func()
+	BufMan    BufferManaging
+}
+
+type BufferManaging interface {
+	Open(name string) *buf.Buffer
+	List() []*buf.Buffer
+	Close(buf *buf.Buffer)
 }
 
 func Edit(pgm string, ec EditContext) {
@@ -43,7 +53,9 @@ func (ecmd *Cmd) Exec(ec EditContext) {
 		panic(fmt.Errorf("Command '%c' not implemented", ecmd.cmdch))
 	}
 
-	ecmd.fn(ecmd, &ec.Sels[0], ec)
+	ec.atsel = &ec.Sels[0]
+
+	ecmd.fn(ecmd, &ec)
 }
 
 func AddrEval(pgm string, b *buf.Buffer, sel util.Sel) util.Sel {
@@ -90,6 +102,14 @@ func (ecmd *Cmd) String() string {
 		s += fmt.Sprintf(" Body<%s>", ecmd.body.String())
 	}
 
+	if len(ecmd.mbody) > 0 {
+		v := make([]string, len(ecmd.mbody))
+		for i := range ecmd.mbody {
+			v[i] = ecmd.mbody[i].String()
+		}
+		s += fmt.Sprintf(" Body<%s>", strings.Join(v, ", "))
+	}
+
 	if ecmd.sregexp != nil {
 		s += fmt.Sprintf("\nCompiled Regex:\n")
 		s += ecmd.sregexp.String()
@@ -106,4 +126,26 @@ func ToMark(pgm *Cmd) *Cmd {
 	pgm.fn = Mcmdfn
 	pgm.cmdch = 'M'
 	return pgm
+}
+
+func (ec *EditContext) subec(buf *buf.Buffer, atsel *util.Sel) EditContext {
+	if buf == ec.Buf {
+		return EditContext{
+			Buf:       ec.Buf,
+			Sels:      ec.Sels,
+			atsel:     atsel,
+			EventChan: ec.EventChan,
+			PushJump:  ec.PushJump,
+			BufMan:    ec.BufMan,
+		}
+	} else {
+		return EditContext{
+			Buf:       buf,
+			Sels:      nil,
+			atsel:     atsel,
+			EventChan: nil,
+			PushJump:  nil,
+			BufMan:    ec.BufMan,
+		}
+	}
 }

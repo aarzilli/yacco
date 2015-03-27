@@ -2,7 +2,6 @@ package regexp
 
 import (
 	"fmt"
-	"yacco/buf"
 )
 
 var rxDebug = false
@@ -32,7 +31,7 @@ func (rx *Regex) newThreadlist() *threadlist {
 	}
 }
 
-func (tl *threadlist) addthread(t threadlet, b *buf.Buffer, start, end, i int) {
+func (tl *threadlist) addthread(t threadlet, b Matchable, start, end, i int) {
 	if ok := tl.set[t.pc]; ok {
 		return
 	}
@@ -96,7 +95,7 @@ func (tl *threadlist) reset() {
 	tl.threads = tl.threads[:0]
 }
 
-func (rx *Regex) Match(b *buf.Buffer, start, end int, dir int) []int {
+func (rx *Regex) Match(b Matchable, start, end int, dir int) []int {
 	if len(*rx) <= 0 {
 		return []int{start, start}
 	}

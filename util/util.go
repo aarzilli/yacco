@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"bytes"
 	"unicode/utf8"
 )
 
@@ -853,4 +854,77 @@ func quoteWith(s string, quote byte, ASCIIonly bool) string {
 	buf = append(buf, quote)
 	return string(buf)
 
+}
+
+func QuotedSplit(s string) []string {
+	r := []string{}
+	var buf bytes.Buffer
+
+	onspace := true
+	inquote := false
+	escape := false
+	var quotech byte
+
+	for i := range s {
+		if onspace {
+			switch s[i] {
+			case ' ', '\t', '\n':
+				// still on space, nothing to do
+			case '"', '\'':
+				onspace = false
+				inquote = true
+				quotech = s[i]
+			default:
+				onspace = false
+				buf.WriteByte(s[i])
+			}
+		} else if inquote && escape {
+			switch s[i] {
+			case 'a':
+				buf.WriteByte('\a')
+			case 'f':
+				buf.WriteByte('\f')
+			case 't':
+				buf.WriteByte('\t')
+			case 'n':
+				buf.WriteByte('\n')
+			case 'r':
+				buf.WriteByte('\r')
+			case 'v':
+				buf.WriteByte('\v')
+			default:
+				buf.WriteByte(s[i])
+			}
+			escape = false
+		} else if inquote {
+			switch s[i] {
+			case quotech:
+				r = append(r, string(buf.Bytes()))
+				buf.Reset()
+				inquote = false
+				onspace = true
+			case '\\':
+				escape = true
+			default:
+				buf.WriteByte(s[i])
+			}
+		} else {
+			switch s[i] {
+			case ' ', '\t', '\n':
+				r = append(r, string(buf.Bytes()))
+				buf.Reset()
+				onspace = true
+			case '"', '\'':
+				inquote = true
+				quotech = s[i]
+			default:
+				buf.WriteByte(s[i])
+			}
+		}
+	}
+
+	if buf.Len() > 0 {
+		r = append(r, string(buf.Bytes()))
+	}
+	return r
 }

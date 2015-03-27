@@ -50,3 +50,7 @@ func TestSSpacesBug(t *testing.T) {
 	testParsed(t, ",s/regexp/ repl/g", "Range<Op<0 , $>> Cmd<s> Arg<regexp> Arg< repl> Flags<1>")
 	testParsed(t, ",s/regexp/	repl/g", "Range<Op<0 , $>> Cmd<s> Arg<regexp> Arg<	repl> Flags<1>")
 }
+
+func TestBlock(t *testing.T) {
+	testParsed(t, "x/regexp/ { c/blah/\nc/bloh/\n}", "Range<.> Cmd<x> Arg<regexp> Body<Cmd<{> Body<Range<.> Cmd<c> Arg<blah>, Range<.> Cmd<c> Arg<bloh>>>")
+}

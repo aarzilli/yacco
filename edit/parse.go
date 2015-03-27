@@ -18,28 +18,39 @@ type cmdDef struct {
 	restargs bool
 	escarg   bool
 	rca1     bool
-	fn       func(c *Cmd, atsel *util.Sel, ec EditContext)
+	fn       func(c *Cmd, ec *EditContext)
 }
 
 var commands = map[rune]cmdDef{
-	'a': cmdDef{txtargs: 1, escarg: true, fn: func(c *Cmd, atsel *util.Sel, ec EditContext) { inscmdfn(+1, c, atsel, ec) }},
-	'c': cmdDef{txtargs: 1, escarg: true, fn: func(c *Cmd, atsel *util.Sel, ec EditContext) { inscmdfn(0, c, atsel, ec) }},
-	'i': cmdDef{txtargs: 1, escarg: true, fn: func(c *Cmd, atsel *util.Sel, ec EditContext) { inscmdfn(-1, c, atsel, ec) }},
-	'd': cmdDef{txtargs: 0, fn: func(c *Cmd, atsel *util.Sel, ec EditContext) { c.txtargs = []string{""}; inscmdfn(0, c, atsel, ec) }},
+	'a': cmdDef{txtargs: 1, escarg: true, fn: func(c *Cmd, ec *EditContext) { inscmdfn(+1, c, ec) }},
+	'c': cmdDef{txtargs: 1, escarg: true, fn: func(c *Cmd, ec *EditContext) { inscmdfn(0, c, ec) }},
+	'i': cmdDef{txtargs: 1, escarg: true, fn: func(c *Cmd, ec *EditContext) { inscmdfn(-1, c, ec) }},
+	'd': cmdDef{txtargs: 0, fn: func(c *Cmd, ec *EditContext) { c.txtargs = []string{""}; inscmdfn(0, c, ec) }},
 	's': cmdDef{txtargs: 2, escarg: true, sarg: true, rca1: true, fn: scmdfn},
-	'm': cmdDef{txtargs: 0, addrarg: true, fn: func(c *Cmd, atsel *util.Sel, ec EditContext) { mtcmdfn(true, c, atsel, ec) }},
-	't': cmdDef{txtargs: 0, addrarg: true, fn: func(c *Cmd, atsel *util.Sel, ec EditContext) { mtcmdfn(false, c, atsel, ec) }},
+	'm': cmdDef{txtargs: 0, addrarg: true, fn: func(c *Cmd, ec *EditContext) { mtcmdfn(true, c, ec) }},
+	't': cmdDef{txtargs: 0, addrarg: true, fn: func(c *Cmd, ec *EditContext) { mtcmdfn(false, c, ec) }},
 	'p': cmdDef{txtargs: 0, fn: pcmdfn},
-	'=': cmdDef{txtargs: 0, fn: eqcmdfn},
+	'=': cmdDef{restargs: true, txtargs: 0, fn: eqcmdfn},
 	'x': cmdDef{txtargs: 1, bodyarg: true, optxtarg: true, rca1: true, fn: xcmdfn},
 	'y': cmdDef{txtargs: 1, bodyarg: true, rca1: true, fn: ycmdfn},
-	'g': cmdDef{txtargs: 1, rca1: true, bodyarg: true, fn: func(c *Cmd, atsel *util.Sel, ec EditContext) { gcmdfn(false, c, atsel, ec) }},
-	'v': cmdDef{txtargs: 1, rca1: true, bodyarg: true, fn: func(c *Cmd, atsel *util.Sel, ec EditContext) { gcmdfn(true, c, atsel, ec) }},
+	'g': cmdDef{txtargs: 1, rca1: true, bodyarg: true, fn: func(c *Cmd, ec *EditContext) { gcmdfn(false, c, ec) }},
+	'v': cmdDef{txtargs: 1, rca1: true, bodyarg: true, fn: func(c *Cmd, ec *EditContext) { gcmdfn(true, c, ec) }},
 	'<': cmdDef{restargs: true, fn: pipeincmdfn},
 	'>': cmdDef{restargs: true, fn: pipeoutcmdfn},
 	'|': cmdDef{restargs: true, fn: pipecmdfn},
-	'k': cmdDef{restargs: false, fn: kcmdfn},
-	'M': cmdDef{restargs: false, fn: Mcmdfn},
+	'k': cmdDef{fn: kcmdfn},
+	'M': cmdDef{fn: Mcmdfn},
+
+	// Files
+	'b': cmdDef{restargs: true, fn: func(c *Cmd, ec *EditContext) { bcmdfn(false, c, ec) }},
+	'B': cmdDef{restargs: true, fn: func(c *Cmd, ec *EditContext) { bcmdfn(true, c, ec) }},
+	'D': cmdDef{restargs: true, fn: Dcmdfn},
+	'e': cmdDef{restargs: true, fn: func(c *Cmd, ec *EditContext) { extreplcmdfn(true, c, ec) }},
+	'r': cmdDef{restargs: true, fn: func(c *Cmd, ec *EditContext) { extreplcmdfn(false, c, ec) }},
+	'w': cmdDef{restargs: true, fn: wcmdfn},
+
+	'X': cmdDef{txtargs: 1, bodyarg: true, rca1: true, fn: func(c *Cmd, ec *EditContext) { XYcmdfn(false, c, ec) }},
+	'Y': cmdDef{txtargs: 1, bodyarg: true, rca1: true, fn: func(c *Cmd, ec *EditContext) { XYcmdfn(true, c, ec) }},
 }
 
 type addrTok string
@@ -68,7 +79,13 @@ func parseEx(pgm []rune) (*Cmd, []rune) {
 			continue
 		}
 
-		if cmdDef, ok := commands[rest[0]]; ok {
+		if rest[0] == '{' {
+			if len(addrs) > 0 {
+				panic(fmt.Errorf("Could not parse <%s>, address tokens before a block", string(pgm)))
+			}
+			r, rest = parseBlock(rest[1:])
+			break
+		} else if cmdDef, ok := commands[rest[0]]; ok {
 			addr := parseAddr(addrs)
 			r, rest = parseCmd(rest[0], cmdDef, addr, rest[1:])
 			break
@@ -173,11 +190,48 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*Cmd, []run
 	if theCmdDef.bodyarg {
 		r.body, rest = parseEx(rest)
 	} else if theCmdDef.restargs {
-		r.bodytxt = string(rest)
-		rest = []rune{}
+		var i int
+		for i = range rest {
+			if rest[i] == '\n' {
+				break
+			}
+		}
+		if i >= len(rest) {
+			r.bodytxt = string(rest)
+			rest = []rune{}
+		} else {
+			r.bodytxt = string(rest[:i])
+			rest = rest[i:]
+		}
 	}
 
 	return r, rest
+}
+
+func parseBlock(pgm []rune) (*Cmd, []rune) {
+	rest := pgm
+	cmds := []*Cmd{}
+
+	for {
+		if len(rest) == 0 {
+			panic(fmt.Errorf("Non-closed block"))
+		}
+
+		switch rest[0] {
+		case ' ', '\t', '\n':
+			rest = rest[1:]
+		case '}':
+			return &Cmd{
+				cmdch: '{',
+				mbody: cmds,
+				fn:    blockcmdfn,
+			}, rest[1:]
+		default:
+			var cmd *Cmd
+			cmd, rest = parseEx(rest)
+			cmds = append(cmds, cmd)
+		}
+	}
 }
 
 func skipSpaces(rest []rune) []rune {
