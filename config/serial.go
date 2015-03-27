@@ -30,6 +30,7 @@ type configFont struct {
 	LineScale float64
 	Path      string
 	CopyFrom  string
+	FullHinting bool
 }
 
 type configLoadRules struct {
@@ -59,7 +60,7 @@ func fontFromConf(font configFont, Fonts map[string]*configFont) *util.Font {
 			font.Path = otherFont.Path
 		}
 	}
-	return util.MustNewFont(72, float64(font.Pixel), font.LineScale, font.Path)
+	return util.MustNewFont(72, float64(font.Pixel), font.LineScale, font.FullHinting, font.Path)
 }
 
 func LoadConfiguration(path string) {

@@ -10,10 +10,10 @@ var DefaultWindowTag = []rune("Newcol Getall Putall Jobs Exit | ")
 var DefaultColumnTag = []rune("New Cut Paste Sort Zerox Delcol ")
 var DefaultEditorTag = " Del"
 
-var MainFont = util.MustNewFont(72, 16, 1.0, "$HOME/.config/yacco/luxisr.ttf:$HOME/.config/yacco/DejaVuSans.ttf")
-var TagFont = util.MustNewFont(72, 16, 0.9, "$HOME/.config/yacco/luxisr.ttf:$HOME/.config/yacco/DejaVuSans.ttf")
-var AltFont = util.MustNewFont(72, 16, 1.0, "$HOME/.config/yacco/luximr.ttf")
-var ComplFont = util.MustNewFont(72, 16, 1.0, "$HOME/.config/yacco/luxisr.ttf:$HOME/.config/yacco/DejaVuSans.ttf") // do not ever use fractional line spacing for multiline textframes
+var MainFont = util.MustNewFont(72, 16, 1.0, true, "$HOME/.config/yacco/luxisr.ttf:$HOME/.config/yacco/DejaVuSans.ttf")
+var TagFont = util.MustNewFont(72, 16, 0.9, true, "$HOME/.config/yacco/luxisr.ttf:$HOME/.config/yacco/DejaVuSans.ttf")
+var AltFont = util.MustNewFont(72, 16, 1.0, true, "$HOME/.config/yacco/luximr.ttf")
+var ComplFont = util.MustNewFont(72, 16, 1.0, true, "$HOME/.config/yacco/luxisr.ttf:$HOME/.config/yacco/DejaVuSans.ttf") // do not ever use fractional line spacing for multiline textframes
 
 var EditErrorTrace = false
 

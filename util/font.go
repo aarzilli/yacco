@@ -19,12 +19,13 @@ type Font struct {
 	dpi     float64
 	Size    float64
 	spacing float64
+	fullHinting bool
 }
 
 // Reads a Font: fontPath is a ':' separated list of ttf or pcf font files (they will be used to search characters)
-func NewFont(dpi, size, lineSpacing float64, fontPath string) (*Font, error) {
+func NewFont(dpi, size, lineSpacing float64, fullHinting bool, fontPath string) (*Font, error) {
 	fontPathV := strings.Split(fontPath, ":")
-	rf := &Font{make([]*truetype.Font, 0, len(fontPathV)), make([]*freetype.Context, len(fontPathV)), make([]*pcf.Pcf, 0, len(fontPathV)), dpi, size, lineSpacing}
+	rf := &Font{make([]*truetype.Font, 0, len(fontPathV)), make([]*freetype.Context, len(fontPathV)), make([]*pcf.Pcf, 0, len(fontPathV)), dpi, size, lineSpacing, fullHinting}
 	for _, fontfile := range fontPathV {
 		if strings.HasSuffix(fontfile, ".ttf") {
 			fontBytes, err := ioutil.ReadFile(os.ExpandEnv(fontfile))
@@ -51,16 +52,16 @@ func NewFont(dpi, size, lineSpacing float64, fontPath string) (*Font, error) {
 	return rf, nil
 }
 
-func MustNewFont(dpi, size, lineSpacing float64, fontPath string) *Font {
-	r, err := NewFont(dpi, size, lineSpacing, fontPath)
+func MustNewFont(dpi, size, lineSpacing float64, fullHinting bool, fontPath string) *Font {
+	r, err := NewFont(dpi, size, lineSpacing, fullHinting, fontPath)
 	if err != nil {
 		panic(err)
 	}
 	return r
 }
 
-func NewFontFromBytes(dpi, size, lineSpacing float64, fontBytes [][]byte) (*Font, error) {
-	rf := &Font{make([]*truetype.Font, 0, len(fontBytes)), make([]*freetype.Context, len(fontBytes)), make([]*pcf.Pcf, 0, len(fontBytes)), dpi, size, lineSpacing}
+func NewFontFromBytes(dpi, size, lineSpacing float64, fullHinting bool, fontBytes [][]byte) (*Font, error) {
+	rf := &Font{make([]*truetype.Font, 0, len(fontBytes)), make([]*freetype.Context, len(fontBytes)), make([]*pcf.Pcf, 0, len(fontBytes)), dpi, size, lineSpacing, fullHinting}
 	for _, aFontBytes := range fontBytes {
 		parsedfont, err := freetype.ParseFont(aFontBytes)
 		if err != nil {
@@ -73,8 +74,8 @@ func NewFontFromBytes(dpi, size, lineSpacing float64, fontBytes [][]byte) (*Font
 	return rf, nil
 }
 
-func MustNewFontFromBytes(dpi, size, lineSpacing float64, fontBytes [][]byte) *Font {
-	f, err := NewFontFromBytes(dpi, size, lineSpacing, fontBytes)
+func MustNewFontFromBytes(dpi, size, lineSpacing float64, fullHinting bool, fontBytes [][]byte) *Font {
+	f, err := NewFontFromBytes(dpi, size, lineSpacing, fullHinting, fontBytes)
 	if err != nil {
 		panic(err)
 	}
@@ -87,7 +88,9 @@ func (f *Font) createContexts() {
 		f.cs[i].SetDPI(f.dpi)
 		f.cs[i].SetFont(f.fonts[i])
 		f.cs[i].SetFontSize(f.Size)
-		f.cs[i].SetHinting(freetype.FullHinting)
+		if f.fullHinting {
+			f.cs[i].SetHinting(freetype.FullHinting)
+		}
 	}
 }
 

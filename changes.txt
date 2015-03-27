@@ -10,9 +10,6 @@ No configuration file is read.
 CHANGE: ctrl+left_click is equivalent to middle_click, alt+left_click is equivalent to right_click
 REASON: an abundance of pointing devices curently available lacks a middle button (or has a scroll wheel that acts as one but is uncomfortable to use), some pointing devices don't even have a right button. Therefore a generic way to supplement them is needed
 
-CHANGE: no chording
-REASON: ergonomy studies of Bruce Tognazzini and Engelbar suggest that the fastest input method is a combination of mouse for pointing while inputting keyboard shortcuts with the other hand. Yacco supports this mode by providing (customizable) keybindings. As such no need for mouse chording is needed. The concept of mouse chording is also alien to most people.
-
 CHANGE: removed commands: Font, Indent, Tab
 REASON: All this commands have been replaced by external commands that use the extensions to the filesystem interface
 
