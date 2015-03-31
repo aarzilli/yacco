@@ -191,7 +191,7 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*Cmd, []run
 		r.body, rest = parseEx(rest)
 	} else if theCmdDef.restargs {
 		var i int
-		for i = range rest {
+		for i = 0; i < len(rest); i++ {
 			if rest[i] == '\n' {
 				break
 			}

@@ -102,6 +102,10 @@ func (ecmd *Cmd) String() string {
 		s += fmt.Sprintf(" Body<%s>", ecmd.body.String())
 	}
 
+	if ecmd.bodytxt != "" {
+		s += fmt.Sprintf(" Body<%s>", ecmd.bodytxt)
+	}
+
 	if len(ecmd.mbody) > 0 {
 		v := make([]string, len(ecmd.mbody))
 		for i := range ecmd.mbody {

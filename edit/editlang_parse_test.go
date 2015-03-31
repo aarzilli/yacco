@@ -16,6 +16,10 @@ func testParsed(t *testing.T, s string, tgt string) {
 	}
 }
 
+func TestEqBug(t *testing.T) {
+	testParsed(t, "=#", "Range<.> Cmd<=> Body<#>")
+}
+
 func TestAddrs(t *testing.T) {
 	testParsed(t, "--#0", "Range<List<. -1 -#0 >> Cmd< >")
 	testParsed(t, "+-#0", "Range<List<. +1 -#0 >> Cmd< >")
