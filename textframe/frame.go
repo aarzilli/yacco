@@ -398,6 +398,7 @@ func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interfac
 		}
 	}
 
+	fr.PMatch.E = fr.PMatch.S
 	fr.SelColor = idx
 	fix := fr.Sel.S
 	var autoscrollTicker *time.Ticker
@@ -723,7 +724,7 @@ func (fr *Frame) redrawOptSelectionMoved() (bool, []image.Rectangle) {
 
 		if len(fr.Colors) > 4 {
 			if debugRedraw && fr.debugRedraw {
-				fmt.Printf("\tRedrawing parenthesis match: %v -> %v\n", fr.redrawOpt.drawnPMatch, fr.PMatch)
+				fmt.Printf("\tRedrawing parenthesis match (1): %v -> %v\n", fr.redrawOpt.drawnPMatch, fr.PMatch)
 			}
 			fr.redrawSelectionLogical(fr.redrawOpt.drawnPMatch, &fr.Colors[0][0], &invalid)
 			fr.redrawSelectionLogical(fr.PMatch, &fr.Colors[4][0], &invalid)
@@ -765,7 +766,7 @@ func (fr *Frame) redrawOptSelectionMoved() (bool, []image.Rectangle) {
 
 	if len(fr.Colors) > 4 {
 		if debugRedraw && fr.debugRedraw {
-			fmt.Printf("\tRedrawing parenthesis match: %v -> %v\n", fr.redrawOpt.drawnPMatch, fr.PMatch)
+			fmt.Printf("\tRedrawing parenthesis match (2): %v -> %v\n", fr.redrawOpt.drawnPMatch, fr.PMatch)
 		}
 		fr.redrawSelectionLogical(fr.redrawOpt.drawnPMatch, &fr.Colors[0][0], &invalid)
 		fr.redrawSelectionLogical(fr.PMatch, &fr.Colors[4][0], &invalid)
@@ -825,7 +826,7 @@ func (fr *Frame) redrawSelectionLogical(sel util.Sel, color *image.Uniform, inva
 	}
 
 	fr.redrawSelection(rs, re, color, invalid)
-	fr.redrawIntl(fr.glyphs[rs:re], true, rs)
+	fr.redrawIntl(fr.glyphs[rs:re], false, rs)
 }
 
 func (fr *Frame) allSelectionsEmpty() bool {
@@ -936,7 +937,7 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 			}
 		}
 
-		onpmatch := (fr.PMatch.S != fr.PMatch.E) && (i+fr.Top+n == fr.PMatch.S) && (len(fr.Colors) > 4)
+		onpmatch := (fr.PMatch.S != fr.PMatch.E) && (i+fr.Top+n == fr.PMatch.S) && (len(fr.Colors) > 4) && (ssel == 0)
 
 		if onpmatch && drawSels {
 			fr.redrawSelection(fr.PMatch.S-fr.Top, fr.PMatch.E-fr.Top, &fr.Colors[4][0], nil)
