@@ -178,9 +178,9 @@ func resolveBackreferences(subs []rune, b *buf.Buffer, loc []int) []rune {
 
 func xcmdfn(c *Cmd, ec *EditContext) {
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
-	var xAddrs0 = util.Sel{ ec.atsel.S, ec.atsel.E }
-	var xAddrs1 = util.Sel{ ec.atsel.S, ec.atsel.S }
-	var xAddrs2 = util.Sel{ ec.atsel.S, ec.atsel.S }
+	var xAddrs0 = util.Sel{ec.atsel.S, ec.atsel.E}
+	var xAddrs1 = util.Sel{ec.atsel.S, ec.atsel.S}
+	var xAddrs2 = util.Sel{ec.atsel.S, ec.atsel.S}
 	ec.Buf.AddSel(&xAddrs0)
 	ec.Buf.AddSel(&xAddrs1)
 	ec.Buf.AddSel(&xAddrs2)
@@ -443,11 +443,12 @@ func wcmdfn(c *Cmd, ec *EditContext) {
 }
 
 func XYcmdfn(inv bool, c *Cmd, ec *EditContext) {
-	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
-
 	buffers := ec.BufMan.List()
 
 	for i := range buffers {
+		if buffers[i] == nil {
+			continue
+		}
 		p := []rune(buffers[i].Path())
 		loc := c.sregexp.Match(regexp.RuneArrayMatchable(p), 0, len(p), +1)
 		match := loc != nil
@@ -458,6 +459,7 @@ func XYcmdfn(inv bool, c *Cmd, ec *EditContext) {
 			subec := ec.subec(buffers[i], &util.Sel{0, 0})
 			c.body.fn(c.body, &subec)
 		}
+		ec.BufMan.RefreshBuffer(buffers[i])
 	}
 }
 

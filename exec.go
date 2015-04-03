@@ -488,12 +488,12 @@ func EditCmd(ec ExecContext, arg string) {
 		ec.ed.confirmSave = false
 	}
 	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
-		return
-	}
-
-	edit.Edit(arg, makeEditContext(ec.buf, &ec.fr.Sel, ec.eventChan, ec.ed))
-	if !ec.norefresh {
-		ec.br()
+		edit.Edit(arg, makeEditContext(nil, nil, nil, nil))
+	} else {
+		edit.Edit(arg, makeEditContext(ec.buf, &ec.fr.Sel, ec.eventChan, ec.ed))
+		if !ec.norefresh {
+			ec.br()
+		}
 	}
 }
 
@@ -1257,4 +1257,14 @@ func (bm *BufMan) Close(buf *buf.Buffer) {
 	removeBuffer(buf)
 	Wnd.wnd.FlushImage()
 
+}
+
+func (bm *BufMan) RefreshBuffer(buf *buf.Buffer) {
+	for _, col := range Wnd.cols.cols {
+		for _, ed := range col.editors {
+			if ed.bodybuf == buf {
+				ed.BufferRefreshEx(false, false)
+			}
+		}
+	}
 }

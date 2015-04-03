@@ -30,7 +30,7 @@ type Cmd struct {
 
 type EditContext struct {
 	Buf       *buf.Buffer
-	Sel *util.Sel
+	Sel       *util.Sel
 	atsel     *util.Sel
 	EventChan chan string
 	PushJump  func()
@@ -41,6 +41,7 @@ type BufferManaging interface {
 	Open(name string) *buf.Buffer
 	List() []*buf.Buffer
 	Close(buf *buf.Buffer)
+	RefreshBuffer(buf *buf.Buffer)
 }
 
 func Edit(pgm string, ec EditContext) {
@@ -136,7 +137,7 @@ func (ec *EditContext) subec(buf *buf.Buffer, atsel *util.Sel) EditContext {
 	if buf == ec.Buf {
 		return EditContext{
 			Buf:       ec.Buf,
-			Sel:      ec.Sel,
+			Sel:       ec.Sel,
 			atsel:     atsel,
 			EventChan: ec.EventChan,
 			PushJump:  ec.PushJump,
@@ -145,7 +146,7 @@ func (ec *EditContext) subec(buf *buf.Buffer, atsel *util.Sel) EditContext {
 	} else {
 		return EditContext{
 			Buf:       buf,
-			Sel:      nil,
+			Sel:       nil,
 			atsel:     atsel,
 			EventChan: nil,
 			PushJump:  nil,
