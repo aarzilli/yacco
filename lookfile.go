@@ -70,8 +70,8 @@ func lookfileproc(ed *Editor) {
 
 					if len(resultList) > 0 {
 						sideChan <- func() {
-							ec.fr.Sels[2].S = 0
-							ec.fr.Sels[2].E = ed.bodybuf.Tonl(1, +1)
+							ec.fr.Sel.S = 0
+							ec.fr.Sel.E = ed.bodybuf.Tonl(1, +1)
 							Load(ec, 0)
 						}
 					}

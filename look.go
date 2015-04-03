@@ -38,8 +38,8 @@ func lookfwdEx(ed *Editor, needle []rune, start int, exact bool) bool {
 		if match {
 			j++
 			if j >= len(needle) {
-				ed.sfr.Fr.Sels[0].S = i - j + 1
-				ed.sfr.Fr.Sels[0].E = i + 1
+				ed.sfr.Fr.Sel.S = i - j + 1
+				ed.sfr.Fr.Sel.E = i + 1
 				return true
 			}
 		} else {
@@ -52,11 +52,11 @@ func lookfwdEx(ed *Editor, needle []rune, start int, exact bool) bool {
 }
 
 func lookfwd(ed *Editor, needle []rune, fromEnd bool, setJump bool, exact bool) {
-	start := ed.sfr.Fr.Sels[0].S
+	start := ed.sfr.Fr.Sel.S
 	if fromEnd {
-		start = ed.sfr.Fr.Sels[0].E
+		start = ed.sfr.Fr.Sel.E
 	}
-	ed.sfr.Fr.Sels[0].S = ed.sfr.Fr.Sels[0].E
+	ed.sfr.Fr.Sel.S = ed.sfr.Fr.Sel.E
 	if !lookfwdEx(ed, needle, start, exact) {
 		lookfwdEx(ed, needle, 0, exact)
 	}
@@ -119,8 +119,8 @@ func lookproc(ec ExecContext) {
 			case "Look!Again":
 				sideChan <- func() {
 					lookfwd(ec.ed, needle, true, false, exact)
-					if ec.fr.Sels[0].S != ec.fr.Sels[0].E {
-						matches = append(matches, ec.fr.Sels[0])
+					if ec.fr.Sel.S != ec.fr.Sel.E {
+						matches = append(matches, ec.fr.Sel)
 					}
 				}
 
@@ -131,7 +131,7 @@ func lookproc(ec ExecContext) {
 			case "Look!Prev":
 				if len(matches) > 1 {
 					sideChan <- func() {
-						ec.fr.Sels[0] = matches[len(matches)-2]
+						ec.fr.Sel = matches[len(matches)-2]
 						matches = matches[:len(matches)-1]
 						ec.ed.BufferRefresh()
 						ec.ed.Warp()
@@ -155,8 +155,8 @@ func lookproc(ec ExecContext) {
 			lastNeedle = needle
 			sideChan <- func() {
 				lookfwd(ec.ed, needle, false, false, exact)
-				if doAppend && (ec.fr.Sels[0].S != ec.fr.Sels[0].E) {
-					matches = append(matches, ec.fr.Sels[0])
+				if doAppend && (ec.fr.Sel.S != ec.fr.Sel.E) {
+					matches = append(matches, ec.fr.Sel)
 				}
 			}
 		}

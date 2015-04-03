@@ -69,9 +69,9 @@ func Load(ec ExecContext, origin int) {
 				continue
 			}
 		}
-		start := ec.fr.Sels[2].S
+		start := ec.fr.Sel.S
 		for {
-			matches := rule.Re.Match(ec.buf, start, ec.fr.Sels[2].E, +1)
+			matches := rule.Re.Match(ec.buf, start, ec.fr.Sel.E, +1)
 			//println("match:", matches, ec.fr.Sels[2].S, ec.fr.Sels[2].E)
 			if matches == nil {
 				break
@@ -83,7 +83,7 @@ func Load(ec ExecContext, origin int) {
 
 			ok := false
 			if origin < 0 {
-				ok = (s == ec.fr.Sels[2].S) && (e == ec.fr.Sels[2].E)
+				ok = (s == ec.fr.Sel.S) && (e == ec.fr.Sel.E)
 			} else {
 				ok = (s <= origin) && (origin <= e)
 			}
@@ -162,8 +162,8 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 	switch rule.Action[0] {
 	case 'X':
 		expaction := expandMatches(action, matches)
-		ec.fr.Sels[2] = util.Sel{s, e}
-		ec.fr.Sels[0] = ec.fr.Sels[2]
+		ec.fr.Sel = util.Sel{s, e}
+		ec.fr.SelColor = 2
 		Exec(ec, expaction)
 		return true
 	case 'L':
@@ -184,8 +184,8 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 		if newed == nil {
 			return false
 		}
-		ec.fr.Sels[2] = util.Sel{s, e}
-		ec.fr.Sels[0] = ec.fr.Sels[2]
+		ec.fr.Sel = util.Sel{s, e}
+		ec.fr.SelColor = 2
 		ec.br()
 		if addrExpr != "" {
 			func() {
@@ -193,8 +193,8 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 					recover()
 					// do nothing, doesn't matter anyway
 				}()
-				newed.sfr.Fr.Sels[0] = util.Sel{0, 0}
-				newed.sfr.Fr.Sels[0] = edit.AddrEval(addrExpr, newed.bodybuf, newed.sfr.Fr.Sels[0])
+				newed.sfr.Fr.Sel = util.Sel{0, 0}
+				newed.sfr.Fr.Sel = edit.AddrEval(addrExpr, newed.bodybuf, newed.sfr.Fr.Sel)
 				newed.PushJump()
 			}()
 			newed.BufferRefresh()

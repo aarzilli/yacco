@@ -135,15 +135,21 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 
 	e.GenTag()
 	e.tagbuf.Replace([]rune("Look Edit "), &util.Sel{e.tagbuf.Size(), e.tagbuf.Size()}, true, nil, util.EO_FILES)
-	e.tagfr.Sels[0].S = e.tagbuf.Size()
-	e.tagfr.Sels[0].E = e.tagbuf.Size()
+	e.tagfr.Sel.S = e.tagbuf.Size()
+	e.tagfr.Sel.E = e.tagbuf.Size()
 
 	e.sfr.Set(0, e.bodybuf.Size())
 
-	e.tagbuf.AddSels(&e.tagfr.Sels)
-	e.bodybuf.AddSels(&e.sfr.Fr.Sels)
-	e.bodybuf.AddSels(&e.jumps)
-	e.bodybuf.AddSels(&e.otherSel)
+	e.tagbuf.AddSel(&e.tagfr.Sel)
+	e.tagbuf.AddSel(&e.tagfr.PMatch)
+	e.bodybuf.AddSel(&e.sfr.Fr.Sel)
+	e.bodybuf.AddSel(&e.sfr.Fr.PMatch)
+	for i := range e.jumps {
+		e.bodybuf.AddSel(&e.jumps[i])
+	}
+	for i := range e.otherSel {
+		e.bodybuf.AddSel(&e.otherSel[i])
+	}
 
 	e.eventReader.Reset()
 
@@ -217,9 +223,14 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool, simpleReca
 }
 
 func (e *Editor) Close() {
-	e.bodybuf.RmSels(&e.sfr.Fr.Sels)
-	e.bodybuf.RmSels(&e.jumps)
-	e.bodybuf.RmSels(&e.otherSel)
+	e.bodybuf.RmSel(&e.sfr.Fr.Sel)
+	e.bodybuf.RmSel(&e.sfr.Fr.PMatch)
+	for i := range e.jumps {
+		e.bodybuf.RmSel(&e.jumps[i])
+	}
+	for i := range e.otherSel {
+		e.bodybuf.RmSel(&e.otherSel[i])
+	}
 }
 
 func (e *Editor) MinHeight() int {
@@ -315,8 +326,8 @@ func (e *Editor) GenTag() bool {
 		return false
 	}
 
-	start := e.tagfr.Sels[0].S - e.tagbuf.EditableStart
-	end := e.tagfr.Sels[0].E - e.tagbuf.EditableStart
+	start := e.tagfr.Sel.S - e.tagbuf.EditableStart
+	end := e.tagfr.Sel.E - e.tagbuf.EditableStart
 	if start < 0 || end < 0 {
 		start = 0
 		end = 0
@@ -325,9 +336,9 @@ func (e *Editor) GenTag() bool {
 	e.tagbuf.Replace([]rune(t), &util.Sel{0, e.tagbuf.Size()}, true, nil, 0)
 	e.tagbuf.FlushUndo()
 	TagSetEditableStart(e.tagbuf)
-	e.tagfr.Sels[0].S = start + e.tagbuf.EditableStart
-	e.tagfr.Sels[0].E = end + e.tagbuf.EditableStart
-	e.tagbuf.FixSel(&e.tagfr.Sels[0])
+	e.tagfr.Sel.S = start + e.tagbuf.EditableStart
+	e.tagfr.Sel.E = end + e.tagbuf.EditableStart
+	e.tagbuf.FixSel(&e.tagfr.Sel)
 	return true
 }
 
@@ -382,34 +393,22 @@ func (e *Editor) TagRefresh() {
 }
 
 func (e *Editor) BufferRefreshEx(recur, scroll bool) {
-	match := findPMatch(e.tagbuf, e.tagfr.Sels[0])
+	match := findPMatch(e.tagbuf, e.tagfr.Sel)
 	if match.S >= 0 {
-		e.tagfr.Sels[PMATCHSEL] = match
+		e.tagfr.PMatch = match
 	} else {
-		e.tagfr.Sels[PMATCHSEL].S = e.tagfr.Sels[PMATCHSEL].E
+		e.tagfr.PMatch.S = e.tagfr.PMatch.E
 	}
-	match = findPMatch(e.bodybuf, e.sfr.Fr.Sels[0])
+	match = findPMatch(e.bodybuf, e.sfr.Fr.Sel)
 	if match.S >= 0 {
-		e.sfr.Fr.Sels[PMATCHSEL] = match
+		e.sfr.Fr.PMatch = match
 	} else {
-		e.sfr.Fr.Sels[PMATCHSEL].S = e.sfr.Fr.Sels[PMATCHSEL].E
-	}
-
-	if e.sfr.Fr.Sels[1].S != e.sfr.Fr.Sels[1].E {
-		if (e.sfr.Fr.Sels[0].S != e.sfr.Fr.Sels[1].S) || (e.sfr.Fr.Sels[0].E != e.sfr.Fr.Sels[1].E) {
-			e.sfr.Fr.Sels[1].E = e.sfr.Fr.Sels[1].S
-		}
-	}
-
-	if e.sfr.Fr.Sels[2].S != e.sfr.Fr.Sels[2].E {
-		if (e.sfr.Fr.Sels[0].S != e.sfr.Fr.Sels[2].S) || (e.sfr.Fr.Sels[0].E != e.sfr.Fr.Sels[2].E) {
-			e.sfr.Fr.Sels[2].E = e.sfr.Fr.Sels[2].S
-		}
+		e.sfr.Fr.PMatch.S = e.sfr.Fr.PMatch.E
 	}
 
 	e.refreshIntl(false)
-	if !e.sfr.Fr.Inside(e.sfr.Fr.Sels[0].E) && recur && scroll {
-		x := e.bodybuf.Tonl(e.sfr.Fr.Sels[0].E-2, -1)
+	if !e.sfr.Fr.Inside(e.sfr.Fr.Sel.E) && recur && scroll {
+		x := e.bodybuf.Tonl(e.sfr.Fr.Sel.E-2, -1)
 		e.otherSel[OS_TOP].E = x
 		e.refreshIntl(false)
 		e.sfr.Redraw(true, nil) // NEEDED, otherwise every other redraw is optimized and is not performed correctly
@@ -500,7 +499,7 @@ func (ed *Editor) Warp() {
 	if !HasFocus {
 		return
 	}
-	p := ed.sfr.Fr.PointToCoord(ed.sfr.Fr.Sels[0].S)
+	p := ed.sfr.Fr.PointToCoord(ed.sfr.Fr.Sel.S)
 	if !ed.sfr.Fr.VisibleTick {
 		ed.sfr.Fr.VisibleTick = true
 		ed.sfr.Fr.Redraw(false, nil)
@@ -613,7 +612,7 @@ func (ed *Editor) Dump() DumpEditor {
 		ed.frac,
 		fontName,
 		string(ed.tagbuf.SelectionRunes(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()})),
-		ed.sfr.Fr.Sels[0].S,
+		ed.sfr.Fr.Sel.S,
 	}
 }
 
@@ -622,13 +621,13 @@ func (ed *Editor) PushJump() {
 		ed.jumps[i-1] = ed.jumps[i]
 	}
 
-	ed.jumps[len(ed.jumps)-1].S = ed.sfr.Fr.Sels[0].S
+	ed.jumps[len(ed.jumps)-1].S = ed.sfr.Fr.Sel.S
 }
 
 func (ed *Editor) RestoreJump() {
 	start := 0
 	for i := range ed.jumps {
-		if ed.jumps[i].S == ed.sfr.Fr.Sels[0].S {
+		if ed.jumps[i].S == ed.sfr.Fr.Sel.S {
 			start = i + 1
 		}
 	}
@@ -636,15 +635,11 @@ func (ed *Editor) RestoreJump() {
 	for i := range ed.jumps {
 		k := (i + start) % len(ed.jumps)
 		if ed.jumps[k].S != -1 {
-			ed.sfr.Fr.Sels[0].S = ed.jumps[k].S
-			ed.sfr.Fr.Sels[0].E = ed.jumps[k].S
+			ed.sfr.Fr.Sel.S = ed.jumps[k].S
+			ed.sfr.Fr.Sel.E = ed.jumps[k].S
 			return
 		}
 	}
-}
-
-func (ed *Editor) LastJump() int {
-	return ed.sfr.Fr.Sels[0].S
 }
 
 func (e *Editor) readDir() {

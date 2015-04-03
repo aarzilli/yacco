@@ -59,7 +59,9 @@ type Frame struct {
 	margin raster.Fix32
 	Offset int
 
-	Sels []util.Sel
+	Sel      util.Sel
+	SelColor int
+	PMatch   util.Sel
 
 	glyphs   []glyph
 	ins      raster.Point
@@ -67,7 +69,9 @@ type Frame struct {
 
 	redrawOpt struct {
 		drawnVisibleTick bool
-		drawnSels        []util.Sel
+		drawnSel         util.Sel
+		drawnPMatch util.Sel
+		selColor         int
 		reloaded         bool
 		scrollStart      int
 		scrollEnd        int
@@ -105,9 +109,9 @@ type glyph struct {
 // Initializes frame
 func (fr *Frame) Init(margin int) error {
 	fr.margin = raster.Fix32(margin << 8)
-	fr.Sels = make([]util.Sel, len(fr.Colors))
 	fr.glyphs = []glyph{}
 	fr.Offset = 0
+	fr.SelColor = 0
 
 	if fr.TabWidth == 0 {
 		fr.TabWidth = 8
@@ -381,7 +385,7 @@ func (fr *Frame) Measure(rs []rune) int {
 // Tracks the mouse position, selecting text, the events channel is from go.wde
 // kind is 1 for character by character selection, 2 for word by word selection, 3 for line by line selection
 func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interface{}) *wde.MouseUpEvent {
-	if (idx < 0) || (idx >= len(fr.Sels)) {
+	if (idx < 0) || (idx >= len(fr.Colors)-1) {
 		for ei := range events {
 			switch e := ei.(type) {
 			case wde.MouseUpEvent:
@@ -390,7 +394,8 @@ func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interfac
 		}
 	}
 
-	fix := fr.Sels[idx].S
+	fr.SelColor = idx
+	fix := fr.Sel.S
 	var autoscrollTicker *time.Ticker
 	var autoscrollChan <-chan time.Time
 
@@ -450,32 +455,15 @@ func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interfac
 // Sets extremes of the selection, pass start == end if you want an empty selection
 // idx is the index of the selection
 func (fr *Frame) SetSelect(idx, kind, start, end int) {
-	fr.setSelectEx(idx, kind, start, end, true)
+	fr.setSelectEx(idx, kind, start, end)
 }
 
-func (fr *Frame) DisableOtherSelections(idx int) {
-	for i := range fr.Sels {
-		if i > 3 {
-			break
-		}
-		if i != idx {
-			fr.Sels[i].E = fr.Sels[i].S
-		}
-	}
-}
-
-func (fr *Frame) setSelectEx(idx, kind, start, end int, disableOther bool) {
-	if disableOther || (kind != 1) {
-		for i := range fr.Sels {
-			if (i != idx) && (i != 0) {
-				fr.Sels[i].E = fr.Sels[i].S
-			}
-		}
+func (fr *Frame) setSelectEx(idx, kind, start, end int) {
+	if (idx < 0) || (idx >= len(fr.Colors)) {
+		idx = 0
 	}
 
-	if (idx < 0) || (idx >= len(fr.Sels)) {
-		return
-	}
+	fr.SelColor = idx
 
 	if start >= end {
 		temp := start
@@ -485,11 +473,11 @@ func (fr *Frame) setSelectEx(idx, kind, start, end int, disableOther bool) {
 
 	if fr.ExpandSelection != nil {
 		nstart, nend := fr.ExpandSelection(kind, start, end)
-		fr.Sels[idx].S = nstart
-		fr.Sels[idx].E = nend
+		fr.Sel.S = nstart
+		fr.Sel.E = nend
 	} else {
-		fr.Sels[idx].S = start
-		fr.Sels[idx].E = end
+		fr.Sel.S = start
+		fr.Sel.E = end
 	}
 }
 
@@ -598,10 +586,10 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform, invalid *[]imag
 }
 
 func (fr *Frame) reallyVisibleTick() bool {
-	if !fr.VisibleTick || (fr.Sels[0].S != fr.Sels[0].E) {
+	if !fr.VisibleTick || (fr.Sel.S != fr.Sel.E) {
 		return false
 	}
-	if (fr.Sels[0].S-fr.Top < 0) || (fr.Sels[0].S-fr.Top > len(fr.glyphs)) {
+	if (fr.Sel.S-fr.Top < 0) || (fr.Sel.S-fr.Top > len(fr.glyphs)) {
 		return false
 	}
 
@@ -618,8 +606,8 @@ func (fr *Frame) drawTick(glyphBounds truetype.Bounds, drawingFuncs DrawingFuncs
 		p := fr.initialInsPoint()
 		x = int(p.X >> 8)
 		y = int(p.Y >> 8)
-	} else if fr.Sels[0].S-fr.Top < len(fr.glyphs) {
-		p := fr.glyphs[fr.Sels[0].S-fr.Top].p
+	} else if fr.Sel.S-fr.Top < len(fr.glyphs) {
+		p := fr.glyphs[fr.Sel.S-fr.Top].p
 		x = int(p.X >> 8)
 		y = int(p.Y >> 8)
 	} else {
@@ -661,31 +649,31 @@ func (fr *Frame) drawTick(glyphBounds truetype.Bounds, drawingFuncs DrawingFuncs
 }
 
 func (fr *Frame) deleteTick(glyphBounds truetype.Bounds, drawingFuncs DrawingFuncs) image.Rectangle {
-	saved := fr.Sels[0]
-	fr.Sels[0] = fr.redrawOpt.drawnSels[0]
+	saved := fr.Sel
+	fr.Sel = fr.redrawOpt.drawnSel
 	vt := fr.VisibleTick
 	fr.VisibleTick = true
 	fr.drawTick(glyphBounds, drawingFuncs, 0)
 	fr.VisibleTick = vt
 
 	if len(fr.glyphs) == 0 {
-		fr.Sels[0] = saved
+		fr.Sel = saved
 		return image.Rectangle{fr.R.Min, fr.R.Min}
 	}
 	var y int
-	if fr.Sels[0].S == fr.Sels[0].E {
-		if (fr.Sels[0].S-fr.Top >= 0) && (fr.Sels[0].S-fr.Top < len(fr.glyphs)) {
-			fr.drawSingleGlyph(&fr.glyphs[fr.Sels[0].S-fr.Top], 0, drawingFuncs)
-			if fr.Sels[0].S-fr.Top-1 >= 0 {
-				fr.drawSingleGlyph(&fr.glyphs[fr.Sels[0].S-fr.Top-1], 0, drawingFuncs)
+	if fr.Sel.S == fr.Sel.E {
+		if (fr.Sel.S-fr.Top >= 0) && (fr.Sel.S-fr.Top < len(fr.glyphs)) {
+			fr.drawSingleGlyph(&fr.glyphs[fr.Sel.S-fr.Top], 0, drawingFuncs)
+			if fr.Sel.S-fr.Top-1 >= 0 {
+				fr.drawSingleGlyph(&fr.glyphs[fr.Sel.S-fr.Top-1], 0, drawingFuncs)
 			}
-			y = int(fr.glyphs[fr.Sels[0].S-fr.Top].p.Y >> 8)
-		} else if (fr.Sels[0].S-fr.Top-1 >= 0) && (fr.Sels[0].S-fr.Top-1 < len(fr.glyphs)) {
-			fr.drawSingleGlyph(&fr.glyphs[fr.Sels[0].S-fr.Top-1], 0, drawingFuncs)
-			y = int((fr.glyphs[fr.Sels[0].S-fr.Top-1].p.Y + fr.glyphs[fr.Sels[0].S-fr.Top-1].widthy) >> 8)
+			y = int(fr.glyphs[fr.Sel.S-fr.Top].p.Y >> 8)
+		} else if (fr.Sel.S-fr.Top-1 >= 0) && (fr.Sel.S-fr.Top-1 < len(fr.glyphs)) {
+			fr.drawSingleGlyph(&fr.glyphs[fr.Sel.S-fr.Top-1], 0, drawingFuncs)
+			y = int((fr.glyphs[fr.Sel.S-fr.Top-1].p.Y + fr.glyphs[fr.Sel.S-fr.Top-1].widthy) >> 8)
 		}
 	}
-	fr.Sels[0] = saved
+	fr.Sel = saved
 
 	r := fr.R
 	r.Min.Y = y - int(fr.Font.SpacingFix(glyphBounds.YMax))
@@ -695,87 +683,69 @@ func (fr *Frame) deleteTick(glyphBounds truetype.Bounds, drawingFuncs DrawingFun
 
 func (fr *Frame) updateRedrawOpt() {
 	fr.redrawOpt.drawnVisibleTick = fr.reallyVisibleTick()
-	if fr.redrawOpt.drawnSels == nil {
-		fr.redrawOpt.drawnSels = make([]util.Sel, len(fr.Sels))
-	}
-	copy(fr.redrawOpt.drawnSels, fr.Sels)
+	fr.redrawOpt.drawnSel = fr.Sel
+	fr.redrawOpt.drawnPMatch = fr.PMatch
+	fr.redrawOpt.selColor = fr.SelColor
 	fr.redrawOpt.reloaded = false
 	fr.redrawOpt.scrollStart = -1
 	fr.redrawOpt.scrollEnd = -1
 }
 
 func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFuncs DrawingFuncs, leftMargin, rightMargin raster.Fix32) (bool, []image.Rectangle) {
+	if fr.redrawOpt.selColor != fr.SelColor {
+		return false, nil
+	}
 	invalid := make([]image.Rectangle, 0, 3)
 
 	if debugRedraw && fr.debugRedraw {
 		fmt.Printf("%p Attempting to run optimized redraw\n", fr)
 	}
 
-	idx := -1
-	failed := false
-	for i := range fr.redrawOpt.drawnSels {
-		changed := (fr.redrawOpt.drawnSels[i].S != fr.Sels[i].S) || (fr.redrawOpt.drawnSels[i].E != fr.Sels[i].E)
-		if changed {
-			if idx >= 0 {
-				// failed, we want only one selection changed
-				idx = -1
-				failed = true
-				break
-			} else {
-				idx = i
-			}
-		}
-	}
-
 	if debugRedraw {
-		fmt.Printf("%v -> %v\n", fr.redrawOpt.drawnSels, fr.Sels)
-	}
-
-	if failed {
-		if debugRedraw && fr.debugRedraw {
-			fmt.Printf("\tFailed: multiple changed\n")
-		}
-		return false, nil
-	}
-
-	if idx < 0 {
-		idx = 0
+		fmt.Printf("%v -> %v\n", fr.redrawOpt.drawnSel, fr.Sel)
 	}
 
 	cs, ce := -1, -1
 
-	fromnil := fr.redrawOpt.drawnSels[idx].S == fr.redrawOpt.drawnSels[idx].E
-	tonil := fr.Sels[idx].S == fr.Sels[idx].E
+	fromnil := fr.redrawOpt.drawnSel.S == fr.redrawOpt.drawnSel.E
+	tonil := fr.Sel.S == fr.Sel.E
 
 	if fromnil && tonil {
-		if idx == 0 {
-			if debugRedraw && fr.debugRedraw {
-				fmt.Printf("%p Redrawing tick move\n", fr)
-			}
-			if fr.redrawOpt.drawnVisibleTick {
-				invalid = append(invalid, fr.deleteTick(glyphBounds, drawingFuncs))
-			}
-
-			invalid = append(invalid, fr.drawTick(glyphBounds, drawingFuncs, 1))
+		if debugRedraw && fr.debugRedraw {
+			fmt.Printf("%p Redrawing tick move\n", fr)
 		}
-		return true, invalid
-	} else if fromnil && !tonil {
-		if idx == 0 && fr.redrawOpt.drawnVisibleTick {
+		if fr.redrawOpt.drawnVisibleTick {
 			invalid = append(invalid, fr.deleteTick(glyphBounds, drawingFuncs))
 		}
-		cs = fr.Sels[idx].S
-		ce = fr.Sels[idx].E
+
+		invalid = append(invalid, fr.drawTick(glyphBounds, drawingFuncs, 1))
+		
+		if len(fr.Colors) > 4 {
+			if debugRedraw && fr.debugRedraw {
+				fmt.Printf("\tRedrawing parenthesis match: %v -> %v\n", fr.redrawOpt.drawnPMatch, fr.PMatch)
+			}
+			fr.redrawSelectionLogical(fr.redrawOpt.drawnPMatch, &fr.Colors[0][0], &invalid, glyphBounds, leftMargin, rightMargin, drawingFuncs)
+			fr.redrawSelectionLogical(fr.PMatch, &fr.Colors[4][0], &invalid, glyphBounds, leftMargin, rightMargin, drawingFuncs)
+		}
+		
+		return true, invalid
+	} else if fromnil && !tonil {
+		if fr.redrawOpt.drawnVisibleTick {
+			invalid = append(invalid, fr.deleteTick(glyphBounds, drawingFuncs))
+		}
+		cs = fr.Sel.S
+		ce = fr.Sel.E
 	} else if !fromnil && tonil {
-		cs = fr.redrawOpt.drawnSels[idx].S
-		ce = fr.redrawOpt.drawnSels[idx].E
+		cs = fr.redrawOpt.drawnSel.S
+		ce = fr.redrawOpt.drawnSel.E
 	} else if !fromnil && !tonil {
 		// attempt to extend selection in one of two possible directions
-		if fr.redrawOpt.drawnSels[idx].S == fr.Sels[idx].S {
-			cs = fr.redrawOpt.drawnSels[idx].E
-			ce = fr.Sels[idx].E
-		} else if fr.redrawOpt.drawnSels[idx].E == fr.Sels[idx].E {
-			cs = fr.redrawOpt.drawnSels[idx].S
-			ce = fr.Sels[idx].S
+		if fr.redrawOpt.drawnSel.S == fr.Sel.S {
+			cs = fr.redrawOpt.drawnSel.E
+			ce = fr.Sel.E
+		} else if fr.redrawOpt.drawnSel.E == fr.Sel.E {
+			cs = fr.redrawOpt.drawnSel.S
+			ce = fr.Sel.S
 		}
 
 		if cs > ce {
@@ -790,6 +760,14 @@ func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFun
 			fmt.Printf("\tFailed: noncontiguous selection\n")
 		}
 		return false, nil
+	}
+	
+	if len(fr.Colors) > 4 {
+		if debugRedraw && fr.debugRedraw {
+			fmt.Printf("\tRedrawing parenthesis match: %v -> %v\n", fr.redrawOpt.drawnPMatch, fr.PMatch)
+		}
+		fr.redrawSelectionLogical(fr.redrawOpt.drawnPMatch, &fr.Colors[0][0], &invalid, glyphBounds, leftMargin, rightMargin, drawingFuncs)
+		fr.redrawSelectionLogical(fr.PMatch, &fr.Colors[4][0], &invalid, glyphBounds, leftMargin, rightMargin, drawingFuncs)
 	}
 
 	rs := cs - fr.Top
@@ -807,7 +785,7 @@ func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFun
 	}
 
 	if rs != re {
-		ssel := idx + 1
+		ssel := fr.SelColor + 1
 		if found, nssel := fr.getSsel(cs); found {
 			ssel = nssel
 		} else {
@@ -815,7 +793,7 @@ func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFun
 		}
 
 		if debugRedraw && fr.debugRedraw {
-			fmt.Printf("%p Redrawing selection %d change (%d %d) %d\n", fr, idx, cs, ce, ssel)
+			fmt.Printf("%p Redrawing selection %d change (%d %d) %d\n", fr, fr.SelColor, cs, ce, ssel)
 		}
 
 		fr.redrawSelection(rs, re, &fr.Colors[ssel][0], &invalid)
@@ -825,18 +803,33 @@ func (fr *Frame) redrawOptSelectionMoved(glyphBounds truetype.Bounds, drawingFun
 	if tonil {
 		invalid = append(invalid, fr.drawTick(glyphBounds, drawingFuncs, 1))
 	}
-
+		
 	return true, invalid
 }
 
-func (fr *Frame) allSelectionsEmpty() bool {
-	for i := range fr.Sels {
-		if fr.Sels[i].S != fr.Sels[i].E {
-			return false
-		}
+func (fr *Frame) redrawSelectionLogical(sel util.Sel, color *image.Uniform, invalid *[]image.Rectangle, glyphBounds truetype.Bounds, rightMargin, leftMargin raster.Fix32, drawingFuncs DrawingFuncs) {
+	if sel.S == sel.E {
+		return
 	}
+	
+	rs := sel.S - fr.Top
+	re := sel.E - fr.Top
+	
+	if re < 0 {
+		return
+	}
+	
+	if rs >= len(fr.glyphs) {
+		return
+	}
+	
+	fr.redrawSelection(rs, re, color, invalid)
+	fr.redrawIntl(fr.glyphs[rs:re], true, rs, glyphBounds, rightMargin, leftMargin, drawingFuncs)
+}
 
-	return true
+func (fr *Frame) allSelectionsEmpty() bool {
+	return (fr.Sel.S == fr.Sel.E) && (fr.PMatch.S == fr.PMatch.E)
+
 }
 
 func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
@@ -845,7 +838,7 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	leftMargin := raster.Fix32(fr.R.Min.X<<8) + fr.margin
 
 	drawingFuncs := GetOptimizedDrawing(fr.B)
-
+	
 	// FAST PATH 1
 	// Followed only if:
 	// - the frame wasn't reloaded (Clear, InsertColor weren't called) since last draw
@@ -874,7 +867,7 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 			fr.redrawOpt.scrollEnd = len(fr.glyphs)
 		}
 		fr.redrawIntl(fr.glyphs[fr.redrawOpt.scrollStart:fr.redrawOpt.scrollEnd], true, fr.redrawOpt.scrollStart, glyphBounds, rightMargin, leftMargin, drawingFuncs)
-		tp := fr.Sels[0].S - fr.Top
+		tp := fr.Sel.S - fr.Top
 		if tp >= fr.redrawOpt.scrollStart && tp <= fr.redrawOpt.scrollEnd {
 			fr.drawTick(glyphBounds, drawingFuncs, 1)
 		}
@@ -894,7 +887,7 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	if debugRedraw && fr.debugRedraw {
 		fmt.Printf("%p Redrawing (FULL)\n", fr)
 	}
-
+	
 	// background
 	drawingFuncs.DrawFillSrc(fr.B, fr.R, &fr.Colors[0][0])
 
@@ -913,10 +906,8 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 }
 
 func (fr *Frame) getSsel(i int) (bool, int) {
-	for j := len(fr.Colors) - 2; j >= 0; j-- {
-		if (i >= fr.Sels[j].S) && (i < fr.Sels[j].E) {
-			return true, j + 1
-		}
+	if (i >= fr.Sel.S) && (i < fr.Sel.E) {
+		return true, fr.SelColor + 1
 	}
 	return false, -1
 }
@@ -932,16 +923,22 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int, glyphBounds tr
 	for i, g := range glyphs {
 		// Selection drawing
 		if ssel != 0 {
-			if i+fr.Top+n >= fr.Sels[ssel-1].E {
+			if i+fr.Top+n >= fr.Sel.E {
 				ssel = 0
 			}
 		} else {
 			if found, nssel := fr.getSsel(i + fr.Top + n); found {
 				ssel = nssel
 				if drawSels {
-					fr.redrawSelection(fr.Sels[ssel-1].S-fr.Top, fr.Sels[ssel-1].E-fr.Top, &fr.Colors[ssel][0], nil)
+					fr.redrawSelection(fr.Sel.S-fr.Top, fr.Sel.E-fr.Top, &fr.Colors[ssel][0], nil)
 				}
 			}
+		}
+		
+		onpmatch := i + fr.Top + n == fr.PMatch.S
+		
+		if onpmatch && drawSels {
+			fr.redrawSelection(fr.PMatch.S - fr.Top, fr.PMatch.E - fr.Top, &fr.Colors[4][0], nil)
 		}
 
 		// Softwrap mark drawing
@@ -979,6 +976,9 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int, glyphBounds tr
 			color := &fr.Colors[1][1]
 			if (ssel >= 0) && (ssel < len(fr.Colors)) && (g.color >= 0) && (int(g.color) < len(fr.Colors[ssel])) {
 				color = &fr.Colors[ssel][g.color]
+			}
+			if onpmatch && len(fr.Colors) > 4 {
+				color = &fr.Colors[4][g.color]
 			}
 			drawingFuncs.DrawGlyphOver(fr.B, dr, color, mask, mp)
 		}
@@ -1054,20 +1054,24 @@ func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *wde.M
 	p := f.CoordToPoint(e.Where)
 
 	sel := int(math.Log2(float64(e.Which)))
-	if sel >= len(f.Sels) {
+	if sel >= len(f.Colors) {
 		return nil
 	}
 
 	if p >= 0 {
 		if (sel == 0) && (e.Count == 1) && (e.Modifiers == "shift+") {
 			// shift-click extends selection, but only for the first selection
-			if p < f.Sels[0].S {
-				f.setSelectEx(sel, e.Count, p, f.Sels[0].E, false)
+			if p < f.Sel.S {
+				f.setSelectEx(sel, e.Count, p, f.Sel.E)
 			} else {
-				f.setSelectEx(sel, e.Count, f.Sels[0].S, p, false)
+				f.setSelectEx(sel, e.Count, f.Sel.S, p)
 			}
 		} else {
-			f.setSelectEx(sel, e.Count, p, p, false)
+			if sel != 0 && f.Sel.S != f.Sel.E && (p >= f.Sel.S-1) && (p <= f.Sel.E+1) {
+				f.SelColor = sel
+			} else {
+				f.setSelectEx(sel, e.Count, p, p)
+			}
 		}
 		f.Redraw(true, nil)
 		ee := f.Select(sel, e.Count, e.Which, events)

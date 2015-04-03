@@ -15,7 +15,7 @@ func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 	}
 	switch cmd {
 	case "addr=dot":
-		ec.ed.otherSel[OS_ADDR] = ec.fr.Sels[0]
+		ec.ed.otherSel[OS_ADDR] = ec.fr.Sel
 
 	case "clean":
 		ec.buf.Modified = false
@@ -36,7 +36,7 @@ func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 		DelCmd(*ec, "", true)
 
 	case "dot=addr":
-		ec.fr.Sels[0] = ec.ed.otherSel[OS_ADDR]
+		ec.fr.Sel = ec.ed.otherSel[OS_ADDR]
 		sideChan <- RefreshMsg(ec.buf, ec.ed, true)
 
 	case "get":

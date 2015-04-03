@@ -298,9 +298,9 @@ func UpdateJobs(create bool) {
 		return
 	}
 
-	ed.sfr.Fr.Sels[0].S = 0
-	ed.sfr.Fr.Sels[0].E = ed.bodybuf.Size()
-	ed.bodybuf.Replace([]rune(t), &ed.sfr.Fr.Sels[0], true, nil, 0)
+	ed.sfr.Fr.Sel.S = 0
+	ed.sfr.Fr.Sel.E = ed.bodybuf.Size()
+	ed.bodybuf.Replace([]rune(t), &ed.sfr.Fr.Sel, true, nil, 0)
 
 	if create {
 		ed.tagbuf.Replace([]rune("Kill"), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0)

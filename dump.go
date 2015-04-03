@@ -125,8 +125,8 @@ func LoadFrom(dumpDest string) bool {
 
 			ed.tagbuf.Replace([]rune(de.TagText), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, util.EO_MOUSE)
 			if de.SelS != 0 {
-				ed.sfr.Fr.Sels[0].S = de.SelS
-				ed.sfr.Fr.Sels[0].E = de.SelS
+				ed.sfr.Fr.Sel.S = de.SelS
+				ed.sfr.Fr.Sel.E = de.SelS
 			}
 
 		}

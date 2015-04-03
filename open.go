@@ -122,16 +122,16 @@ func Warnfull(bufname, msg string, clear bool, selectit bool) {
 		fmt.Printf("Warn: %s (additionally error %s while displaying this warning)\n", msg, err.Error())
 	} else {
 		if clear {
-			ed.sfr.Fr.Sels[0].S = 0
+			ed.sfr.Fr.Sel.S = 0
 		} else {
-			ed.sfr.Fr.Sels[0].S = ed.bodybuf.Size()
+			ed.sfr.Fr.Sel.S = ed.bodybuf.Size()
 		}
-		ed.sfr.Fr.Sels[0].E = ed.bodybuf.Size()
+		ed.sfr.Fr.Sel.E = ed.bodybuf.Size()
 
-		s := ed.sfr.Fr.Sels[0].S
-		ed.bodybuf.Replace([]rune(msg), &ed.sfr.Fr.Sels[0], true, nil, 0)
+		s := ed.sfr.Fr.Sel.S
+		ed.bodybuf.Replace([]rune(msg), &ed.sfr.Fr.Sel, true, nil, 0)
 		if selectit {
-			ed.sfr.Fr.Sels[0].S = s
+			ed.sfr.Fr.Sel.S = s
 		}
 
 		ed.BufferRefresh()

@@ -339,13 +339,13 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 		return
 	}
 
-	s := string(ec.buf.SelectionRunes(ec.fr.Sels[0]))
+	s := string(ec.buf.SelectionRunes(ec.fr.Sel))
 	if s == "" {
 		// Does not trash clipboard when accidentally copying nil text
 		return
 	}
 	if del {
-		ec.buf.Replace([]rune{}, &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
+		ec.buf.Replace([]rune{}, &ec.fr.Sel, true, ec.eventChan, util.EO_MOUSE)
 		if !ec.norefresh {
 			ec.br()
 		}
@@ -491,7 +491,7 @@ func EditCmd(ec ExecContext, arg string) {
 		return
 	}
 
-	edit.Edit(arg, makeEditContext(ec.buf, ec.fr.Sels, ec.eventChan, ec.ed))
+	edit.Edit(arg, makeEditContext(ec.buf, &ec.fr.Sel, ec.eventChan, ec.ed))
 	if !ec.norefresh {
 		ec.br()
 	}
@@ -644,7 +644,7 @@ func PasteCmd(ec ExecContext, arg string) {
 		cb = Wnd.wnd.GetClipboard()
 	}
 
-	ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
+	ec.buf.Replace([]rune(cb), &ec.fr.Sel, true, ec.eventChan, util.EO_MOUSE)
 	if !ec.norefresh {
 		ec.br()
 	}
@@ -661,8 +661,8 @@ func PasteIndentCmd(ec ExecContext, arg string) {
 	}
 	cb := Wnd.wnd.GetClipboard()
 
-	if (ec.fr.Sels[0].S == 0) || (ec.fr.Sels[0].S != ec.fr.Sels[0].E) || (ec.ed == nil) || (ec.buf != ec.ed.bodybuf) {
-		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
+	if (ec.fr.Sel.S == 0) || (ec.fr.Sel.S != ec.fr.Sel.E) || (ec.ed == nil) || (ec.buf != ec.ed.bodybuf) {
+		ec.buf.Replace([]rune(cb), &ec.fr.Sel, true, ec.eventChan, util.EO_MOUSE)
 		if !ec.norefresh {
 			ec.br()
 		}
@@ -672,11 +672,11 @@ func PasteIndentCmd(ec ExecContext, arg string) {
 	failed := false
 	tgtIndent := ""
 tgtIndentSearch:
-	for i := ec.fr.Sels[0].S - 1; i > 0; i-- {
+	for i := ec.fr.Sel.S - 1; i > 0; i-- {
 		r := ec.buf.At(i).R
 		switch r {
 		case '\n':
-			tgtIndent = string(ec.buf.SelectionRunes(util.Sel{i + 1, ec.fr.Sels[0].S}))
+			tgtIndent = string(ec.buf.SelectionRunes(util.Sel{i + 1, ec.fr.Sel.S}))
 			break tgtIndentSearch
 		case ' ', '\t':
 			// continue
@@ -687,7 +687,7 @@ tgtIndentSearch:
 	}
 
 	if failed {
-		ec.buf.Replace([]rune(cb), &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
+		ec.buf.Replace([]rune(cb), &ec.fr.Sel, true, ec.eventChan, util.EO_MOUSE)
 		if !ec.norefresh {
 			ec.br()
 		}
@@ -716,7 +716,7 @@ tgtIndentSearch:
 	}
 
 	ecb := strings.Join(pasteLines, "\n")
-	ec.buf.Replace([]rune(ecb), &ec.fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
+	ec.buf.Replace([]rune(ecb), &ec.fr.Sel, true, ec.eventChan, util.EO_MOUSE)
 	if !ec.norefresh {
 		ec.br()
 	}
@@ -806,7 +806,7 @@ func RedoCmd(ec ExecContext, arg string) {
 	}
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
-	ec.buf.Undo(&ec.fr.Sels[0], true)
+	ec.buf.Undo(&ec.fr.Sel, true)
 	if !ec.norefresh {
 		ec.br()
 	}
@@ -820,13 +820,13 @@ func SendCmd(ec ExecContext, arg string) {
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
 	txt := []rune{}
-	if ec.ed.sfr.Fr.Sels[0].S != ec.ed.sfr.Fr.Sels[0].E {
-		txt = ec.ed.bodybuf.SelectionRunes(ec.ed.sfr.Fr.Sels[0])
+	if ec.ed.sfr.Fr.Sel.S != ec.ed.sfr.Fr.Sel.E {
+		txt = ec.ed.bodybuf.SelectionRunes(ec.ed.sfr.Fr.Sel)
 	} else {
 		txt = []rune(Wnd.wnd.GetClipboard())
 	}
-	ec.ed.sfr.Fr.Sels[0] = util.Sel{ec.buf.Size(), ec.buf.Size()}
-	ec.ed.bodybuf.Replace(txt, &ec.ed.sfr.Fr.Sels[0], true, ec.eventChan, util.EO_MOUSE)
+	ec.ed.sfr.Fr.Sel = util.Sel{ec.buf.Size(), ec.buf.Size()}
+	ec.ed.bodybuf.Replace(txt, &ec.ed.sfr.Fr.Sel, true, ec.eventChan, util.EO_MOUSE)
 	if !ec.norefresh {
 		ec.ed.BufferRefresh()
 	}
@@ -851,7 +851,7 @@ func UndoCmd(ec ExecContext, arg string) {
 	}
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
-	ec.buf.Undo(&ec.fr.Sels[0], false)
+	ec.buf.Undo(&ec.fr.Sel, false)
 	if ec.br != nil && !ec.norefresh {
 		ec.br()
 	}
@@ -869,8 +869,8 @@ func ZeroxCmd(ec ExecContext, arg string) {
 	ed.confirmDel = false
 	ed.confirmSave = false
 	ned := NewEditor(ed.bodybuf, true)
-	ned.sfr.Fr.Sels[0].S = ed.sfr.Fr.Sels[0].S
-	ned.sfr.Fr.Sels[0].E = ed.sfr.Fr.Sels[0].E
+	ned.sfr.Fr.Sel.S = ed.sfr.Fr.Sel.S
+	ned.sfr.Fr.Sel.E = ed.sfr.Fr.Sel.E
 	Log(bufferIndex(ed.bodybuf), LOP_ZEROX, ed.bodybuf)
 	HeuristicPlaceEditor(ned, true)
 }
@@ -888,7 +888,7 @@ func PipeCmd(ec ExecContext, arg string) {
 		wd = ec.buf.Dir
 	}
 
-	txt := string(ec.ed.bodybuf.SelectionRunes(ec.fr.Sels[0]))
+	txt := string(ec.ed.bodybuf.SelectionRunes(ec.fr.Sel))
 	NewJob(wd, arg, txt, &ec, true, nil)
 }
 
@@ -923,7 +923,7 @@ func PipeOutCmd(ec ExecContext, arg string) {
 		wd = ec.buf.Dir
 	}
 
-	txt := string(ec.ed.bodybuf.SelectionRunes(ec.fr.Sels[0]))
+	txt := string(ec.ed.bodybuf.SelectionRunes(ec.fr.Sel))
 	NewJob(wd, arg, txt, &ec, false, nil)
 }
 
@@ -1004,7 +1004,7 @@ func LookFileCmd(ec ExecContext, arg string) {
 		ed.sfr.Fr.Hackflags |= textframe.HF_TRUNCATE
 		go lookfileproc(ed)
 	} else {
-		ed.tagfr.Sels[0] = util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}
+		ed.tagfr.Sel = util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}
 	}
 }
 
@@ -1013,8 +1013,8 @@ func JumpCmd(ec ExecContext, arg string) {
 		return
 	}
 	if strings.ToLower(arg) == "tip" {
-		ec.ed.sfr.Fr.Sels[0].S = ec.ed.otherSel[OS_TIP].E
-		ec.ed.sfr.Fr.Sels[0].E = ec.ed.otherSel[OS_TIP].E
+		ec.ed.sfr.Fr.Sel.S = ec.ed.otherSel[OS_TIP].E
+		ec.ed.sfr.Fr.Sel.E = ec.ed.otherSel[OS_TIP].E
 	} else {
 		ec.ed.confirmDel = false
 		ec.ed.confirmSave = false
@@ -1103,7 +1103,7 @@ func editPgmToFunc(pgm *edit.Cmd) func(ec ExecContext) {
 			return
 		}
 
-		pgm.Exec(makeEditContext(ec.buf, ec.fr.Sels, ec.eventChan, ec.ed))
+		pgm.Exec(makeEditContext(ec.buf, &ec.fr.Sel, ec.eventChan, ec.ed))
 		if !ec.norefresh {
 			ec.br()
 		}
@@ -1208,7 +1208,7 @@ Debug compile <command>
 	}
 }
 
-func makeEditContext(buf *buf.Buffer, sels []util.Sel, eventChan chan string, ed *Editor) edit.EditContext {
+func makeEditContext(buf *buf.Buffer, sel *util.Sel, eventChan chan string, ed *Editor) edit.EditContext {
 	var pj func() = nil
 	if ed != nil {
 		pj = ed.PushJump
@@ -1216,7 +1216,7 @@ func makeEditContext(buf *buf.Buffer, sels []util.Sel, eventChan chan string, ed
 
 	return edit.EditContext{
 		Buf:       buf,
-		Sels:      sels,
+		Sel:       sel,
 		EventChan: eventChan,
 		PushJump:  pj,
 		BufMan:    &BufMan{},

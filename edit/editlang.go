@@ -30,7 +30,7 @@ type Cmd struct {
 
 type EditContext struct {
 	Buf       *buf.Buffer
-	Sels      []util.Sel
+	Sel *util.Sel
 	atsel     *util.Sel
 	EventChan chan string
 	PushJump  func()
@@ -53,7 +53,7 @@ func (ecmd *Cmd) Exec(ec EditContext) {
 		panic(fmt.Errorf("Command '%c' not implemented", ecmd.cmdch))
 	}
 
-	ec.atsel = &ec.Sels[0]
+	ec.atsel = ec.Sel
 
 	ecmd.fn(ecmd, &ec)
 }
@@ -136,7 +136,7 @@ func (ec *EditContext) subec(buf *buf.Buffer, atsel *util.Sel) EditContext {
 	if buf == ec.Buf {
 		return EditContext{
 			Buf:       ec.Buf,
-			Sels:      ec.Sels,
+			Sel:      ec.Sel,
 			atsel:     atsel,
 			EventChan: ec.EventChan,
 			PushJump:  ec.PushJump,
@@ -145,7 +145,7 @@ func (ec *EditContext) subec(buf *buf.Buffer, atsel *util.Sel) EditContext {
 	} else {
 		return EditContext{
 			Buf:       buf,
-			Sels:      nil,
+			Sel:      nil,
 			atsel:     atsel,
 			EventChan: nil,
 			PushJump:  nil,

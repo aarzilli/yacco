@@ -249,16 +249,16 @@ func writeDataFn(i int, data []byte, off int64) syscall.Errno {
 	debugfsf("Write data <%s>\n", sdata)
 	f := ReplaceMsg(ec, &ec.ed.otherSel[OS_ADDR], false, sdata, util.EO_FILES, false, false)
 	sideChan <- func() {
-		matchS := ec.ed.otherSel[OS_ADDR].S == ec.ed.sfr.Fr.Sels[0].S
-		matchE := ec.ed.otherSel[OS_ADDR].E == ec.ed.sfr.Fr.Sels[0].E
+		matchS := ec.ed.otherSel[OS_ADDR].S == ec.ed.sfr.Fr.Sel.S
+		matchE := ec.ed.otherSel[OS_ADDR].E == ec.ed.sfr.Fr.Sel.E
 		f()
 
 		if matchS {
-			ec.ed.sfr.Fr.Sels[0].S = ec.ed.otherSel[OS_ADDR].S
+			ec.ed.sfr.Fr.Sel.S = ec.ed.otherSel[OS_ADDR].S
 		}
 
 		if matchE {
-			ec.ed.sfr.Fr.Sels[0].E = ec.ed.otherSel[OS_ADDR].E
+			ec.ed.sfr.Fr.Sel.E = ec.ed.otherSel[OS_ADDR].E
 		}
 
 	}
@@ -327,8 +327,8 @@ func writeTagFn(i int, data []byte, off int64) syscall.Errno {
 			return
 		}
 		ec.ed.tagbuf.Replace([]rune(string(data)), &util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}, true, ec.eventChan, util.EO_BODYTAG)
-		ec.ed.tagfr.Sels[0].S = ec.ed.tagbuf.Size()
-		ec.ed.tagfr.Sels[0].E = ec.ed.tagfr.Sels[0].S
+		ec.ed.tagfr.Sel.S = ec.ed.tagbuf.Size()
+		ec.ed.tagfr.Sel.E = ec.ed.tagfr.Sel.S
 		ec.ed.TagRefresh()
 	}
 
@@ -430,16 +430,7 @@ func jumpFileFn(i int, off int64) ([]byte, syscall.Errno) {
 			s += fmt.Sprintf("%d nil\n", i)
 			continue
 		}
-		stype := "(unknown)"
-		if bsels[i] == &ec.fr.Sels {
-			stype = "(frame)"
-		} else if bsels[i] == &ec.ed.otherSel {
-			stype = "(other)"
-		} else if bsels[i] == &ec.ed.jumps {
-			stype = "(jumps)"
-		}
-
-		s += fmt.Sprintf("%d %p %s: %v\n", i, bsels[i], stype, *(bsels[i]))
+		s += fmt.Sprintf("%d %p: %v\n", i, bsels[i], *(bsels[i]))
 	}
 
 	return []byte(s), 0
@@ -507,7 +498,8 @@ func executeEventReader(ec *ExecContext, er util.EventReader) {
 	case util.ET_BODYLOAD:
 		pp, sp, ep := er.Points()
 		sideChan <- func() {
-			ec.fr.Sels[2] = util.Sel{sp, ep}
+			ec.fr.Sel = util.Sel{sp, ep}
+			ec.fr.SelColor = 2
 			Load(*ec, pp)
 		}
 

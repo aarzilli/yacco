@@ -34,7 +34,7 @@ type Buffer struct {
 
 	// gap buffer implementation
 	buf        []textframe.ColorRune
-	sels       []*[]util.Sel
+	sels       []*util.Sel
 	gap, gapsz int
 
 	ul undoList
@@ -108,24 +108,24 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 	b.EditMarkNext = true
 	b.EditMark = true
 
-	b.sels = []*[]util.Sel{}
+	b.sels = []*util.Sel{}
 
 	return b, nil
 }
 
-func (b *Buffer) AddSels(sels *[]util.Sel) {
+func (b *Buffer) AddSel(sel *util.Sel) {
 	for i := range b.sels {
 		if b.sels[i] == nil {
-			b.sels[i] = sels
+			b.sels[i] = sel
 			return
 		}
 	}
-	b.sels = append(b.sels, sels)
+	b.sels = append(b.sels, sel)
 }
 
-func (b *Buffer) RmSels(sels *[]util.Sel) {
+func (b *Buffer) RmSel(sel *util.Sel) {
 	for i := range b.sels {
-		if b.sels[i] == sels {
+		if b.sels[i] == sel {
 			b.sels[i] = nil
 			break
 		}
@@ -434,34 +434,32 @@ func (b *Buffer) updateSels(sel *util.Sel, delta int) {
 
 	s := b.Size()
 
-	for k := range b.sels {
-		if b.sels[k] == nil {
+	sels := b.sels
+	for i := range sels {
+		if sels[i] == nil {
 			continue
 		}
-		sels := *(b.sels[k])
-		for i := range sels {
-			if &sels[i] == sel {
-				continue
-			}
+		if sels[i] == sel {
+			continue
+		}
 
-			if (sels[i].S >= sel.S) && (sels[i].S <= end) {
-				sels[i].S = sel.S
-			} else if sels[i].S > sel.S {
-				sels[i].S += delta
-			}
+		if (sels[i].S >= sel.S) && (sels[i].S <= end) {
+			sels[i].S = sel.S
+		} else if sels[i].S > sel.S {
+			sels[i].S += delta
+		}
 
-			if (sels[i].E >= sel.S) && (sels[i].E <= end) {
-				sels[i].E = sel.S
-			} else if sels[i].E > sel.S {
-				sels[i].E += delta
-			}
+		if (sels[i].E >= sel.S) && (sels[i].E <= end) {
+			sels[i].E = sel.S
+		} else if sels[i].E > sel.S {
+			sels[i].E += delta
+		}
 
-			if sels[i].E > s {
-				sels[i].E = s
-			}
-			if sels[i].S > s {
-				sels[i].S = s
-			}
+		if sels[i].E > s {
+			sels[i].E = s
+		}
+		if sels[i].S > s {
+			sels[i].S = s
 		}
 	}
 }
@@ -921,7 +919,7 @@ func (b *Buffer) UndoWhere() int {
 	return b.ul.cur
 }
 
-func (b *Buffer) Sels() []*[]util.Sel {
+func (b *Buffer) Sels() []*util.Sel {
 	return b.sels
 }
 
@@ -935,13 +933,10 @@ func (b *Buffer) UndoReset() {
 
 func (b *Buffer) saveSels() []util.Sel {
 	r := []util.Sel{}
+	sels := b.sels
 	for i := range b.sels {
-		if b.sels[i] == nil {
-			continue
-		}
-		sels := *(b.sels[i])
-		for j := range sels {
-			r = append(r, sels[j])
+		if sels[i] != nil {
+			r = append(r, *sels[i])
 		}
 	}
 	return r
@@ -950,13 +945,9 @@ func (b *Buffer) saveSels() []util.Sel {
 func (b *Buffer) restoreSels(ssels []util.Sel) {
 	k := 0
 	for i := range b.sels {
-		if b.sels[i] == nil {
-			continue
-		}
-		sels := *(b.sels[i])
-		for j := range sels {
-			sels[j] = ssels[k]
-			b.FixSel(&sels[j])
+		if b.sels[i] != nil {
+			b.sels[i].S = ssels[k].S
+			b.sels[i].E = ssels[k].E
 			k++
 		}
 	}

@@ -123,11 +123,11 @@ func ComplStart(ec ExecContext) {
 		HideCompl()
 		return
 	}
-	if ec.fr.Sels[0].S != ec.fr.Sels[0].E {
+	if ec.fr.Sel.S != ec.fr.Sel.E {
 		HideCompl()
 		return
 	}
-	if ec.fr.Sels[0].S == 0 {
+	if ec.fr.Sel.S == 0 {
 		HideCompl()
 		return
 	}
@@ -208,7 +208,7 @@ func ComplStart(ec ExecContext) {
 	}
 
 	complRect, complImg = PrepareCompl(txt)
-	p := ec.fr.PointToCoord(ec.fr.Sels[0].S).Add(image.Point{2, 4})
+	p := ec.fr.PointToCoord(ec.fr.Sel.S).Add(image.Point{2, 4})
 	if ComplWndSaved != nil {
 		ComplWnd = ComplWndSaved
 		ComplWnd.Move(p, complRect.Max.X, complRect.Max.Y)
@@ -263,14 +263,14 @@ func getFsComplsMaybe(resDir, resName string) []string {
 }
 
 func getComplWords(ec ExecContext) (fpwd, wdwd string) {
-	fs := ec.buf.Tofp(ec.fr.Sels[0].S-1, -1)
-	if ec.fr.Sels[0].S-fs >= 2 {
-		fpwd = string(ec.buf.SelectionRunes(util.Sel{fs, ec.fr.Sels[0].S}))
+	fs := ec.buf.Tofp(ec.fr.Sel.S-1, -1)
+	if ec.fr.Sel.S-fs >= 2 {
+		fpwd = string(ec.buf.SelectionRunes(util.Sel{fs, ec.fr.Sel.S}))
 	}
 
-	ws := ec.buf.Towd(ec.fr.Sels[0].S-1, -1, false)
-	if ec.fr.Sels[0].S-ws >= 2 {
-		wdwd = string(ec.buf.SelectionRunes(util.Sel{ws, ec.fr.Sels[0].S}))
+	ws := ec.buf.Towd(ec.fr.Sel.S-1, -1, false)
+	if ec.fr.Sel.S-ws >= 2 {
+		wdwd = string(ec.buf.SelectionRunes(util.Sel{ws, ec.fr.Sel.S}))
 	}
 
 	return

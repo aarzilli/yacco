@@ -93,11 +93,11 @@ func eqcmdfn(c *Cmd, ec *EditContext) {
 
 func scmdfn(c *Cmd, ec *EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, *ec.atsel)
-	var addrSave = []util.Sel{{sel.S, sel.E}}
-	ec.Buf.AddSels(&addrSave)
+	var addrSave = util.Sel{sel.S, sel.E}
+	ec.Buf.AddSel(&addrSave)
 	defer func() {
-		ec.Buf.RmSels(&addrSave)
-		*ec.atsel = addrSave[0]
+		ec.Buf.RmSel(&addrSave)
+		*ec.atsel = addrSave
 		ec.Buf.EditMark = ec.Buf.EditMarkNext
 	}()
 
@@ -109,7 +109,7 @@ func scmdfn(c *Cmd, ec *EditContext) {
 	globalrepl := (c.numarg == 0) || (c.flags&G_FLAG != 0)
 	for {
 		psel := sel.S
-		loc := re.Match(ec.Buf, sel.S, addrSave[0].E, +1)
+		loc := re.Match(ec.Buf, sel.S, addrSave.E, +1)
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}
@@ -178,33 +178,39 @@ func resolveBackreferences(subs []rune, b *buf.Buffer, loc []int) []rune {
 
 func xcmdfn(c *Cmd, ec *EditContext) {
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
-	var xAddrs = []util.Sel{{ec.atsel.S, ec.atsel.E}, {ec.atsel.S, ec.atsel.S}, {ec.atsel.S, ec.atsel.S}}
-	ec.Buf.AddSels(&xAddrs)
+	var xAddrs0 = util.Sel{ ec.atsel.S, ec.atsel.E }
+	var xAddrs1 = util.Sel{ ec.atsel.S, ec.atsel.S }
+	var xAddrs2 = util.Sel{ ec.atsel.S, ec.atsel.S }
+	ec.Buf.AddSel(&xAddrs0)
+	ec.Buf.AddSel(&xAddrs1)
+	ec.Buf.AddSel(&xAddrs2)
 	ebn := ec.Buf.EditMarkNext
 	ec.Buf.EditMarkNext = false
 	defer func() {
-		*ec.atsel = xAddrs[0]
+		*ec.atsel = xAddrs0
 		ec.Buf.EditMarkNext = ebn
 		ec.Buf.EditMark = ec.Buf.EditMarkNext
-		ec.Buf.RmSels(&xAddrs)
+		ec.Buf.RmSel(&xAddrs0)
+		ec.Buf.RmSel(&xAddrs1)
+		ec.Buf.RmSel(&xAddrs2)
 	}()
 
 	re := c.sregexp
 	count := 0
 
 	for {
-		loc := re.Match(ec.Buf, xAddrs[1].S, xAddrs[0].E, +1)
+		loc := re.Match(ec.Buf, xAddrs1.S, xAddrs0.E, +1)
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}
-		xAddrs[1].S, xAddrs[1].E = loc[0], loc[1]
-		xAddrs[2] = xAddrs[1]
-		subec := ec.subec(ec.Buf, &xAddrs[2])
+		xAddrs1.S, xAddrs1.E = loc[0], loc[1]
+		xAddrs2 = xAddrs1
+		subec := ec.subec(ec.Buf, &xAddrs2)
 		c.body.fn(c.body, &subec)
-		if xAddrs[1].S == xAddrs[1].E {
-			xAddrs[1] = xAddrs[2]
+		if xAddrs1.S == xAddrs1.E {
+			xAddrs1 = xAddrs2
 		}
-		xAddrs[1].S = xAddrs[1].E
+		xAddrs1.S = xAddrs1.E
 		count++
 		if count > LOOP_LIMIT {
 			Warnfn("x/y loop seems stuck\n")
@@ -215,30 +221,33 @@ func xcmdfn(c *Cmd, ec *EditContext) {
 
 func ycmdfn(c *Cmd, ec *EditContext) {
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
-	var yAddrs = []util.Sel{{ec.atsel.S, ec.atsel.E}, {ec.atsel.S, ec.atsel.E}}
-	ec.Buf.AddSels(&yAddrs)
+	var yAddrs0 = util.Sel{ec.atsel.S, ec.atsel.E}
+	var yAddrs1 = util.Sel{ec.atsel.S, ec.atsel.E}
+	ec.Buf.AddSel(&yAddrs0)
+	ec.Buf.AddSel(&yAddrs1)
 	ebn := ec.Buf.EditMarkNext
 	ec.Buf.EditMarkNext = false
 	defer func() {
-		*ec.atsel = yAddrs[0]
+		*ec.atsel = yAddrs0
 		ec.Buf.EditMarkNext = ebn
 		ec.Buf.EditMark = ec.Buf.EditMarkNext
-		ec.Buf.RmSels(&yAddrs)
+		ec.Buf.RmSel(&yAddrs0)
+		ec.Buf.RmSel(&yAddrs1)
 	}()
 
 	re := c.sregexp
 	count := 0
 
 	for {
-		loc := re.Match(ec.Buf, yAddrs[1].S, yAddrs[0].E, +1)
+		loc := re.Match(ec.Buf, yAddrs1.S, yAddrs0.E, +1)
 		if (loc == nil) || (len(loc) < 2) {
 			return
 		}
-		yAddrs[1].E = loc[0]
-		subec := ec.subec(ec.Buf, &yAddrs[1])
+		yAddrs1.E = loc[0]
+		subec := ec.subec(ec.Buf, &yAddrs1)
 		c.body.fn(c.body, &subec)
-		yAddrs[1].S = yAddrs[1].S + (loc[1] - loc[0])
-		yAddrs[1].E = yAddrs[1].S
+		yAddrs1.S = yAddrs1.S + (loc[1] - loc[0])
+		yAddrs1.E = yAddrs1.S
 		count++
 		if count > LOOP_LIMIT {
 			Warnfn("x/y loop seems stuck\n")
@@ -289,8 +298,8 @@ func pipecmdfn(c *Cmd, ec *EditContext) {
 
 func kcmdfn(c *Cmd, ec *EditContext) {
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
-	if ec.Sels != nil {
-		ec.Sels[0] = *ec.atsel
+	if ec.Sel != nil {
+		*ec.Sel = *ec.atsel
 	}
 	ec.PushJump()
 }

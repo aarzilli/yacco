@@ -20,14 +20,14 @@ func testEdit(t *testing.T, input, pgm, target string) {
 	buf, _ := buf.NewBuffer("/", "+Tag", true, " ")
 	buf.Replace([]rune(input), &util.Sel{0, 0}, true, nil, util.EO_MOUSE)
 
-	sels := []util.Sel{util.Sel{s, e}, util.Sel{0, 0}, util.Sel{0, 0}, util.Sel{0, 0}}
-	buf.AddSels(&sels)
+	sel := util.Sel{s, e}
+	buf.AddSel(&sel)
 
-	ec := EditContext{Buf: buf, Sels: sels, EventChan: nil, PushJump: func() {}}
+	ec := EditContext{Buf: buf, Sel: &sel, EventChan: nil, PushJump: func() {}}
 	Edit(pgm, ec)
 
 	output := string(buf.SelectionRunes(util.Sel{0, buf.Size()}))
-	output = output[:sels[0].S] + "<" + output[sels[0].S:sels[0].E] + ">" + output[sels[0].E:]
+	output = output[:sel.S] + "<" + output[sel.S:sel.E] + ">" + output[sel.E:]
 
 	if target != output {
 		fmt.Printf("Differing output and target for [%s]:\ntarget: [%s]\noutput: [%s]\n", pgm, target, output)
