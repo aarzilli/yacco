@@ -864,10 +864,10 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				activeCol = nil
 			}
 			if ec.buf != nil {
-				ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
-				if ec.ed != nil {
-					ec.ed.otherSel[OS_TIP].E = ec.fr.Sel.S
+				if ec.ed != nil && time.Since(ec.buf.LastEdit()) > (1 * time.Minute) {
+					ec.ed.PushJump()
 				}
+				ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
 				ec.br()
 				ComplStart(ec)
 			}

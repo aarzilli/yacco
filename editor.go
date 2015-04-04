@@ -57,7 +57,6 @@ const JUMP_THRESHOLD = 100
 const (
 	OS_TOP = iota
 	OS_ADDR
-	OS_TIP
 	NUM_OTHER_SEL
 )
 
@@ -121,7 +120,6 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	}
 
 	e.otherSel[OS_TOP].E = 0
-	e.otherSel[OS_TIP].E = 0
 
 	bodybuf.Props["font"] = Wnd.Prop["font"]
 	if bodybuf.Props["font"] == "alt" {

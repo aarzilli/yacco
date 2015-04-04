@@ -1012,14 +1012,9 @@ func JumpCmd(ec ExecContext, arg string) {
 	if ec.ed == nil {
 		return
 	}
-	if strings.ToLower(arg) == "tip" {
-		ec.ed.sfr.Fr.Sel.S = ec.ed.otherSel[OS_TIP].E
-		ec.ed.sfr.Fr.Sel.E = ec.ed.otherSel[OS_TIP].E
-	} else {
-		ec.ed.confirmDel = false
-		ec.ed.confirmSave = false
-		ec.ed.RestoreJump()
-	}
+	ec.ed.confirmDel = false
+	ec.ed.confirmSave = false
+	ec.ed.RestoreJump()
 	ec.ed.BufferRefresh()
 }
 
