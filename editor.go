@@ -615,6 +615,21 @@ func (ed *Editor) Dump() DumpEditor {
 }
 
 func (ed *Editor) PushJump() {
+	mind := 1000
+	for i := 1; i < len(ed.jumps); i++ {
+		d := ed.jumps[i].S - ed.sfr.Fr.Sel.S
+		if d < 0 {
+			d = -d
+		}
+		if d < mind {
+			mind = d
+		}
+	}
+
+	if mind < 50 {
+		return
+	}
+
 	for i := 1; i < len(ed.jumps); i++ {
 		ed.jumps[i-1] = ed.jumps[i]
 	}

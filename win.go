@@ -864,7 +864,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				activeCol = nil
 			}
 			if ec.buf != nil {
-				if ec.ed != nil && time.Since(ec.buf.LastEdit()) > (1 * time.Minute) {
+				if ec.ed != nil && time.Since(ec.buf.LastEdit()) > (1*time.Minute) {
 					ec.ed.PushJump()
 				}
 				ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
