@@ -56,7 +56,12 @@ func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 		PutCmd(*ec, "")
 
 	case "show":
-		sideChan <- RefreshMsg(ec.buf, ec.ed, true)
+		sideChan <- func() {
+			if ec.ed.frac < 0.5 {
+				Wnd.GrowEditor(ec.ed.Column(), ec.ed, nil)
+			}
+			ec.ed.Warp()
+		}
 
 	case "tabadj":
 		elasticTabs(ec.ed, true)
