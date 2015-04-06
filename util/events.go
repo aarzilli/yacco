@@ -129,6 +129,10 @@ type EventReader struct {
 	compat bool
 }
 
+func (er *EventReader) String() string {
+	return fmt.Sprintf("done:%v etype:%v origin:%v flags:%v bltin:%v p:%v s:%v e:%v txt:[%s] xs:%v xe:%v xtxt:[%s]", er.done, er.etype, er.origin, er.flags, er.bltin, er.p, er.s, er.e, er.txt, er.xs, er.xe, er.xtxt)
+}
+
 // Adds an event message to the event reader
 func (er *EventReader) Insert(msg string) {
 	if er.Done() {

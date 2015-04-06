@@ -467,18 +467,19 @@ func OpenBufferConn(p9clnt *clnt.Clnt, id string) (*BufferConn, error) {
 	return makeBufferConn(p9clnt, id, ctlfd, eventfd)
 }
 
-func FindWin(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
+func FindWin(name string, p9clnt *clnt.Clnt) (*BufferConn, bool, error) {
 	return FindWinEx("+"+name, p9clnt)
 }
 
-func FindWinEx(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
+func FindWinEx(name string, p9clnt *clnt.Clnt) (*BufferConn, bool, error) {
 	if ok, outbufid, ctlfd, eventfd := findWinRestored(name, p9clnt); ok {
-		return makeBufferConn(p9clnt, outbufid, ctlfd, eventfd)
+		b, err := makeBufferConn(p9clnt, outbufid, ctlfd, eventfd)
+		return b, false, err
 	}
 
 	indexEntries, err := ReadIndex(p9clnt)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	for i := range indexEntries {
@@ -490,26 +491,28 @@ func FindWinEx(name string, p9clnt *clnt.Clnt) (*BufferConn, error) {
 			}
 			ctlfd, err := p9clnt.FOpen("/"+id+"/ctl", p.OWRITE)
 			if err != nil {
-				return nil, err
+				return nil, false, err
 			}
-			return makeBufferConn(p9clnt, id, ctlfd, eventfd)
+			b, err := makeBufferConn(p9clnt, id, ctlfd, eventfd)
+			return b, false, err
 		}
 	}
 
 	ctlfd, err := p9clnt.FOpen("/new/ctl", p.ORDWR)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	ctlln, err := read(ctlfd)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	outbufid := strings.TrimSpace(ctlln[:11])
 	eventfd, err := p9clnt.FOpen("/"+outbufid+"/event", p.ORDWR)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	return makeBufferConn(p9clnt, outbufid, ctlfd, eventfd)
+	b, err := makeBufferConn(p9clnt, outbufid, ctlfd, eventfd)
+	return b, true, err
 }
 
 func ReadProps(p9clnt *clnt.Clnt) (map[string]string, error) {

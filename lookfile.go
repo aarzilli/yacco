@@ -33,10 +33,11 @@ func lookfileproc(ed *Editor) {
 	oldNeedle := ""
 	ec := ExecContext{col: nil, ed: ed, br: ed.BufferRefresh, fr: &ed.sfr.Fr, buf: ed.bodybuf, eventChan: nil}
 	for {
+		println("In loop")
 		select {
 		case eventMsg, ok := <-ch:
 			if !ok {
-				break
+				return
 			}
 
 			er.Reset()

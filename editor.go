@@ -48,6 +48,7 @@ type Editor struct {
 	}
 
 	redrawRects []image.Rectangle
+	closed      bool
 }
 
 const SCROLL_WIDTH = 10
@@ -221,6 +222,7 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool, simpleReca
 }
 
 func (e *Editor) Close() {
+	e.closed = true
 	e.bodybuf.RmSel(&e.sfr.Fr.Sel)
 	e.bodybuf.RmSel(&e.sfr.Fr.PMatch)
 	for i := range e.jumps {
@@ -566,12 +568,16 @@ func (ed *Editor) EnterSpecial(eventChan chan string) (bool, string, chan string
 
 func (ed *Editor) ExitSpecial(savedTag string, eventChan chan string) {
 	sideChan <- func() {
-		close(ed.eventChan)
+		if ed.eventChan != nil {
+			close(ed.eventChan)
+		}
 		ed.eventChan = eventChan
 		ed.eventChanSpecial = false
-		ed.tagbuf.Replace([]rune(savedTag), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0)
-		ed.TagRefresh()
-		ed.BufferRefresh()
+		if !ed.closed {
+			ed.tagbuf.Replace([]rune(savedTag), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, 0)
+			ed.TagRefresh()
+			ed.BufferRefresh()
+		}
 	}
 }
 
