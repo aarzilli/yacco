@@ -931,3 +931,19 @@ func QuotedSplit(s string) []string {
 	}
 	return r
 }
+
+/*
+Finds the best nonconsecutive match of needle in haystack.
+This is done by calculating the edit distance (http://en.wikipedia.org/wiki/Edit_distance) where:
+- insertions (in the haystack → needle direction) and substitutions aren't allowed
+- multiple sequential deletions only weight 1
+
+As a consequence of the first rule the entire needle must be matched.
+
+Returns an array of positions in haystack where the characters where matched and the edit distance (lower is better).
+The edit distance will be -1 if no match was possible.
+*/
+func stringAlign(needle, haystack string) (dist int, pos []int) {
+	//TODO: implement
+	return -1, nil
+}

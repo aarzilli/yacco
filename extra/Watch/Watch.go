@@ -211,7 +211,7 @@ func main() {
 	util.Allergic(debug, err)
 	defer p9clnt.Unmount()
 
-	buf, err := util.FindWin("Watch", p9clnt)
+	buf, _, err := util.FindWin("Watch", p9clnt)
 	util.Allergic(debug, err)
 
 	wd, _ := os.Getwd()

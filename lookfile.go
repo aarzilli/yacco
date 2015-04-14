@@ -12,6 +12,7 @@ import (
 type lookFileResult struct {
 	score  int
 	show   string
+	mpos []int
 	needle string
 }
 
@@ -33,7 +34,6 @@ func lookfileproc(ed *Editor) {
 	oldNeedle := ""
 	ec := ExecContext{col: nil, ed: ed, br: ed.BufferRefresh, fr: &ed.sfr.Fr, buf: ed.bodybuf, eventChan: nil}
 	for {
-		println("In loop")
 		select {
 		case eventMsg, ok := <-ch:
 			if !ok {
@@ -137,13 +137,24 @@ func lookfileproc(ed *Editor) {
 
 func displayResults(ed *Editor, resultList []*lookFileResult) {
 	t := ""
+	mpos := []int{}
+	s := 0
 	for _, result := range resultList {
 		t += result.show + "\n"
+		for i := range result.mpos {
+			mpos = append(mpos, result.mpos[i] + s)
+		}
+		s += len(result.show) + 1
 	}
 
 	sideChan <- func() {
 		sel := util.Sel{0, ed.bodybuf.Size()}
 		ed.bodybuf.Replace([]rune(t), &sel, true, nil, 0)
+		
+		for i := range mpos {
+			ed.bodybuf.At(mpos[i]).C = uint16(util.RMT_COMMENT)
+		}
+		
 		elasticTabs(ed, true)
 		ed.BufferRefresh()
 	}
@@ -203,39 +214,39 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 			if fi[i].IsDir() {
 				queue = append(queue, filepath.Join(dir, fi[i].Name()))
 			}
-			var n int
-			if exact {
-				n = strings.Index(fi[i].Name(), needle)
-			} else {
-				n = strings.Index(strings.ToLower(fi[i].Name()), needle)
+			
+			relPath, err := filepath.Rel(edDir, filepath.Join(dir, fi[i].Name()))
+			if err != nil {
+				continue
 			}
-			if n >= 0 {
-				d := depth
-				if fi[i].IsDir() {
-					d++
-				}
+			
+			mpos := matchFn(needle, relPath, exact)
+			if mpos == nil || len(mpos) == 0 {
+				continue
+			}
+			
+			n := mpos[0]
+			
+			d := depth
+			if fi[i].IsDir() {
+				d++
+			}
 
-				score := (d * 100) + n*10 + len(fi[i].Name())
-				relPath, err := filepath.Rel(edDir, filepath.Join(dir, fi[i].Name()))
+			score := (d * 100) + n*10 + len(fi[i].Name())
+			
+			if fi[i].IsDir() {
+				relPath += "/"
+			}
+			
+			select {
+			case resultChan <- &lookFileResult{score, relPath, mpos, needle}:
+			case <-searchDone:
+				return
+			}
 
-				if fi[i].IsDir() {
-					relPath += "/"
-				}
-
-				if err != nil {
-					continue
-				}
-
-				select {
-				case resultChan <- &lookFileResult{score, relPath, needle}:
-				case <-searchDone:
-					return
-				}
-
-				sent++
-				if sent > MAX_RESULTS {
-					return
-				}
+			sent++
+			if sent > MAX_RESULTS {
+				return
 			}
 		}
 	}
@@ -299,16 +310,13 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 		if sent > MAX_RESULTS {
 			return
 		}
-
-		var match int
-		if exact {
-			match = strings.Index(tags[i].tag, needle)
-		} else {
-			match = strings.Index(strings.ToLower(tags[i].tag), needle)
-		}
-		if match < 0 {
+		
+		mpos := matchFn(needle, tags[i].tag, exact)
+		if mpos == nil || len(mpos) == 0 {
 			continue
 		}
+		
+		match := mpos[0]
 
 		score := 1000 + match*10 + len(tags[i].tag)
 
@@ -318,7 +326,7 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 		}
 
 		select {
-		case resultChan <- &lookFileResult{score, x, needle}:
+		case resultChan <- &lookFileResult{score, x, []int{}, needle}:
 		case <-searchDone:
 			return
 		}
@@ -328,4 +336,20 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 			return
 		}
 	}
+}
+
+func matchFn(needle, haystack string, exact bool) (mpos []int) {
+	if !exact {
+		haystack = strings.ToLower(haystack)
+	}
+	n := strings.Index(haystack, needle)
+	if n < 0 {
+		return nil
+	}
+	
+	mpos = make([]int, len(needle))
+	for i := range mpos {
+		mpos[i] = n + i
+	}
+	return mpos
 }
