@@ -101,13 +101,13 @@ const (
 
 type instr struct {
 	op      instrCode
-	L       []int                             // for RX_SPLIT and RX_JMP
-	no      int                               // for RX_SAVE
-	c       rune                              // for RX_CHAR
-	cname   string                            // for RX_CLASS / RX_ASSERT
-	inv     bool                              // for RX_CLASS
-	set     map[rune]bool                     // for RX_CLASS
-	special []func(rune) bool                 // for RX_CLASS
+	L       []int                                       // for RX_SPLIT and RX_JMP
+	no      int                                         // for RX_SAVE
+	c       rune                                        // for RX_CHAR
+	cname   string                                      // for RX_CLASS / RX_ASSERT
+	inv     bool                                        // for RX_CLASS
+	set     map[rune]bool                               // for RX_CLASS
+	special []func(rune) bool                           // for RX_CLASS
 	check   func(buf Matchable, start, end, i int) bool // for RX_ASSERT
 }
 
@@ -153,7 +153,7 @@ func (rx *Regex) String() string {
 type RuneArrayMatchable []rune
 
 func (ram RuneArrayMatchable) At(i int) *textframe.ColorRune {
-	return &textframe.ColorRune{ R: ram[i], C: 0x00 }
+	return &textframe.ColorRune{R: ram[i], C: 0x00}
 }
 
 func (ram RuneArrayMatchable) Size() int {

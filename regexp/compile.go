@@ -4,6 +4,12 @@ import (
 	"fmt"
 )
 
+/**
+Compiles a regex
+- rx: the regular expression string
+- find: true if we want to do a find operation, false if we want to do a match operation
+- bw: compile the regular expression backwards
+*/
 func Compile(rx string, find, bw bool) Regex {
 	defer func() {
 		if ierr := recover(); ierr != nil {
@@ -21,6 +27,41 @@ func Compile(rx string, find, bw bool) Regex {
 	var p parser
 	ast := p.parseToplevel([]rune(rx))
 	pgm = ast.Compile(pgm, bw)
+	pgm = append(pgm, instr{op: RX_MATCH})
+	return pgm
+}
+
+/*
+Compiles a regex to do a non-contiguous search of string s
+*/
+func CompileFuzzySearch(s []rune) Regex {
+	defer func() {
+		if ierr := recover(); ierr != nil {
+			err := ierr.(error)
+			panic(fmt.Errorf("Error compiling %s for fuzzy match: %s", s, err.Error()))
+		}
+	}()
+
+	nodes := make([]node, len(s)*2)
+
+	for i := range s {
+		nodes[i*2] = &nodeAlt{
+			no:       i * 2,
+			branches: []node{&nodeRep{min: 0, max: -1, greedy: false, child: &dotClass}},
+		}
+		nodes[i*2+1] = &nodeAlt{
+			no:       i*2 + 1,
+			branches: []node{&nodeChar{s[i]}},
+		}
+	}
+
+	ast := &nodeAlt{
+		no:       -1,
+		branches: []node{&nodeGroup{nodes: nodes}},
+	}
+
+	pgm := []instr{}
+	pgm = ast.Compile(pgm, false)
 	pgm = append(pgm, instr{op: RX_MATCH})
 	return pgm
 }
