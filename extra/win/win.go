@@ -579,7 +579,7 @@ func main() {
 	util.Allergic3(debug, err, isDelSeen())
 	defer p9clnt.Unmount()
 
-	buf, err := util.FindWin("Win", p9clnt)
+	buf, _, err := util.FindWin("Win", p9clnt)
 	util.Allergic3(debug, err, isDelSeen())
 
 	_, err = buf.CtlFd.Write([]byte("name +Win"))

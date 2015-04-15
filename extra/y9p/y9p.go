@@ -189,7 +189,7 @@ func main() {
 		wd, _ := os.Getwd()
 		dst := filepath.Join(wd, os.Args[2])
 
-		buf, err := util.FindWinEx(os.Args[2], p9clnt)
+		buf, _, err := util.FindWinEx(os.Args[2], p9clnt)
 		util.Allergic(debug, err)
 		defer buf.Close()
 		_, err = buf.CtlFd.Write([]byte("name " + dst))

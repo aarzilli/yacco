@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"unicode"
+	"unicode/utf8"
+	"yacco/regexp"
 	"yacco/textframe"
 	"yacco/util"
 )
@@ -12,6 +14,7 @@ import (
 type lookFileResult struct {
 	score  int
 	show   string
+	mpos   []int
 	needle string
 }
 
@@ -33,7 +36,6 @@ func lookfileproc(ed *Editor) {
 	oldNeedle := ""
 	ec := ExecContext{col: nil, ed: ed, br: ed.BufferRefresh, fr: &ed.sfr.Fr, buf: ed.bodybuf, eventChan: nil}
 	for {
-		println("In loop")
 		select {
 		case eventMsg, ok := <-ch:
 			if !ok {
@@ -137,13 +139,24 @@ func lookfileproc(ed *Editor) {
 
 func displayResults(ed *Editor, resultList []*lookFileResult) {
 	t := ""
+	mpos := []int{}
+	s := 0
 	for _, result := range resultList {
 		t += result.show + "\n"
+		for i := range result.mpos {
+			mpos = append(mpos, result.mpos[i]+s)
+		}
+		s += len(result.show) + 1
 	}
 
 	sideChan <- func() {
 		sel := util.Sel{0, ed.bodybuf.Size()}
 		ed.bodybuf.Replace([]rune(t), &sel, true, nil, 0)
+
+		for i := range mpos {
+			ed.bodybuf.At(mpos[i]).C = uint16(util.RMT_COMMENT)
+		}
+
 		elasticTabs(ed, true)
 		ed.BufferRefresh()
 	}
@@ -152,9 +165,9 @@ func displayResults(ed *Editor, resultList []*lookFileResult) {
 func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool) {
 	x := util.ResolvePath(edDir, needle)
 	startDir := filepath.Dir(x)
-	needle = filepath.Base(x)
+	needlerx := regexp.CompileFuzzySearch([]rune(filepath.Base(x)))
 
-	//println("Searching for", needle, "starting at", queue[0])
+	//println("Searching for", needle, "starting at", startDir)
 
 	startDepth := countSlash(startDir)
 	queue := []string{startDir}
@@ -203,42 +216,64 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 			if fi[i].IsDir() {
 				queue = append(queue, filepath.Join(dir, fi[i].Name()))
 			}
-			var n int
-			if exact {
-				n = strings.Index(fi[i].Name(), needle)
-			} else {
-				n = strings.Index(strings.ToLower(fi[i].Name()), needle)
+
+			relPath, err := filepath.Rel(edDir, filepath.Join(dir, fi[i].Name()))
+			if err != nil {
+				continue
 			}
-			if n >= 0 {
-				d := depth
-				if fi[i].IsDir() {
-					d++
-				}
 
-				score := (d * 100) + n*10 + len(fi[i].Name())
-				relPath, err := filepath.Rel(edDir, filepath.Join(dir, fi[i].Name()))
+			off := utf8.RuneCountInString(relPath) - utf8.RuneCountInString(fi[i].Name())
 
-				if fi[i].IsDir() {
-					relPath += "/"
-				}
+			d := depth
+			if fi[i].IsDir() {
+				relPath += "/"
+				d++
+			}
 
-				if err != nil {
-					continue
-				}
+			r := fileSystemSearchMatch(fi[i].Name(), off, exact, needlerx, relPath, needle, d, resultChan, searchDone)
+			if r < 0 {
+				return
+			}
 
-				select {
-				case resultChan <- &lookFileResult{score, relPath, needle}:
-				case <-searchDone:
-					return
-				}
+			sent += r
 
-				sent++
-				if sent > MAX_RESULTS {
-					return
-				}
+			if sent > MAX_RESULTS {
+				return
 			}
 		}
 	}
+}
+
+func fileSystemSearchMatch(name string, off int, exact bool, needlerx regexp.Regex, relPath, needle string, depth int, resultChan chan<- *lookFileResult, searchDone chan struct{}) int {
+	rname := []rune(name)
+	mg := needlerx.Match(regexp.RuneArrayMatchable(rname), 0, len(rname), 1)
+	if mg == nil {
+		return 0
+	}
+
+	//println("Match successful", name, "at", relPath)
+
+	mpos := make([]int, 0, len(mg)/4)
+	ngaps := 0
+	mstart := mg[2]
+
+	for i := 0; i < len(mg); i += 4 {
+		if mg[i] != mg[i+1] {
+			ngaps++
+		}
+
+		mpos = append(mpos, mg[i+2]+off)
+	}
+
+	score := mstart*1000 + depth*100 + ngaps*10 + len(rname) + off
+
+	select {
+	case resultChan <- &lookFileResult{score, relPath, mpos, needle}:
+	case <-searchDone:
+		return -1
+	}
+
+	return 1
 }
 
 func countSlash(str string) int {
@@ -300,15 +335,22 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 			return
 		}
 
-		var match int
-		if exact {
-			match = strings.Index(tags[i].tag, needle)
-		} else {
-			match = strings.Index(strings.ToLower(tags[i].tag), needle)
+		haystack := tags[i].tag
+
+		if !exact {
+			haystack = strings.ToLower(haystack)
 		}
-		if match < 0 {
+		n := strings.Index(haystack, needle)
+		if n <= 0 {
 			continue
 		}
+
+		mpos := make([]int, len(needle))
+		for i := range mpos {
+			mpos[i] = n + i
+		}
+
+		match := mpos[0]
 
 		score := 1000 + match*10 + len(tags[i].tag)
 
@@ -318,7 +360,7 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 		}
 
 		select {
-		case resultChan <- &lookFileResult{score, x, needle}:
+		case resultChan <- &lookFileResult{score, x, []int{}, needle}:
 		case <-searchDone:
 			return
 		}
