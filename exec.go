@@ -786,9 +786,8 @@ func GetallCmd(ec ExecContext, arg string) {
 					nerr++
 				} else {
 					ed.bodybuf.Reload(true)
-					if !ec.norefresh {
-						ed.BufferRefresh()
-					}
+					ed.FixTop()
+					ed.BufferRefresh()
 				}
 			}
 		}

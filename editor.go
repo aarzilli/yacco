@@ -440,6 +440,17 @@ func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 	}
 }
 
+func (e *Editor) FixTop() {
+	if e.otherSel[OS_TOP].E > e.bodybuf.Size() {
+		e.otherSel[OS_TOP].E = e.bodybuf.Size()
+	}
+	for ; e.otherSel[OS_TOP].E > 0; e.otherSel[OS_TOP].E-- {
+		if e.bodybuf.At(e.otherSel[OS_TOP].E - 1).R == '\n' {
+			break
+		}
+	}
+}
+
 func (e *Editor) tagRefreshIntl() {
 	e.tagfr.Clear()
 	ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
