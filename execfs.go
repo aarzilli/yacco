@@ -63,6 +63,17 @@ func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 			ec.ed.Warp()
 		}
 
+	case "show-tag":
+		sideChan <- func() {
+			if ec.ed.frac < 0.5 {
+				Wnd.GrowEditor(ec.ed.Column(), ec.ed, nil)
+			}
+			ec.ed.WarpToTag()
+		}
+
+	case "noautocompl":
+		ec.ed.noAutocompl = true
+
 	case "tabadj":
 		elasticTabs(ec.ed, true)
 		sideChan <- RefreshMsg(ec.buf, ec.ed, true)

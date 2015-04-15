@@ -35,6 +35,7 @@ type Editor struct {
 	eventChan        chan string
 	eventChanSpecial bool
 	eventReader      util.EventReader
+	noAutocompl      bool
 
 	pw int
 
@@ -506,6 +507,18 @@ func (ed *Editor) Warp() {
 		Wnd.wnd.FlushImage(ed.sfr.Fr.R)
 	}
 	Wnd.wnd.WarpMouse(p)
+}
+
+func (ed *Editor) WarpToTag() {
+	if !HasFocus {
+		return
+	}
+	p := ed.tagfr.PointToCoord(0)
+	p.Y -= 3
+	Wnd.wnd.WarpMouse(p)
+	ed.tagfr.Sel.S = ed.tagbuf.EditableStart
+	ed.tagfr.Sel.E = ed.tagbuf.Size()
+	ed.TagRefresh()
 }
 
 func (ed *Editor) getDelPos() int {

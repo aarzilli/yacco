@@ -31,3 +31,8 @@ cd -
 cd extra/Change
 go build
 cd -
+
+# building LookFile
+cd extra/LookFile/
+go build
+cd -

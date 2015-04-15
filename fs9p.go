@@ -167,6 +167,8 @@ func fs9PAddBuffer(n int, b *buf.Buffer) {
 	addr.Add(bufdir, "addr", user, nil, 0660, addr)
 	body := &ReadWriteP9{srv.File{}, bwr(readBodyFn), bww(writeBodyFn)}
 	body.Add(bufdir, "body", user, nil, 0660, body)
+	color := &ReadWriteP9{srv.File{}, bwr(readColorFn), bww(writeColorFn)}
+	color.Add(bufdir, "color", user, nil, 0660, color)
 	ctl := &ReadWriteP9{srv.File{}, bwr(readCtlFn), bww(writeCtlFn)}
 	ctl.Add(bufdir, "ctl", user, nil, 0660, ctl)
 	data := &ReadWriteP9{srv.File{}, func(off int64) ([]byte, syscall.Errno) { return readDataFn(n, off, false) }, bww(writeDataFn)}

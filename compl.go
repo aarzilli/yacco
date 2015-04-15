@@ -119,6 +119,10 @@ func ComplStart(ec ExecContext) {
 		HideCompl()
 		return
 	}
+	if (ec.ed != nil) && ec.ed.noAutocompl {
+		HideCompl()
+		return
+	}
 	if (ec.buf.Name == "+Tag") && (ec.ed != nil) && ec.ed.eventChanSpecial {
 		HideCompl()
 		return
@@ -313,7 +317,6 @@ func getWordCompls(wd string) []string {
 		complFilter(wd, buf.Words, &r)
 	}
 	complFilter(wd, Wnd.Words, &r)
-	complFilter(wd, tagWords, &r)
 	r = util.Dedup(r)
 	return r
 }

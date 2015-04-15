@@ -81,7 +81,6 @@ func init() {
 	cmds["Rename"] = RenameCmd
 	cmds["Rehash"] = RehashCmd
 	cmds["Do"] = DoCmd
-	cmds["LookFile"] = LookFileCmd
 	cmds["Load"] = LoadCmd
 	cmds["Builtin"] = BuiltinCmd
 	cmds["Debug"] = DebugCmd
@@ -991,21 +990,6 @@ func (ev *Editors) Swap(i, j int) {
 	e := (*ev)[i]
 	(*ev)[i] = (*ev)[j]
 	(*ev)[j] = e
-}
-
-func LookFileCmd(ec ExecContext, arg string) {
-	ed, err := EditFind(Wnd.tagbuf.Dir, "+LookFile", true, true)
-	if err != nil {
-		Warn(err.Error())
-		return
-	}
-
-	if ed.eventChan == nil {
-		ed.sfr.Fr.Hackflags |= textframe.HF_TRUNCATE
-		go lookfileproc(ed)
-	} else {
-		ed.tagfr.Sel = util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}
-	}
 }
 
 func JumpCmd(ec ExecContext, arg string) {

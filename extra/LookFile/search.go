@@ -7,9 +7,11 @@ import (
 	"unicode"
 	"unicode/utf8"
 	"yacco/regexp"
-	"yacco/textframe"
 	"yacco/util"
 )
+
+const MAX_RESULTS = 20
+const MAX_FS_RECUR_DEPTH = 11
 
 type lookFileResult struct {
 	score  int
@@ -18,148 +20,13 @@ type lookFileResult struct {
 	needle string
 }
 
-const MAX_RESULTS = 20
-const MAX_FS_RECUR_DEPTH = 11
-
-func lookfileproc(ed *Editor) {
-	ch := make(chan string, 5)
-	ok, savedTag, savedEventChan := ed.EnterSpecial(ch)
-	if !ok {
-		return
-	}
-	defer ed.ExitSpecial(savedTag, savedEventChan)
-
-	var resultChan chan *lookFileResult
-	var searchDone chan struct{}
-	var resultList = []*lookFileResult{}
-	var er util.EventReader
-	oldNeedle := ""
-	ec := ExecContext{col: nil, ed: ed, br: ed.BufferRefresh, fr: &ed.sfr.Fr, buf: ed.bodybuf, eventChan: nil}
-	for {
-		select {
-		case eventMsg, ok := <-ch:
-			if !ok {
-				return
-			}
-
-			er.Reset()
-			er.Insert(eventMsg)
-			for !er.Done() {
-				eventMsg, ok = <-ch
-				if !ok {
-					return
-				}
-				er.Insert(eventMsg)
-			}
-
-			switch er.Type() {
-			case util.ET_BODYDEL, util.ET_BODYINS:
-				// nothing
-
-			case util.ET_BODYLOAD, util.ET_TAGLOAD:
-				executeEventReader(&ec, er)
-
-			case util.ET_BODYEXEC, util.ET_TAGEXEC:
-				cmd, _ := er.Text(nil, nil, nil)
-				switch cmd {
-				case "Escape":
-					// nothing
-
-				case "Return":
-					if searchDone != nil {
-						close(searchDone)
-						searchDone = nil
-					}
-
-					if len(resultList) > 0 {
-						sideChan <- func() {
-							ec.fr.Sel.S = 0
-							ec.fr.Sel.E = ed.bodybuf.Tonl(1, +1)
-							Load(ec, 0)
-						}
-					}
-
-				default:
-					executeEventReader(&ec, er)
-				}
-
-			case util.ET_TAGINS, util.ET_TAGDEL:
-				if searchDone != nil {
-					close(searchDone)
-					searchDone = nil
-				}
-
-				needle := string(getTagText(ed))
-				exact := exactMatch([]rune(needle))
-				displayResults(ed, resultList)
-				if needle != oldNeedle {
-					resultList = resultList[0:0]
-					oldNeedle = needle
-					if needle != "" {
-						resultChan = make(chan *lookFileResult, 1)
-						searchDone = make(chan struct{})
-						sideChan <- func() {
-							go fileSystemSearch(ed.tagbuf.Dir, resultChan, searchDone, needle, exact)
-							go tagsSearch(resultChan, searchDone, needle, exact)
-						}
-					} else {
-						displayResults(ed, resultList)
-					}
-				}
-			}
-
-		case result := <-resultChan:
-			if result.score < 0 {
-				continue
-			}
-			if result.needle != oldNeedle {
-				continue
-			}
-			found := false
-			for i := range resultList {
-				if resultList[i].score > result.score {
-					resultList = append(resultList, result)
-					copy(resultList[i+1:], resultList[i:])
-					resultList[i] = result
-					found = true
-					break
-				}
-			}
-			if !found {
-				resultList = append(resultList, result)
-			}
-			if len(resultList) > MAX_RESULTS {
-				resultList = resultList[:MAX_RESULTS]
-			}
-
-			displayResults(ed, resultList)
+func exactMatch(needle []rune) bool {
+	for _, r := range needle {
+		if unicode.IsUpper(r) {
+			return true
 		}
 	}
-}
-
-func displayResults(ed *Editor, resultList []*lookFileResult) {
-	t := ""
-	mpos := []int{}
-	s := 0
-	for _, result := range resultList {
-		t += result.show + "\n"
-		for i := range result.mpos {
-			mpos = append(mpos, result.mpos[i]+s)
-		}
-		s += len(result.show) + 1
-	}
-
-	sideChan <- func() {
-		sel := util.Sel{0, ed.bodybuf.Size()}
-		ed.bodybuf.Replace([]rune(t), &sel, true, nil, 0)
-
-		for i := range mpos {
-			ed.bodybuf.At(mpos[i]).C = uint16(util.RMT_COMMENT)
-		}
-
-		elasticTabs(ed, true)
-		ed.BufferRefresh()
-	}
+	return false
 }
 
 func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool) {
@@ -245,6 +112,9 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 }
 
 func fileSystemSearchMatch(name string, off int, exact bool, needlerx regexp.Regex, relPath, needle string, depth int, resultChan chan<- *lookFileResult, searchDone chan struct{}) int {
+	if !exact {
+		name = strings.ToLower(name)
+	}
 	rname := []rune(name)
 	mg := needlerx.Match(regexp.RuneArrayMatchable(rname), 0, len(rname), 1)
 	if mg == nil {
@@ -284,25 +154,6 @@ func countSlash(str string) int {
 		}
 	}
 	return n
-}
-
-func indexOf(b []textframe.ColorRune, needle []rune) int {
-	if len(needle) <= 0 {
-		return 0
-	}
-	j := 0
-	for i := 0; i < len(b); i++ {
-		if unicode.ToLower(b[i].R) == needle[j] {
-			j++
-			if j >= len(needle) {
-				return i - j + 1
-			}
-		} else {
-			i -= j
-			j = 0
-		}
-	}
-	return -1
 }
 
 func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool) {

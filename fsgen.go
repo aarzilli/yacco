@@ -149,6 +149,69 @@ func writeBodyFn(i int, data []byte, off int64) syscall.Errno {
 	return 0
 }
 
+func readColorFn(i int, off int64) ([]byte, syscall.Errno) {
+	ec := bufferExecContext(i)
+	if ec == nil {
+		return nil, syscall.ENOENT
+	}
+
+	resp := make(chan []byte)
+
+	sideChan <- func() {
+		//XXX - inefficient
+		ba, bb := ec.buf.Selection(util.Sel{0, ec.buf.Size()})
+
+		text := make([]rune, len(ba)+len(bb))
+		color := make([]uint8, len(ba)+len(bb))
+
+		for i := range ba {
+			text[i] = ba[i].R
+			color[i] = uint8(ba[i].C)
+		}
+
+		for i := range bb {
+			text[i+len(ba)] = bb[i].R
+			color[i+len(ba)] = uint8(bb[i].C)
+		}
+
+		body := util.MixColorHack(text, color)
+		if off < int64(len(body)) {
+			resp <- body[off:]
+		} else {
+			resp <- []byte{}
+		}
+	}
+
+	r := <-resp
+
+	if debugFs {
+		debugfsf("Read color\n")
+	}
+
+	return r, 0
+}
+
+func writeColorFn(i int, data []byte, off int64) syscall.Errno {
+	ec := bufferExecContext(i)
+	if ec == nil {
+		return syscall.ENOENT
+	}
+
+	debugfsf("Write color\n")
+
+	body, color := util.UnmixColorHack(data)
+
+	sideChan <- func() {
+		start := ec.buf.Size()
+		ec.buf.Replace(body, &util.Sel{start, start}, true, ec.eventChan, util.EO_BODYTAG)
+		for i := range color {
+			ec.buf.At(start + i).C = uint16(color[i])
+		}
+	}
+
+	return 0
+}
+
 func readCtlFn(i int, off int64) ([]byte, syscall.Errno) {
 	if off > 0 {
 		return []byte{}, 0
@@ -467,6 +530,7 @@ func writeEventFn(i int, data []byte, off int64) syscall.Errno {
 	ec.ed.eventReader.Insert(string(data))
 
 	if !ec.ed.eventReader.Done() {
+		debugfsf("Event not finished\n")
 		return 0
 	}
 
@@ -478,6 +542,8 @@ func writeEventFn(i int, data []byte, off int64) syscall.Errno {
 
 	er := ec.ed.eventReader
 	ec.ed.eventReader.Reset()
+
+	debugfsf("Executing event: %v\n", er)
 
 	executeEventReader(ec, er)
 
@@ -498,6 +564,7 @@ func executeEventReader(ec *ExecContext, er util.EventReader) {
 	case util.ET_BODYLOAD:
 		pp, sp, ep := er.Points()
 		sideChan <- func() {
+			debugfsf("Selecting: %d %d %d\n", pp, sp, ep)
 			ec.fr.Sel = util.Sel{sp, ep}
 			ec.fr.SelColor = 2
 			Load(*ec, pp)

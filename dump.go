@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"yacco/buf"
 	"yacco/config"
-	"yacco/textframe"
 	"yacco/util"
 )
 
@@ -117,11 +116,6 @@ func LoadFrom(dumpDest string) bool {
 				ed.sfr.Fr.Font = config.AltFont
 			}
 			col.AddAfter(ed, -1, 0.5)
-
-			if b.Name == "+LookFile" {
-				ed.sfr.Fr.Hackflags |= textframe.HF_TRUNCATE
-				go lookfileproc(ed)
-			}
 
 			ed.tagbuf.Replace([]rune(de.TagText), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, util.EO_MOUSE)
 			if de.SelS != 0 {

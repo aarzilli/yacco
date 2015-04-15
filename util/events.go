@@ -109,6 +109,7 @@ func Fmtevent3(eventChan chan string, origin EventOrigin, istag bool, p, s, e in
 type eventReaderState func(er *EventReader, msg string) eventReaderState
 
 type EventReader struct {
+	rbuf     []byte
 	insertfn eventReaderState
 	done     bool
 	perr     string
@@ -131,6 +132,24 @@ type EventReader struct {
 
 func (er *EventReader) String() string {
 	return fmt.Sprintf("done:%v etype:%v origin:%v flags:%v bltin:%v p:%v s:%v e:%v txt:[%s] xs:%v xe:%v xtxt:[%s]", er.done, er.etype, er.origin, er.flags, er.bltin, er.p, er.s, er.e, er.txt, er.xs, er.xe, er.xtxt)
+}
+
+func (er *EventReader) ReadFrom(in io.Reader) error {
+	if er.rbuf == nil {
+		er.rbuf = make([]byte, 2*MAX_EVENT_TEXT_LENGTH)
+	}
+	er.Reset()
+	for !er.Done() {
+		n, err := in.Read(er.rbuf)
+		if err != nil {
+			return err
+		}
+		if n < 1 {
+			return fmt.Errorf("Short read from input")
+		}
+		er.Insert(string(er.rbuf[:n]))
+	}
+	return nil
 }
 
 // Adds an event message to the event reader

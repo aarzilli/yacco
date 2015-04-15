@@ -13,12 +13,12 @@ import (
 )
 
 type Font struct {
-	fonts   []*truetype.Font
-	cs      []*freetype.Context
-	pfonts  []*pcf.Pcf
-	dpi     float64
-	Size    float64
-	spacing float64
+	fonts       []*truetype.Font
+	cs          []*freetype.Context
+	pfonts      []*pcf.Pcf
+	dpi         float64
+	Size        float64
+	spacing     float64
 	fullHinting bool
 }
 

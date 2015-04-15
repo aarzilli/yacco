@@ -2,6 +2,7 @@ package util
 
 import (
 	"bufio"
+	"bytes"
 	"code.google.com/p/go9p/p"
 	"code.google.com/p/go9p/p/clnt"
 	"fmt"
@@ -17,7 +18,6 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"bytes"
 	"unicode/utf8"
 )
 
@@ -364,6 +364,8 @@ type BufferConn struct {
 	AddrFd  *clnt.File
 	XDataFd *clnt.File
 	PropFd  *clnt.File
+	TagFd   *clnt.File
+	ColorFd *clnt.File
 }
 
 type IndexEntry struct {
@@ -381,6 +383,8 @@ func (buf *BufferConn) Close() {
 	buf.BodyFd.Close()
 	buf.AddrFd.Close()
 	buf.XDataFd.Close()
+	buf.TagFd.Close()
+	buf.ColorFd.Close()
 }
 
 func read(fd io.Reader) (string, error) {
@@ -441,6 +445,16 @@ func makeBufferConn(p9clnt *clnt.Clnt, id string, ctlfd, eventfd *clnt.File) (*B
 		return nil, err
 	}
 
+	tagfd, err := p9clnt.FOpen("/"+id+"/tag", p.ORDWR)
+	if err != nil {
+		return nil, err
+	}
+
+	colorfd, err := p9clnt.FOpen("/"+id+"/color", p.ORDWR)
+	if err != nil {
+		return nil, err
+	}
+
 	return &BufferConn{
 		p9clnt,
 		id,
@@ -450,6 +464,8 @@ func makeBufferConn(p9clnt *clnt.Clnt, id string, ctlfd, eventfd *clnt.File) (*B
 		addrfd,
 		xdatafd,
 		propfd,
+		tagfd,
+		colorfd,
 	}, nil
 }
 
@@ -930,4 +946,32 @@ func QuotedSplit(s string) []string {
 		r = append(r, string(buf.Bytes()))
 	}
 	return r
+}
+
+func MixColorHack(rs []rune, cs []uint8) []byte {
+	r := make([]byte, 0, 2*len(rs))
+	bs := make([]byte, 10)
+	for i := range rs {
+		r = append(r, cs[i])
+		n := utf8.EncodeRune(bs, rs[i])
+		r = append(r, bs[:n]...)
+	}
+	return r
+}
+
+func UnmixColorHack(data []byte) (text []rune, color []uint8) {
+	text = make([]rune, 0, len(data)/2)
+	color = make([]uint8, 0, len(data)/2)
+
+	i := 0
+
+	for i < len(data) {
+		color = append(color, data[i])
+		i++
+		r, sz := utf8.DecodeRune(data[i:])
+		i += sz
+		text = append(text, r)
+	}
+
+	return text, color
 }

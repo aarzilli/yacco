@@ -17,7 +17,6 @@ type tagItem struct {
 	search string
 }
 
-var tagWords = []string{}
 var tagMu sync.Mutex
 var tags []tagItem = []tagItem{}
 var lastTs time.Time = time.Unix(0, 0)
@@ -56,8 +55,6 @@ func tagsLoad() {
 	defer fh.Close()
 
 	lscr := bufio.NewReader(fh)
-
-	newTagWords := []string{}
 
 	for {
 		linebytes, isPrefix, err := lscr.ReadLine()
@@ -128,12 +125,6 @@ func tagsLoad() {
 
 		search = regexpEx2Go(search)
 		tags = append(tags, tagItem{tag, path, search})
-
-		newTagWords = append(newTagWords, tag)
-	}
-
-	sideChan <- func() {
-		tagWords = newTagWords
 	}
 }
 

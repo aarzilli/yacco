@@ -146,29 +146,12 @@ func registerDirectory(inotifyFd int, dirname string, recurse int) {
 	}
 }
 
-const BUFSIZE = 2 * util.MAX_EVENT_TEXT_LENGTH
-
 func readEvents(buf *util.BufferConn) {
 	var er util.EventReader
-	rbuf := make([]byte, BUFSIZE)
 	for {
-		n, err := buf.EventFd.Read(rbuf)
+		err := er.ReadFrom(buf.EventFd)
 		if err != nil {
-			buf.EventFd.Close()
 			os.Exit(0)
-		}
-		if n < 2 {
-			fmt.Fprintf(os.Stderr, "Not enough read from event file\n")
-			os.Exit(1)
-		}
-
-		er.Reset()
-		er.Insert(string(rbuf[:n]))
-
-		for !er.Done() {
-			n, err := buf.EventFd.Read(rbuf)
-			util.Allergic(debug, err)
-			er.Insert(string(rbuf[:n]))
 		}
 
 		if ok, perr := er.Valid(); !ok {
