@@ -3,6 +3,7 @@ package main
 import (
 	"code.google.com/p/go9p/p"
 	"code.google.com/p/go9p/p/clnt"
+	"flag"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,7 +13,8 @@ import (
 	"yacco/util"
 )
 
-var debug = true
+var debug = false
+var force = flag.Bool("f", false, "Force takeover")
 
 func getCwd(p9clnt *clnt.Clnt) string {
 	props, err := util.ReadProps(p9clnt)
@@ -27,15 +29,22 @@ func windowMan(p9clnt *clnt.Clnt, cwd string) *util.BufferConn {
 	indexEntries, err := util.ReadIndex(p9clnt)
 	util.Allergic(debug, err)
 
-	var buf *util.BufferConn
-
 	for i := range indexEntries {
 		if strings.HasSuffix(indexEntries[i].Path, "/+Lookfile") {
 			ctlfd, err := p9clnt.FOpen(fmt.Sprintf("/%d/ctl", indexEntries[i].Idx), p.ORDWR)
 			util.Allergic(debug, err)
-			io.WriteString(ctlfd, "show-tag\n")
-			ctlfd.Close()
-			os.Exit(0)
+
+			if *force {
+				ctlln, err := ioutil.ReadAll(ctlfd)
+				util.Allergic(debug, err)
+				ctlfd.Close()
+				outbufid := strings.TrimSpace(string(ctlln[:11]))
+				return windowManFinish(outbufid, p9clnt, cwd)
+			} else {
+				io.WriteString(ctlfd, "show-tag\n")
+				ctlfd.Close()
+				os.Exit(0)
+			}
 		}
 	}
 
@@ -45,11 +54,15 @@ func windowMan(p9clnt *clnt.Clnt, cwd string) *util.BufferConn {
 	ctlfd.Close()
 	outbufid := strings.TrimSpace(string(ctlln[:11]))
 
-	buf, err = util.OpenBufferConn(p9clnt, outbufid)
+	return windowManFinish(outbufid, p9clnt, cwd)
+}
+
+func windowManFinish(outbufid string, p9clnt *clnt.Clnt, cwd string) *util.BufferConn {
+	buf, err := util.OpenBufferConn(p9clnt, outbufid)
 	util.Allergic(debug, err)
 
 	fmt.Fprintf(buf.CtlFd, "dumpdir %s\n", cwd)
-	io.WriteString(buf.CtlFd, "dump LookFile\n")
+	io.WriteString(buf.CtlFd, "dump LookFile -f\n")
 	fmt.Fprintf(buf.CtlFd, "name %s/+Lookfile\n", cwd)
 	io.WriteString(buf.CtlFd, "noautocompl\n")
 	io.WriteString(buf.CtlFd, "show-tag\n")
@@ -207,6 +220,8 @@ func displayResults(buf *util.BufferConn, resultList []*lookFileResult) {
 }
 
 func main() {
+	flag.Parse()
+
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)
 	defer p9clnt.Unmount()
