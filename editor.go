@@ -445,7 +445,7 @@ func (e *Editor) FixTop() {
 		e.otherSel[OS_TOP].E = e.bodybuf.Size()
 	}
 	for ; e.otherSel[OS_TOP].E > 0; e.otherSel[OS_TOP].E-- {
-		if e.bodybuf.At(e.otherSel[OS_TOP].E - 1).R == '\n' {
+		if e.bodybuf.At(e.otherSel[OS_TOP].E-1).R == '\n' {
 			break
 		}
 	}
