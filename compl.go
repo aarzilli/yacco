@@ -261,7 +261,6 @@ func getFsComplsMaybe(resDir, resName string) []string {
 	case fscompls := <-done:
 		return fscompls
 	case <-t.C:
-		println("Failed")
 		return []string{}
 	}
 }

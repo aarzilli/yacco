@@ -726,8 +726,8 @@ func (fr *Frame) redrawOptSelectionMoved() (bool, []image.Rectangle) {
 			if debugRedraw && fr.debugRedraw {
 				fmt.Printf("\tRedrawing parenthesis match (1): %v -> %v\n", fr.redrawOpt.drawnPMatch, fr.PMatch)
 			}
-			fr.redrawSelectionLogical(fr.redrawOpt.drawnPMatch, &fr.Colors[0][0], &invalid)
-			fr.redrawSelectionLogical(fr.PMatch, &fr.Colors[4][0], &invalid)
+			fr.redrawSelectionLogical(fr.redrawOpt.drawnPMatch, &invalid)
+			fr.redrawSelectionLogical(fr.PMatch, &invalid)
 		}
 
 		return true, invalid
@@ -768,8 +768,8 @@ func (fr *Frame) redrawOptSelectionMoved() (bool, []image.Rectangle) {
 		if debugRedraw && fr.debugRedraw {
 			fmt.Printf("\tRedrawing parenthesis match (2): %v -> %v\n", fr.redrawOpt.drawnPMatch, fr.PMatch)
 		}
-		fr.redrawSelectionLogical(fr.redrawOpt.drawnPMatch, &fr.Colors[0][0], &invalid)
-		fr.redrawSelectionLogical(fr.PMatch, &fr.Colors[4][0], &invalid)
+		fr.redrawSelectionLogical(fr.redrawOpt.drawnPMatch, &invalid)
+		fr.redrawSelectionLogical(fr.PMatch, &invalid)
 	}
 
 	rs := cs - fr.Top
@@ -809,9 +809,18 @@ func (fr *Frame) redrawOptSelectionMoved() (bool, []image.Rectangle) {
 	return true, invalid
 }
 
-func (fr *Frame) redrawSelectionLogical(sel util.Sel, color *image.Uniform, invalid *[]image.Rectangle) {
+func (fr *Frame) redrawSelectionLogical(sel util.Sel, invalid *[]image.Rectangle) {
 	if sel.S == sel.E {
 		return
+	}
+
+	var color *image.Uniform
+	if sel.S >= fr.PMatch.S && sel.E <= fr.PMatch.E {
+		color = &fr.Colors[4][0]
+	} else if sel.S >= fr.Sel.S && sel.E <= fr.Sel.E {
+		color = &fr.Colors[fr.SelColor+1][0]
+	} else {
+		color = &fr.Colors[0][0]
 	}
 
 	rs := sel.S - fr.Top
@@ -1180,7 +1189,7 @@ func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 		} else {
 			r.Min.Y = fr.R.Max.Y - h
 		}
-		fr.drawingFuncs.DrawFillSrc(fr.B, r, &fr.Colors[0][0])
+		fr.drawingFuncs.DrawFillSrc(fr.B, r.Intersect(fr.R), &fr.Colors[0][0])
 	}
 
 	return len(fr.glyphs)
