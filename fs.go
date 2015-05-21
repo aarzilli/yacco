@@ -2,7 +2,6 @@ package main
 
 import (
 	"os"
-	"yacco/buf"
 )
 
 func FsInit() {
@@ -18,10 +17,10 @@ func FsQuit() {
 	os.Exit(0)
 }
 
-func FsRemoveBuffer(n int) {
-	fs9PRemoveBuffer(n)
+func FsRemoveEditor(n int) {
+	fs9PRemoveEditor(n)
 }
 
-func FsAddBuffer(n int, b *buf.Buffer) {
-	fs9PAddBuffer(n, b)
+func FsAddEditor(n int) {
+	fs9PAddEditor(n)
 }

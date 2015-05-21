@@ -169,21 +169,10 @@ func bufferAdd(b *buf.Buffer) {
 	for i := range buffers {
 		if buffers[i] == nil {
 			buffers[i] = b
-			FsAddBuffer(i, b)
 			return
 		}
 	}
 	buffers = append(buffers, b)
-	FsAddBuffer(len(buffers)-1, b)
-}
-
-func bufferIndex(b *buf.Buffer) int {
-	for i := range buffers {
-		if buffers[i] == b {
-			return i
-		}
-	}
-	return -1
 }
 
 func removeBuffer(b *buf.Buffer) {
@@ -192,7 +181,6 @@ func removeBuffer(b *buf.Buffer) {
 			b.RefCount--
 			if b.RefCount == 0 {
 				buffers[i] = nil
-				FsRemoveBuffer(i)
 			}
 			return
 		}
@@ -204,14 +192,9 @@ func bufferExecContext(i int) *ExecContext {
 	done := make(chan *ExecContext)
 
 	sideChan <- func() {
-		if buffers[i] == nil {
-			done <- nil
-			return
-		}
-
 		for _, col := range Wnd.cols.cols {
 			for _, ed := range col.editors {
-				if ed.bodybuf == buffers[i] {
+				if ed.edid == i {
 					done <- &ExecContext{
 						col:       col,
 						ed:        ed,
@@ -230,4 +213,13 @@ func bufferExecContext(i int) *ExecContext {
 		return
 	}
 	return <-done
+}
+
+func bufferIndex(b *buf.Buffer) int {
+	for i := range buffers {
+		if buffers[i] == b {
+			return i
+		}
+	}
+	return -1
 }

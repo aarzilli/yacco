@@ -33,7 +33,6 @@ func indexFileFn(off int64) ([]byte, syscall.Errno) {
 		t := ""
 		for _, col := range Wnd.cols.cols {
 			for _, ed := range col.editors {
-				idx := bufferIndex(ed.bodybuf)
 				mod := 0
 				if ed.bodybuf.Modified {
 					mod = 1
@@ -44,7 +43,7 @@ func indexFileFn(off int64) ([]byte, syscall.Errno) {
 				}
 				tc := filepath.Join(ed.bodybuf.Dir, ed.bodybuf.Name)
 				t += fmt.Sprintf("%11d %11d %11d %11d %11d %s\n",
-					idx, ed.tagbuf.Size(), ed.bodybuf.Size(), dir, mod, tc)
+					ed.edid, ed.tagbuf.Size(), ed.bodybuf.Size(), dir, mod, tc)
 			}
 		}
 		done <- t

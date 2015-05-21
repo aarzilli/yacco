@@ -17,11 +17,14 @@ import (
 	"yacco/util"
 )
 
+var editorCount = 0
+
 type Editor struct {
 	r       image.Rectangle
 	rhandle image.Rectangle
 	frac    float64
 	last    bool
+	edid    int
 
 	sfr         textframe.ScrollFrame
 	tagfr       textframe.Frame
@@ -74,6 +77,9 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	e := &Editor{}
 
 	e.confirmDel = false
+	e.edid = editorCount
+	editorCount++
+	FsAddEditor(e.edid)
 
 	e.bodybuf = bodybuf
 	e.tagbuf, _ = buf.NewBuffer(bodybuf.Dir, "+Tag", true, Wnd.Prop["indentchar"])
@@ -223,6 +229,7 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool, simpleReca
 }
 
 func (e *Editor) Close() {
+	FsRemoveEditor(e.edid)
 	e.closed = true
 	e.bodybuf.RmSel(&e.sfr.Fr.Sel)
 	e.bodybuf.RmSel(&e.sfr.Fr.PMatch)

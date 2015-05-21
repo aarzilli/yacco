@@ -364,7 +364,7 @@ func DelCmd(ec ExecContext, arg string, confirmed bool) {
 			close(ec.ed.eventChan)
 			ec.ed.eventChan = nil
 		}
-		Log(bufferIndex(ec.ed.bodybuf), LOP_DEL, ec.ed.bodybuf)
+		Log(ec.ed.edid, LOP_DEL, ec.ed.bodybuf)
 		col := ec.ed.Column()
 		col.Remove(col.IndexOf(ec.ed))
 		ec.ed.Close()
@@ -590,7 +590,7 @@ func GetCmd(ec ExecContext, arg string) {
 		return
 	}
 
-	Log(bufferIndex(ec.ed.bodybuf), LOP_GET, ec.ed.bodybuf)
+	Log(ec.ed.edid, LOP_GET, ec.ed.bodybuf)
 
 	if ec.ed.bodybuf.IsDir() {
 		ec.ed.readDir()
@@ -738,7 +738,7 @@ func PutCmd(ec ExecContext, arg string) {
 			return
 		}
 	}
-	Log(bufferIndex(ec.ed.bodybuf), LOP_PUT, ec.ed.bodybuf)
+	Log(ec.ed.edid, LOP_PUT, ec.ed.bodybuf)
 	err := ec.ed.bodybuf.Put()
 	if err != nil {
 		Warn(fmt.Sprintf("Put: Couldn't save %s: %s", ec.ed.bodybuf.ShortName(), err.Error()))
@@ -869,7 +869,7 @@ func ZeroxCmd(ec ExecContext, arg string) {
 	ned := NewEditor(ed.bodybuf, true)
 	ned.sfr.Fr.Sel.S = ed.sfr.Fr.Sel.S
 	ned.sfr.Fr.Sel.E = ed.sfr.Fr.Sel.E
-	Log(bufferIndex(ed.bodybuf), LOP_ZEROX, ed.bodybuf)
+	Log(ed.edid, LOP_ZEROX, ed.bodybuf)
 	HeuristicPlaceEditor(ned, true)
 }
 

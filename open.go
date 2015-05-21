@@ -53,7 +53,7 @@ func HeuristicOpen(path string, warp bool, create bool) (*Editor, error) {
 		return nil, err
 	}
 
-	Log(bufferIndex(ed.bodybuf), LOP_NEW, ed.bodybuf)
+	Log(ed.edid, LOP_NEW, ed.bodybuf)
 
 	HeuristicPlaceEditor(ed, warp)
 

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"yacco/buf"
 	"yacco/util"
 )
 
@@ -43,13 +44,6 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 
 	job.startTime = time.Now()
 
-	i := -1
-	if ec.ed != nil {
-		i = bufferIndex(ec.ed.bodybuf)
-	} else {
-		i = bufferIndex(ec.buf)
-	}
-
 	job.writeToBuf = writeToBuf
 	//job.ec = ec
 	job.done = make(chan bool, 10)
@@ -79,21 +73,23 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 		job.cmd = exec.Command(os.Getenv("SHELL"), "-c", cmd)
 	}
 
-	if i < 0 {
+	var b *buf.Buffer = nil
+	if ec.ed != nil {
+		os.Setenv("bi", fmt.Sprintf("%d", ec.ed.edid))
+		os.Setenv("winid", fmt.Sprintf("%d", ec.ed.edid))
+		b = ec.ed.bodybuf
+	} else {
 		os.Setenv("bi", "")
 		os.Setenv("p", "")
-		os.Setenv("%", "")
-		os.Setenv("winid", "")
+		b = ec.buf
+	}
+
+	if b != nil {
+		os.Setenv("p", filepath.Join(b.Dir, b.Name))
+		os.Setenv("%", filepath.Join(b.Dir, b.Name))
 	} else {
-		os.Setenv("bi", fmt.Sprintf("%d", i))
-		os.Setenv("winid", fmt.Sprintf("%d", i))
-		if buffers[i] != nil {
-			os.Setenv("p", filepath.Join(buffers[i].Dir, buffers[i].Name))
-			os.Setenv("%", filepath.Join(buffers[i].Dir, buffers[i].Name))
-		} else {
-			os.Setenv("p", "")
-			os.Setenv("%", "")
-		}
+		os.Setenv("p", "")
+		os.Setenv("%", "")
 	}
 
 	job.cmd.Dir = wd

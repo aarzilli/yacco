@@ -11,7 +11,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"yacco/buf"
 	"yacco/config"
 )
 
@@ -144,7 +143,7 @@ func (l *ListenLocalOnly) Addr() net.Addr {
 	return l.l.Addr()
 }
 
-func fs9PAddBuffer(n int, b *buf.Buffer) {
+func fs9PAddEditor(n int) {
 	name := fmt.Sprintf("%d", n)
 	user := p.OsUsers.Uid2User(os.Geteuid())
 
@@ -194,7 +193,7 @@ func fs9PAddBuffer(n int, b *buf.Buffer) {
 	jumps.Add(bufdir, "jumps", user, nil, 0440, jumps)
 }
 
-func fs9PRemoveBuffer(n int) {
+func fs9PRemoveEditor(n int) {
 	name := fmt.Sprintf("%d", n)
 	bufdir := p9root.Find(name)
 	if bufdir != nil {
@@ -220,7 +219,7 @@ func (s *CustomP9Server) Walk(req *srv.Req) {
 			fmt.Fprintf(os.Stderr, "Could not execute new: %v\n", err.Error())
 			done <- -1
 		} else {
-			done <- bufferIndex(ed.bodybuf)
+			done <- ed.edid
 		}
 	}
 

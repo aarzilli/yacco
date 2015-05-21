@@ -77,11 +77,12 @@ func LoadFrom(dumpDest string) bool {
 	activeCol = nil
 	activeSel.Reset()
 
-	for i := range buffers {
-		if buffers[i] != nil {
-			FsRemoveBuffer(i)
+	for i := range Wnd.cols.cols {
+		for j := range Wnd.cols.cols[i].editors {
+			FsRemoveEditor(Wnd.cols.cols[i].editors[j].edid)
 		}
 	}
+
 	Wnd.cols.cols = Wnd.cols.cols[0:0]
 
 	cdIntl(dw.Wd)
@@ -97,7 +98,6 @@ func LoadFrom(dumpDest string) bool {
 			b.Replace([]rune(db.Text), &util.Sel{0, b.Size()}, true, nil, util.EO_KBD)
 		}
 		buffers[i] = b
-		FsAddBuffer(i, b)
 	}
 
 	for _, dc := range dw.Columns {
@@ -122,7 +122,6 @@ func LoadFrom(dumpDest string) bool {
 				ed.sfr.Fr.Sel.S = de.SelS
 				ed.sfr.Fr.Sel.E = de.SelS
 			}
-
 		}
 		for i, de := range dc.Editors {
 			col.editors[i].frac = de.Frac
@@ -146,11 +145,7 @@ func LoadFrom(dumpDest string) bool {
 	}
 
 	for i := range buffers {
-		if buffers[i] == nil {
-			FsRemoveBuffer(i)
-		}
 		if buffers[i].RefCount == 0 {
-			FsRemoveBuffer(i)
 			buffers[i] = nil
 		}
 	}
