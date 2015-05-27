@@ -79,6 +79,8 @@ func fs9PInit() {
 	index.Add(p9root, "index", user, nil, 0444, index)
 	stack := &ReadOnlyP9{srv.File{}, stackFileFn}
 	stack.Add(p9root, "stack", user, nil, 0444, stack)
+	buffers := &ReadOnlyP9{srv.File{}, buffersFileFn}
+	buffers.Add(p9root, "buffers", user, nil, 0444, buffers)
 	prop := &ReadWriteP9{srv.File{}, readMainPropFn, writeMainPropFn}
 	prop.Add(p9root, "prop", user, nil, 0666, prop)
 	log := &ReadOpenP9{srv.File{}, openLogFileFn, readLogFileFn, clunkLogFileFn}

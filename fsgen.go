@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"bytes"
 	"syscall"
 	"yacco/config"
 	"yacco/edit"
@@ -58,6 +59,21 @@ func stackFileFn(off int64) ([]byte, syscall.Errno) {
 		return []byte{}, 0
 	}
 	return b[int(off):n], 0
+}
+
+func buffersFileFn(off int64) ([]byte, syscall.Errno) {
+	b := bytes.NewBuffer(make([]byte, 0, 1024))
+	for i := range buffers {
+		path := "<none>"
+		if buffers[i] != nil {
+			path = buffers[i].Path()
+		}
+		fmt.Fprintf(b, "%d %p %s\n", i, buffers[i], path)
+	}
+	if int(off) >= len(b.Bytes()) {
+		return []byte{}, 0
+	}
+	return b.Bytes()[off:], 0
 }
 
 func readAddrFn(i int, off int64) ([]byte, syscall.Errno) {
