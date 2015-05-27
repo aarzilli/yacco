@@ -734,7 +734,7 @@ func PutCmd(ec ExecContext, arg string) {
 	if !ec.ed.confirmSave {
 		if !ec.ed.bodybuf.CanSave() {
 			ec.ed.confirmSave = true
-			Warn(fmt.Sprintf("Put: %s changed on disk, are you sure you want to overwrite?", ec.ed.bodybuf.ShortName()))
+			Warn(fmt.Sprintf("Put: %s changed on disk, are you sure you want to overwrite?\nDiskDiff %d", ec.ed.bodybuf.ShortName(), ec.ed.edid))
 			return
 		}
 	}

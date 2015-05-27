@@ -9,7 +9,7 @@ cp -f extra/y9p/y9p $1/yaccodir/y9p
 cp -f extra/Change/Change $1/yaccodir/Change
 cp -f extra/LookFile/LookFile $1/yaccodir/LookFile
 cp -f bin/yacco $1/yaccodir/yacco
-for scpt in m g a+ a- Font Indent Tab Mount Fs in LookExact comment_char.sh c+ c- yclear gg; do
+for scpt in m g a+ a- Font Indent Tab Mount Fs in LookExact comment_char.sh c+ c- yclear gg DiskDiff; do
 	cp -f extra/$scpt $1/yaccodir/$scpt
 	chmod u+x $1/yaccodir/$scpt
 done

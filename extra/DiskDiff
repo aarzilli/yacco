@@ -1,0 +1,6 @@
+#!/bin/bash
+
+f=$(mktemp)
+y9p read /$1/body > $f
+diff $f $p
+rm $f
