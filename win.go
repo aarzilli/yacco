@@ -193,12 +193,9 @@ func (w *Window) EventLoop() {
 		// update completions dictionary at least once every 10 minutes
 		if time.Now().Sub(lastWordUpdate) >= time.Duration(10*time.Minute) {
 			lastWordUpdate = time.Now()
-			for i := range buffers {
-				if buffers[i] == nil {
-					continue
-				}
-				if time.Now().Sub(buffers[i].WordsUpdate) >= time.Duration(10*time.Minute) {
-					buffers[i].UpdateWords()
+			for i := range Wnd.cols.cols {
+				for j := range Wnd.cols.cols[i].editors {
+					Wnd.cols.cols[i].editors[j].bodybuf.UpdateWords()
 				}
 			}
 		}
@@ -1192,34 +1189,43 @@ func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, 
 }
 
 func (w *Window) Dump() DumpWindow {
+	buffers := map[string]int{}
+	
+	bufs := []DumpBuffer{}
+	for i := range Wnd.cols.cols {
+		for j := range Wnd.cols.cols[i].editors {
+			buf := Wnd.cols.cols[i].editors[j].bodybuf
+			
+			if _, ok := buffers[buf.Path()]; ok {
+				continue
+			}
+			
+			text := ""
+			if (len(buf.Name) > 0) && (buf.Name[0] == '+') && (buf.DumpCmd == "") {
+				start := 0
+				if buf.Size() > 1024*10 {
+					start = buf.Size() - (1024 * 10)
+				}
+				text = string(buf.SelectionRunes(util.Sel{start, buf.Size()}))
+			}
+			
+			buffers[buf.Path()] = len(bufs)
+
+			bufs = append(bufs, DumpBuffer{
+				false,
+				buf.Dir,
+				buf.Name,
+				buf.Props,
+				text,
+				buf.DumpCmd,
+				buf.DumpDir,
+			})
+		}
+	}
+
 	cols := make([]DumpColumn, len(w.cols.cols))
 	for i := range w.cols.cols {
-		cols[i] = w.cols.cols[i].Dump()
-	}
-	bufs := make([]DumpBuffer, len(buffers))
-	for i := range buffers {
-		if buffers[i] != nil {
-			text := ""
-			if (len(buffers[i].Name) > 0) && (buffers[i].Name[0] == '+') && (buffers[i].DumpCmd == "") {
-				start := 0
-				if buffers[i].Size() > 1024*10 {
-					start = buffers[i].Size() - (1024 * 10)
-				}
-				text = string(buffers[i].SelectionRunes(util.Sel{start, buffers[i].Size()}))
-			}
-
-			bufs[i] = DumpBuffer{
-				false,
-				buffers[i].Dir,
-				buffers[i].Name,
-				buffers[i].Props,
-				text,
-				buffers[i].DumpCmd,
-				buffers[i].DumpDir,
-			}
-		} else {
-			bufs[i].IsNil = true
-		}
+		cols[i] = w.cols.cols[i].Dump(buffers)
 	}
 	return DumpWindow{cols, bufs, w.tagbuf.Dir, string(w.tagbuf.SelectionRunes(util.Sel{w.tagbuf.EditableStart, w.tagbuf.Size()}))}
 }
@@ -1227,9 +1233,13 @@ func (w *Window) Dump() DumpWindow {
 func ReplaceMsg(ec *ExecContext, esel *util.Sel, append bool, txt string, origin util.EventOrigin, reselect bool, scroll bool) func() {
 	return func() {
 		found := false
-		for i := range buffers {
-			if buffers[i] == ec.buf {
-				found = true
+		bufsearch:
+		for i := range Wnd.cols.cols {
+			for j := range Wnd.cols.cols[i].editors {
+				if ec.buf == Wnd.cols.cols[i].editors[j].bodybuf {
+					found = true
+					break bufsearch
+				}
 			}
 		}
 		if !found {

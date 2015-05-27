@@ -16,7 +16,6 @@ import (
 )
 
 var Wnd Window
-var buffers []*buf.Buffer = []*buf.Buffer{}
 var sideChan chan func()
 var AutoDumpPath string
 
@@ -161,30 +160,7 @@ func main() {
 	wde.Run()
 }
 
-func bufferAdd(b *buf.Buffer) {
-	b.RefCount++
-	if b.RefCount > 1 {
-		return
-	}
-	for i := range buffers {
-		if buffers[i] == nil {
-			buffers[i] = b
-			return
-		}
-	}
-	buffers = append(buffers, b)
-}
-
 func removeBuffer(b *buf.Buffer) {
-	for i, cb := range buffers {
-		if cb == b {
-			b.RefCount--
-			if b.RefCount == 0 {
-				buffers[i] = nil
-			}
-			return
-		}
-	}
 	Wnd.Words = util.Dedup(append(Wnd.Words, b.Words...))
 }
 
@@ -213,13 +189,4 @@ func bufferExecContext(i int) *ExecContext {
 		return
 	}
 	return <-done
-}
-
-func bufferIndex(b *buf.Buffer) int {
-	for i := range buffers {
-		if buffers[i] == b {
-			return i
-		}
-	}
-	return -1
 }

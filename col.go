@@ -237,10 +237,10 @@ func (c *Col) Close() {
 	}
 }
 
-func (c *Col) Dump() DumpColumn {
+func (c *Col) Dump(buffers map[string]int) DumpColumn {
 	editors := make([]DumpEditor, len(c.editors))
 	for i := range c.editors {
-		editors[i] = c.editors[i].Dump()
+		editors[i] = c.editors[i].Dump(buffers)
 	}
 	return DumpColumn{c.frac, editors, string(c.tagbuf.SelectionRunes(util.Sel{0, c.tagbuf.Size()}))}
 }

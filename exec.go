@@ -357,7 +357,15 @@ func DelCmd(ec ExecContext, arg string, confirmed bool) {
 	exitConfirmed = false
 	clearToRemove := !ec.ed.bodybuf.Modified || fakebuf(ec.ed.bodybuf.Name) || confirmed || ec.ed.confirmDel
 	if !clearToRemove {
-		clearToRemove = ec.ed.bodybuf.RefCount > 1
+		count := 0
+		for i := range Wnd.cols.cols {
+			for j := range Wnd.cols.cols[i].editors {
+				if ec.ed.bodybuf == Wnd.cols.cols[i].editors[j].bodybuf {
+					count++
+				}
+			}
+		}
+		clearToRemove = count > 1
 	}
 	if clearToRemove {
 		if ec.ed.eventChan != nil {
@@ -499,13 +507,13 @@ func EditCmd(ec ExecContext, arg string) {
 func ExitCmd(ec ExecContext, arg string) {
 	t := "The following files have unsaved changes:\n"
 	n := 0
-	for _, buf := range buffers {
-		if buf == nil {
-			continue
-		}
-		if buf.Modified && !fakebuf(buf.Name) {
-			t += buf.ShortName() + "\n"
-			n++
+	for i := range Wnd.cols.cols {
+		for j := range Wnd.cols.cols[i].editors {
+			buf := Wnd.cols.cols[i].editors[j].bodybuf
+			if buf.Modified && !fakebuf(buf.Name) {
+				t += buf.ShortName() + "\n"
+				n++
+			}
 		}
 	}
 
@@ -866,7 +874,7 @@ func ZeroxCmd(ec ExecContext, arg string) {
 	}
 	ed.confirmDel = false
 	ed.confirmSave = false
-	ned := NewEditor(ed.bodybuf, true)
+	ned := NewEditor(ed.bodybuf)
 	ned.sfr.Fr.Sel.S = ed.sfr.Fr.Sel.S
 	ned.sfr.Fr.Sel.E = ed.sfr.Fr.Sel.E
 	Log(ed.edid, LOP_ZEROX, ed.bodybuf)
@@ -1120,9 +1128,9 @@ func RehashCmd(ec ExecContext, arg string) {
 	if ec.ed != nil {
 		ec.ed.bodybuf.UpdateWords()
 	} else {
-		for i := range buffers {
-			if buffers[i] != nil {
-				buffers[i].UpdateWords()
+		for i := range Wnd.cols.cols {
+			for j := range Wnd.cols.cols[i].editors {
+				Wnd.cols.cols[i].editors[j].bodybuf.UpdateWords()
 			}
 		}
 	}
@@ -1217,6 +1225,12 @@ func (bm *BufMan) Open(name string) *buf.Buffer {
 }
 
 func (bm *BufMan) List() []*buf.Buffer {
+	buffers := []*buf.Buffer{}
+	for i := range Wnd.cols.cols {
+		for j := range Wnd.cols.cols[i].editors {
+			buffers = append(buffers, Wnd.cols.cols[j].editors[i].bodybuf)
+		}
+	}
 	return buffers
 }
 

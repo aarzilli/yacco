@@ -43,7 +43,6 @@ type Buffer struct {
 
 	HlGood int
 
-	RefCount int
 	RevCount int
 
 	Words       []string

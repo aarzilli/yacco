@@ -87,7 +87,7 @@ func LoadFrom(dumpDest string) bool {
 
 	cdIntl(dw.Wd)
 
-	buffers = make([]*buf.Buffer, len(dw.Buffers))
+	buffers := make([]*buf.Buffer, len(dw.Buffers))
 	for i, db := range dw.Buffers {
 		b, err := buf.NewBuffer(db.Dir, db.Name, true, Wnd.Prop["indentchar"])
 		if err != nil {
@@ -107,8 +107,7 @@ func LoadFrom(dumpDest string) bool {
 
 		for _, de := range dc.Editors {
 			b := buffers[de.Id]
-			ed := NewEditor(b, false)
-			b.RefCount++
+			ed := NewEditor(b)
 			switch de.Font {
 			case "main":
 				ed.sfr.Fr.Font = config.MainFont
@@ -141,12 +140,6 @@ func LoadFrom(dumpDest string) bool {
 	for i, db := range dw.Buffers {
 		if db.DumpCmd != "" {
 			NewJob(db.DumpDir, db.DumpCmd, "", &ExecContext{buf: buffers[i]}, false, nil)
-		}
-	}
-
-	for i := range buffers {
-		if buffers[i].RefCount == 0 {
-			buffers[i] = nil
 		}
 	}
 

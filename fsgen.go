@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"bytes"
 	"syscall"
 	"yacco/config"
 	"yacco/edit"
@@ -59,21 +58,6 @@ func stackFileFn(off int64) ([]byte, syscall.Errno) {
 		return []byte{}, 0
 	}
 	return b[int(off):n], 0
-}
-
-func buffersFileFn(off int64) ([]byte, syscall.Errno) {
-	b := bytes.NewBuffer(make([]byte, 0, 1024))
-	for i := range buffers {
-		path := "<none>"
-		if buffers[i] != nil {
-			path = buffers[i].Path()
-		}
-		fmt.Fprintf(b, "%d %p %s\n", i, buffers[i], path)
-	}
-	if int(off) >= len(b.Bytes()) {
-		return []byte{}, 0
-	}
-	return b.Bytes()[off:], 0
 }
 
 func readAddrFn(i int, off int64) ([]byte, syscall.Errno) {
@@ -609,10 +593,14 @@ func executeEventReader(ec *ExecContext, er util.EventReader) {
 			}
 			if er.MissingExtraArg() {
 				xpath, xs, xe, _ := er.ExtraArg()
-				for _, buf := range buffers {
-					if filepath.Join(buf.Dir, buf.Name) == xpath {
-						er.SetExtraArg(string(buf.SelectionRunes(util.Sel{xs, xe})))
-						break
+				buffer_found:
+				for i := range Wnd.cols.cols {
+					for j := range Wnd.cols.cols[i].editors {
+						buf := Wnd.cols.cols[i].editors[j].bodybuf
+						if filepath.Join(buf.Dir, buf.Name) == xpath {
+							er.SetExtraArg(string(buf.SelectionRunes(util.Sel{xs, xe})))
+							break buffer_found
+						}
 					}
 				}
 			}

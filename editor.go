@@ -73,7 +73,7 @@ func (e *Editor) SetWnd(wnd wde.Window) {
 	e.tagfr.Wnd = wnd
 }
 
-func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
+func NewEditor(bodybuf *buf.Buffer) *Editor {
 	e := &Editor{}
 
 	e.confirmDel = false
@@ -85,9 +85,6 @@ func NewEditor(bodybuf *buf.Buffer, addBuffer bool) *Editor {
 	e.tagbuf, _ = buf.NewBuffer(bodybuf.Dir, "+Tag", true, Wnd.Prop["indentchar"])
 	e.expandedTag = true
 
-	if addBuffer {
-		bufferAdd(bodybuf)
-	}
 	hf := textframe.HF_MARKSOFTWRAP
 	if config.QuoteHack {
 		hf |= textframe.HF_QUOTEHACK
@@ -434,7 +431,7 @@ func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 	e.sfr.Wnd.FlushImage(e.redrawRects...)
 	e.redrawRects = e.redrawRects[0:0]
 
-	if (e.bodybuf.RefCount <= 1) || !recur {
+	if !recur {
 		return
 	}
 
@@ -631,7 +628,7 @@ func (ed *Editor) PropTrigger() {
 	ed.BufferRefresh()
 }
 
-func (ed *Editor) Dump() DumpEditor {
+func (ed *Editor) Dump(buffers map[string]int) DumpEditor {
 	fontName := ""
 	switch ed.sfr.Fr.Font {
 	default:
@@ -641,9 +638,9 @@ func (ed *Editor) Dump() DumpEditor {
 	case config.AltFont:
 		fontName = "alt"
 	}
-
+	
 	return DumpEditor{
-		bufferIndex(ed.bodybuf),
+		buffers[ed.bodybuf.Path()],
 		ed.frac,
 		fontName,
 		string(ed.tagbuf.SelectionRunes(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()})),

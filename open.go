@@ -16,7 +16,7 @@ func editOpen(path string, create bool) (*Editor, error) {
 	if err != nil {
 		return nil, err
 	}
-	return NewEditor(b, true), nil
+	return NewEditor(b), nil
 }
 
 func EditFind(rel2dir, path string, warp bool, create bool) (*Editor, error) {

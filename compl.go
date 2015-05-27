@@ -309,11 +309,10 @@ func getFsCompls(resDir, resName string) []string {
 
 func getWordCompls(wd string) []string {
 	r := []string{}
-	for _, buf := range buffers {
-		if buf == nil {
-			continue
+	for i := range Wnd.cols.cols {
+		for j := range Wnd.cols.cols[i].editors {
+			complFilter(wd, Wnd.cols.cols[i].editors[j].bodybuf.Words, &r)
 		}
-		complFilter(wd, buf.Words, &r)
 	}
 	complFilter(wd, Wnd.Words, &r)
 	r = util.Dedup(r)
