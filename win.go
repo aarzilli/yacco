@@ -1190,16 +1190,16 @@ func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, 
 
 func (w *Window) Dump() DumpWindow {
 	buffers := map[string]int{}
-	
+
 	bufs := []DumpBuffer{}
 	for i := range Wnd.cols.cols {
 		for j := range Wnd.cols.cols[i].editors {
 			buf := Wnd.cols.cols[i].editors[j].bodybuf
-			
+
 			if _, ok := buffers[buf.Path()]; ok {
 				continue
 			}
-			
+
 			text := ""
 			if (len(buf.Name) > 0) && (buf.Name[0] == '+') && (buf.DumpCmd == "") {
 				start := 0
@@ -1208,7 +1208,7 @@ func (w *Window) Dump() DumpWindow {
 				}
 				text = string(buf.SelectionRunes(util.Sel{start, buf.Size()}))
 			}
-			
+
 			buffers[buf.Path()] = len(bufs)
 
 			bufs = append(bufs, DumpBuffer{
@@ -1233,7 +1233,7 @@ func (w *Window) Dump() DumpWindow {
 func ReplaceMsg(ec *ExecContext, esel *util.Sel, append bool, txt string, origin util.EventOrigin, reselect bool, scroll bool) func() {
 	return func() {
 		found := false
-		bufsearch:
+	bufsearch:
 		for i := range Wnd.cols.cols {
 			for j := range Wnd.cols.cols[i].editors {
 				if ec.buf == Wnd.cols.cols[i].editors[j].bodybuf {

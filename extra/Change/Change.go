@@ -4,8 +4,11 @@ import (
 	"code.google.com/p/go9p/p"
 	"code.google.com/p/go9p/p/clnt"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"yacco/util"
 )
 
@@ -29,6 +32,7 @@ func main() {
 	util.Allergic(debug, err)
 
 	closeOpenEditors(p9clnt)
+	setColumns(p9clnt)
 	changeCurDirectory(p9clnt, newdir)
 	openGuide(p9clnt, newdir)
 }
@@ -44,6 +48,21 @@ func closeOpenEditors(p9clnt *clnt.Clnt) {
 			defer ctlfd.Close()
 			ctlfd.Write([]byte("del\n"))
 		}()
+	}
+}
+
+func setColumns(p9clnt *clnt.Clnt) {
+	cfd, err := p9clnt.FOpen("/columns", p.ORDWR)
+	if err != nil {
+		return
+	}
+	defer cfd.Close()
+
+	bs, err := ioutil.ReadAll(cfd)
+	util.Allergic(debug, err)
+	v := strings.Split(string(bs), "\n")
+	if len(v) <= 2 {
+		io.WriteString(cfd, "new\n")
 	}
 }
 

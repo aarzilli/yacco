@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"log"
 	"os"
@@ -58,6 +59,37 @@ func stackFileFn(off int64) ([]byte, syscall.Errno) {
 		return []byte{}, 0
 	}
 	return b[int(off):n], 0
+}
+
+func readColumnsFn(off int64) ([]byte, syscall.Errno) {
+	if off > 0 {
+		return []byte{}, 0
+	}
+
+	var bw bytes.Buffer
+
+	for i := range Wnd.cols.cols {
+		fmt.Fprintf(&bw, "%d", i)
+		for j := range Wnd.cols.cols[i].editors {
+			fmt.Fprintf(&bw, " %d", Wnd.cols.cols[i].editors[j].edid)
+		}
+		fmt.Fprintf(&bw, "\n")
+	}
+
+	return bw.Bytes(), 0
+}
+
+func writeColumnsFn(data []byte, off int64) syscall.Errno {
+	s := strings.TrimSpace(string(data))
+	switch s {
+	case "new":
+		sideChan <- func() {
+			NewcolCmd(ExecContext{}, "")
+		}
+		return 0
+	default:
+		return syscall.EIO
+	}
 }
 
 func readAddrFn(i int, off int64) ([]byte, syscall.Errno) {
@@ -593,7 +625,7 @@ func executeEventReader(ec *ExecContext, er util.EventReader) {
 			}
 			if er.MissingExtraArg() {
 				xpath, xs, xe, _ := er.ExtraArg()
-				buffer_found:
+			buffer_found:
 				for i := range Wnd.cols.cols {
 					for j := range Wnd.cols.cols[i].editors {
 						buf := Wnd.cols.cols[i].editors[j].bodybuf

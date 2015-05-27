@@ -638,7 +638,7 @@ func (ed *Editor) Dump(buffers map[string]int) DumpEditor {
 	case config.AltFont:
 		fontName = "alt"
 	}
-	
+
 	return DumpEditor{
 		buffers[ed.bodybuf.Path()],
 		ed.frac,
