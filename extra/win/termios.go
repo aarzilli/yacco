@@ -163,6 +163,11 @@ func TcGetAttr(file *os.File) (*Termios, error) {
 	return nil, errno
 }
 
+type winSize struct {
+	row, col       uint16
+	xpixel, ypixel uint16
+}
+
 func TcSetAttr(file *os.File, when SetWhen, tios *Termios) (err error) {
 	state, errno := C.tcsetattr(C.int(file.Fd()), C.int(when), &tios.ios)
 	if state < 0 {

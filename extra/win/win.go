@@ -13,6 +13,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+	"unsafe"
 	"yacco/util"
 )
 
@@ -533,6 +534,10 @@ func run(c *exec.Cmd) *os.File {
 	err = TcSetAttr(tty, TCSANOW, termios)
 	util.Allergic3(debug, err, isDelSeen())
 	err = TcSetAttr(pty, TCSANOW, termios)
+	util.Allergic3(debug, err, isDelSeen())
+
+	ws := winSize{25, 80, 0, 0}
+	syscall.Syscall(syscall.SYS_IOCTL, tty.Fd(), syscall.TIOCSWINSZ, uintptr(unsafe.Pointer(&ws)))
 
 	c.Stdout = tty
 	c.Stdin = tty
