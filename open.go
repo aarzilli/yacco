@@ -29,7 +29,7 @@ func EditFind(rel2dir, path string, warp bool, create bool) (*Editor, error) {
 	for _, col := range Wnd.cols.cols {
 		for _, ed := range col.editors {
 			if ((ed.bodybuf.Name == name) || (ed.bodybuf.Name == name+"/")) && (ed.bodybuf.Dir == dir) {
-				if ed.frac < 0.5 {
+				if ed.size < ed.MinHeight()*3 {
 					Wnd.GrowEditor(col, ed, nil)
 				}
 				if warp {
@@ -84,7 +84,7 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 	}
 
 	if len(col.editors) <= 0 {
-		col.AddAfter(ed, -1, 0.5)
+		col.AddAfter(ed, -1, -1, true)
 	} else {
 		emptyed := col.editors[0]
 		biged := col.editors[0]
@@ -103,10 +103,9 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 		el := (emptyed.Height() - emptyed.UsedHeight()) / lh
 		bl := (biged.Height() / lh)
 		if (el > 15) || ((el > 3) && (el > bl/2)) {
-			f := float32(emptyed.UsedHeight()) / float32(emptyed.Height())
-			col.AddAfter(ed, col.IndexOf(emptyed), f)
+			col.AddAfter(ed, col.IndexOf(emptyed), emptyed.UsedHeight()+emptyed.r.Min.Y, true)
 		} else {
-			col.AddAfter(ed, col.IndexOf(biged), 0.5)
+			col.AddAfter(ed, col.IndexOf(biged), -1, true)
 		}
 	}
 

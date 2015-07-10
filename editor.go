@@ -22,7 +22,7 @@ var editorCount = 0
 type Editor struct {
 	r       image.Rectangle
 	rhandle image.Rectangle
-	frac    float64
+	size    int
 	last    bool
 	edid    int
 
@@ -632,7 +632,7 @@ func (ed *Editor) PropTrigger() {
 	ed.BufferRefresh()
 }
 
-func (ed *Editor) Dump(buffers map[string]int) DumpEditor {
+func (ed *Editor) Dump(buffers map[string]int, h int) DumpEditor {
 	fontName := ""
 	switch ed.sfr.Fr.Font {
 	default:
@@ -645,7 +645,7 @@ func (ed *Editor) Dump(buffers map[string]int) DumpEditor {
 
 	return DumpEditor{
 		buffers[ed.bodybuf.Path()],
-		ed.frac,
+		10.0 * (float64(ed.size) / float64(h)),
 		fontName,
 		string(ed.tagbuf.SelectionRunes(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()})),
 		ed.sfr.Fr.Sel.S,

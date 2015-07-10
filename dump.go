@@ -83,6 +83,7 @@ func LoadFrom(dumpDest string) bool {
 		}
 	}
 
+	h := Wnd.cols.cols[0].contentArea()
 	Wnd.cols.cols = Wnd.cols.cols[0:0]
 
 	cdIntl(dw.Wd)
@@ -114,7 +115,7 @@ func LoadFrom(dumpDest string) bool {
 			case "alt":
 				ed.sfr.Fr.Font = config.AltFont
 			}
-			col.AddAfter(ed, -1, 0.5)
+			col.AddAfter(ed, -1, -1, true)
 
 			ed.tagbuf.Replace([]rune(de.TagText), &util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()}, true, nil, util.EO_MOUSE)
 			if de.SelS != 0 {
@@ -123,7 +124,7 @@ func LoadFrom(dumpDest string) bool {
 			}
 		}
 		for i, de := range dc.Editors {
-			col.editors[i].frac = de.Frac
+			col.editors[i].size = int((de.Frac / 10.0) * float64(h))
 		}
 	}
 

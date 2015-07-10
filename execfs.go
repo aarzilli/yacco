@@ -57,7 +57,7 @@ func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 
 	case "show":
 		sideChan <- func() {
-			if ec.ed.frac < 0.5 {
+			if ec.ed.size < ec.ed.MinHeight()*3 {
 				Wnd.GrowEditor(ec.ed.Column(), ec.ed, nil)
 			}
 			ec.ed.Warp()
@@ -65,7 +65,7 @@ func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 
 	case "show-tag":
 		sideChan <- func() {
-			if ec.ed.frac < 0.5 {
+			if ec.ed.size < ec.ed.MinHeight()*3 {
 				Wnd.GrowEditor(ec.ed.Column(), ec.ed, nil)
 			}
 			ec.ed.WarpToTag()

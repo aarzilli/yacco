@@ -66,12 +66,16 @@ func (c *Col) SetRects(wnd wde.Window, b draw.Image, r image.Rectangle, last boo
 	c.RecalcRects(last)
 }
 
-func (c *Col) AddAfter(ed *Editor, n int, h float32) {
+func (c *Col) contentArea() int {
+	return c.r.Max.Y - c.r.Min.Y - TagHeight(&c.tagfr) - 2
+}
+
+func (c *Col) AddAfter(ed *Editor, n int, y int, wobble bool) {
 	screen := c.b
 
 	if len(c.editors) == 0 {
 		ed.SetWnd(c.wnd)
-		ed.frac = 10.0
+		ed.size = c.contentArea()
 		ed.SetRects(screen, c.r, c.last, false)
 		c.editors = append(c.editors, ed)
 	} else {
@@ -80,8 +84,24 @@ func (c *Col) AddAfter(ed *Editor, n int, h float32) {
 		}
 
 		ed.SetWnd(c.wnd)
-		ed.frac = c.editors[n].frac * float64(1-h)
-		c.editors[n].frac -= ed.frac
+
+		if y > 0 {
+			ed.size = c.editors[n].r.Max.Y - y
+			c.editors[n].size = y - c.editors[n].r.Min.Y
+		} else {
+			ed.size = c.editors[n].size / 2
+			c.editors[n].size -= ed.size
+		}
+
+		if wobble {
+			if mh := ed.MinHeight(); ed.size < mh {
+				ed.size = mh
+			}
+
+			if mh := c.editors[n].MinHeight(); c.editors[n].size < mh {
+				c.editors[n].size = mh
+			}
+		}
 
 		c.editors = append(c.editors, nil)
 		copy(c.editors[n+2:], c.editors[n+1:])
@@ -90,6 +110,14 @@ func (c *Col) AddAfter(ed *Editor, n int, h float32) {
 
 	c.RecalcRects(c.last)
 	c.Redraw()
+}
+
+func (c *Col) sumEditorsHeight() int {
+	sz := 0
+	for i := range c.editors {
+		sz += c.editors[i].size
+	}
+	return sz
 }
 
 func (c *Col) RecalcRects(last bool) {
@@ -115,41 +143,54 @@ func (c *Col) RecalcRects(last bool) {
 	c.tagfr.InsertColor(ta)
 	c.tagfr.InsertColor(tb)
 
-	h := c.r.Max.Y - c.r.Min.Y - TagHeight(&c.tagfr) - 2
+	h := c.contentArea()
+	oldh := c.sumEditorsHeight()
 
-	minimizedh := 0
-	lastNonminimized := -1
+	if h != oldh {
+		f := float64(h) / float64(oldh)
+		recoverh := 0
+		for i := range c.editors {
+			mh := c.editors[i].MinHeight()
+			c.editors[i].size = int(float64(c.editors[i].size) * f)
+			if c.editors[i].size < mh {
+				recoverh += mh - c.editors[i].size
+			}
+		}
 
-	for i := range c.editors {
-		eh := int(c.editors[i].frac / 10 * float64(h))
-		if eh < c.editors[i].MinHeight() {
-			minimizedh += c.editors[i].MinHeight()
-		} else {
-			lastNonminimized = i
+		if recoverh > 0 {
+			for i := range c.editors {
+				mh := c.editors[i].MinHeight()
+				if c.editors[i].size <= mh {
+					continue
+				}
+
+				if c.editors[i].size-recoverh >= mh {
+					c.editors[i].size -= recoverh
+					recoverh = 0
+				} else {
+					recoverh -= c.editors[i].size - mh
+					c.editors[i].size = mh
+				}
+			}
+		}
+
+		toth := 0
+		for i := range c.editors {
+			toth += c.editors[i].size
+		}
+
+		if toth < h && len(c.editors) > 0 {
+			c.editors[len(c.editors)-1].size += (h - toth)
 		}
 	}
 
 	y := c.r.Min.Y + TagHeight(&c.tagfr) + 2
-	h -= minimizedh
-	remh := h
 
 	for i := range c.editors {
-		var curh int
-		eh := int(c.editors[i].frac / 10 * float64(h))
-		if eh < c.editors[i].MinHeight() {
-			curh = c.editors[i].MinHeight()
-		} else if i == lastNonminimized {
-			curh = remh
-			remh = 0
-		} else {
-			curh = eh
-			remh -= curh
-		}
-
 		r := c.r
 		r.Min.Y = y
-		r.Max.Y = y + curh
-		y += curh
+		r.Max.Y = y + c.editors[i].size
+		y += c.editors[i].size
 		c.editors[i].SetRects(screen, c.r.Intersect(r), last, false)
 	}
 }
@@ -217,7 +258,7 @@ func (c *Col) Remove(i int) *Editor {
 	}
 
 	if ned != nil {
-		ned.frac += c.editors[i].frac
+		ned.size += c.editors[i].size
 	}
 
 	copy(c.editors[i:], c.editors[i+1:])
@@ -240,7 +281,7 @@ func (c *Col) Close() {
 func (c *Col) Dump(buffers map[string]int) DumpColumn {
 	editors := make([]DumpEditor, len(c.editors))
 	for i := range c.editors {
-		editors[i] = c.editors[i].Dump(buffers)
+		editors[i] = c.editors[i].Dump(buffers, c.contentArea())
 	}
 	return DumpColumn{c.frac, editors, string(c.tagbuf.SelectionRunes(util.Sel{0, c.tagbuf.Size()}))}
 }

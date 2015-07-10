@@ -489,7 +489,6 @@ loop:
 			}
 
 			col.Remove(col.IndexOf(ed))
-			col.RecalcRects(col.last)
 
 			mlp := w.TranslatePosition(endPos, true)
 			dstcol := mlp.col
@@ -506,14 +505,26 @@ loop:
 			}
 
 			if dsted == nil {
-				dstcol.AddAfter(ed, -1, 0.5)
+				dstcol.AddAfter(ed, -1, -1, true)
 				col = dstcol
 			} else {
-				dsth := endPos.Y - dsted.r.Min.Y
-				if dsth < 0 {
-					dsth = 0
+				wobble := false
+				if dsted.size < ed.MinHeight()+dsted.MinHeight() {
+					wobble = true
+				} else {
+					if dsted.r.Max.Y-endPos.Y < ed.MinHeight() {
+						endPos.Y = dsted.r.Max.Y - ed.MinHeight()
+					}
+
+					if my := dsted.r.Min.Y + dsted.MinHeight(); endPos.Y < my {
+						endPos.Y = my
+					}
+
+					if endPos.Y > dsted.r.Max.Y {
+						endPos.Y = dsted.r.Max.Y
+					}
 				}
-				dstcol.AddAfter(ed, dstcol.IndexOf(dsted), float32(dsth)/float32(dsted.Height()))
+				dstcol.AddAfter(ed, dstcol.IndexOf(dsted), endPos.Y, wobble)
 				col = dstcol
 			}
 			w.wnd.FlushImage()
@@ -530,13 +541,14 @@ loop:
 			w.GrowEditor(col, ed, &d)
 
 		case wde.RightButton: // Maximize
+			ed.size = col.contentArea()
 			for _, oed := range col.editors {
 				if oed == ed {
 					continue
 				}
-				oed.frac = 0.0
+				oed.size = oed.MinHeight()
+				ed.size -= oed.size
 			}
-			ed.frac = 10.0
 			col.RecalcRects(col.last)
 			p := ed.r.Min
 			w.wnd.WarpMouse(p.Add(d))
@@ -546,44 +558,46 @@ loop:
 	}
 }
 
-func shrinkEditor(ed *Editor, maxFraction float64) float64 {
-	s := ed.frac / 2
-	if s < 0.25 {
-		s = 0.25
+func shrinkEditor(ed *Editor, max int) int {
+	mh := ed.MinHeight()
+	s := ed.size / 2
+
+	if ed.size-s < mh {
+		s = ed.size - mh
 	}
-	if s > maxFraction {
-		s = maxFraction
+
+	if s > max {
+		s = max
 	}
-	if s > ed.frac {
-		s = ed.frac
-	}
-	ed.frac -= s
+
+	ed.size -= s
 	return s
 }
 
 func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
-	wantFraction := ed.frac / 2
-	if wantFraction < 1.0 {
-		wantFraction = 1.0
+	mh := ed.MinHeight()
+	want := ed.size / 2
+	if want < mh*3 {
+		want = mh * 3
 	}
 
 	idx := col.IndexOf(ed)
 	for off := 1; off < len(col.editors); off++ {
 		i := idx + off
 		if i < len(col.editors) {
-			s := shrinkEditor(col.editors[i], wantFraction)
-			wantFraction -= s
-			ed.frac += s
+			s := shrinkEditor(col.editors[i], want)
+			want -= s
+			ed.size += s
 		}
 
 		i = idx - off
 		if i >= 0 {
-			s := shrinkEditor(col.editors[i], wantFraction)
-			wantFraction -= s
-			ed.frac += s
+			s := shrinkEditor(col.editors[i], want)
+			want -= s
+			ed.size += s
 		}
 
-		if wantFraction < 0.001 {
+		if want <= 0 {
 			break
 		}
 	}
@@ -603,12 +617,6 @@ func (w *Window) ColResize(col *Col, e util.MouseDownEvent, events <-chan interf
 
 	startPos := e.Where
 	endPos := startPos
-
-	/*var before *Col
-	bidx := Wnd.cols.IndexOf(col) - 1
-	if bidx >= 0 {
-		before = Wnd.cols.cols[bidx]
-	}*/
 
 loop:
 	for ei := range events {
