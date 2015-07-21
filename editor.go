@@ -416,7 +416,7 @@ func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 	}
 
 	e.refreshIntl(false)
-	if !e.sfr.Fr.Inside(e.sfr.Fr.Sel.E) && recur && scroll {
+	if !e.sfr.Fr.Inside(e.sfr.Fr.Sel.E) && scroll {
 		x := e.bodybuf.Tonl(e.sfr.Fr.Sel.E-2, -1)
 		e.otherSel[OS_TOP].E = x
 		e.refreshIntl(false)

@@ -38,7 +38,7 @@ func RefreshMsg(b *buf.Buffer, ed *Editor, scroll bool) func() {
 			}
 		}
 		if !found {
-			refreshRequests = append(refreshRequests, refreshRequest{kb: b, eds: []*Editor{}, scrollAll: false})
+			refreshRequests = append(refreshRequests, refreshRequest{kb: b, eds: []*Editor{}, scrollAll: scroll})
 		}
 		if startTimer {
 			go func() {

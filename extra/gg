@@ -1,10 +1,33 @@
 #!/bin/bash
 
-export bi=`y9p find +Grep`
-echo -n , | y9p write buf/addr
-echo -ne '\0000' | y9p write buf/data
-echo -n gg | y9p write buf/tag
-echo $ gg $1 | y9p write buf/body
-echo show | y9p write buf/ctl
-global --result=grep $* | y9p write buf/body
+if [ $RANDOM -lt 3276 ]; then
+	global -u >/dev/null 2>&1
+fi
 
+out=$(global --result=grep $*)
+
+if [ $(echo "$out" | wc -l) -eq 1 ]; then
+	filename=$(echo $out | cut -d: -f1)
+	pos=$(echo $out | cut -d: -f2)
+
+	findout=$(y9p find-new $filename)
+
+	export bi=$(echo "$findout" | cut -d' ' -f1)
+
+	if [ $(echo "$findout" | cut -d' ' -f2) = "true" ]; then
+		echo get | y9p write buf/ctl
+	fi
+
+	echo addr=dot | y9p write buf/ctl
+	echo -n "$pos-#0" | y9p write buf/addr
+	echo dot=addr | y9p write buf/ctl
+	echo show | y9p write buf/ctl
+else
+	export bi=`y9p find +Grep`
+	echo -n , | y9p write buf/addr
+	echo -ne '\0000' | y9p write buf/data
+	echo -n gg | y9p write buf/tag
+	echo $ gg $1 | y9p write buf/body
+	echo show | y9p write buf/ctl
+	echo "$out" | y9p write buf/body
+fi

@@ -196,6 +196,20 @@ func main() {
 		util.Allergic(debug, err)
 		fmt.Printf("%s\n", buf.Id)
 
+	case "find-new":
+		p9clnt := argCheck(3, true)
+		defer p9clnt.Unmount()
+
+		wd, _ := os.Getwd()
+		dst := filepath.Join(wd, os.Args[2])
+
+		buf, isnew, err := util.FindWinEx(os.Args[2], p9clnt)
+		util.Allergic(debug, err)
+		defer buf.Close()
+		_, err = buf.CtlFd.Write([]byte("name " + dst))
+		util.Allergic(debug, err)
+		fmt.Printf("%s %v\n", buf.Id, isnew)
+
 	case "new":
 		p9clnt := argCheck(3, true)
 		defer p9clnt.Unmount()
