@@ -21,7 +21,7 @@ var p9Srv *CustomP9Server
 var p9root *srv.File
 var p9il net.Listener
 
-func fs9PInit() {
+func FsInit() {
 	var err error
 
 	if config.ServeTCP || *acmeCompatFlag {
@@ -102,8 +102,13 @@ func fs9PInit() {
 	}()
 }
 
-func fs9PQuit() {
+func FsQuit() {
+	HistoryWrite()
+	for i := range jobs {
+		jobKill(i)
+	}
 	p9il.Close()
+	os.Exit(0)
 }
 
 type ListenLocalOnly struct {
@@ -145,7 +150,7 @@ func (l *ListenLocalOnly) Addr() net.Addr {
 	return l.l.Addr()
 }
 
-func fs9PAddEditor(n int) {
+func FsAddEditor(n int) {
 	name := fmt.Sprintf("%d", n)
 	user := p.OsUsers.Uid2User(os.Geteuid())
 
@@ -195,7 +200,7 @@ func fs9PAddEditor(n int) {
 	jumps.Add(bufdir, "jumps", user, nil, 0440, jumps)
 }
 
-func fs9PRemoveEditor(n int) {
+func FsRemoveEditor(n int) {
 	name := fmt.Sprintf("%d", n)
 	bufdir := p9root.Find(name)
 	if bufdir != nil {
