@@ -143,7 +143,6 @@ func realmain() {
 func main() {
 	flag.Parse()
 	config.LoadConfiguration(*configFlag)
-	PlatformInit()
 	LoadInit()
 	KeysInit()
 
