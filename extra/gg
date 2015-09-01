@@ -6,6 +6,10 @@ fi
 
 out=$(global --result=grep $*)
 
+if [ "x$out" = "x" ]; then
+	exit 0
+fi
+
 if [ $(echo "$out" | wc -l) -eq 1 ]; then
 	filename=$(echo $out | cut -d: -f1)
 	pos=$(echo $out | cut -d: -f2)
