@@ -24,7 +24,7 @@ func main() {
 		return
 	}
 	
-	if os.Getenv("yd") == "" {
+	if os.Getenv("yp9") == "" {
 		return
 	}
 	
