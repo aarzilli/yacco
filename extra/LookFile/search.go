@@ -91,6 +91,10 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 
 			off := utf8.RuneCountInString(relPath) - utf8.RuneCountInString(fi[i].Name())
 
+			if !strings.HasSuffix(relPath, fi[i].Name()) {
+				off = -1
+			}
+
 			d := depth
 			if fi[i].IsDir() {
 				relPath += "/"
@@ -132,7 +136,9 @@ func fileSystemSearchMatch(name string, off int, exact bool, needlerx regexp.Reg
 			ngaps++
 		}
 
-		mpos = append(mpos, mg[i+2]+off)
+		if off >= 0 {
+			mpos = append(mpos, mg[i+2]+off)
+		}
 	}
 
 	score := mstart*1000 + depth*100 + ngaps*10 + len(rname) + off
