@@ -170,19 +170,22 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 		v := strings.SplitN(action, ":", 2)
 		name := expandMatches(v[0], matches)
 
-		if len(name) <= 0 {
-			return false
-		}
 		addrExpr := ""
 		if len(v) > 1 {
 			addrExpr = expandMatches(v[1], matches)
 		}
-		newed, err := EditFind(ec.dir, name, false, false)
-		if err != nil {
-			return false
-		}
-		if newed == nil {
-			return false
+		var newed *Editor
+		if name != "" {
+			var err error
+			newed, err = EditFind(ec.dir, name, false, false)
+			if err != nil {
+				return false
+			}
+			if newed == nil {
+				return false
+			}
+		} else {
+			newed = ec.ed
 		}
 		ec.fr.Sel = util.Sel{s, e}
 		ec.fr.SelColor = 2
