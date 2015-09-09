@@ -56,6 +56,8 @@ func setTheme(t string) {
 		config.TheColorScheme = config.AcmeBWColorScheme
 	case "zb":
 		config.TheColorScheme = config.ZenburnColorScheme
+	case "atom":
+		config.TheColorScheme = config.AtomColorScheme
 	}
 
 	tagColors[0] = config.TheColorScheme.TagPlain

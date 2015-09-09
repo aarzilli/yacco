@@ -1146,6 +1146,8 @@ Theme evening
 Theme evening2
 Theme midnight
 Theme bw
+Theme zb
+Theme atom
 `)
 		return
 	}

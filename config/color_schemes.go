@@ -32,11 +32,15 @@ type ColorScheme struct {
 	HandleBG         image.Uniform
 }
 
-var col2sel = *image.NewUniform(color.RGBA{0xAA, 0x00, 0x00, 0xFF})
-var col3sel = *image.NewUniform(color.RGBA{0x00, 0x66, 0x00, 0xFF})
-var bluebg = *image.NewUniform(color.RGBA{234, 0xff, 0xff, 0xff})
-var yellowbg = *image.NewUniform(color.RGBA{0xff, 0xff, 234, 0xff})
-var darkergreen = *image.NewUniform(color.RGBA{0x24, 0x49, 0x24, 0xff})
+func c(r, g, b, a uint8) image.Uniform {
+	return *image.NewUniform(color.RGBA{ r, g, b, a })
+}
+
+var col2sel = c(0xAA, 0x00, 0x00, 0xFF)
+var col3sel = c(0x00, 0x66, 0x00, 0xFF)
+var bluebg = c(234, 0xff, 0xff, 0xff)
+var yellowbg = c(0xff, 0xff, 234, 0xff)
+var darkergreen = c(0x24, 0x49, 0x24, 0xff)
 
 func mix(color1 color.RGBA, color3 color.RGBA) image.Uniform {
 	var color2 color.RGBA
@@ -47,7 +51,7 @@ func mix(color1 color.RGBA, color3 color.RGBA) image.Uniform {
 	return *image.NewUniform(color2)
 }
 
-var blahcol = *image.NewUniform(color.RGBA{0x78, 0x00, 0x3e, 0xff})
+var blahcol = c(0x78, 0x00, 0x3e, 0xff)
 
 var AcmeColorScheme = ColorScheme{
 	WindowBG: *image.White,
@@ -190,11 +194,11 @@ var AcmeBWColorScheme = ColorScheme{
 	HandleBG:         *image.Black,
 }
 
-var zbbord = *image.NewUniform(color.RGBA{18, 16, 15, 0xff})
-var zbtagbg = *image.NewUniform(color.RGBA{0x15, 0x12, 0x10, 0xFF})
-var zbtagfg = *image.NewUniform(color.RGBA{0x8a, 0x77, 0x6a, 0xFF})
-var zbedbg = *image.NewUniform(color.RGBA{0x18, 0x15, 0x12, 0xFF})
-var zbedfg = *image.NewUniform(color.RGBA{0xbe, 0xa4, 0x92, 0xFF})
+var zbbord = c(18, 16, 15, 0xff)
+var zbtagbg = c(0x15, 0x12, 0x10, 0xFF)
+var zbtagfg = c(0x8a, 0x77, 0x6a, 0xFF)
+var zbedbg = c(0x18, 0x15, 0x12, 0xFF)
+var zbedfg = c(0xbe, 0xa4, 0x92, 0xFF)
 
 var ZenburnColorScheme = ColorScheme{
 	WindowBG: zbbord,
@@ -219,4 +223,39 @@ var ZenburnColorScheme = ColorScheme{
 	HandleModifiedFG: *image.NewUniform(color.RGBA{0x9f, 0x71, 0x55, 0xFF}),
 	HandleSpecialFG:  *DMedgreen,
 	HandleBG:         zbbord,
+}
+
+var atombg = c(40, 44, 52, 0xff)
+var atomcmtfg = c(92, 99, 112, 0xff)
+var atomstrfg = c(152, 195, 121, 0xff)
+var atomnormfg = c(206, 209, 214, 0xff)
+var atomtagfg = c(219, 219, 219, 0xff)
+var atomtagbg = c(33, 37, 43, 0xff)
+var atomwinbg = c(45, 45, 45, 0xff)
+var atomselbg = c(62, 68, 81, 0xff)
+var atomtagselbg = c(135, 135, 135, 0xff)
+
+var AtomColorScheme = ColorScheme{
+	WindowBG: atomwinbg,
+	
+	Border: *image.Black,
+	Scrollbar: c(53, 59, 69, 0xff),
+	
+	EditorPlain: []image.Uniform{ atombg, atomnormfg, atomstrfg, atomcmtfg },
+	EditorSel1: []image.Uniform{ atomselbg, atomnormfg, atomstrfg, atomcmtfg },
+	EditorSel2: []image.Uniform{ atomselbg, atomnormfg, atomnormfg, atomnormfg },
+	EditorSel3: []image.Uniform{ atomselbg, atomnormfg, atomnormfg, atomnormfg },
+	EditorMatchingParenthesis: []image.Uniform{ atomnormfg, atombg, atombg, atombg },
+	Compl: []image.Uniform{atomtagbg, atomtagfg },
+	
+	TagPlain: []image.Uniform{ atomtagbg, atomtagfg },
+	TagSel1: []image.Uniform{ atomtagselbg, atomtagfg },
+	TagSel2: []image.Uniform{ atomtagselbg, atomtagfg },
+	TagSel3: []image.Uniform{ atomtagselbg, atomtagfg },
+	TagMatchingParenthesis: []image.Uniform{ atomtagselbg, atomtagfg },
+	
+	HandleFG: atomtagbg,
+	HandleModifiedFG: c(224, 108, 107, 0xff),
+	HandleSpecialFG: *DMedgreen,
+	HandleBG: atomwinbg,
 }

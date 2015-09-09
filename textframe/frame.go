@@ -129,7 +129,7 @@ func (fr *Frame) Init(margin int) error {
 
 	for i, _ := range fr.Colors {
 		if len(fr.Colors[i]) < 2 {
-			return fmt.Errorf("Not enough colors in line %d", i)
+			return fmt.Errorf("Not enough colors in line %d (%d)", i, len(fr.Colors[i]))
 		}
 	}
 
