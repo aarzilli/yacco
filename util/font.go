@@ -1,13 +1,13 @@
 package util
 
 import (
-	"code.google.com/p/freetype-go/freetype"
-	"code.google.com/p/freetype-go/freetype/raster"
-	"code.google.com/p/freetype-go/freetype/truetype"
+	"github.com/golang/freetype"
+	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/font"
+	"golang.org/x/image/math/fixed"
 	"gopcf"
 	"image"
 	"io/ioutil"
-	"math"
 	"os"
 	"strings"
 )
@@ -89,66 +89,84 @@ func (f *Font) createContexts() {
 		f.cs[i].SetFont(f.fonts[i])
 		f.cs[i].SetFontSize(f.Size)
 		if f.fullHinting {
-			f.cs[i].SetHinting(freetype.FullHinting)
+			f.cs[i].SetHinting(font.HintingFull)
 		}
 	}
 }
 
+func FloatToFixed(x float64) fixed.Int26_6 {
+	n := int(x)
+	frac := int(0x3f * (x - float64(n)))
+	return fixed.Int26_6(n<<6 + frac)
+}
+
+func FixedToInt(x fixed.Int26_6) int {
+	return int(x >> 6)
+}
+
 func (f *Font) LineHeight() int32 {
 	if f.fonts[0] != nil {
-		bounds := f.fonts[0].Bounds(int32(f.Size))
-		return bounds.YMax - bounds.YMin
+		bounds := f.Bounds()
+		return int32(float64(FixedToInt(bounds.Max.Y-bounds.Min.Y)) * f.spacing)
 	} else {
-		return int32(f.pfonts[0].LineAdvance() + 1)
+		return int32(f.pfonts[0].LineAdvance() + 1) // <- is this wrong?
 	}
 }
 
+/*
 func (f *Font) SpacingFix(h int32) float64 {
 	return math.Floor(float64(h) * f.spacing)
+}*/
+
+func (f *Font) Spacing() float64 {
+	return f.spacing
 }
 
-func (f *Font) LineHeightRaster() raster.Fix32 {
+func (f *Font) LineHeightRaster() fixed.Int26_6 {
 	if f.fonts[0] != nil {
-		return f.cs[0].PointToFix32(f.SpacingFix(f.LineHeight()))
+		bounds := f.Bounds()
+		return fixed.I(int(float64(FixedToInt(bounds.Max.Y-bounds.Min.Y)) * f.spacing))
 	} else {
-		return raster.Fix32(f.pfonts[0].LineAdvance() << 8)
+		return fixed.I(f.pfonts[0].LineAdvance())
 	}
 }
 
-func (f *Font) Bounds() truetype.Bounds {
+func (f *Font) Bounds() fixed.Rectangle26_6 {
 	if f.fonts[0] != nil {
-		return f.fonts[0].Bounds(int32(f.Size))
+		return f.fonts[0].Bounds(FloatToFixed(f.Size))
 	} else {
 		mb := f.pfonts[0].Accelerators.Maxbounds
-		return truetype.Bounds{0, -int32(mb.CharacterDescent), int32(mb.CharacterWidth), int32(mb.CharacterAscent)}
+		return fixed.Rectangle26_6{Min: fixed.Point26_6{fixed.I(0), -fixed.I(int(mb.CharacterDescent))}, Max: fixed.Point26_6{fixed.I(int(mb.CharacterWidth)), fixed.I(int(mb.CharacterAscent))}}
 	}
 }
 
+/*
 func (f *Font) GlyphWidth(fontIdx int, idx truetype.Index) raster.Fix32 {
 	if f.fonts[fontIdx] != nil {
 		return raster.Fix32(f.fonts[fontIdx].HMetric(f.cs[fontIdx].Scale, idx).AdvanceWidth) << 2
 	} else {
 		return raster.Fix32(f.pfonts[fontIdx].Advance(int(idx))) << 8
 	}
-}
+}*/
 
-func (f *Font) GlyphKerning(fontIdx int, pidx, idx truetype.Index) raster.Fix32 {
+func (f *Font) GlyphKerning(fontIdx int, pidx, idx truetype.Index) fixed.Int26_6 {
 	if f.fonts[fontIdx] != nil {
-		return raster.Fix32(f.fonts[fontIdx].Kerning(f.cs[fontIdx].Scale, pidx, idx)) << 2
+		return f.fonts[fontIdx].Kern(f.cs[fontIdx].Scale, pidx, idx)
 	} else {
 		return 0
 	}
 }
 
-func (f *Font) Glyph(fontIdx int, idx truetype.Index, p raster.Point) (mask *image.Alpha, glyphRect image.Rectangle, err error) {
+func (f *Font) Glyph(fontIdx int, idx truetype.Index, p fixed.Point26_6) (width fixed.Int26_6, mask *image.Alpha, glyphRect image.Rectangle, err error) {
 	var offset image.Point
 	if f.fonts[fontIdx] != nil {
-		_, mask, offset, err = f.cs[fontIdx].Glyph(idx, p)
+		width, mask, offset, err = f.cs[fontIdx].Glyph(idx, p)
 		if err != nil {
 			return
 		}
 	} else {
-		mask, offset = f.pfonts[fontIdx].Glyph(int(idx), image.Point{int(p.X >> 8), int(p.Y >> 8)})
+		width = fixed.I(f.pfonts[fontIdx].Advance(int(idx)))
+		mask, offset = f.pfonts[fontIdx].Glyph(int(idx), image.Point{FixedToInt(p.X), FixedToInt(p.Y)})
 	}
 	glyphRect = mask.Bounds().Add(offset)
 	return
