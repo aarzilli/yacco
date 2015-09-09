@@ -106,8 +106,7 @@ func FixedToInt(x fixed.Int26_6) int {
 
 func (f *Font) LineHeight() int32 {
 	if f.fonts[0] != nil {
-		bounds := f.Bounds()
-		return int32(float64(FixedToInt(bounds.Max.Y-bounds.Min.Y)) * f.spacing)
+		return int32(f.Size * f.spacing)
 	} else {
 		return int32(f.pfonts[0].LineAdvance() + 1) // <- is this wrong?
 	}
@@ -124,11 +123,14 @@ func (f *Font) Spacing() float64 {
 
 func (f *Font) LineHeightRaster() fixed.Int26_6 {
 	if f.fonts[0] != nil {
-		bounds := f.Bounds()
-		return fixed.I(int(float64(FixedToInt(bounds.Max.Y-bounds.Min.Y)) * f.spacing))
+		return fixed.I(int(f.Size * f.spacing))
 	} else {
 		return fixed.I(f.pfonts[0].LineAdvance())
 	}
+}
+
+func (f *Font) Truetype() bool {
+	return f.fonts[0] != nil
 }
 
 func (f *Font) Bounds() fixed.Rectangle26_6 {

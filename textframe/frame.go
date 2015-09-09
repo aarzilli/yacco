@@ -1,11 +1,11 @@
 package textframe
 
 import (
+	"fmt"
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
-	"golang.org/x/image/math/fixed"
-	"fmt"
 	"github.com/skelterjohn/go.wde"
+	"golang.org/x/image/math/fixed"
 	"image"
 	"image/draw"
 	"math"
@@ -145,7 +145,7 @@ func (fr *Frame) ReinitFont() {
 func (fr *Frame) initialInsPoint() fixed.Point26_6 {
 	gb := fr.Font.Bounds()
 	//p := fixed.P(fr.R.Min.X + fr.Offset, fr.R.Min.Y + int(fr.Font.SpacingFix(int32(util.FixedToInt(gb.Max.Y)))))
-	p := fixed.P(fr.R.Min.X + fr.Offset, fr.R.Min.Y + util.FixedToInt(gb.Max.Y))
+	p := fixed.P(fr.R.Min.X+fr.Offset, fr.R.Min.Y+util.FixedToInt(gb.Max.Y))
 	p.X += fr.margin
 	return p
 }
@@ -203,8 +203,8 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	bottom := fixed.I(fr.R.Max.Y) + lh
 
 	_, xIndex := fr.Font.Index('x')
-	spaceWidth, _, _, _ := fr.Font.Glyph(0, spaceIndex, fixed.P( 0, 0 ))
-	bigSpaceWidth, _, _, _ := fr.Font.Glyph(0, xIndex, fixed.P( 0, 0 ))
+	spaceWidth, _, _, _ := fr.Font.Glyph(0, spaceIndex, fixed.P(0, 0))
+	bigSpaceWidth, _, _, _ := fr.Font.Glyph(0, xIndex, fixed.P(0, 0))
 	tabWidth := spaceWidth * fixed.Int26_6(fr.TabWidth)
 
 	limit.X = util.FixedToInt(fr.ins.X)
@@ -280,7 +280,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 				p:         fr.ins,
 				color:     uint8(crune.C & COLORMASK),
 				width:     width,
-				}
+			}
 
 			fr.glyphs = append(fr.glyphs, g)
 			fr.ins.X += width
@@ -548,7 +548,7 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform, invalid *[]imag
 	//fmt.Printf("Y Bounds %d %d\n", glyphBounds.Max.Y, glyphBounds.Min.Y)
 	//glyphBounds.Max.Y = int32(fr.Font.SpacingFix(glyphBounds.Max.Y))
 	//glyphBounds.Min.Y = int32(fr.Font.SpacingFix(glyphBounds.Min.Y))
-	
+
 	var sp, ep, sep image.Point
 
 	ss := fr.glyphs[s]
@@ -719,6 +719,15 @@ func (fr *Frame) redrawOptSelectionMoved() (bool, []image.Rectangle) {
 
 	fromnil := fr.redrawOpt.drawnSel.S == fr.redrawOpt.drawnSel.E
 	tonil := fr.Sel.S == fr.Sel.E
+
+	if fr.Font.Truetype() {
+		if !fromnil || !tonil {
+			if debugRedraw && fr.debugRedraw {
+				fmt.Printf("\tFailed because of truetype selection move\n")
+			}
+			return false, nil
+		}
+	}
 
 	if fromnil && tonil {
 		if debugRedraw && fr.debugRedraw {
@@ -939,6 +948,16 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 	}
 	newline := true
 
+	if drawSels {
+		if fr.PMatch.S != fr.PMatch.E && len(fr.Colors) > 4 && fr.PMatch.S-fr.Top >= n && fr.PMatch.S-fr.Top < n+len(glyphs) {
+			fr.redrawSelection(fr.PMatch.S-fr.Top, fr.PMatch.E-fr.Top, &fr.Colors[4][0], nil)
+		}
+
+		if fr.Sel.S != fr.Sel.E && fr.Sel.S-fr.Top >= n && fr.Sel.S-fr.Top < n+len(glyphs) {
+			fr.redrawSelection(fr.Sel.S-fr.Top, fr.Sel.E-fr.Top, &fr.Colors[fr.SelColor+1][0], nil)
+		}
+	}
+
 	for i, g := range glyphs {
 		// Selection drawing
 		if ssel != 0 {
@@ -948,17 +967,10 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 		} else {
 			if found, nssel := fr.getSsel(i + fr.Top + n); found {
 				ssel = nssel
-				if drawSels {
-					fr.redrawSelection(fr.Sel.S-fr.Top, fr.Sel.E-fr.Top, &fr.Colors[ssel][0], nil)
-				}
 			}
 		}
 
 		onpmatch := (fr.PMatch.S != fr.PMatch.E) && (i+fr.Top+n == fr.PMatch.S) && (len(fr.Colors) > 4) && (ssel == 0)
-
-		if onpmatch && drawSels {
-			fr.redrawSelection(fr.PMatch.S-fr.Top, fr.PMatch.E-fr.Top, &fr.Colors[4][0], nil)
-		}
 
 		// Softwrap mark drawing
 		if (g.p.Y != cury) && ((fr.Hackflags & HF_MARKSOFTWRAP) != 0) {
