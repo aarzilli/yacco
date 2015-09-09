@@ -238,7 +238,7 @@ var atomtagselbg = c(135, 135, 135, 0xff)
 var AtomColorScheme = ColorScheme{
 	WindowBG: atomwinbg,
 	
-	Border: *image.Black,
+	Border: atomnormfg,
 	Scrollbar: c(53, 59, 69, 0xff),
 	
 	EditorPlain: []image.Uniform{ atombg, atomnormfg, atomstrfg, atomcmtfg },
