@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -45,6 +46,12 @@ const (
 )
 
 func fmteventEx(eventChan chan string, origin EventOrigin, istag bool, etype EventType, s, e int, flags EventFlag, arg string, onfail func()) bool {
+	defer func() {
+		ierr := recover()
+		if ierr != nil {
+			fmt.Fprintf(os.Stderr, "fmteventEx: %v\n", ierr)
+		}
+	}()
 	if istag {
 		etype = EventType(unicode.ToLower(rune(etype)))
 	}
