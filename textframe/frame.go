@@ -948,12 +948,16 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 	}
 	newline := true
 
+	in := func(x int) bool {
+		return x-fr.Top >= n && x-fr.Top < n+len(glyphs)
+	}
+
 	if drawSels {
-		if fr.PMatch.S != fr.PMatch.E && len(fr.Colors) > 4 && fr.PMatch.S-fr.Top >= n && fr.PMatch.S-fr.Top < n+len(glyphs) {
+		if fr.PMatch.S != fr.PMatch.E && len(fr.Colors) > 4 && in(fr.PMatch.S) {
 			fr.redrawSelection(fr.PMatch.S-fr.Top, fr.PMatch.E-fr.Top, &fr.Colors[4][0], nil)
 		}
 
-		if fr.Sel.S != fr.Sel.E && fr.Sel.S-fr.Top >= n && fr.Sel.S-fr.Top < n+len(glyphs) {
+		if fr.Sel.S != fr.Sel.E && (in(fr.Sel.S) || in(fr.Sel.E)) {
 			fr.redrawSelection(fr.Sel.S-fr.Top, fr.Sel.E-fr.Top, &fr.Colors[fr.SelColor+1][0], nil)
 		}
 	}
