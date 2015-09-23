@@ -240,7 +240,6 @@ func getFsComplsMaybe(resDir, resName string) []string {
 	fsComplRunningLock.Lock()
 	if _, ok := fsComplRunning[resDir]; ok {
 		fsComplRunningLock.Unlock()
-		println("Skipping busy")
 		return []string{}
 	}
 	fsComplRunning[resDir] = true

@@ -463,6 +463,8 @@ func (w *Window) EditorMove(col *Col, ed *Editor, e util.MouseDownEvent, events 
 	startPos := e.Where
 	endPos := startPos
 
+	var colChangeTime time.Time
+
 loop:
 	for ei := range events {
 		runtime.Gosched()
@@ -477,6 +479,16 @@ loop:
 		case wde.MouseDraggedEvent:
 			endPos = e.Where
 
+			// a bit of X stickiness after crossing columns
+			if colChangeTime != (time.Time{}) {
+				if time.Now().Sub(colChangeTime) < (time.Millisecond * 500) {
+					endPos.X = ed.r.Min.X + SCROLL_WIDTH/2
+					w.wnd.WarpMouse(endPos)
+				} else {
+					colChangeTime = time.Time{}
+				}
+			}
+
 			if !endPos.In(Wnd.cols.r) {
 				break
 			}
@@ -490,6 +502,11 @@ loop:
 			}
 
 			col.Remove(col.IndexOf(ed))
+
+			// to switch to a column to the left we need to be at least 50 pixels into it
+			if ed.r.Min.X-50 < endPos.X && endPos.X < ed.r.Min.X {
+				endPos.X = ed.r.Min.X + 1
+			}
 
 			mlp := w.TranslatePosition(endPos, true)
 			dstcol := mlp.col
@@ -507,7 +524,6 @@ loop:
 
 			if dsted == nil {
 				dstcol.AddAfter(ed, -1, -1, true)
-				col = dstcol
 			} else {
 				wobble := false
 				if dsted.size < ed.MinHeight()+dsted.MinHeight() {
@@ -526,8 +542,13 @@ loop:
 					}
 				}
 				dstcol.AddAfter(ed, dstcol.IndexOf(dsted), endPos.Y, wobble)
-				col = dstcol
 			}
+			if dstcol != col {
+				colChangeTime = time.Now()
+				ed.WarpToHandle()
+			}
+			col = dstcol
+
 			w.wnd.FlushImage()
 		}
 	}
@@ -607,9 +628,7 @@ func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
 	col.Redraw()
 	w.wnd.FlushImage(col.r)
 	if d != nil {
-		p := ed.r.Min
-		p = p.Add(image.Point{SCROLL_WIDTH / 2, int(ed.tagfr.Font.LineHeight() / 2)})
-		w.wnd.WarpMouse(p)
+		ed.WarpToHandle()
 	}
 }
 

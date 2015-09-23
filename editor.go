@@ -540,6 +540,12 @@ func (ed *Editor) WarpToTag() {
 	ed.TagRefresh()
 }
 
+func (ed *Editor) WarpToHandle() {
+	p := ed.r.Min
+	p = p.Add(image.Point{SCROLL_WIDTH / 2, int(ed.tagfr.Font.LineHeight() / 2)})
+	Wnd.wnd.WarpMouse(p)
+}
+
 func (ed *Editor) getDelPos() int {
 	sep := []rune(" Del ")
 	s := ed.tagbuf.SelectionRunes(util.Sel{0, ed.tagbuf.Size()})
