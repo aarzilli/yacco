@@ -832,6 +832,9 @@ func SendCmd(ec ExecContext, arg string) {
 		txt = []rune(Wnd.wnd.GetClipboard())
 	}
 	ec.ed.sfr.Fr.Sel = util.Sel{ec.buf.Size(), ec.buf.Size()}
+	if (len(txt) > 0) && (txt[len(txt)-1] != '\n') {
+		txt = append(txt, rune('\n'))
+	}
 	ec.ed.bodybuf.Replace(txt, &ec.ed.sfr.Fr.Sel, true, ec.eventChan, util.EO_MOUSE)
 	if !ec.norefresh {
 		ec.ed.BufferRefresh()
