@@ -207,7 +207,7 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool, simpleReca
 
 	// HANDLE
 	e.rhandle = r
-	e.rhandle.Min.Y++
+	e.rhandle.Min.Y += 2
 	e.rhandle.Max.X = e.rhandle.Min.X + SCROLL_WIDTH
 	e.rhandle.Max.Y = e.tagfr.R.Max.Y
 	e.rhandle = e.r.Intersect(e.rhandle)
