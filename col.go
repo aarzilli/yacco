@@ -217,7 +217,7 @@ func (c *Col) Redraw() {
 	// border right of the column tag
 	br.Min.X = c.r.Max.X - 2
 	br.Max.X = br.Min.X + 2
-	if len(c.editors) <= 0 {
+	if len(c.editors) <= 0 && (Wnd.cols.IndexOf(c) < len(Wnd.cols.cols)-1) {
 		br.Max.Y = c.r.Max.Y
 	}
 	drawingFuncs.DrawFillSrc(c.tagfr.B, br, &config.TheColorScheme.Border)
