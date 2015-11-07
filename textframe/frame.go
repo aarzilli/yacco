@@ -914,7 +914,7 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 		if predrawRects != nil {
 			*predrawRects = append(*predrawRects, fr.R)
 		}
-		if optiStats && fr.debugRedraw {
+		if optiStats {
 			fmt.Printf("Full invalidation (scroll) %d\n", calcPixels([]image.Rectangle{fr.R}))
 		}
 		return
@@ -949,7 +949,7 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 			fr.Wnd.FlushImage(invalid...)
 		}
 		if optiStats {
-			fmt.Printf("Insertion invalidation: %d %d\n", calcPixels(invalid), len(invalid))
+			fmt.Printf("%p Insertion invalidation: %d %d\n", fr, calcPixels(invalid), len(invalid))
 		}
 		fr.updateRedrawOpt()
 		return

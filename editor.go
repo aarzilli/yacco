@@ -47,8 +47,9 @@ type Editor struct {
 	restoredJump int
 
 	refreshOpt struct {
-		top      int
-		revCount int
+		top         int
+		revCount    int
+		tagRevCount int
 	}
 
 	redrawRects []image.Rectangle
@@ -161,6 +162,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 
 	e.refreshOpt.top = -1
 	e.refreshOpt.revCount = -1
+	e.refreshOpt.tagRevCount = -1
 
 	e.redrawRects = make([]image.Rectangle, 0, 8)
 
@@ -470,6 +472,11 @@ func (e *Editor) tagRefreshIntl() {
 	ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
 	e.tagfr.InsertColor(ta)
 	e.tagfr.InsertColor(tb)
+
+	if x := e.tagbuf.LastEditIsType(e.refreshOpt.tagRevCount); x >= 0 {
+		e.tagfr.RequestDrawOptimized(x)
+	}
+	e.refreshOpt.tagRevCount = e.tagbuf.RevCount
 }
 
 func (e *Editor) BufferRefresh() {
