@@ -142,7 +142,7 @@ func (w *Window) calcRects(screen draw.Image) {
 	w.cols.SetRects(w.wnd, screen, r.Intersect(colsr))
 
 	w.tagfr.R = r
-	w.tagfr.R.Min.X += SCROLL_WIDTH
+	w.tagfr.R.Min.X += config.ScrollWidth
 	w.tagfr.R.Max.Y = w.tagfr.R.Min.Y + TagHeight(&w.tagfr)
 	w.tagfr.R = r.Intersect(w.tagfr.R)
 	w.tagfr.B = screen
@@ -155,7 +155,7 @@ func (w *Window) padDraw(screen draw.Image) {
 	drawingFuncs := textframe.GetOptimizedDrawing(screen)
 	drawingFuncs.DrawFillSrc(screen, screen.Bounds().Intersect(pad), &config.TheColorScheme.WindowBG)
 
-	pad.Max.X = SCROLL_WIDTH
+	pad.Max.X = config.ScrollWidth
 	pad.Max.Y = TagHeight(&Wnd.tagfr)
 	drawingFuncs.DrawFillSrc(screen, screen.Bounds().Intersect(pad), &config.TheColorScheme.TagPlain[0])
 }
@@ -482,7 +482,7 @@ loop:
 			// a bit of X stickiness after crossing columns
 			if colChangeTime != (time.Time{}) {
 				if time.Now().Sub(colChangeTime) < (time.Millisecond * 500) {
-					endPos.X = ed.r.Min.X + SCROLL_WIDTH/2
+					endPos.X = ed.r.Min.X + config.ScrollWidth/2
 					w.wnd.WarpMouse(endPos)
 				} else {
 					colChangeTime = time.Time{}

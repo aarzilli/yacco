@@ -35,6 +35,9 @@ func LoadInit() {
 		}
 		LoadRules = append(LoadRules, LoadRule{ForDir: bufRe == nil, BufRe: bufRe, Re: regexp.Compile(rule.Re, true, false), Action: rule.Action})
 	}
+	config.StartupWidth = int(config.MainFont.Size * 40)
+	config.StartupHeight = int(config.MainFont.Size * 30)
+	config.ScrollWidth = int(config.MainFont.Size * 0.625)
 }
 
 func printStackTrace() {

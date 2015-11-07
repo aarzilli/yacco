@@ -76,8 +76,8 @@ func setTheme(t string) {
 func realmain() {
 	setTheme(*themeFlag)
 
-	width := 640
-	height := 480
+	width := config.StartupWidth
+	height := config.StartupHeight
 
 	os.Setenv("TERM", "ascii")
 

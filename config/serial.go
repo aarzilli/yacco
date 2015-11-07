@@ -26,10 +26,10 @@ type configObj struct {
 var admissibleFonts = []string{"Main", "Tag", "Alt", "Compl"}
 
 type configFont struct {
-	Pixel     int
-	LineScale float64
-	Path      string
-	CopyFrom  string
+	Pixel       int
+	LineScale   float64
+	Path        string
+	CopyFrom    string
 	FullHinting bool
 }
 

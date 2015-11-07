@@ -65,5 +65,4 @@ var RegionMatches = []util.RegionMatch{
 		NameRe:     `\.py$`,
 		StartDelim: []rune{'#'}, EndDelim: []rune{'\n'}, Escape: rune(0), Type: util.RMT_COMMENT,
 	},
-
 }

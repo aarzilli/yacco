@@ -55,7 +55,6 @@ type Editor struct {
 	closed      bool
 }
 
-const SCROLL_WIDTH = 10
 const NUM_JUMPS = 7
 const JUMP_THRESHOLD = 100
 
@@ -91,7 +90,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 	}
 
 	e.sfr = textframe.ScrollFrame{
-		Width: SCROLL_WIDTH,
+		Width: config.ScrollWidth,
 		Color: config.TheColorScheme.Scrollbar,
 		Fr: textframe.Frame{
 			Font:            config.MainFont,
@@ -185,7 +184,7 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool, simpleReca
 	// TAG
 	e.tagfr.R = r
 	e.tagfr.R.Min.Y += 2
-	e.tagfr.R.Min.X += SCROLL_WIDTH
+	e.tagfr.R.Min.X += config.ScrollWidth
 	if !last {
 		e.tagfr.R.Max.X -= 2
 	}
@@ -208,7 +207,7 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool, simpleReca
 	// HANDLE
 	e.rhandle = r
 	e.rhandle.Min.Y += 2
-	e.rhandle.Max.X = e.rhandle.Min.X + SCROLL_WIDTH
+	e.rhandle.Max.X = e.rhandle.Min.X + config.ScrollWidth
 	e.rhandle.Max.Y = e.tagfr.R.Max.Y
 	e.rhandle = e.r.Intersect(e.rhandle)
 
@@ -542,7 +541,7 @@ func (ed *Editor) WarpToTag() {
 
 func (ed *Editor) WarpToHandle() {
 	p := ed.r.Min
-	p = p.Add(image.Point{SCROLL_WIDTH / 2, int(ed.tagfr.Font.LineHeight() / 2)})
+	p = p.Add(image.Point{config.ScrollWidth / 2, int(ed.tagfr.Font.LineHeight() / 2)})
 	Wnd.wnd.WarpMouse(p)
 }
 

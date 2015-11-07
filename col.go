@@ -126,12 +126,12 @@ func (c *Col) RecalcRects(last bool) {
 	c.last = last
 
 	c.btnr = c.r
-	c.btnr.Max.X = c.btnr.Min.X + SCROLL_WIDTH
+	c.btnr.Max.X = c.btnr.Min.X + config.ScrollWidth
 	c.btnr.Max.Y = c.btnr.Min.Y + TagHeight(&c.tagfr)
 
 	c.tagfr.R = c.r
 	c.tagfr.R.Min.Y += 2
-	c.tagfr.R.Min.X += SCROLL_WIDTH
+	c.tagfr.R.Min.X += config.ScrollWidth
 	if !last {
 		c.tagfr.R.Max.X -= 2
 	}
@@ -210,7 +210,7 @@ func (c *Col) Redraw() {
 	// rectangle where the "button" would be
 	br = c.r
 	br.Min.Y += 2
-	br.Max.X = br.Min.X + SCROLL_WIDTH
+	br.Max.X = br.Min.X + config.ScrollWidth
 	br.Max.Y = c.tagfr.R.Max.Y
 	drawingFuncs.DrawFillSrc(c.tagfr.B, br, &config.TheColorScheme.HandleBG)
 

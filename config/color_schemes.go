@@ -33,7 +33,7 @@ type ColorScheme struct {
 }
 
 func c(r, g, b, a uint8) image.Uniform {
-	return *image.NewUniform(color.RGBA{ r, g, b, a })
+	return *image.NewUniform(color.RGBA{r, g, b, a})
 }
 
 var col2sel = c(0xAA, 0x00, 0x00, 0xFF)
@@ -237,25 +237,25 @@ var atomtagselbg = c(135, 135, 135, 0xff)
 
 var AtomColorScheme = ColorScheme{
 	WindowBG: atomwinbg,
-	
-	Border: atomnormfg,
+
+	Border:    atomnormfg,
 	Scrollbar: c(53, 59, 69, 0xff),
-	
-	EditorPlain: []image.Uniform{ atombg, atomnormfg, atomstrfg, atomcmtfg },
-	EditorSel1: []image.Uniform{ atomselbg, atomnormfg, atomstrfg, atomcmtfg },
-	EditorSel2: []image.Uniform{ atomselbg, atomnormfg, atomnormfg, atomnormfg },
-	EditorSel3: []image.Uniform{ atomselbg, atomnormfg, atomnormfg, atomnormfg },
-	EditorMatchingParenthesis: []image.Uniform{ atomnormfg, atombg, atombg, atombg },
-	Compl: []image.Uniform{atomtagbg, atomtagfg },
-	
-	TagPlain: []image.Uniform{ atomtagbg, atomtagfg },
-	TagSel1: []image.Uniform{ atomtagselbg, atomtagfg },
-	TagSel2: []image.Uniform{ atomtagselbg, atomtagfg },
-	TagSel3: []image.Uniform{ atomtagselbg, atomtagfg },
-	TagMatchingParenthesis: []image.Uniform{ atomtagselbg, atomtagfg },
-	
-	HandleFG: atomtagbg,
+
+	EditorPlain:               []image.Uniform{atombg, atomnormfg, atomstrfg, atomcmtfg},
+	EditorSel1:                []image.Uniform{atomselbg, atomnormfg, atomstrfg, atomcmtfg},
+	EditorSel2:                []image.Uniform{atomselbg, atomnormfg, atomnormfg, atomnormfg},
+	EditorSel3:                []image.Uniform{atomselbg, atomnormfg, atomnormfg, atomnormfg},
+	EditorMatchingParenthesis: []image.Uniform{atomnormfg, atombg, atombg, atombg},
+	Compl: []image.Uniform{atomtagbg, atomtagfg},
+
+	TagPlain:               []image.Uniform{atomtagbg, atomtagfg},
+	TagSel1:                []image.Uniform{atomtagselbg, atomtagfg},
+	TagSel2:                []image.Uniform{atomtagselbg, atomtagfg},
+	TagSel3:                []image.Uniform{atomtagselbg, atomtagfg},
+	TagMatchingParenthesis: []image.Uniform{atomtagselbg, atomtagfg},
+
+	HandleFG:         atomtagbg,
 	HandleModifiedFG: c(224, 108, 107, 0xff),
-	HandleSpecialFG: *DMedgreen,
-	HandleBG: atomwinbg,
+	HandleSpecialFG:  *DMedgreen,
+	HandleBG:         atomwinbg,
 }
