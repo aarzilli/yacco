@@ -57,6 +57,7 @@ func lookfwd(ed *Editor, needle []rune, fromEnd bool, setJump bool, exact bool) 
 		start = ed.sfr.Fr.Sel.E
 	}
 	ed.sfr.Fr.Sel.S = ed.sfr.Fr.Sel.E
+	ed.BufferRefresh()
 	if !lookfwdEx(ed, needle, start, exact) {
 		lookfwdEx(ed, needle, 0, exact)
 	}
@@ -131,6 +132,8 @@ func lookproc(ec ExecContext) {
 			case "Look!Prev":
 				if len(matches) > 1 {
 					sideChan <- func() {
+						ec.fr.Sel.E = ec.fr.Sel.S
+						ec.ed.BufferRefresh()
 						ec.fr.Sel = matches[len(matches)-2]
 						matches = matches[:len(matches)-1]
 						ec.ed.BufferRefresh()
