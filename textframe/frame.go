@@ -24,7 +24,7 @@ type ColorRune struct {
 }
 
 const debugRedraw = false
-const optiStats = true
+const optiStats = false
 
 // Callback when the frame needs to scroll its text
 // If scrollDir is 0 then n is the absolute position to move to
@@ -862,26 +862,35 @@ func calcPixels(invalid []image.Rectangle) int {
 	return a
 }
 
-func (fr *Frame) RequestDrawOptimized(pos int) {
+func (fr *Frame) RequestDrawOptimized(pos int, y fixed.Int26_6) {
+	if pos < 0 {
+		return
+	}
+
+	if y > 0 {
+		_, newy := fr.InsertOptimizationEnd(pos)
+		if newy != y {
+			return
+		}
+	}
+
 	fr.redrawOpt.inserted = pos
 }
 
-func (fr *Frame) insertedOptimization() bool {
-	if fr.redrawOpt.inserted < 0 {
-		return false
+func (fr *Frame) InsertOptimizationEnd(inserted int) (int, fixed.Int26_6) {
+	if inserted < 0 {
+		return 0, 0
 	}
-
-	c := fr.redrawOpt.inserted - fr.Top
-	p := c - 1
-	if p < 0 {
-		return true
+	for i := inserted; true; i++ {
+		li := i - fr.Top
+		if li >= len(fr.glyphs) {
+			return len(fr.glyphs) + fr.Top, 0
+		}
+		if fr.glyphs[li].r == '\n' {
+			return fr.Top + li, fr.glyphs[li-1].p.Y
+		}
 	}
-
-	if c >= len(fr.glyphs) {
-		return true
-	}
-
-	return fr.glyphs[p].p.Y == fr.glyphs[c].p.Y
+	panic("unreachable")
 }
 
 func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
@@ -941,18 +950,8 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 
 	// FAST PATH 3
 	// A single character has been inserted or removed, we only redraw the corresponding line
-	if fr.insertedOptimization() {
-		end := len(fr.glyphs)
-		for i := fr.redrawOpt.inserted; true; i++ {
-			li := i - fr.Top
-			if li >= len(fr.glyphs) {
-				break
-			}
-			if fr.glyphs[li].r == '\n' {
-				end = fr.Top + li
-				break
-			}
-		}
+	if fr.redrawOpt.inserted >= 0 {
+		end, _ := fr.InsertOptimizationEnd(fr.redrawOpt.inserted)
 		if debugRedraw && fr.debugRedraw {
 			fmt.Printf("%p Redrawing single line (insert): %d\n", fr, fr.redrawOpt.inserted)
 		}

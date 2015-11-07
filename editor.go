@@ -363,9 +363,12 @@ func (e *Editor) refreshIntl(full bool) {
 		return
 	}
 	e.refreshOpt.top = e.otherSel[OS_TOP].E
+
+	inserted := e.bodybuf.LastEditIsType(e.refreshOpt.revCount)
+	_, y := e.sfr.Fr.InsertOptimizationEnd(inserted)
+
 	e.sfr.Fr.Clear()
 	e.sfr.Set(e.otherSel[OS_TOP].E, e.bodybuf.Size())
-
 	e.bodybuf.Rdlock()
 	defer e.bodybuf.Rdunlock()
 	ba, bb := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, e.bodybuf.Size()})
@@ -373,9 +376,7 @@ func (e *Editor) refreshIntl(full bool) {
 	e.sfr.Fr.InsertColor(bb)
 
 	//If between the last load and this reload only a single character was added request the appropriate optimisation
-	if x := e.bodybuf.LastEditIsType(e.refreshOpt.revCount); x >= 0 {
-		e.sfr.Fr.RequestDrawOptimized(x)
-	}
+	e.sfr.Fr.RequestDrawOptimized(inserted, y)
 
 	e.refreshOpt.revCount = e.bodybuf.RevCount
 
@@ -468,14 +469,15 @@ func (e *Editor) FixTop() {
 }
 
 func (e *Editor) tagRefreshIntl() {
+	inserted := e.tagbuf.LastEditIsType(e.refreshOpt.tagRevCount)
+	_, y := e.tagfr.InsertOptimizationEnd(inserted)
+
 	e.tagfr.Clear()
 	ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
 	e.tagfr.InsertColor(ta)
 	e.tagfr.InsertColor(tb)
 
-	if x := e.tagbuf.LastEditIsType(e.refreshOpt.tagRevCount); x >= 0 {
-		e.tagfr.RequestDrawOptimized(x)
-	}
+	e.tagfr.RequestDrawOptimized(inserted, y)
 	e.refreshOpt.tagRevCount = e.tagbuf.RevCount
 }
 
