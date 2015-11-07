@@ -956,6 +956,13 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 			fmt.Printf("%p Redrawing single line (insert): %d\n", fr, fr.redrawOpt.inserted)
 		}
 		invalid := []image.Rectangle{}
+		if len(fr.Colors) > 4 {
+			if debugRedraw && fr.debugRedraw {
+				fmt.Printf("\tRedrawing parenthesis match (1): %v -> %v\n", fr.redrawOpt.drawnPMatch, fr.PMatch)
+			}
+			fr.redrawSelectionLogical(fr.redrawOpt.drawnPMatch, &invalid)
+			fr.redrawSelectionLogical(fr.PMatch, &invalid)
+		}
 		invalid = append(invalid, fr.deleteTick())
 		fr.redrawSelectionLogical(util.Sel{fr.redrawOpt.inserted, end}, &invalid)
 		invalid = append(invalid, fr.drawTick(1))
