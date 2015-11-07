@@ -18,7 +18,7 @@ type Font struct {
 	pfonts      []*pcf.Pcf
 	dpi         float64
 	Size        float64
-	spacing     float64
+	lineextra   float64
 	fullHinting bool
 }
 
@@ -106,24 +106,15 @@ func FixedToInt(x fixed.Int26_6) int {
 
 func (f *Font) LineHeight() int32 {
 	if f.fonts[0] != nil {
-		return int32(f.Size * f.spacing)
+		return int32(f.Size + f.lineextra)
 	} else {
 		return int32(f.pfonts[0].LineAdvance() + 1) // <- is this wrong?
 	}
 }
 
-/*
-func (f *Font) SpacingFix(h int32) float64 {
-	return math.Floor(float64(h) * f.spacing)
-}*/
-
-func (f *Font) Spacing() float64 {
-	return f.spacing
-}
-
 func (f *Font) LineHeightRaster() fixed.Int26_6 {
 	if f.fonts[0] != nil {
-		return fixed.I(int(f.Size * f.spacing))
+		return fixed.I(int(f.Size + f.lineextra))
 	} else {
 		return fixed.I(f.pfonts[0].LineAdvance())
 	}

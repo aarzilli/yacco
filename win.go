@@ -323,7 +323,7 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 
 func TagHeight(tagfr *textframe.Frame) int {
 	b := tagfr.Font.Bounds()
-	return int(float64(util.FixedToInt(b.Max.Y-b.Min.Y)) * tagfr.Font.Spacing())
+	return int(float64(util.FixedToInt(b.Max.Y - b.Min.Y)))
 }
 
 func TagSetEditableStart(tagbuf *buf.Buffer) {

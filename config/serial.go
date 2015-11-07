@@ -27,7 +27,7 @@ var admissibleFonts = []string{"Main", "Tag", "Alt", "Compl"}
 
 type configFont struct {
 	Pixel       int
-	LineScale   float64
+	LineSpacing int
 	Path        string
 	CopyFrom    string
 	FullHinting bool
@@ -53,14 +53,14 @@ func fontFromConf(font configFont, Fonts map[string]*configFont) *util.Font {
 		if font.Pixel == 0 {
 			font.Pixel = otherFont.Pixel
 		}
-		if font.LineScale == 0.0 {
-			font.LineScale = otherFont.LineScale
+		if font.LineSpacing == 0.0 {
+			font.LineSpacing = otherFont.LineSpacing
 		}
 		if font.Path == "" {
 			font.Path = otherFont.Path
 		}
 	}
-	return util.MustNewFont(72, float64(font.Pixel), font.LineScale, font.FullHinting, font.Path)
+	return util.MustNewFont(72, float64(font.Pixel), float64(font.LineSpacing), font.FullHinting, font.Path)
 }
 
 func LoadConfiguration(path string) {

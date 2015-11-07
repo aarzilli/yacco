@@ -545,9 +545,6 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform, invalid *[]imag
 		s = 0
 	}
 	glyphBounds := fr.Font.Bounds()
-	//fmt.Printf("Y Bounds %d %d\n", glyphBounds.Max.Y, glyphBounds.Min.Y)
-	//glyphBounds.Max.Y = int32(fr.Font.SpacingFix(glyphBounds.Max.Y))
-	//glyphBounds.Min.Y = int32(fr.Font.SpacingFix(glyphBounds.Min.Y))
 
 	var sp, ep, sep image.Point
 
@@ -719,15 +716,6 @@ func (fr *Frame) redrawOptSelectionMoved() (bool, []image.Rectangle) {
 
 	fromnil := fr.redrawOpt.drawnSel.S == fr.redrawOpt.drawnSel.E
 	tonil := fr.Sel.S == fr.Sel.E
-
-	if fr.Font.Truetype() {
-		if !fromnil || !tonil {
-			if debugRedraw && fr.debugRedraw {
-				fmt.Printf("\tFailed because of truetype selection move\n")
-			}
-			return false, nil
-		}
-	}
 
 	if fromnil && tonil {
 		if debugRedraw && fr.debugRedraw {
