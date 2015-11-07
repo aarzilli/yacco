@@ -11,6 +11,7 @@ type undoSel struct {
 }
 
 type undoInfo struct {
+	rev    int
 	before undoSel
 	after  undoSel
 	ts     time.Time

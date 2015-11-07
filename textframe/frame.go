@@ -24,6 +24,7 @@ type ColorRune struct {
 }
 
 const debugRedraw = false
+const optiStats = true
 
 // Callback when the frame needs to scroll its text
 // If scrollDir is 0 then n is the absolute position to move to
@@ -75,6 +76,7 @@ type Frame struct {
 		reloaded         bool
 		scrollStart      int
 		scrollEnd        int
+		inserted         int
 	}
 
 	scrubGlyph image.Alpha
@@ -157,10 +159,12 @@ func (fr *Frame) Clear() {
 	fr.redrawOpt.reloaded = true
 	fr.redrawOpt.scrollStart = -1
 	fr.redrawOpt.scrollEnd = -1
+	fr.redrawOpt.inserted = -1
 }
 
 func (fr *Frame) Invalidate() {
 	fr.redrawOpt.reloaded = true
+	fr.redrawOpt.inserted = -1
 }
 
 // Inserts text into the frame, returns the maximum X and Y used
@@ -351,6 +355,9 @@ func (fr *Frame) RefreshColors(a, b []ColorRune) {
 			crune = b[i-len(a)]
 		}
 		fr.glyphs[i].r = crune.R
+		if fr.glyphs[i].color != uint8(crune.C&COLORMASK) {
+			fr.redrawOpt.inserted = -1
+		}
 		fr.glyphs[i].color = uint8(crune.C & COLORMASK)
 	}
 }
@@ -659,7 +666,7 @@ func (fr *Frame) deleteTick() image.Rectangle {
 	fr.Sel = fr.redrawOpt.drawnSel
 	vt := fr.VisibleTick
 	fr.VisibleTick = true
-	fr.drawTick(0)
+	r := fr.drawTick(0)
 	fr.VisibleTick = vt
 
 	if len(fr.glyphs) == 0 {
@@ -681,10 +688,8 @@ func (fr *Frame) deleteTick() image.Rectangle {
 	}
 	fr.Sel = saved
 
-	r := fr.R
-	//r.Min.Y = y - int(fr.Font.SpacingFix(fr.glyphBounds.YMax))
-	r.Min.Y = y - util.FixedToInt(fr.glyphBounds.Max.Y)
-	r.Max.Y = y - util.FixedToInt(fr.glyphBounds.Min.Y)
+	_ = y
+
 	return r
 }
 
@@ -848,6 +853,18 @@ func (fr *Frame) allSelectionsEmpty() bool {
 
 }
 
+func calcPixels(invalid []image.Rectangle) int {
+	a := 0
+	for i := range invalid {
+		a += invalid[i].Dx() * invalid[i].Dy()
+	}
+	return a
+}
+
+func (fr *Frame) RequestDrawOptimized(pos int) {
+	fr.redrawOpt.inserted = pos
+}
+
 func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	fr.glyphBounds = fr.Font.Bounds()
 	fr.rightMargin = fixed.I(fr.R.Max.X) - fr.margin
@@ -867,6 +884,9 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 			}
 			if predrawRects != nil {
 				*predrawRects = append(*predrawRects, invalid...)
+			}
+			if optiStats {
+				fmt.Printf("%p Invalidating %d pixels\n", fr, calcPixels(invalid))
 			}
 			return
 		}
@@ -894,6 +914,44 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 		if predrawRects != nil {
 			*predrawRects = append(*predrawRects, fr.R)
 		}
+		if optiStats && fr.debugRedraw {
+			fmt.Printf("Full invalidation (scroll) %d\n", calcPixels([]image.Rectangle{fr.R}))
+		}
+		return
+	}
+
+	// FAST PATH 3
+	// A single character has been inserted or removed, we only redraw the corresponding line
+	if fr.redrawOpt.inserted >= 0 {
+		end := len(fr.glyphs)
+		for i := fr.redrawOpt.inserted; true; i++ {
+			li := i - fr.Top
+			if li >= len(fr.glyphs) {
+				break
+			}
+			if fr.glyphs[li].r == '\n' {
+				end = fr.Top + li
+				break
+			}
+		}
+		if debugRedraw && fr.debugRedraw {
+			fmt.Printf("%p Redrawing single line (insert): %d\n", fr, fr.redrawOpt.inserted)
+		}
+		invalid := []image.Rectangle{}
+		invalid = append(invalid, fr.deleteTick())
+		fr.redrawSelectionLogical(util.Sel{fr.redrawOpt.inserted, end}, &invalid)
+		invalid = append(invalid, fr.drawTick(1))
+		fr.redrawOpt.inserted = -1
+		if predrawRects != nil {
+			*predrawRects = append(*predrawRects, invalid...)
+		}
+		if flush && (fr.Wnd != nil) {
+			fr.Wnd.FlushImage(invalid...)
+		}
+		if optiStats {
+			fmt.Printf("Insertion invalidation: %d %d\n", calcPixels(invalid), len(invalid))
+		}
+		fr.updateRedrawOpt()
 		return
 	}
 
@@ -902,6 +960,9 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	// NORMAL PATH HERE
 	if debugRedraw && fr.debugRedraw {
 		fmt.Printf("%p Redrawing (FULL)\n", fr)
+	}
+	if optiStats && fr.debugRedraw {
+		fmt.Printf("Full invalidation (full) %d\n", calcPixels([]image.Rectangle{fr.R}))
 	}
 
 	// background

@@ -363,6 +363,21 @@ func (b *Buffer) LastEdit() time.Time {
 	}
 }
 
+func (b *Buffer) LastEditIsType(rev int) int {
+	if rev != b.RevCount-1 {
+		return -1
+	}
+	ui := b.ul.PeekUndo()
+	if ui == nil {
+		return -1
+	}
+	d := b.RevCount - ui.rev
+	if (ui.before.S != ui.before.E) || (ui.before.S != ui.after.S) || (ui.after.S != ui.after.E-d) || (strings.Index(ui.after.text, "\n") >= 0) {
+		return -1
+	}
+	return ui.after.E - 1
+}
+
 func (b *Buffer) Rdlock() {
 	b.lock.RLock()
 }
@@ -411,6 +426,7 @@ func (b *Buffer) replaceIntl(text []rune, sel *util.Sel) {
 // Saves undo information for replacement of text between sel.S and sel.E with text
 func (b *Buffer) pushUndo(sel util.Sel, text []rune, solid bool) {
 	var ui undoInfo
+	ui.rev = b.RevCount
 	ui.before.S = sel.S
 	ui.before.E = sel.E
 	ui.before.text = string(b.SelectionRunes(sel))

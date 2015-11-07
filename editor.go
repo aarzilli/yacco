@@ -361,7 +361,6 @@ func (e *Editor) refreshIntl(full bool) {
 		return
 	}
 	e.refreshOpt.top = e.otherSel[OS_TOP].E
-	e.refreshOpt.revCount = e.bodybuf.RevCount
 	e.sfr.Fr.Clear()
 	e.sfr.Set(e.otherSel[OS_TOP].E, e.bodybuf.Size())
 
@@ -370,6 +369,14 @@ func (e *Editor) refreshIntl(full bool) {
 	ba, bb := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, e.bodybuf.Size()})
 	e.sfr.Fr.InsertColor(ba)
 	e.sfr.Fr.InsertColor(bb)
+
+	//If between the last load and this reload only a single character was added request the appropriate optimisation
+	if x := e.bodybuf.LastEditIsType(e.refreshOpt.revCount); x >= 0 {
+		e.sfr.Fr.RequestDrawOptimized(x)
+	}
+
+	e.refreshOpt.revCount = e.bodybuf.RevCount
+
 	edutil.DoHighlightingConsistency(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, Highlight)
 }
 
