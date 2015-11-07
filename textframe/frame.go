@@ -701,6 +701,7 @@ func (fr *Frame) updateRedrawOpt() {
 	fr.redrawOpt.reloaded = false
 	fr.redrawOpt.scrollStart = -1
 	fr.redrawOpt.scrollEnd = -1
+	fr.redrawOpt.inserted = -1
 }
 
 func (fr *Frame) redrawOptSelectionMoved() (bool, []image.Rectangle) {
@@ -865,6 +866,24 @@ func (fr *Frame) RequestDrawOptimized(pos int) {
 	fr.redrawOpt.inserted = pos
 }
 
+func (fr *Frame) insertedOptimization() bool {
+	if fr.redrawOpt.inserted < 0 {
+		return false
+	}
+
+	c := fr.redrawOpt.inserted - fr.Top
+	p := c - 1
+	if p < 0 {
+		return true
+	}
+
+	if c >= len(fr.glyphs) {
+		return true
+	}
+
+	return fr.glyphs[p].p.Y == fr.glyphs[c].p.Y
+}
+
 func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	fr.glyphBounds = fr.Font.Bounds()
 	fr.rightMargin = fixed.I(fr.R.Max.X) - fr.margin
@@ -922,7 +941,7 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 
 	// FAST PATH 3
 	// A single character has been inserted or removed, we only redraw the corresponding line
-	if fr.redrawOpt.inserted >= 0 {
+	if fr.insertedOptimization() {
 		end := len(fr.glyphs)
 		for i := fr.redrawOpt.inserted; true; i++ {
 			li := i - fr.Top
