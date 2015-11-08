@@ -25,6 +25,7 @@ type ColorRune struct {
 
 const debugRedraw = false
 const optiStats = false
+const insertRedrawOptimizationEnabled = false
 
 // Callback when the frame needs to scroll its text
 // If scrollDir is 0 then n is the absolute position to move to
@@ -946,6 +947,10 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 			fmt.Printf("Full invalidation (scroll) %d\n", calcPixels([]image.Rectangle{fr.R}))
 		}
 		return
+	}
+
+	if !insertRedrawOptimizationEnabled {
+		fr.redrawOpt.inserted = -1
 	}
 
 	// FAST PATH 3
