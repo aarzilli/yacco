@@ -77,6 +77,7 @@ func (sfr *ScrollFrame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	posr.Max.Y = posz + posr.Min.Y
 	drawingFuncs.DrawFillSrc(sfr.b, sfr.r.Intersect(posr), &sfr.Fr.Colors[0][0])
 
+	sfr.Fr.redrawOpt.inserted = -1
 	sfr.Fr.Redraw(false, predrawRects)
 
 	if flush && (sfr.Wnd != nil) {
