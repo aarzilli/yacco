@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"yacco/buf"
+	"yacco/clipboard"
 	"yacco/config"
 	"yacco/edit"
 	"yacco/textframe"
@@ -349,8 +350,7 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 			ec.br()
 		}
 	}
-	Wnd.wnd.SetClipboard(s)
-	Wnd.wnd.SetPrimarySelection(s)
+	clipboard.Set(s)
 }
 
 func DelCmd(ec ExecContext, arg string, confirmed bool) {
@@ -646,9 +646,9 @@ func PasteCmd(ec ExecContext, arg string) {
 		PasteIndentCmd(ec, arg)
 		return
 	case "Primary", "primary":
-		cb = Wnd.wnd.GetPrimarySelection()
+		cb = clipboard.GetPrimary()
 	default:
-		cb = Wnd.wnd.GetClipboard()
+		cb = clipboard.Get()
 	}
 
 	ec.buf.Replace([]rune(cb), &ec.fr.Sel, true, ec.eventChan, util.EO_MOUSE)
@@ -666,7 +666,7 @@ func PasteIndentCmd(ec ExecContext, arg string) {
 	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
 		return
 	}
-	cb := Wnd.wnd.GetClipboard()
+	cb := clipboard.Get()
 
 	if (ec.fr.Sel.S == 0) || (ec.fr.Sel.S != ec.fr.Sel.E) || (ec.ed == nil) || (ec.buf != ec.ed.bodybuf) {
 		ec.buf.Replace([]rune(cb), &ec.fr.Sel, true, ec.eventChan, util.EO_MOUSE)
@@ -829,7 +829,7 @@ func SendCmd(ec ExecContext, arg string) {
 	if ec.ed.sfr.Fr.Sel.S != ec.ed.sfr.Fr.Sel.E {
 		txt = ec.ed.bodybuf.SelectionRunes(ec.ed.sfr.Fr.Sel)
 	} else {
-		txt = []rune(Wnd.wnd.GetClipboard())
+		txt = []rune(clipboard.Get())
 	}
 	ec.ed.sfr.Fr.Sel = util.Sel{ec.buf.Size(), ec.buf.Size()}
 	if (len(txt) > 0) && (txt[len(txt)-1] != '\n') {

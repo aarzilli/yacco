@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 	"yacco/buf"
+	"yacco/clipboard"
 	"yacco/config"
 	"yacco/edit"
 	"yacco/util"
@@ -147,6 +148,7 @@ func main() {
 	config.LoadConfiguration(*configFlag)
 	LoadInit()
 	KeysInit()
+	clipboard.Start()
 
 	edit.Warnfn = Warn
 	edit.NewJob = func(wd, cmd, input string, buf *buf.Buffer, resultChan chan<- string) {
