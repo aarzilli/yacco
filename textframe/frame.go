@@ -879,7 +879,7 @@ func (fr *Frame) RequestDrawOptimized(pos int, y fixed.Int26_6) {
 }
 
 func (fr *Frame) InsertOptimizationEnd(inserted int) (int, fixed.Int26_6) {
-	if inserted < 0 {
+	if !insertRedrawOptimizationEnabled || inserted < 0 {
 		return 0, 0
 	}
 	for i := inserted; true; i++ {
@@ -887,6 +887,7 @@ func (fr *Frame) InsertOptimizationEnd(inserted int) (int, fixed.Int26_6) {
 		if li >= len(fr.glyphs) {
 			return len(fr.glyphs) + fr.Top, 0
 		}
+		// somehow this sometimes causes an index out of range panic
 		if fr.glyphs[li].r == '\n' {
 			return fr.Top + li, fr.glyphs[li-1].p.Y
 		}
