@@ -154,6 +154,7 @@ func (c *Col) RecalcRects(last bool) {
 			c.editors[i].size = int(float64(c.editors[i].size) * f)
 			if c.editors[i].size < mh {
 				recoverh += mh - c.editors[i].size
+				c.editors[i].size = mh
 			}
 		}
 
@@ -167,6 +168,7 @@ func (c *Col) RecalcRects(last bool) {
 				if c.editors[i].size-recoverh >= mh {
 					c.editors[i].size -= recoverh
 					recoverh = 0
+					break
 				} else {
 					recoverh -= c.editors[i].size - mh
 					c.editors[i].size = mh
