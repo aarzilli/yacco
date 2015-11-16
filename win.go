@@ -953,14 +953,17 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent, event
 
 func completeClick(events <-chan interface{}, completeAction, cancelAction wde.Button) bool {
 	for ei := range events {
-		e, ok := ei.(wde.MouseUpEvent)
-		if !ok {
-			continue
-		}
-		switch e.Which {
-		case completeAction:
-			return true
-		case cancelAction:
+		switch e := ei.(type) {
+		case wde.MouseUpEvent:
+			switch e.Which {
+			case completeAction:
+				return true
+			case cancelAction:
+				return false
+			default:
+				return false
+			}
+		case wde.KeyTypedEvent:
 			return false
 		}
 	}
