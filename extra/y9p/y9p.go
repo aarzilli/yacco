@@ -228,7 +228,7 @@ func main() {
 		fmt.Printf("%s\n", outbufid)
 
 	default:
-		fmt.Fprintf(os.Stderr, "Wrong command %s", cmd)
+		fmt.Fprintf(os.Stderr, "Wrong command %s\n", cmd)
 		usage()
 		os.Exit(1)
 	}
