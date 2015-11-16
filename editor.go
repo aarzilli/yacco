@@ -410,6 +410,13 @@ func (e *Editor) TagRefresh() {
 	}
 }
 
+func (e *Editor) badTop() bool {
+	if e.sfr.Fr.Top == 0 {
+		return false
+	}
+	return e.bodybuf.At(e.sfr.Fr.Top-1).R != '\n'
+}
+
 func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 	match := findPMatch(e.tagbuf, e.tagfr.Sel)
 	if match.S >= 0 {
@@ -425,7 +432,7 @@ func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 	}
 
 	e.refreshIntl(false)
-	if !e.sfr.Fr.Inside(e.sfr.Fr.Sel.E) && scroll {
+	if (!e.sfr.Fr.Inside(e.sfr.Fr.Sel.E) || e.badTop()) && scroll {
 		x := e.bodybuf.Tonl(e.sfr.Fr.Sel.E-2, -1)
 		e.otherSel[OS_TOP].E = x
 		e.refreshIntl(false)
