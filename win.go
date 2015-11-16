@@ -27,7 +27,7 @@ type Window struct {
 	tagbuf    *buf.Buffer
 	Words     []string
 	Prop      map[string]string
-	curCursor int
+	curCursor wde.Cursor
 	lastWhere image.Point
 }
 
@@ -49,8 +49,8 @@ type activeSelStruct struct {
 	txt     string
 }
 
-//const DEFAULT_CURSOR = wde.XTermCursor
-const DEFAULT_CURSOR = -1
+//const DEFAULT_CURSOR = wde.IBeamCursor
+const DEFAULT_CURSOR = wde.NormalCursor
 
 var activeSel activeSelStruct
 var activeEditor *Editor = nil
@@ -88,7 +88,7 @@ func (w *Window) Init(width, height int) (err error) {
 	if err != nil {
 		return err
 	}
-	w.wnd.ChangeCursor(DEFAULT_CURSOR)
+	w.wnd.SetCursor(DEFAULT_CURSOR)
 	if err != nil {
 		return err
 	}
@@ -226,13 +226,13 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 
 			if onframe {
 				if w.curCursor != DEFAULT_CURSOR {
-					w.wnd.ChangeCursor(DEFAULT_CURSOR)
+					w.wnd.SetCursor(DEFAULT_CURSOR)
 					w.curCursor = DEFAULT_CURSOR
 				}
 			} else {
-				if w.curCursor != -1 {
-					w.wnd.ChangeCursor(-1)
-					w.curCursor = -1
+				if w.curCursor != wde.NormalCursor {
+					w.wnd.SetCursor(wde.NormalCursor)
+					w.curCursor = wde.NormalCursor
 				}
 			}
 		}
@@ -458,7 +458,7 @@ func dist(a, b image.Point) float32 {
 }
 
 func (w *Window) EditorMove(col *Col, ed *Editor, e util.MouseDownEvent, events <-chan interface{}) {
-	w.wnd.ChangeCursor(wde.FleurCursor)
+	w.wnd.SetCursor(wde.FleurCursor)
 
 	startPos := e.Where
 	endPos := startPos
@@ -473,7 +473,7 @@ loop:
 			break loop
 
 		case wde.MouseDownEvent:
-			w.wnd.ChangeCursor(DEFAULT_CURSOR)
+			w.wnd.SetCursor(DEFAULT_CURSOR)
 			return // cancelled
 
 		case wde.MouseDraggedEvent:
@@ -553,7 +553,7 @@ loop:
 		}
 	}
 
-	w.wnd.ChangeCursor(DEFAULT_CURSOR)
+	w.wnd.SetCursor(DEFAULT_CURSOR)
 
 	if dist(startPos, endPos) < 10 {
 		d := endPos.Sub(ed.r.Min)
@@ -633,7 +633,7 @@ func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
 }
 
 func (w *Window) ColResize(col *Col, e util.MouseDownEvent, events <-chan interface{}) {
-	w.wnd.ChangeCursor(wde.FleurCursor)
+	w.wnd.SetCursor(wde.FleurCursor)
 
 	startPos := e.Where
 	endPos := startPos
@@ -646,7 +646,7 @@ loop:
 			break loop
 
 		case wde.MouseDownEvent:
-			w.wnd.ChangeCursor(DEFAULT_CURSOR)
+			w.wnd.SetCursor(DEFAULT_CURSOR)
 			return // cancelled
 
 		case wde.MouseDraggedEvent:
@@ -683,7 +683,7 @@ loop:
 		}
 	}
 
-	w.wnd.ChangeCursor(DEFAULT_CURSOR)
+	w.wnd.SetCursor(DEFAULT_CURSOR)
 }
 
 func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
