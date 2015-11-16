@@ -94,6 +94,7 @@ func readEvents(buf *util.BufferConn, searchChan chan<- string, openChan chan<- 
 			if arg == needle {
 				select {
 				case openChan <- struct{}{}:
+					return
 				default:
 				}
 			} else {
@@ -160,6 +161,9 @@ func searcher(buf *util.BufferConn, cwd string, searchChan <-chan string, openCh
 					utf8.RuneCountInString(resultList[0].show),
 					resultList[0].show)
 				util.Allergic(debug, err)
+				_, err = fmt.Fprintf(buf.EventFd, "EX0 0 0 3 Del\n")
+				util.Allergic(debug, err)
+				return
 			}
 
 		case result := <-resultChan:
@@ -235,6 +239,6 @@ func main() {
 	searchChan := make(chan string, 1)
 	openChan := make(chan struct{}, 1)
 
-	go searcher(buf, cwd, searchChan, openChan)
-	readEvents(buf, searchChan, openChan)
+	go readEvents(buf, searchChan, openChan)
+	searcher(buf, cwd, searchChan, openChan)
 }
