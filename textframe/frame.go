@@ -638,27 +638,38 @@ func (fr *Frame) drawTick(idx int) image.Rectangle {
 	//h := int(fr.Font.SpacingFix(fr.glyphBounds.YMax))
 	h := util.FixedToInt(fr.glyphBounds.Max.Y)
 
+	basedx := int(math.Floor(fr.Font.Size/14 + .5))
+	if basedx < 1 {
+		basedx = 1
+	}
+
+	basedxl := basedx / 2
+	basedxr := basedxl
+	if basedxl+basedxr < basedx {
+		basedxr++
+	}
+
 	r := image.Rectangle{
-		Min: image.Point{x, y - h},
-		Max: image.Point{x + 1, y - util.FixedToInt(fr.glyphBounds.Min.Y)}}
+		Min: image.Point{x - basedxl, y - h},
+		Max: image.Point{x + basedxr, y - util.FixedToInt(fr.glyphBounds.Min.Y)}}
 
 	fr.drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r), &fr.Colors[0][idx])
 
 	r1 := r
-	r1.Min.X -= 1
-	r1.Max.X += 1
-	r1.Max.Y = r1.Min.Y + 3
+	r1.Min.X -= r.Dx()
+	r1.Max.X += r.Dx()
+	r1.Max.Y = r1.Min.Y + r.Dx()*3
 	fr.drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r1), &fr.Colors[0][idx])
 
 	r2 := r
-	r2.Min.X -= 1
-	r2.Max.X += 1
-	r2.Min.Y = r2.Max.Y - 3
+	r2.Min.X -= r.Dx()
+	r2.Max.X += r.Dx()
+	r2.Min.Y = r2.Max.Y - r.Dx()*3
 	fr.drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r2), &fr.Colors[0][idx])
 
 	rr := r
-	rr.Min.X -= 1
-	rr.Max.X += 1
+	rr.Min.X -= r.Dx()
+	rr.Max.X += r.Dx()
 	return rr
 }
 
