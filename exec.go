@@ -87,6 +87,7 @@ func init() {
 	cmds["Debug"] = DebugCmd
 	cmds["Help"] = HelpCmd
 	cmds["Theme"] = ThemeCmd
+	cmds["Direxec"] = DirexecCmd
 }
 
 func HelpCmd(ec ExecContext, arg string) {
@@ -1164,6 +1165,20 @@ Theme atom
 	}
 	setTheme(arg)
 	Wnd.Resized()
+}
+
+func DirexecCmd(ec ExecContext, arg string) {
+	if ec.ed == nil {
+		return
+	}
+
+	f := func(r rune) bool { return (r == '\t') || (r == '\n') }
+	s := ec.ed.bodybuf.Tof(ec.ed.sfr.Fr.Sel.S-1, -1, f)
+	e := ec.ed.bodybuf.Tof(ec.ed.sfr.Fr.Sel.S, +1, f)
+	ec.ed.BufferRefresh()
+	argarg := string(ec.ed.bodybuf.SelectionRunes(util.Sel{s, e}))
+	cmd := arg + " " + argarg
+	ExtExec(ec, cmd, true)
 }
 
 func DebugCmd(ec ExecContext, arg string) {

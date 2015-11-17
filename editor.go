@@ -138,7 +138,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 
 	e.GenTag()
 	if bodybuf.IsDir() {
-		e.tagbuf.Replace([]rune("trash "), &util.Sel{e.tagbuf.Size(), e.tagbuf.Size()}, true, nil, util.EO_FILES)
+		e.tagbuf.Replace([]rune("Direxec "), &util.Sel{e.tagbuf.Size(), e.tagbuf.Size()}, true, nil, util.EO_FILES)
 	} else {
 		e.tagbuf.Replace([]rune("Look Edit "), &util.Sel{e.tagbuf.Size(), e.tagbuf.Size()}, true, nil, util.EO_FILES)
 	}
