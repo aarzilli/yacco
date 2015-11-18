@@ -443,7 +443,6 @@ func LoadCmd(ec ExecContext, arg string) {
 
 	if strings.TrimSpace(arg) == "" {
 		wd, _ := os.Getwd()
-		EditFind(wd, "+Dumps", false, false)
 
 		dh, err := os.Open(os.ExpandEnv("$HOME/.config/yacco/"))
 		if err == nil {
@@ -464,6 +463,11 @@ func LoadCmd(ec ExecContext, arg string) {
 			}
 			Warnfull("+Dumps", strings.Join(r, "\n"), false, false)
 			Warnfull("+Dumps", "\n", false, false)
+			ded, _ := EditFind(wd, "+Dumps", false, false)
+			if ded != nil {
+				ded.sfr.Fr.Sel = util.Sel{0, 0}
+				ded.BufferRefresh()
+			}
 		}
 	} else {
 		dumpDest := getDumpPath(arg, false)
