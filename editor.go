@@ -411,7 +411,7 @@ func (e *Editor) TagRefresh() {
 }
 
 func (e *Editor) badTop() bool {
-	if e.sfr.Fr.Top == 0 {
+	if e.sfr.Fr.Top == 0 || e.sfr.Fr.Sel.S != e.sfr.Fr.Top {
 		return false
 	}
 	return e.bodybuf.At(e.sfr.Fr.Top-1).R != '\n'
