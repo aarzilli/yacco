@@ -56,8 +56,6 @@ type Frame struct {
 	Top             int
 	Tabs            []int
 
-	Limit image.Point
-
 	margin fixed.Int26_6
 	Offset int
 
@@ -217,7 +215,6 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 
 	for i, crune := range runes {
 		if fr.ins.Y > bottom && (fr.Hackflags&HF_NOVERTSTOP == 0) {
-			fr.Limit = limit
 			return
 		}
 
@@ -343,7 +340,6 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	if fr.ins.Y < fixed.I(fr.R.Max.Y) {
 		fr.lastFull = len(fr.glyphs)
 	}
-	fr.Limit = limit
 	return
 }
 
@@ -1241,21 +1237,11 @@ func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 
 	lh := fr.Font.LineHeightRaster()
 
-	fr.Limit.X = util.FixedToInt(fr.ins.X)
-	fr.Limit.Y = util.FixedToInt(fr.ins.Y)
-
 	off := -1
 	for i := range fr.glyphs {
 		fr.glyphs[i].p.Y -= fixed.Int26_6(ln) * lh
 		if (off < 0) && (fr.glyphs[i].p.Y >= fr.ins.Y) {
 			off = i
-		}
-
-		if util.FixedToInt(fr.glyphs[i].p.Y) > fr.Limit.Y {
-			fr.Limit.Y = util.FixedToInt(fr.glyphs[i].p.Y)
-		}
-		if util.FixedToInt(fr.glyphs[i].p.X) > fr.Limit.X {
-			fr.Limit.X = util.FixedToInt(fr.glyphs[i].p.X)
 		}
 	}
 
@@ -1306,7 +1292,7 @@ func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 	return len(fr.glyphs)
 }
 
-func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
+func (fr *Frame) PushDown(ln int, a, b []ColorRune) {
 	oldglyphs := make([]glyph, len(fr.glyphs))
 	copy(oldglyphs, fr.glyphs)
 
@@ -1322,8 +1308,6 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
 		if len(b) > 0 {
 			fr.InsertColor(b)
 		}
-
-		limit = fr.Limit
 
 		pl := fr.PhisicalLines()
 		if len(pl) <= ln {
@@ -1385,7 +1369,6 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
 
 	for i := range oldglyphs {
 		if fr.ins.Y > bottom {
-			fr.Limit = limit
 			return
 		}
 
@@ -1402,23 +1385,21 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) (limit image.Point) {
 		fr.ins.X = oldglyphs[i].p.X
 
 		fr.glyphs = append(fr.glyphs, oldglyphs[i])
-
-		if util.FixedToInt(fr.glyphs[i].p.Y) > fr.Limit.Y {
-			fr.Limit.Y = util.FixedToInt(fr.glyphs[i].p.Y)
-		}
-		if util.FixedToInt(fr.glyphs[i].p.X) > fr.Limit.X {
-			fr.Limit.X = util.FixedToInt(fr.glyphs[i].p.X)
-		}
 	}
 
 	if fr.ins.Y < fixed.I(fr.R.Max.Y) {
 		fr.lastFull = len(fr.glyphs)
 	}
-	fr.Limit = limit
 
 	return
 }
 
 func (fr *Frame) Size() int {
 	return len(fr.glyphs)
+}
+
+func (fr *Frame) LimitY() int {
+	p := fr.PointToCoord(fr.Top + len(fr.glyphs) - 1)
+	gb := fr.Font.Bounds()
+	return p.Y - util.FixedToInt(gb.Min.Y)
 }

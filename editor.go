@@ -196,11 +196,10 @@ func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool, simpleReca
 			e.setTagRectsIntl()
 		}
 
-		if e.tagfr.Limit.Y > e.r.Max.Y-th {
+		if e.tagfr.LimitY() > e.r.Max.Y-th {
 			e.expandedTag = false
 		} else {
-			gb := e.tagfr.Font.Bounds()
-			e.tagfr.R.Max.Y = e.tagfr.Limit.Y - util.FixedToInt(gb.Min.Y)
+			e.tagfr.R.Max.Y = e.tagfr.LimitY()
 		}
 	}
 	e.tagfr.B = b
@@ -387,7 +386,7 @@ func (e *Editor) TagRefresh() {
 	e.tagRefreshIntl()
 
 	bounds := e.sfr.Fr.Font.Bounds()
-	ly := e.tagfr.Limit.Y - util.FixedToInt(bounds.Min.Y)
+	ly := e.tagfr.LimitY() - util.FixedToInt(bounds.Min.Y)
 
 	recalcExpansion := e.expandedTag && (e.tagfr.R.Max.Y-ly) != 0
 	if !recalcExpansion {
@@ -529,8 +528,7 @@ func (ed *Editor) Height() int {
 }
 
 func (e *Editor) UsedHeight() int {
-	bounds := e.sfr.Fr.Font.Bounds()
-	return e.sfr.Fr.Limit.Y - e.r.Min.Y - util.FixedToInt(bounds.Min.Y) + 2
+	return e.sfr.Fr.LimitY() - e.r.Min.Y
 }
 
 func (ed *Editor) recenterIntl() bool {

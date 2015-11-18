@@ -103,7 +103,7 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 		el := (emptyed.Height() - emptyed.UsedHeight()) / lh
 		bl := (biged.Height() / lh)
 		if (el > 15) || ((el > 3) && (el > bl/2)) {
-			col.AddAfter(ed, col.IndexOf(emptyed), emptyed.UsedHeight()+emptyed.r.Min.Y, true)
+			col.AddAfter(ed, col.IndexOf(emptyed), emptyed.sfr.Fr.LimitY(), true)
 		} else {
 			col.AddAfter(ed, col.IndexOf(biged), -1, true)
 		}
