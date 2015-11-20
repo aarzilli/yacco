@@ -72,6 +72,14 @@ func setTheme(t string) {
 	editorColors[2] = config.TheColorScheme.EditorSel2
 	editorColors[3] = config.TheColorScheme.EditorSel3
 	editorColors[4] = config.TheColorScheme.EditorMatchingParenthesis
+
+	if Wnd.cols != nil {
+		for _, col := range Wnd.cols.cols {
+			for _, ed := range col.editors {
+				ed.sfr.Color = config.TheColorScheme.Scrollbar
+			}
+		}
+	}
 }
 
 func realmain() {
