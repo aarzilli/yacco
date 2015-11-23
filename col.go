@@ -44,6 +44,7 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 	}
 	c.tagfr = textframe.Frame{
 		Font:            config.TagFont,
+		Font2:           config.TagFont,
 		Hackflags:       hf,
 		Scroll:          func(sd, sl int) {},
 		ExpandSelection: edutil.MakeExpandSelectionFn(c.tagbuf),

@@ -109,6 +109,7 @@ func (w *Window) Init(width, height int) (err error) {
 	}
 	w.tagfr = textframe.Frame{
 		Font:            config.TagFont,
+		Font2:           config.TagFont,
 		Scroll:          func(sd, sl int) {},
 		ExpandSelection: edutil.MakeExpandSelectionFn(w.tagbuf),
 		Hackflags:       hf,

@@ -29,6 +29,7 @@ const COMPL_MAXY = 200
 func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 	fr := textframe.Frame{
 		Font:      config.ComplFont,
+		Font2:     config.ComplFont,
 		Hackflags: textframe.HF_TRUNCATE,
 		B:         complImg, R: complImg.Bounds(),
 		VisibleTick: false,
