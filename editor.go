@@ -365,9 +365,6 @@ func (e *Editor) refreshIntl(full bool) {
 	}
 	e.refreshOpt.top = e.otherSel[OS_TOP].E
 
-	inserted := e.bodybuf.LastEditIsType(e.refreshOpt.revCount)
-	_, y := e.sfr.Fr.InsertOptimizationEnd(inserted)
-
 	edutil.DoHighlightingConsistency(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, Highlight)
 
 	e.sfr.Fr.Clear()
@@ -377,9 +374,6 @@ func (e *Editor) refreshIntl(full bool) {
 	ba, bb := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, e.bodybuf.Size()})
 	e.sfr.Fr.InsertColor(ba)
 	e.sfr.Fr.InsertColor(bb)
-
-	//If between the last load and this reload only a single character was added request the appropriate optimisation
-	e.sfr.Fr.RequestDrawOptimized(inserted, y)
 
 	e.refreshOpt.revCount = e.bodybuf.RevCount
 
@@ -478,15 +472,11 @@ func (e *Editor) FixTop() {
 }
 
 func (e *Editor) tagRefreshIntl() {
-	inserted := e.tagbuf.LastEditIsType(e.refreshOpt.tagRevCount)
-	_, y := e.tagfr.InsertOptimizationEnd(inserted)
-
 	e.tagfr.Clear()
 	ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
 	e.tagfr.InsertColor(ta)
 	e.tagfr.InsertColor(tb)
 
-	e.tagfr.RequestDrawOptimized(inserted, y)
 	e.refreshOpt.tagRevCount = e.tagbuf.RevCount
 }
 
