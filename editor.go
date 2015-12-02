@@ -722,6 +722,8 @@ func (ed *Editor) RestoreJump() {
 	}
 }
 
+const _ELASTIC_TABS_SPACING = 4
+
 func (e *Editor) readDir() {
 	fh, err := os.Open(filepath.Join(e.bodybuf.Dir, e.bodybuf.Name))
 	if err != nil {
@@ -757,62 +759,37 @@ func (e *Editor) readDir() {
 		r = append(r, n)
 	}
 
-	spaceWidth := e.sfr.Fr.Measure([]rune(" ")) * _ELASTIC_TABS_SPACING
+	spaceWidth := e.sfr.Fr.Measure([]rune(" "))
 
-	szs := make([]int, len(r))
+	maxsz := 0
 
 	for i := range r {
-		szs[i] = e.sfr.Fr.Measure([]rune(r[i]))
-	}
-
-	L := e.sfr.Fr.R.Dx() - 10
-	var n int
-	for n = 15; n > 0; n-- {
-		max := make([]int, n)
-		for i := range max {
-			max[i] = 0
-		}
-
-		for i := range szs {
-			if szs[i] > max[i%n] {
-				max[i%n] = szs[i]
-			}
-		}
-
-		tot := 0
-		for i := range max {
-			if i != 0 {
-				tot += spaceWidth
-			}
-			tot += max[i]
-		}
-
-		if tot < L {
-			break
+		if sz := e.sfr.Fr.Measure([]rune(r[i])); sz > maxsz {
+			maxsz = sz
 		}
 	}
 
-	if n <= 0 {
-		n = 1
-	}
+	e.sfr.Fr.TabWidth = (maxsz + spaceWidth*_ELASTIC_TABS_SPACING) / spaceWidth
+	colnum := (e.sfr.Fr.R.Dx() - 10) / (e.sfr.Fr.TabWidth * spaceWidth)
+	rownum := (len(r) / colnum) + 1
 
 	rr := []string{}
-	for i := range r {
-		if (i != 0) && ((i % n) == 0) {
-			rr = append(rr, "\n")
+	for row := 0; row < rownum; row++ {
+		for col := 0; col < colnum; col++ {
+			i := col*rownum + row
+			if i < len(r) {
+				if col != 0 {
+					rr = append(rr, "\t")
+				}
+				rr = append(rr, r[i])
+			}
 		}
-		rr = append(rr, r[i])
-		if (i % n) != n-1 {
-			rr = append(rr, "\t")
-		}
+		rr = append(rr, "\n")
 	}
-
-	rr = append(rr, "\n")
 
 	e.bodybuf.Replace([]rune(strings.Join(rr, "")), &util.Sel{0, e.bodybuf.Size()}, true, nil, 0)
 	e.bodybuf.Modified = false
 	e.bodybuf.UndoReset()
-	elasticTabs(e, true)
 }
 
 func (e *Editor) closeEventChan() {

@@ -74,10 +74,6 @@ func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 	case "noautocompl":
 		ec.ed.noAutocompl = true
 
-	case "tabadj":
-		elasticTabs(ec.ed, true)
-		sideChan <- RefreshMsg(ec.buf, ec.ed, true)
-
 	case "compat":
 		// legacy command, does nothing
 
