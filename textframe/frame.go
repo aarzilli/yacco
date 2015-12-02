@@ -718,103 +718,28 @@ func (fr *Frame) redrawOptSelectionMoved() (bool, []image.Rectangle) {
 		fmt.Printf("%v -> %v\n", fr.redrawOpt.drawnSel, fr.Sel)
 	}
 
-	cs, ce := -1, -1
-
 	fromnil := fr.redrawOpt.drawnSel.S == fr.redrawOpt.drawnSel.E
 	tonil := fr.Sel.S == fr.Sel.E
 
-	if fromnil && tonil {
-		if debugRedraw && fr.debugRedraw {
-			fmt.Printf("%p Redrawing tick move\n", fr)
-		}
-		if fr.redrawOpt.drawnVisibleTick {
-			invalid = append(invalid, fr.deleteTick())
-		}
-
-		invalid = append(invalid, fr.drawTick(1))
-
-		if len(fr.Colors) > 4 {
-			if debugRedraw && fr.debugRedraw {
-				fmt.Printf("\tRedrawing parenthesis match (1): %v -> %v\n", fr.redrawOpt.drawnPMatch, fr.PMatch)
-			}
-			fr.redrawSelectionLogical(fr.redrawOpt.drawnPMatch, &invalid)
-			fr.redrawSelectionLogical(fr.PMatch, &invalid)
-		}
-
-		return true, invalid
-	} else if fromnil && !tonil {
-		if fr.redrawOpt.drawnVisibleTick {
-			invalid = append(invalid, fr.deleteTick())
-		}
-		cs = fr.Sel.S
-		ce = fr.Sel.E
-	} else if !fromnil && tonil {
-		cs = fr.redrawOpt.drawnSel.S
-		ce = fr.redrawOpt.drawnSel.E
-	} else if !fromnil && !tonil {
-		// attempt to extend selection in one of two possible directions
-		if fr.redrawOpt.drawnSel.S == fr.Sel.S {
-			cs = fr.redrawOpt.drawnSel.E
-			ce = fr.Sel.E
-		} else if fr.redrawOpt.drawnSel.E == fr.Sel.E {
-			cs = fr.redrawOpt.drawnSel.S
-			ce = fr.Sel.S
-		}
-
-		if cs > ce {
-			t := cs
-			cs = ce
-			ce = t
-		}
-	}
-
-	if cs < 0 {
-		if debugRedraw && fr.debugRedraw {
-			fmt.Printf("\tFailed: noncontiguous selection\n")
-		}
+	if !fromnil || !tonil {
 		return false, nil
 	}
 
+	if debugRedraw && fr.debugRedraw {
+		fmt.Printf("%p Redrawing tick move\n", fr)
+	}
+	if fr.redrawOpt.drawnVisibleTick {
+		invalid = append(invalid, fr.deleteTick())
+	}
+
+	invalid = append(invalid, fr.drawTick(1))
+
 	if len(fr.Colors) > 4 {
 		if debugRedraw && fr.debugRedraw {
-			fmt.Printf("\tRedrawing parenthesis match (2): %v -> %v\n", fr.redrawOpt.drawnPMatch, fr.PMatch)
+			fmt.Printf("\tRedrawing parenthesis match (1): %v -> %v\n", fr.redrawOpt.drawnPMatch, fr.PMatch)
 		}
 		fr.redrawSelectionLogical(fr.redrawOpt.drawnPMatch, &invalid)
 		fr.redrawSelectionLogical(fr.PMatch, &invalid)
-	}
-
-	rs := cs - fr.Top
-	if rs < 0 {
-		rs = 0
-	} else if rs > len(fr.glyphs) {
-		rs = len(fr.glyphs)
-	}
-
-	re := ce - fr.Top
-	if re < 0 {
-		re = 0
-	} else if re > len(fr.glyphs) {
-		re = len(fr.glyphs)
-	}
-
-	if rs != re {
-		ssel := fr.SelColor + 1
-		if found, nssel := fr.getSsel(cs); found {
-			ssel = nssel
-		} else {
-			ssel = 0
-		}
-
-		if debugRedraw && fr.debugRedraw {
-			fmt.Printf("%p Redrawing selection %d change (%d %d) %d\n", fr, fr.SelColor, cs, ce, ssel)
-		}
-
-		fr.redrawSelection(rs, re, &fr.Colors[ssel][0], &invalid)
-		fr.redrawIntl(fr.glyphs[rs:re], false, rs)
-	}
-
-	if tonil {
-		invalid = append(invalid, fr.drawTick(1))
 	}
 
 	return true, invalid
