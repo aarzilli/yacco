@@ -55,6 +55,9 @@ func fmteventEx(eventChan chan string, origin EventOrigin, istag bool, etype Eve
 	if istag {
 		etype = EventType(unicode.ToLower(rune(etype)))
 	}
+	if utf8.RuneCountInString(arg) >= MAX_EVENT_TEXT_LENGTH {
+		arg = ""
+	}
 	t := time.NewTimer(100 * time.Millisecond)
 	defer t.Stop()
 	select {
@@ -67,9 +70,6 @@ func fmteventEx(eventChan chan string, origin EventOrigin, istag bool, etype Eve
 }
 
 func FmteventBase(eventChan chan string, origin EventOrigin, istag bool, etype EventType, s, e int, arg string, onfail func()) {
-	if utf8.RuneCountInString(arg) >= MAX_EVENT_TEXT_LENGTH {
-		arg = ""
-	}
 	fmteventEx(eventChan, origin, istag, etype, s, e, 0, arg, onfail)
 }
 
@@ -277,7 +277,7 @@ func (er *EventReader) BuiltIn() bool {
 }
 
 // Returns the text of the event, if the text was to long to be included in the message attempts to retrieve it using addr and data. If addr and data are nil an empty string is returned
-func (er *EventReader) Text(addrRead io.ReadCloser, addrWrite io.Writer, xdata io.Reader) (txt string, err error) {
+func (er *EventReader) Text(addrRead io.ReadSeeker, addrWrite io.Writer, xdata io.ReadSeeker) (txt string, err error) {
 	txt = er.txt
 
 	if !er.ShouldFetchText() {
@@ -288,8 +288,9 @@ func (er *EventReader) Text(addrRead io.ReadCloser, addrWrite io.Writer, xdata i
 	}
 
 	b := make([]byte, 1024)
+	addrRead.Seek(0, 0)
 	n, err := addrRead.Read(b)
-	if err != nil {
+	if err != nil && n == 0 {
 		return
 	}
 	oldaddr := b[:n]
@@ -299,8 +300,10 @@ func (er *EventReader) Text(addrRead io.ReadCloser, addrWrite io.Writer, xdata i
 		return
 	}
 
+	xdata.Seek(0, 0)
 	bytes, err := ioutil.ReadAll(xdata)
 	er.txt = string(bytes)
+	txt = er.txt
 
 	_, err = addrWrite.Write(oldaddr)
 	if err != nil {
