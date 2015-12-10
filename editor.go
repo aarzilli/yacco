@@ -761,6 +761,9 @@ func (e *Editor) readDir() {
 
 	e.sfr.Fr.TabWidth = (maxsz + spaceWidth*_ELASTIC_TABS_SPACING) / spaceWidth
 	colnum := (e.sfr.Fr.R.Dx() - 10) / (e.sfr.Fr.TabWidth * spaceWidth)
+	if colnum <= 0 {
+		colnum = 1
+	}
 	rownum := (len(r) / colnum) + 1
 
 	rr := []string{}
