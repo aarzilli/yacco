@@ -176,7 +176,7 @@ func findWinRestored(name string, p9clnt *clnt.Clnt) (bool, string, *clnt.File, 
 	return true, outbufid, ctlfd, eventfd
 }
 
-func makeBufferConn(p9clnt *clnt.Clnt, id string, ctlfd, eventfd *clnt.File) (*BufferConn, error) {
+func MakeBufferConn(p9clnt *clnt.Clnt, id string, ctlfd, eventfd *clnt.File) (*BufferConn, error) {
 	bodyfd, err := p9clnt.FOpen("/"+id+"/body", p.ORDWR)
 	if err != nil {
 		return nil, err
@@ -230,7 +230,7 @@ func OpenBufferConn(p9clnt *clnt.Clnt, id string) (*BufferConn, error) {
 		return nil, err
 	}
 
-	return makeBufferConn(p9clnt, id, ctlfd, eventfd)
+	return MakeBufferConn(p9clnt, id, ctlfd, eventfd)
 }
 
 func FindWin(name string, p9clnt *clnt.Clnt) (*BufferConn, bool, error) {
@@ -239,7 +239,7 @@ func FindWin(name string, p9clnt *clnt.Clnt) (*BufferConn, bool, error) {
 
 func FindWinEx(name string, p9clnt *clnt.Clnt) (*BufferConn, bool, error) {
 	if ok, outbufid, ctlfd, eventfd := findWinRestored(name, p9clnt); ok {
-		b, err := makeBufferConn(p9clnt, outbufid, ctlfd, eventfd)
+		b, err := MakeBufferConn(p9clnt, outbufid, ctlfd, eventfd)
 		return b, false, err
 	}
 
@@ -259,7 +259,7 @@ func FindWinEx(name string, p9clnt *clnt.Clnt) (*BufferConn, bool, error) {
 			if err != nil {
 				return nil, false, err
 			}
-			b, err := makeBufferConn(p9clnt, id, ctlfd, eventfd)
+			b, err := MakeBufferConn(p9clnt, id, ctlfd, eventfd)
 			return b, false, err
 		}
 	}
@@ -277,7 +277,7 @@ func FindWinEx(name string, p9clnt *clnt.Clnt) (*BufferConn, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
-	b, err := makeBufferConn(p9clnt, outbufid, ctlfd, eventfd)
+	b, err := MakeBufferConn(p9clnt, outbufid, ctlfd, eventfd)
 	return b, true, err
 }
 
