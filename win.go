@@ -1123,6 +1123,7 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 		}
 	}
 
+	buf.FixSel(sel)
 	return string(buf.SelectionRunes(*sel)), original
 }
 
