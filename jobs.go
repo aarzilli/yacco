@@ -42,6 +42,11 @@ func removeEmpty(v []string) []string {
 func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan chan<- string) {
 	job := &jobrec{}
 
+	if _, err := os.Stat(wd); err != nil {
+		// commands being run in non-existing directories get executed in /tmp/
+		wd = "/tmp/"
+	}
+
 	job.startTime = time.Now()
 
 	job.writeToBuf = writeToBuf
