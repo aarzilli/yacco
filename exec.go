@@ -168,7 +168,12 @@ The address "," represents the whole file.
 Select = left click (and drag)
 Execute = middle click, control + left click
 Search = right click, alt + left click
-Execute with argument = shift + middle click, super + left click, control + right click, shift+control+left click
+Execute with argument = control + middle click, control + left click, super + left click
+
+Chords:
+- Left + middle: cut
+- Left + right: paste
+- With left down, click middle and immediately after right: copy
 
 == Files ==
 Get

@@ -63,13 +63,12 @@ func (em *eventMachine) fixButton(which *wde.Button, modifiers string, down bool
 			*which = wde.RightButton
 		case "control+":
 			*which = wde.MiddleButton
-		case "control+shift+":
-			*which = wde.MiddleButton | wde.LeftButton
 		case "super+":
 			*which = wde.MiddleButton | wde.LeftButton
 		}
 	case wde.MiddleButton:
-		if modifiers == "shift+" {
+		switch modifiers {
+		case "control+":
 			*which = wde.MiddleButton | wde.LeftButton
 		}
 	case wde.RightButton:
