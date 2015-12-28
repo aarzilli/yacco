@@ -3,9 +3,9 @@ package util
 import (
 	"bufio"
 	"bytes"
-	"code.google.com/p/go9p/p"
-	"code.google.com/p/go9p/p/clnt"
 	"fmt"
+	"github.com/lionkov/go9p/p"
+	"github.com/lionkov/go9p/p/clnt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -393,7 +393,7 @@ func YaccoConnect() (*clnt.Clnt, error) {
 	}
 
 	user := p.OsUsers.Uid2User(os.Geteuid())
-	p9clnt, err := clnt.Mount(ntype, naddr, "", user)
+	p9clnt, err := clnt.Mount(ntype, naddr, "", 4*1024, user)
 	if err != nil {
 		return nil, fmt.Errorf("Error connecting to yacco: %v\n", err)
 	}

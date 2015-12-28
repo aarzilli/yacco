@@ -1,8 +1,8 @@
 package main
 
 import (
-	"code.google.com/p/go9p/p"
 	"fmt"
+	"github.com/lionkov/go9p/p"
 	"io"
 	"os"
 	"strings"
@@ -23,29 +23,29 @@ func main() {
 	if len(os.Args) < 2 {
 		return
 	}
-	
+
 	if os.Getenv("yp9") == "" {
 		return
 	}
-	
+
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)
-	
+
 	wd, _ := os.Getwd()
 	path := os.Args[1]
 	abspath := util.ResolvePath(wd, path)
-	
+
 	ctlfd, err := p9clnt.FOpen("/new/ctl", p.ORDWR)
 	util.Allergic(debug, err)
 	ctlln := read(ctlfd)
 	outbufid := strings.TrimSpace(ctlln[:11])
-	
+
 	_, err = ctlfd.Write([]byte(fmt.Sprintf("name %s", abspath)))
 	util.Allergic(debug, err)
 	_, err = ctlfd.Write([]byte(fmt.Sprintf("get")))
 	util.Allergic(debug, err)
 	ctlfd.Close()
-	
+
 	for {
 		_, err := p9clnt.FStat("/" + outbufid)
 		if err != nil {

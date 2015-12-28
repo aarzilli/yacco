@@ -2,9 +2,9 @@ package main
 
 import (
 	"bytes"
-	"code.google.com/p/go9p/p"
-	"code.google.com/p/go9p/p/srv"
 	"fmt"
+	"github.com/lionkov/go9p/p"
+	"github.com/lionkov/go9p/p/srv"
 	"log"
 	"net"
 	"os"

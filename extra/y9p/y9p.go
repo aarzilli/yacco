@@ -1,9 +1,9 @@
 package main
 
 import (
-	"code.google.com/p/go9p/p"
-	"code.google.com/p/go9p/p/clnt"
 	"fmt"
+	"github.com/lionkov/go9p/p"
+	"github.com/lionkov/go9p/p/clnt"
 	"io"
 	"os"
 	"path/filepath"
