@@ -1,12 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
-	"golang.org/x/mobile/event/size"
 	"golang.org/x/mobile/event/paint"
-	"fmt"
+	"golang.org/x/mobile/event/size"
 	"image"
 	"image/draw"
 	"math"
@@ -26,19 +26,19 @@ import (
 )
 
 type Window struct {
-	screen       screen.Screen
-	wnd  screen.Window
-	wndb screen.Buffer	
-	img *image.RGBA
+	screen    screen.Screen
+	wnd       screen.Window
+	wndb      screen.Buffer
+	img       *image.RGBA
 	cols      *Cols
 	tagfr     textframe.Frame
 	tagbuf    *buf.Buffer
 	Words     []string
 	Prop      map[string]string
 	lastWhere image.Point
-	
-	invalidRects []image.Rectangle
-	uploadMutex sync.Mutex
+
+	invalidRects    []image.Rectangle
+	uploadMutex     sync.Mutex
 	uploaderRunning bool
 }
 
@@ -99,15 +99,15 @@ func (w *Window) Init(s screen.Screen, width, height int) (err error) {
 	w.Prop["font"] = "main"
 	w.Prop["lookexact"] = "no"
 	w.Words = []string{}
-	
+
 	w.screen = s
 	w.wnd, err = s.NewWindow(nil)
 	if err != nil {
 		return err
 	}
-	
-	w.setupBuffer(image.Point{ width, height })
-		
+
+	w.setupBuffer(image.Point{width, height})
+
 	w.SetTitle("Yacco")
 	//w.wnd.SetClass("yacco", "Yacco")
 	w.cols = NewCols(w, w.wndb.Bounds())
@@ -128,7 +128,7 @@ func (w *Window) Init(s screen.Screen, width, height int) (err error) {
 		ExpandSelection: edutil.MakeExpandSelectionFn(w.tagbuf),
 		Hackflags:       hf,
 		VisibleTick:     false,
-		Flush:             w.FlushImage,
+		Flush:           w.FlushImage,
 		Colors:          tagColors,
 	}
 
@@ -160,13 +160,13 @@ func (w *Window) FlushImage(rects ...image.Rectangle) {
 	if len(rects) == 0 {
 		rects = append(rects, w.wndb.Bounds())
 	}
-	
+
 	w.invalidRects = append(w.invalidRects, rects...)
-	
+
 	if w.uploaderIsRunning() {
 		return
 	}
-	
+
 	rects = make([]image.Rectangle, 0, len(w.invalidRects))
 	for i := range w.invalidRects {
 		if w.invalidRects[i].Dx() == 0 || w.invalidRects[i].Dy() == 0 {
@@ -316,7 +316,7 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 	case mouse.Event:
 		if e.Direction == mouse.DirNone {
 			HideCompl()
-			w.lastWhere = image.Point{ int(e.X), int(e.Y) }
+			w.lastWhere = image.Point{int(e.X), int(e.Y)}
 			Wnd.SetTick(w.lastWhere)
 		}
 
@@ -560,7 +560,7 @@ loop:
 			if e.Button == mouse.ButtonNone {
 				break loop
 			}
-			endPos = image.Point{ int(e.X), int(e.Y) }
+			endPos = image.Point{int(e.X), int(e.Y)}
 
 			// a bit of X stickiness after crossing columns
 			if colChangeTime != (time.Time{}) {
@@ -730,22 +730,22 @@ loop:
 		if !ismouse {
 			continue
 		}
-		
+
 		switch e.Direction {
 		case mouse.DirRelease:
 			break loop
-			
+
 		case mouse.DirPress:
 			//TODO: SetCursor
 			//w.wnd.SetCursor(DEFAULT_CURSOR)
 			return // cancelled
-		
+
 		case mouse.DirNone:
 			if e.Button != mouse.ButtonNone {
 				break loop
 			}
-			
-			endPos = image.Point{ int(e.X), int(e.Y) }
+
+			endPos = image.Point{int(e.X), int(e.Y)}
 
 			if !endPos.In(Wnd.cols.r) {
 				break
@@ -985,7 +985,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 				if ec.ed != nil && time.Since(ec.buf.LastEdit()) > (1*time.Minute) {
 					ec.ed.PushJump()
 				}
-				ec.buf.Replace([]rune{ e.Rune }, &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
+				ec.buf.Replace([]rune{e.Rune}, &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
 				ec.br()
 				ComplStart(ec)
 			}
@@ -1015,11 +1015,11 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *mouse.Event, events <-c
 		default:
 			clickExec2(lp, e)
 		}
-	
+
 	/*
-	TODO: this is impossible :(
-	case mouse.ButtonRight | mouse.ButtonLeft:
-		clickExec2extra(lp, e)
+		TODO: this is impossible :(
+		case mouse.ButtonRight | mouse.ButtonLeft:
+			clickExec2extra(lp, e)
 	*/
 
 	case mouse.ButtonRight:
@@ -1033,7 +1033,7 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *mouse.Event, events <-c
 			clickExec12(lp, events)
 
 		case mouse.ButtonRight:
-			if ee.Modifiers & key.ModShift != 0 {
+			if ee.Modifiers&key.ModShift != 0 {
 				clickExec12(lp, events)
 			} else {
 				if completeClick(events, mouse.ButtonLeft, mouse.ButtonMiddle) {

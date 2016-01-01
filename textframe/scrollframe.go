@@ -2,11 +2,11 @@ package textframe
 
 import (
 	"fmt"
+	"golang.org/x/mobile/event/mouse"
 	"image"
 	"image/draw"
 	"time"
 	"yacco/util"
-	"golang.org/x/mobile/event/mouse"
 )
 
 type ScrollFrame struct {
@@ -105,7 +105,7 @@ func (sfr *ScrollFrame) scrollSetClick(event util.MouseDownEvent, events <-chan 
 				return
 			default:
 				if e.Button != mouse.ButtonNone {
-					set(image.Point{ int(e.X), int(e.Y) })
+					set(image.Point{int(e.X), int(e.Y)})
 				}
 			}
 		}
@@ -161,7 +161,7 @@ loop:
 					break loop
 				default:
 					if e.Button != mouse.ButtonNone {
-						where = image.Point{ int(e.X), int(e.Y) }
+						where = image.Point{int(e.X), int(e.Y)}
 					}
 				}
 			}

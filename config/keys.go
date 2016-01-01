@@ -69,5 +69,5 @@ var KeyBindings = map[string]string{
 }
 
 var KeyConversion = map[string]key.Event{
-	"control+space": key.Event{ Rune: -1, Code: key.CodeReturnEnter, Modifiers: key.Modifiers(0) },
+	"control+space": key.Event{Rune: -1, Code: key.CodeReturnEnter, Modifiers: key.Modifiers(0)},
 }

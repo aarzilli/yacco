@@ -1,9 +1,9 @@
 package main
 
 import (
+	"flag"
 	"golang.org/x/exp/shiny/driver"
 	"golang.org/x/exp/shiny/screen"
-	"flag"
 	"image"
 	"log"
 	"os"

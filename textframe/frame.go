@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
-	"golang.org/x/mobile/event/mouse"
-	"golang.org/x/mobile/event/key"
 	"golang.org/x/image/math/fixed"
+	"golang.org/x/mobile/event/key"
+	"golang.org/x/mobile/event/mouse"
 	"image"
 	"image/draw"
 	"math"
@@ -51,7 +51,7 @@ type Frame struct {
 	VisibleTick     bool
 	Colors          [][]image.Uniform
 	TabWidth        int
-	Flush func(...image.Rectangle)
+	Flush           func(...image.Rectangle)
 	Scroll          FrameScrollFn
 	ExpandSelection ExpandSelectionFn
 	Top             int
@@ -427,8 +427,8 @@ func (fr *Frame) Select(idx, kind int, button mouse.Button, events <-chan interf
 					stopAutoscroll()
 					return &e
 				}
-				
-				where := image.Point{ int(e.X), int(e.Y) }
+
+				where := image.Point{int(e.X), int(e.Y)}
 				lastPos = where
 				if where.In(fr.R) {
 					stopAutoscroll()
@@ -1033,7 +1033,7 @@ func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *mouse
 	}
 
 	if p >= 0 {
-		if (sel == 0) && (e.Count == 1) && (e.Modifiers & key.ModShift != 0) {
+		if (sel == 0) && (e.Count == 1) && (e.Modifiers&key.ModShift != 0) {
 			// shift-click extends selection, but only for the first selection
 			if p < f.Sel.S {
 				f.setSelectEx(sel, e.Count, p, f.Sel.E)

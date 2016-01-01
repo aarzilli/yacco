@@ -1,13 +1,13 @@
 package util
 
 import (
+	"golang.org/x/mobile/event/key"
+	"golang.org/x/mobile/event/mouse"
+	"golang.org/x/mobile/event/size"
 	"image"
 	"math"
 	"strings"
 	"time"
-	"golang.org/x/mobile/event/mouse"
-	"golang.org/x/mobile/event/key"
-	"golang.org/x/mobile/event/size"
 )
 
 type AltingEntry struct {
@@ -54,13 +54,13 @@ type eventMachine struct {
 	events []eventWrapper
 }
 
-func (em *eventMachine) fixButton(which *mouse.Button, modifiers key.Modifiers, down bool, up bool) {	
+func (em *eventMachine) fixButton(which *mouse.Button, modifiers key.Modifiers, down bool, up bool) {
 	alt := (modifiers & key.ModAlt) != 0
-	ctrl := modifiers & key.ModControl != 0
-	shift := modifiers & key.ModShift != 0
-	meta := modifiers & key.ModMeta != 0
+	ctrl := modifiers&key.ModControl != 0
+	shift := modifiers&key.ModShift != 0
+	meta := modifiers&key.ModMeta != 0
 	_ = shift
-	
+
 	switch *which {
 	case mouse.ButtonLeft:
 		switch {
@@ -117,7 +117,7 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 				em.appendEventOther(ET_OTHER, e)
 			}
 			//println("Typed:", e.Glyph, e.Chord, "alting:", alting)
-		
+
 		case key.DirRelease:
 			if e.Code == key.CodeRightAlt {
 				em.alting = true
@@ -135,13 +135,13 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 				em.fixButton(&e.Button, e.Modifiers, false, false)
 				em.appendMouseDraggedEvent(e)
 			}
-			
+
 		case mouse.DirPress:
 			if e.Button == mouse.ButtonNone {
 				break
 			}
-			
-			where := image.Point{ int(e.X), int(e.Y) }
+
+			where := image.Point{int(e.X), int(e.Y)}
 			em.fixButton(&e.Button, e.Modifiers, true, false)
 			switch e.Button {
 			case mouse.ButtonWheelUp:
@@ -151,7 +151,7 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 			default:
 				now := time.Now()
 				dist := math.Sqrt(float64(em.dblclickp.X-where.X)*float64(em.dblclickp.X-where.X) + float64(em.dblclickp.Y-where.Y)*float64(em.dblclickp.Y-where.Y))
-	
+
 				if (e.Button == em.dblclickbtn) && (dist < 5) && (now.Sub(em.dblclickt) < time.Duration(200*time.Millisecond)) {
 					em.dblclickt = now
 					em.dblclickc++
@@ -161,11 +161,11 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 					em.dblclickt = now
 					em.dblclickc = 1
 				}
-	
+
 				if em.dblclickc > 3 {
 					em.dblclickc = 1
 				}
-	
+
 				em.appendEventOther(ET_OTHER, e)
 				em.appendEventOther(ET_OTHER, MouseDownEvent{
 					Where:     where,

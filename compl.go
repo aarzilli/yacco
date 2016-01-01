@@ -1,4 +1,5 @@
 package main
+
 //TODO: reimplement
 
 func HideCompl() bool {
