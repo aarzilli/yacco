@@ -1,8 +1,19 @@
 package main
+//TODO: reimplement
 
+func HideCompl() bool {
+	return false
+}
+
+var ComplWnd *int = nil
+var complPrefixSuffix string
+
+func ComplStart(ec ExecContext) {
+}
+
+/*
 import (
 	"fmt"
-	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
 	"os"
@@ -353,3 +364,4 @@ func commonPrefix2(a, b string) string {
 	}
 	return a[:l]
 }
+*/

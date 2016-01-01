@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"github.com/golang/freetype"
 	"github.com/golang/freetype/truetype"
-	"github.com/skelterjohn/go.wde"
+	"golang.org/x/mobile/event/mouse"
+	"golang.org/x/mobile/event/key"
 	"golang.org/x/image/math/fixed"
 	"image"
 	"image/draw"
@@ -50,7 +51,7 @@ type Frame struct {
 	VisibleTick     bool
 	Colors          [][]image.Uniform
 	TabWidth        int
-	Wnd             wde.Window
+	Flush func(...image.Rectangle)
 	Scroll          FrameScrollFn
 	ExpandSelection ExpandSelectionFn
 	Top             int
@@ -390,12 +391,14 @@ func (fr *Frame) Measure(rs []rune) int {
 
 // Tracks the mouse position, selecting text, the events channel is from go.wde
 // kind is 1 for character by character selection, 2 for word by word selection, 3 for line by line selection
-func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interface{}) *wde.MouseUpEvent {
+func (fr *Frame) Select(idx, kind int, button mouse.Button, events <-chan interface{}) *mouse.Event {
 	if (idx < 0) || (idx >= len(fr.Colors)-1) {
 		for ei := range events {
 			switch e := ei.(type) {
-			case wde.MouseUpEvent:
-				return &e
+			case mouse.Event:
+				if e.Direction == mouse.DirRelease {
+					return &e
+				}
 			}
 		}
 	}
@@ -420,12 +423,18 @@ func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interfac
 		select {
 		case ei := <-events:
 			switch e := ei.(type) {
-			case wde.MouseDraggedEvent:
-				lastPos = e.Where
-				if e.Where.In(fr.R) {
+			case mouse.Event:
+				if e.Button == 0 || e.Direction == mouse.DirRelease {
+					stopAutoscroll()
+					return &e
+				}
+				
+				where := image.Point{ int(e.X), int(e.Y) }
+				lastPos = where
+				if where.In(fr.R) {
 					stopAutoscroll()
 
-					p := fr.CoordToPoint(e.Where)
+					p := fr.CoordToPoint(where)
 					fr.SetSelect(idx, kind, fix, p)
 					fr.Redraw(true, nil)
 				} else {
@@ -434,14 +443,6 @@ func (fr *Frame) Select(idx, kind int, button wde.Button, events <-chan interfac
 						autoscrollChan = autoscrollTicker.C
 					}
 				}
-
-			/*case wde.MouseEnteredEvent:
-			stopAutoscroll()
-			return nil*/
-
-			case wde.MouseUpEvent:
-				stopAutoscroll()
-				return &e
 			}
 
 		case <-autoscrollChan:
@@ -801,8 +802,8 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	if !fr.redrawOpt.reloaded {
 		if success, invalid := fr.redrawOptSelectionMoved(); success {
 			fr.updateRedrawOpt()
-			if flush && (fr.Wnd != nil) {
-				fr.Wnd.FlushImage(invalid...)
+			if flush && (fr.Flush != nil) {
+				fr.Flush(invalid...)
 			}
 			if predrawRects != nil {
 				*predrawRects = append(*predrawRects, invalid...)
@@ -830,8 +831,8 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 			fr.drawTick(1)
 		}
 		fr.updateRedrawOpt()
-		if flush && (fr.Wnd != nil) {
-			fr.Wnd.FlushImage(fr.R)
+		if flush && (fr.Flush != nil) {
+			fr.Flush(fr.R)
 		}
 		if predrawRects != nil {
 			*predrawRects = append(*predrawRects, fr.R)
@@ -860,8 +861,8 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	// Tick drawing
 	fr.drawTick(1)
 
-	if flush && (fr.Wnd != nil) {
-		fr.Wnd.FlushImage(fr.R)
+	if flush && (fr.Flush != nil) {
+		fr.Flush(fr.R)
 	}
 
 	if predrawRects != nil {
@@ -1016,13 +1017,13 @@ func (fr *Frame) scrollDir(recalcPos image.Point) int {
 	return 0
 }
 
-func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *wde.MouseUpEvent {
-	if e.Which == wde.WheelUpButton {
+func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *mouse.Event {
+	if e.Which == mouse.ButtonWheelUp {
 		f.Scroll(-1, 1)
 		return nil
 	}
 
-	if e.Which == wde.WheelDownButton {
+	if e.Which == mouse.ButtonWheelDown {
 		f.Scroll(+1, 1)
 		return nil
 	}
@@ -1035,7 +1036,7 @@ func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *wde.M
 	}
 
 	if p >= 0 {
-		if (sel == 0) && (e.Count == 1) && (e.Modifiers == "shift+") {
+		if (sel == 0) && (e.Count == 1) && (e.Modifiers & key.ModShift != 0) {
 			// shift-click extends selection, but only for the first selection
 			if p < f.Sel.S {
 				f.setSelectEx(sel, e.Count, p, f.Sel.E)

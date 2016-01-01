@@ -102,7 +102,7 @@ func LoadFrom(dumpDest string) bool {
 	}
 
 	for _, dc := range dw.Columns {
-		col := Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
+		col := Wnd.cols.AddAfter(NewCol(&Wnd, Wnd.cols.r), -1, 0.4)
 
 		col.tagbuf.Replace([]rune(dc.TagText), &util.Sel{0, col.tagbuf.Size()}, true, nil, util.EO_MOUSE)
 
@@ -136,7 +136,7 @@ func LoadFrom(dumpDest string) bool {
 	Wnd.tagbuf.Replace([]rune(dw.TagText), &util.Sel{Wnd.tagbuf.EditableStart, Wnd.tagbuf.Size()}, true, nil, util.EO_MOUSE)
 	Wnd.BufferRefresh()
 	Wnd.tagfr.Redraw(true, nil)
-	Wnd.Resized()
+	Wnd.RedrawHard()
 
 	for i, db := range dw.Buffers {
 		if db.DumpCmd != "" {
@@ -156,5 +156,5 @@ func LoadFrom(dumpDest string) bool {
 func setDumpTitle() {
 	b := filepath.Base(AutoDumpPath)
 	b = b[:len(b)-len(".dump")]
-	Wnd.wnd.SetTitle("Yacco " + b)
+	Wnd.SetTitle("Yacco " + b)
 }

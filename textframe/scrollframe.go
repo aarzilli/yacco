@@ -2,18 +2,17 @@ package textframe
 
 import (
 	"fmt"
-	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
-	"runtime"
 	"time"
 	"yacco/util"
+	"golang.org/x/mobile/event/mouse"
 )
 
 type ScrollFrame struct {
 	b     draw.Image      // where the scrollbar and textframe will be displayed
 	r     image.Rectangle // the rectangle that should be occupied by the scrollbar and textframe
-	Wnd   wde.Window
+	Flush func(...image.Rectangle)
 	Color image.Uniform // color for the scrollbar
 	Width int           // horizontal width of the scrollbar
 	Fr    Frame         // text frame
@@ -26,7 +25,7 @@ func (sfr *ScrollFrame) Init(margin int) error {
 	sfr.Fr.B = sfr.b
 	sfr.Fr.R = sfr.r
 	sfr.Fr.R.Min.X += sfr.Width
-	sfr.Fr.Wnd = sfr.Wnd
+	sfr.Flush = sfr.Flush
 	if sfr.Width < 2 {
 		return fmt.Errorf("ScrollFrame not wide enough")
 	}
@@ -79,8 +78,8 @@ func (sfr *ScrollFrame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 
 	sfr.Fr.Redraw(false, predrawRects)
 
-	if flush && (sfr.Wnd != nil) {
-		sfr.Wnd.FlushImage(sfr.r)
+	if flush && (sfr.Flush != nil) {
+		sfr.Flush(sfr.r)
 	}
 
 	if predrawRects != nil {
@@ -101,12 +100,16 @@ func (sfr *ScrollFrame) scrollSetClick(event util.MouseDownEvent, events <-chan 
 	set(event.Where)
 
 	for ei := range events {
-		runtime.Gosched()
 		switch e := ei.(type) {
-		case wde.MouseUpEvent:
-			return
-		case wde.MouseDraggedEvent:
-			set(e.Where)
+		case mouse.Event:
+			switch e.Direction {
+			case mouse.DirRelease:
+				return
+			default:
+				if e.Button != mouse.ButtonNone {
+					set(image.Point{ int(e.X), int(e.Y) })
+				}
+			}
 		}
 	}
 }
@@ -125,7 +128,7 @@ func (sfr *ScrollFrame) ScrollClick(e util.MouseDownEvent, events <-chan interfa
 		return false
 	}
 
-	if e.Which == wde.MiddleButton {
+	if e.Which == mouse.ButtonMiddle {
 		sfr.scrollSetClick(e, events)
 		return true
 	}
@@ -139,9 +142,9 @@ func (sfr *ScrollFrame) ScrollClick(e util.MouseDownEvent, events <-chan interfa
 		c := int(float32(where.Y-sfr.r.Min.Y) / float32(sfr.Fr.Font.LineHeightRaster()>>8))
 
 		switch which {
-		case wde.LeftButton:
+		case mouse.ButtonLeft:
 			sfr.Fr.Scroll(-1, c)
-		case wde.RightButton:
+		case mouse.ButtonRight:
 			sfr.Fr.Scroll(1, c)
 		}
 		//sfr.Scroll(true)
@@ -151,14 +154,18 @@ func (sfr *ScrollFrame) ScrollClick(e util.MouseDownEvent, events <-chan interfa
 
 loop:
 	for {
-		runtime.Gosched()
 		select {
 		case ei := <-events:
 			switch e := ei.(type) {
-			case wde.MouseUpEvent:
-				break loop
-			case wde.MouseDraggedEvent:
-				where = e.Where
+			case mouse.Event:
+				switch e.Direction {
+				case mouse.DirRelease:
+					break loop
+				default:
+					if e.Button != mouse.ButtonNone {
+						where = image.Point{ int(e.X), int(e.Y) }
+					}
+				}
 			}
 
 		case <-autoscrollTicker.C:
@@ -173,7 +180,7 @@ loop:
 	return true
 }
 
-func (sfr *ScrollFrame) OnClick(e util.MouseDownEvent, events <-chan interface{}) (bool, *wde.MouseUpEvent) {
+func (sfr *ScrollFrame) OnClick(e util.MouseDownEvent, events <-chan interface{}) (bool, *mouse.Event) {
 	if sfr.ScrollClick(e, events) {
 		return false, nil
 	}

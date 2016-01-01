@@ -1,8 +1,12 @@
 package main
 
 import (
+	"golang.org/x/exp/shiny/screen"
+	"golang.org/x/mobile/event/key"
+	"golang.org/x/mobile/event/mouse"
+	"golang.org/x/mobile/event/size"
+	"golang.org/x/mobile/event/paint"
 	"fmt"
-	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
 	"math"
@@ -11,6 +15,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"yacco/buf"
 	"yacco/config"
@@ -21,13 +26,15 @@ import (
 )
 
 type Window struct {
-	wnd       wde.Window
+	screen       screen.Screen
+	wnd  screen.Window
+	wndb screen.Buffer	
+	img *image.RGBA
 	cols      *Cols
 	tagfr     textframe.Frame
 	tagbuf    *buf.Buffer
 	Words     []string
 	Prop      map[string]string
-	curCursor wde.Cursor
 	lastWhere image.Point
 }
 
@@ -48,9 +55,6 @@ type activeSelStruct struct {
 	path    string
 	txt     string
 }
-
-//const DEFAULT_CURSOR = wde.IBeamCursor
-const DEFAULT_CURSOR = wde.NormalCursor
 
 var activeSel activeSelStruct
 var activeEditor *Editor = nil
@@ -78,25 +82,31 @@ func (as *activeSelStruct) Reset() {
 	as.txt = ""
 }
 
-func (w *Window) Init(width, height int) (err error) {
+func (w *Window) Close() {
+	if w.wndb != nil {
+		w.wndb.Release()
+	}
+	w.wnd.Release()
+}
+
+func (w *Window) Init(s screen.Screen, width, height int) (err error) {
 	w.Prop = make(map[string]string)
 	w.Prop["indentchar"] = "\t"
 	w.Prop["font"] = "main"
 	w.Prop["lookexact"] = "no"
 	w.Words = []string{}
-	w.wnd, err = wde.NewWindow(width, height)
+	
+	w.screen = s
+	w.wnd, err = s.NewWindow(nil)
 	if err != nil {
 		return err
 	}
-	w.wnd.SetCursor(DEFAULT_CURSOR)
-	if err != nil {
-		return err
-	}
-	screen := w.wnd.Screen()
-	w.wnd.SetTitle("Yacco")
-	w.wnd.SetClass("yacco", "Yacco")
-	w.wnd.Show()
-	w.cols = NewCols(w.wnd, screen.Bounds())
+	
+	w.startUploader(image.Point{ width, height })
+		
+	w.SetTitle("Yacco")
+	//w.wnd.SetClass("yacco", "Yacco")
+	w.cols = NewCols(w, w.wndb.Bounds())
 	cwd, _ := os.Getwd()
 	w.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true, Wnd.Prop["indentchar"])
 	if err != nil {
@@ -114,7 +124,7 @@ func (w *Window) Init(width, height int) (err error) {
 		ExpandSelection: edutil.MakeExpandSelectionFn(w.tagbuf),
 		Hackflags:       hf,
 		VisibleTick:     false,
-		Wnd:             w.wnd,
+		Flush:             w.FlushImage,
 		Colors:          tagColors,
 	}
 
@@ -125,13 +135,36 @@ func (w *Window) Init(width, height int) (err error) {
 
 	w.GenTag()
 
-	w.calcRects(screen)
+	w.calcRects(w.img)
 
-	w.padDraw(screen)
+	w.padDraw(w.img)
 	w.tagfr.Redraw(false, nil)
 	w.cols.Redraw()
 
 	return nil
+}
+
+func (w *Window) WarpMouse(p image.Point) {
+	//TODO: reimplement
+}
+
+func (w *Window) SetTitle(title string) {
+	//TODO: reimplement
+}
+
+func (w *Window) FlushImage(rects ...image.Rectangle) {
+	if len(rects) == 0 {
+		rects = append(rects, w.wndb.Bounds())
+	} else {
+	}
+	uploadMutex.Lock()
+	for _, rect := range rects {
+		draw.Draw(w.wndb.RGBA(), rect, w.img, rect.Min, draw.Src)
+	}
+	uploadMutex.Unlock()
+	for _, rect := range rects {
+		uploadChan <- rect
+	}
 }
 
 func (w *Window) calcRects(screen draw.Image) {
@@ -140,7 +173,7 @@ func (w *Window) calcRects(screen draw.Image) {
 	colsr := r
 	colsr.Min.Y += TagHeight(&w.tagfr)
 
-	w.cols.SetRects(w.wnd, screen, r.Intersect(colsr))
+	w.cols.SetRects(w, screen, r.Intersect(colsr))
 
 	w.tagfr.R = r
 	w.tagfr.R.Min.X += config.ScrollWidth
@@ -161,28 +194,77 @@ func (w *Window) padDraw(screen draw.Image) {
 	drawingFuncs.DrawFillSrc(screen, screen.Bounds().Intersect(pad), &config.TheColorScheme.TagPlain[0])
 }
 
-func (w *Window) Resized() {
-	screen := w.wnd.Screen()
-	w.calcRects(screen)
+func (w *Window) Resized(sz image.Point) {
+	if uploadChan != nil {
+		close(uploadChan)
+		<-uploadDone
+	}
+	if w.wndb != nil {
+		w.wndb.Release()
+	}
+	w.startUploader(sz)
+	w.RedrawHard()
+}
 
-	w.padDraw(screen)
+func (w *Window) startUploader(sz image.Point) {
+	var err error
+	w.wndb, err = w.screen.NewBuffer(sz)
+	util.Must(err, "Buffer allocation failed")
+	w.img = image.NewRGBA(w.wndb.Bounds())
+	uploadChan = make(chan image.Rectangle, 1)
+	uploadDone = make(chan struct{})
+	go uploadFunc(w, uploadChan, uploadDone)
+}
+
+var uploadMutex sync.Mutex
+var uploadChan chan image.Rectangle
+var uploadDone chan struct{}
+
+func uploadFunc(w *Window, uploadChan <- chan image.Rectangle, uploadDone chan <- struct{}) {
+	fmt.Printf("uploadFunc started\n")
+	for rect := range uploadChan {
+		fmt.Printf("uploading %s\n", rect)
+		w.wnd.Upload(rect.Min, w.wndb, rect)
+		k := true
+		for k {
+			select {
+			case rect, ok := <- uploadChan:
+				if !ok {
+					k = false
+				} else {
+					fmt.Printf("uploading* %s %v\n", rect, ok)
+					uploadMutex.Lock()
+					w.wnd.Upload(rect.Min, w.wndb, rect)
+					uploadMutex.Unlock()
+				}
+			default:
+				k = false
+			}
+		}
+		fmt.Printf("publish!\n")
+		w.wnd.Publish()
+	}
+	fmt.Printf("uploadFunc dead\n")
+	close(uploadDone)
+}
+
+func (w *Window) RedrawHard() {
+	w.calcRects(w.img)
+
+	w.padDraw(w.img)
 
 	w.cols.Redraw()
 	w.tagfr.Invalidate()
 	w.tagfr.Redraw(false, nil)
-	w.wnd.FlushImage()
+	w.FlushImage()
 }
 
 func (w *Window) EventLoop() {
-	wndEvents := util.FilterEvents(Wnd.wnd.EventChan(), config.AltingList, config.KeyConversion)
-
-	w.curCursor = DEFAULT_CURSOR
+	wndEvents := util.FilterEvents(Wnd.wnd.Events(), config.AltingList, config.KeyConversion)
 
 	lastWordUpdate := time.Now()
 
 	for {
-		runtime.Gosched()
-
 		select {
 		case uie := <-wndEvents:
 			w.UiEventLoop(uie, wndEvents)
@@ -201,46 +283,25 @@ func (w *Window) EventLoop() {
 			}
 		}
 	}
+	HideCompl()
+	FsQuit()
 }
 
 func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 	switch e := ei.(type) {
-	case wde.CloseEvent:
+	case paint.Event:
+		w.FlushImage()
+
+	case size.Event:
 		HideCompl()
-		FsQuit()
+		Wnd.Resized(e.Size())
 
-	case wde.ResizeEvent:
-		HideCompl()
-		Wnd.Resized()
-
-	case wde.MouseMovedEvent:
-		if DEFAULT_CURSOR != -1 {
-			lp := w.TranslatePosition(e.Where, false)
-			onframe := false
-			if lp.tagfr != nil {
-				onframe = true
-			} else if lp.sfr != nil {
-				if e.Where.In(lp.sfr.Fr.R) {
-					onframe = true
-				}
-			}
-
-			if onframe {
-				if w.curCursor != DEFAULT_CURSOR {
-					w.wnd.SetCursor(DEFAULT_CURSOR)
-					w.curCursor = DEFAULT_CURSOR
-				}
-			} else {
-				if w.curCursor != wde.NormalCursor {
-					w.wnd.SetCursor(wde.NormalCursor)
-					w.curCursor = wde.NormalCursor
-				}
-			}
+	case mouse.Event:
+		if e.Direction == mouse.DirNone {
+			HideCompl()
+			w.lastWhere = image.Point{ int(e.X), int(e.Y) }
+			Wnd.SetTick(w.lastWhere)
 		}
-
-		HideCompl()
-		w.lastWhere = e.Where
-		Wnd.SetTick(e.Where)
 
 	case util.MouseDownEvent:
 		HideCompl()
@@ -308,17 +369,12 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 			lp.ed.TagRefresh()
 		}
 
-	case wde.MouseExitedEvent:
-		//Wnd.HideAllTicks()
-
-	case wde.MouseEnteredEvent:
-		//HideCompl()
-		w.lastWhere = e.Where
-		Wnd.SetTick(e.Where)
-
-	case wde.KeyTypedEvent:
-		lp := w.TranslatePosition(w.lastWhere, true)
-		w.Type(lp, e)
+	case key.Event:
+		switch e.Direction {
+		case key.DirPress, key.DirNone:
+			lp := w.TranslatePosition(w.lastWhere, true)
+			w.Type(lp, e)
+		}
 	}
 }
 
@@ -459,7 +515,8 @@ func dist(a, b image.Point) float32 {
 }
 
 func (w *Window) EditorMove(col *Col, ed *Editor, e util.MouseDownEvent, events <-chan interface{}) {
-	w.wnd.SetCursor(wde.FleurCursor)
+	//TODO: SetCursor
+	//w.wnd.SetCursor(wde.FleurCursor)
 
 	startPos := e.Where
 	endPos := startPos
@@ -469,22 +526,30 @@ func (w *Window) EditorMove(col *Col, ed *Editor, e util.MouseDownEvent, events 
 loop:
 	for ei := range events {
 		runtime.Gosched()
-		switch e := ei.(type) {
-		case wde.MouseUpEvent:
+		e, ismouse := ei.(mouse.Event)
+		if !ismouse {
+			continue
+		}
+		switch e.Direction {
+		case mouse.DirRelease:
 			break loop
 
-		case wde.MouseDownEvent:
-			w.wnd.SetCursor(DEFAULT_CURSOR)
+		case mouse.DirPress:
+			//TODO: SetCursor
+			//w.wnd.SetCursor(DEFAULT_CURSOR)
 			return // cancelled
 
-		case wde.MouseDraggedEvent:
-			endPos = e.Where
+		case mouse.DirNone:
+			if e.Button == mouse.ButtonNone {
+				break loop
+			}
+			endPos = image.Point{ int(e.X), int(e.Y) }
 
 			// a bit of X stickiness after crossing columns
 			if colChangeTime != (time.Time{}) {
 				if time.Now().Sub(colChangeTime) < (time.Millisecond * 500) {
 					endPos.X = ed.r.Min.X + config.ScrollWidth/2
-					w.wnd.WarpMouse(endPos)
+					w.WarpMouse(endPos)
 				} else {
 					colChangeTime = time.Time{}
 				}
@@ -550,20 +615,21 @@ loop:
 			}
 			col = dstcol
 
-			w.wnd.FlushImage()
+			w.FlushImage()
 		}
 	}
 
-	w.wnd.SetCursor(DEFAULT_CURSOR)
+	//TODO: SetCursor
+	//w.wnd.SetCursor(DEFAULT_CURSOR)
 
 	if dist(startPos, endPos) < 10 {
 		d := endPos.Sub(ed.r.Min)
 
 		switch e.Which {
-		case wde.LeftButton:
+		case mouse.ButtonLeft:
 			w.GrowEditor(col, ed, &d)
 
-		case wde.RightButton: // Maximize
+		case mouse.ButtonRight: // Maximize
 			ed.size = col.contentArea()
 			for _, oed := range col.editors {
 				if oed == ed {
@@ -574,9 +640,9 @@ loop:
 			}
 			col.RecalcRects(col.last)
 			p := ed.r.Min
-			w.wnd.WarpMouse(p.Add(d))
+			w.WarpMouse(p.Add(d))
 			col.Redraw()
-			w.wnd.FlushImage(col.r)
+			w.FlushImage(col.r)
 		}
 	}
 }
@@ -627,14 +693,15 @@ func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
 
 	col.RecalcRects(col.last)
 	col.Redraw()
-	w.wnd.FlushImage(col.r)
+	w.FlushImage(col.r)
 	if d != nil {
 		ed.WarpToHandle()
 	}
 }
 
 func (w *Window) ColResize(col *Col, e util.MouseDownEvent, events <-chan interface{}) {
-	w.wnd.SetCursor(wde.FleurCursor)
+	//TODO: SetCursor
+	//w.wnd.SetCursor(wde.FleurCursor)
 
 	startPos := e.Where
 	endPos := startPos
@@ -642,16 +709,26 @@ func (w *Window) ColResize(col *Col, e util.MouseDownEvent, events <-chan interf
 loop:
 	for ei := range events {
 		runtime.Gosched()
-		switch e := ei.(type) {
-		case wde.MouseUpEvent:
+		e, ismouse := ei.(mouse.Event)
+		if !ismouse {
+			continue
+		}
+		
+		switch e.Direction {
+		case mouse.DirRelease:
 			break loop
-
-		case wde.MouseDownEvent:
-			w.wnd.SetCursor(DEFAULT_CURSOR)
+			
+		case mouse.DirPress:
+			//TODO: SetCursor
+			//w.wnd.SetCursor(DEFAULT_CURSOR)
 			return // cancelled
-
-		case wde.MouseDraggedEvent:
-			endPos = e.Where
+		
+		case mouse.DirNone:
+			if e.Button != mouse.ButtonNone {
+				break loop
+			}
+			
+			endPos = image.Point{ int(e.X), int(e.Y) }
 
 			if !endPos.In(Wnd.cols.r) {
 				break
@@ -680,11 +757,12 @@ loop:
 				}
 				w.cols.AddAfter(col, w.cols.IndexOf(dstcol), 1-float64(dstw)/float64(dstcol.Width()))
 			}
-			w.wnd.FlushImage()
+			w.FlushImage()
 		}
 	}
 
-	w.wnd.SetCursor(DEFAULT_CURSOR)
+	//TODO: SetCursor
+	//w.wnd.SetCursor(DEFAULT_CURSOR)
 }
 
 func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
@@ -753,11 +831,11 @@ func (lp *LogicalPos) bufferRefreshable(ontag bool) func() {
 	}
 }
 
-func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
+func (w *Window) Type(lp LogicalPos, e key.Event) {
 	ec := lp.asExecContext(true)
 
-	switch e.Chord {
-	case "escape":
+	switch e.Code {
+	case key.CodeEscape:
 		if !HideCompl() {
 			if lp.ed != nil && lp.ed.eventChanSpecial {
 				lp.ed.sfr.Fr.VisibleTick = true
@@ -777,7 +855,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			}
 		}
 
-	case "return":
+	case key.CodeReturnEnter:
 		HideCompl()
 		if (lp.ed != nil) && lp.ed.eventChanSpecial {
 			util.Fmtevent2(ec.ed.eventChan, util.EO_KBD, true, false, false, 0, 0, 0, "Return", nil)
@@ -834,10 +912,10 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			lp.ed.BufferRefresh()
 		}
 
-	case "next", "prior":
+	case key.CodePageDown, key.CodePageUp:
 		HideCompl()
 		dir := +1
-		if e.Chord == "prior" {
+		if e.Code == key.CodePageUp {
 			dir = -1
 		}
 		if lp.ed != nil {
@@ -849,7 +927,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			lp.ed.BufferRefresh()
 		}
 
-	case "tab":
+	case key.CodeTab:
 		ec := lp.asExecContext(true)
 		if ec.buf != nil {
 			if ComplWnd != nil {
@@ -869,22 +947,19 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 			}
 		}
 
-	case "insert":
+	case key.CodeInsert:
 		if ComplWnd == nil {
 			ec := lp.asExecContext(true)
 			ComplStart(ec)
 		}
 
 	default:
-		if e.Chord == "shift+return" {
-			e.Glyph = "\n"
-		}
 		ec := lp.asExecContext(true)
-		if fcmd, ok := KeyBindings[e.Chord]; ok {
+		if fcmd, ok := KeyBindings[e.String()]; ok {
 			HideCompl()
 			//println("Execute command: <" + cmd + ">")
 			fcmd(ec)
-		} else if e.Glyph != "" {
+		} else if e.Rune > 0 {
 			if lp.tagfr == nil && ec.ed != nil {
 				activeEditor = ec.ed
 				activeCol = nil
@@ -893,7 +968,7 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 				if ec.ed != nil && time.Since(ec.buf.LastEdit()) > (1*time.Minute) {
 					ec.ed.PushJump()
 				}
-				ec.buf.Replace([]rune(e.Glyph), &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
+				ec.buf.Replace([]rune{ e.Rune }, &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
 				ec.br()
 				ComplStart(ec)
 			}
@@ -901,50 +976,55 @@ func (w *Window) Type(lp LogicalPos, e wde.KeyTypedEvent) {
 	}
 }
 
-func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent, events <-chan interface{}) {
+func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *mouse.Event, events <-chan interface{}) {
 	if ee == nil {
-		ee = &wde.MouseUpEvent{}
-		ee.Where = e.Where
-		ee.Which = e.Which
+		ee = &mouse.Event{}
+		ee.Direction = mouse.DirRelease
+		ee.X = float32(e.Where.X)
+		ee.Y = float32(e.Where.Y)
+		ee.Button = e.Which
 		ee.Modifiers = e.Modifiers
 	}
 
 	switch e.Which {
-	case wde.MiddleButton:
-		switch ee.Which {
-		case wde.LeftButton:
-			if completeClick(events, wde.MiddleButton, wde.RightButton) {
+	case mouse.ButtonMiddle:
+		switch ee.Button {
+		case mouse.ButtonLeft:
+			if completeClick(events, mouse.ButtonMiddle, mouse.ButtonRight) {
 				clickExec2extra(lp, e)
 			}
-		case wde.RightButton:
+		case mouse.ButtonRight:
 			// cancelled
 		default:
 			clickExec2(lp, e)
 		}
-
-	case wde.MiddleButton | wde.LeftButton:
+	
+	/*
+	TODO: this is impossible :(
+	case mouse.ButtonRight | mouse.ButtonLeft:
 		clickExec2extra(lp, e)
+	*/
 
-	case wde.RightButton:
-		if ee.Which != wde.MiddleButton { // middle button cancels right button
+	case mouse.ButtonRight:
+		if ee.Button != mouse.ButtonMiddle { // middle button cancels right button
 			clickExec3(lp, e)
 		}
 
-	case wde.LeftButton:
-		switch ee.Which {
-		case wde.MiddleButton:
+	case mouse.ButtonLeft:
+		switch ee.Button {
+		case mouse.ButtonMiddle:
 			clickExec12(lp, events)
 
-		case wde.RightButton:
-			if ee.Modifiers == "shift+" {
+		case mouse.ButtonRight:
+			if ee.Modifiers & key.ModShift != 0 {
 				clickExec12(lp, events)
 			} else {
-				if completeClick(events, wde.LeftButton, wde.MiddleButton) {
+				if completeClick(events, mouse.ButtonLeft, mouse.ButtonMiddle) {
 					PasteCmd(lp.asExecContext(true), "")
 				}
 			}
 
-		case wde.LeftButton:
+		case mouse.ButtonLeft:
 			fallthrough
 		default:
 			clickExec1(lp, e)
@@ -952,19 +1032,21 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *wde.MouseUpEvent, event
 	}
 }
 
-func completeClick(events <-chan interface{}, completeAction, cancelAction wde.Button) bool {
+func completeClick(events <-chan interface{}, completeAction, cancelAction mouse.Button) bool {
 	for ei := range events {
 		switch e := ei.(type) {
-		case wde.MouseUpEvent:
-			switch e.Which {
-			case completeAction:
-				return true
-			case cancelAction:
-				return false
-			default:
-				return false
+		case mouse.Event:
+			if e.Direction == mouse.DirRelease {
+				switch e.Button {
+				case completeAction:
+					return true
+				case cancelAction:
+					return false
+				default:
+					return false
+				}
 			}
-		case wde.KeyTypedEvent:
+		case key.Event:
 			return false
 		}
 	}
@@ -1048,15 +1130,17 @@ func clickExec12(lp LogicalPos, events <-chan interface{}) {
 	del := true
 eventLoop:
 	for ei := range events {
-		if e, ok := ei.(wde.MouseUpEvent); ok {
-			switch e.Which {
-			case wde.LeftButton:
-				del = true
-				break eventLoop
-			case wde.RightButton:
-				del = false
-				break eventLoop
-			}
+		e, ismouse := ei.(mouse.Event)
+		if !ismouse || e.Direction != mouse.DirRelease {
+			continue
+		}
+		switch e.Button {
+		case mouse.ButtonLeft:
+			del = true
+			break eventLoop
+		case mouse.ButtonRight:
+			del = false
+			break eventLoop
 		}
 	}
 
@@ -1176,7 +1260,7 @@ func (w *Window) GenTag() {
 	TagSetEditableStart(w.tagbuf)
 }
 
-func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, events <-chan interface{}) (*wde.MouseUpEvent, bool) {
+func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, events <-chan interface{}) (*mouse.Event, bool) {
 	if (b == nil) || (fr == nil) || (e.Count != 2) || (e.Which == 0) {
 		return nil, false
 	}
@@ -1184,14 +1268,14 @@ func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, 
 	selIdx := int(math.Log2(float64(e.Which)))
 	fr.SelColor = selIdx
 
-	endfn := func(match int) (*wde.MouseUpEvent, bool) {
+	endfn := func(match int) (*mouse.Event, bool) {
 		fr.Sel.E = match + 1
 
 		fr.Redraw(true, nil)
 
 		for ee := range events {
-			switch eei := ee.(type) {
-			case wde.MouseUpEvent:
+			eei, ismouse := ee.(mouse.Event)
+			if ismouse && eei.Direction == mouse.DirRelease {
 				return &eei, true
 			}
 		}

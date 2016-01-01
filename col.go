@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
 	"os"
@@ -14,7 +13,7 @@ import (
 
 type Col struct {
 	editors []*Editor
-	wnd     wde.Window
+	wnd     *Window
 	r       image.Rectangle
 	btnr    image.Rectangle
 	b       draw.Image
@@ -25,7 +24,7 @@ type Col struct {
 	tagbuf *buf.Buffer
 }
 
-func NewCol(wnd wde.Window, r image.Rectangle) *Col {
+func NewCol(wnd *Window, r image.Rectangle) *Col {
 	c := &Col{}
 	c.editors = []*Editor{}
 	c.wnd = wnd
@@ -59,8 +58,8 @@ func NewCol(wnd wde.Window, r image.Rectangle) *Col {
 	return c
 }
 
-func (c *Col) SetRects(wnd wde.Window, b draw.Image, r image.Rectangle, last bool) {
-	c.tagfr.Wnd = wnd
+func (c *Col) SetRects(wnd *Window, b draw.Image, r image.Rectangle, last bool) {
+	c.tagfr.Flush = wnd.FlushImage
 	c.wnd = wnd
 	c.r = r
 	c.b = b

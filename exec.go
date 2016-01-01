@@ -383,7 +383,7 @@ func DelCmd(ec ExecContext, arg string, confirmed bool) {
 		col.Remove(col.IndexOf(ec.ed))
 		ec.ed.Close()
 		removeBuffer(ec.ed.bodybuf)
-		Wnd.wnd.FlushImage(col.r)
+		Wnd.FlushImage(col.r)
 	} else {
 		ec.ed.confirmDel = true
 		Warn("File " + ec.ed.bodybuf.ShortName() + " has unsaved changes")
@@ -412,7 +412,7 @@ func DelcolCmd(ec ExecContext, arg string) {
 		}
 		Wnd.cols.Remove(Wnd.cols.IndexOf(ec.col))
 		ec.col.Close()
-		Wnd.wnd.FlushImage()
+		Wnd.FlushImage()
 	} else {
 		Warn(t)
 	}
@@ -636,8 +636,8 @@ func NewCmd(ec ExecContext, arg string) {
 
 func NewcolCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
-	Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
-	Wnd.wnd.FlushImage()
+	Wnd.cols.AddAfter(NewCol(&Wnd, Wnd.cols.r), -1, 0.4)
+	Wnd.FlushImage()
 }
 
 func PasteCmd(ec ExecContext, arg string) {
@@ -860,7 +860,7 @@ func SortCmd(ec ExecContext, arg string) {
 	sort.Sort((*Editors)(&ec.col.editors))
 	ec.col.RecalcRects(ec.col.last)
 	ec.col.Redraw()
-	Wnd.wnd.FlushImage(ec.col.r)
+	Wnd.FlushImage(ec.col.r)
 }
 
 func UndoCmd(ec ExecContext, arg string) {
@@ -984,13 +984,13 @@ func CdCmd(ec ExecContext, arg string) {
 
 	pwd, _ := os.Getwd()
 	pwd = util.ShortPath(pwd, false)
-	Wnd.wnd.SetTitle("Yacco " + pwd)
+	Wnd.SetTitle("Yacco " + pwd)
 
 	Wnd.BufferRefresh()
 
 	Wnd.cols.Redraw()
 	Wnd.tagfr.Redraw(false, nil)
-	Wnd.wnd.FlushImage()
+	Wnd.FlushImage()
 }
 
 func DoCmd(ec ExecContext, arg string) {
@@ -1173,7 +1173,7 @@ Theme atom
 		return
 	}
 	setTheme(arg)
-	Wnd.Resized()
+	Wnd.RedrawHard()
 }
 
 func DirexecCmd(ec ExecContext, arg string) {
@@ -1286,7 +1286,7 @@ func (bm *BufMan) Close(buf *buf.Buffer) {
 		}
 	}
 	removeBuffer(buf)
-	Wnd.wnd.FlushImage()
+	Wnd.FlushImage()
 
 }
 

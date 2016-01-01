@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
 	"os"
@@ -67,10 +66,10 @@ const (
 
 const PMATCHSEL = 3
 
-func (e *Editor) SetWnd(wnd wde.Window) {
-	e.sfr.Wnd = wnd
-	e.sfr.Fr.Wnd = wnd
-	e.tagfr.Wnd = wnd
+func (e *Editor) SetWnd(wnd *Window) {
+	e.sfr.Flush = wnd.FlushImage
+	e.sfr.Fr.Flush = wnd.FlushImage
+	e.tagfr.Flush = wnd.FlushImage
 }
 
 func NewEditor(bodybuf *buf.Buffer) *Editor {
@@ -398,10 +397,10 @@ func (e *Editor) TagRefresh() {
 		e.tagfr.Redraw(false, nil)
 		e.sfr.Redraw(false, nil)
 		e.redrawTagBorder()
-		e.sfr.Wnd.FlushImage(e.r)
+		e.sfr.Flush(e.r)
 	} else {
 		e.tagfr.Redraw(false, &e.redrawRects)
-		e.sfr.Wnd.FlushImage(e.redrawRects...)
+		e.sfr.Flush(e.redrawRects...)
 		e.redrawRects = e.redrawRects[0:0]
 	}
 }
@@ -444,7 +443,7 @@ func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 	e.redrawRects = append(e.redrawRects, e.rhandle)
 	e.tagfr.Redraw(false, &e.redrawRects)
 	e.sfr.Redraw(false, &e.redrawRects)
-	e.sfr.Wnd.FlushImage(e.redrawRects...)
+	e.sfr.Flush(e.redrawRects...)
 	e.redrawRects = e.redrawRects[0:0]
 
 	if !recur {
@@ -536,9 +535,9 @@ func (ed *Editor) Warp() {
 	if !ed.sfr.Fr.VisibleTick {
 		ed.sfr.Fr.VisibleTick = true
 		ed.sfr.Fr.Redraw(false, nil)
-		Wnd.wnd.FlushImage(ed.sfr.Fr.R)
+		Wnd.FlushImage(ed.sfr.Fr.R)
 	}
-	Wnd.wnd.WarpMouse(p)
+	Wnd.WarpMouse(p)
 }
 
 func (ed *Editor) WarpToTag() {
@@ -547,7 +546,7 @@ func (ed *Editor) WarpToTag() {
 	}
 	p := ed.tagfr.PointToCoord(0)
 	p.Y -= 3
-	Wnd.wnd.WarpMouse(p)
+	Wnd.WarpMouse(p)
 	ed.tagfr.Sel.S = ed.tagbuf.EditableStart
 	ed.tagfr.Sel.E = ed.tagbuf.Size()
 	ed.TagRefresh()
@@ -556,7 +555,7 @@ func (ed *Editor) WarpToTag() {
 func (ed *Editor) WarpToHandle() {
 	p := ed.r.Min
 	p = p.Add(image.Point{config.ScrollWidth / 2, int(ed.tagfr.Font.LineHeight() / 2)})
-	Wnd.wnd.WarpMouse(p)
+	Wnd.WarpMouse(p)
 }
 
 func (ed *Editor) getDelPos() int {
@@ -586,11 +585,11 @@ func (ed *Editor) WarpToDel() {
 	if !ed.tagfr.VisibleTick {
 		ed.tagfr.VisibleTick = true
 		ed.tagfr.Redraw(false, nil)
-		Wnd.wnd.FlushImage(ed.tagfr.R)
+		Wnd.FlushImage(ed.tagfr.R)
 	}
 	delCoord.Y -= 5
 	delCoord.X += 5
-	Wnd.wnd.WarpMouse(delCoord)
+	Wnd.WarpMouse(delCoord)
 }
 
 func (ed *Editor) EnterSpecial(eventChan chan string) (bool, string, chan string) {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/skelterjohn/go.wde"
 	"image"
 	"image/draw"
 	"yacco/config"
@@ -10,18 +9,18 @@ import (
 
 type Cols struct {
 	cols []*Col
-	wnd  wde.Window
+	wnd  *Window
 	b    draw.Image
 	r    image.Rectangle
 }
 
 const COL_MIN_WIDTH = 40
 
-func NewCols(wnd wde.Window, r image.Rectangle) *Cols {
-	return &Cols{[]*Col{}, wnd, wnd.Screen(), r}
+func NewCols(wnd *Window, r image.Rectangle) *Cols {
+	return &Cols{[]*Col{}, wnd, wnd.img, r}
 }
 
-func (cs *Cols) SetRects(wnd wde.Window, b draw.Image, r image.Rectangle) {
+func (cs *Cols) SetRects(wnd *Window, b draw.Image, r image.Rectangle) {
 	cs.wnd = wnd
 	cs.r = r
 	cs.b = b

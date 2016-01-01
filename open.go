@@ -62,7 +62,7 @@ func HeuristicOpen(path string, warp bool, create bool) (*Editor, error) {
 
 func HeuristicPlaceEditor(ed *Editor, warp bool) {
 	if len(Wnd.cols.cols) == 0 {
-		Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
+		Wnd.cols.AddAfter(NewCol(&Wnd, Wnd.cols.r), -1, 0.4)
 	}
 
 	var col *Col = nil
@@ -109,7 +109,7 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 		}
 	}
 
-	Wnd.wnd.FlushImage()
+	Wnd.FlushImage()
 	if warp {
 		ed.Warp()
 	}

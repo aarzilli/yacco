@@ -1,5 +1,9 @@
 package config
 
+import (
+	"golang.org/x/mobile/event/key"
+)
+
 // order of modifiers:
 // control, alt, shift, super, Multi_key
 // special keys:
@@ -64,6 +68,6 @@ var KeyBindings = map[string]string{
 	"delete":    "Do\nEdit g// .,+#1\nEdit c//",
 }
 
-var KeyConversion = map[string]string{
-	"control+space": "return",
+var KeyConversion = map[string]key.Event{
+	"control+space": key.Event{ Rune: -1, Code: key.CodeReturnEnter, Modifiers: key.Modifiers(0) },
 }

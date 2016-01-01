@@ -1,9 +1,9 @@
 package main
 
 import (
+	"golang.org/x/exp/shiny/driver"
+	"golang.org/x/exp/shiny/screen"
 	"flag"
-	"github.com/skelterjohn/go.wde"
-	_ "github.com/skelterjohn/go.wde/init"
 	"image"
 	"log"
 	"os"
@@ -88,7 +88,7 @@ func setTheme(t string) {
 	}
 }
 
-func realmain() {
+func realmain(s screen.Screen) {
 	setTheme(*themeFlag)
 
 	width := config.StartupWidth
@@ -111,14 +111,15 @@ func realmain() {
 		}
 	}
 
-	err := Wnd.Init(width, height)
+	err := Wnd.Init(s, width, height)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
+	defer Wnd.Close()
 
-	Wnd.cols.AddAfter(NewCol(Wnd.wnd, Wnd.cols.r), -1, 0.4)
+	Wnd.cols.AddAfter(NewCol(&Wnd, Wnd.cols.r), -1, 0.4)
 	if len(flag.Args()) != 1 {
-		rightcol := NewCol(Wnd.wnd, Wnd.cols.r)
+		rightcol := NewCol(&Wnd, Wnd.cols.r)
 		Wnd.cols.AddAfter(rightcol, -1, 0.4)
 		activeCol = rightcol
 	}
@@ -152,7 +153,7 @@ func realmain() {
 	Wnd.tagbuf.Replace([]rune(startWinTag), &util.Sel{Wnd.tagbuf.Size(), Wnd.tagbuf.Size()}, true, nil, 0)
 	Wnd.BufferRefresh()
 
-	Wnd.wnd.FlushImage()
+	Wnd.FlushImage()
 
 	Wnd.EventLoop()
 }
@@ -173,8 +174,7 @@ func main() {
 
 	FsInit()
 
-	go realmain()
-	wde.Run()
+	driver.Main(realmain)
 }
 
 func removeBuffer(b *buf.Buffer) {
