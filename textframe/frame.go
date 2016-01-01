@@ -83,7 +83,6 @@ type Frame struct {
 	debugRedraw bool
 
 	glyphBounds             fixed.Rectangle26_6
-	drawingFuncs            DrawingFuncs
 	leftMargin, rightMargin fixed.Int26_6
 }
 
@@ -571,7 +570,7 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform, invalid *[]imag
 		if invalid != nil {
 			*invalid = append(*invalid, r)
 		}
-		fr.drawingFuncs.DrawFillSrc(fr.B, r, color)
+		draw.Draw(fr.B, r, color, r.Min, draw.Src)
 	} else {
 		rs := fr.R.Intersect(image.Rectangle{sp, image.Point{util.FixedToInt(fr.rightMargin), util.FixedToInt(ss.p.Y - glyphBounds.Min.Y)}})
 		re := fr.R.Intersect(image.Rectangle{sep, ep})
@@ -582,9 +581,9 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform, invalid *[]imag
 		if invalid != nil {
 			*invalid = append(*invalid, rs, re, rb)
 		}
-		fr.drawingFuncs.DrawFillSrc(fr.B, rs, color)
-		fr.drawingFuncs.DrawFillSrc(fr.B, re, color)
-		fr.drawingFuncs.DrawFillSrc(fr.B, rb, color)
+		draw.Draw(fr.B, rs, color, rs.Min, draw.Src)
+		draw.Draw(fr.B, re, color, re.Min, draw.Src)
+		draw.Draw(fr.B, rb, color, rb.Min, draw.Src)
 	}
 }
 
@@ -643,19 +642,19 @@ func (fr *Frame) drawTick(idx int) image.Rectangle {
 		Min: image.Point{x - basedxl, y - h},
 		Max: image.Point{x + basedxr, y - util.FixedToInt(fr.glyphBounds.Min.Y)}}
 
-	fr.drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r), &fr.Colors[0][idx])
+	draw.Draw(fr.B, fr.R.Intersect(r), &fr.Colors[0][idx], fr.R.Intersect(r).Min, draw.Src)
 
 	r1 := r
 	r1.Min.X -= r.Dx()
 	r1.Max.X += r.Dx()
 	r1.Max.Y = r1.Min.Y + r.Dx()*3
-	fr.drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r1), &fr.Colors[0][idx])
+	draw.Draw(fr.B, fr.R.Intersect(r1), &fr.Colors[0][idx], fr.R.Intersect(r1).Min, draw.Src)
 
 	r2 := r
 	r2.Min.X -= r.Dx()
 	r2.Max.X += r.Dx()
 	r2.Min.Y = r2.Max.Y - r.Dx()*3
-	fr.drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r2), &fr.Colors[0][idx])
+	draw.Draw(fr.B, fr.R.Intersect(r2), &fr.Colors[0][idx], fr.R.Intersect(r2).Min, draw.Src)
 
 	rr := r
 	rr.Min.X -= r.Dx()
@@ -793,8 +792,6 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	fr.rightMargin = fixed.I(fr.R.Max.X) - fr.margin
 	fr.leftMargin = fixed.I(fr.R.Min.X) + fr.margin
 
-	fr.drawingFuncs = GetOptimizedDrawing(fr.B)
-
 	// FAST PATH 1
 	// Followed only if:
 	// - the frame wasn't reloaded (Clear, InsertColor weren't called) since last draw
@@ -854,7 +851,7 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	}
 
 	// background
-	fr.drawingFuncs.DrawFillSrc(fr.B, fr.R, &fr.Colors[0][0])
+	draw.Draw(fr.B, fr.R, &fr.Colors[0][0], fr.R.Min, draw.Src)
 
 	fr.redrawIntl(fr.glyphs, true, 0)
 
@@ -924,7 +921,7 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 				r := image.Rectangle{
 					image.Point{util.FixedToInt(fr.rightMargin), midline},
 					image.Point{util.FixedToInt(fr.rightMargin + fr.margin), midline + 1}}
-				fr.drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r), &fr.Colors[0][1])
+				draw.Draw(fr.B, fr.R.Intersect(r), &fr.Colors[0][1], fr.R.Intersect(r).Min, draw.Src)
 			}
 
 			cury = g.p.Y
@@ -935,7 +932,7 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 				r := image.Rectangle{
 					image.Point{util.FixedToInt(fr.leftMargin - fr.margin), midline},
 					image.Point{util.FixedToInt(fr.leftMargin), midline + 1}}
-				fr.drawingFuncs.DrawFillSrc(fr.B, fr.R.Intersect(r), &fr.Colors[0][1])
+				draw.Draw(fr.B, fr.R.Intersect(r), &fr.Colors[0][1], fr.R.Intersect(r).Min, draw.Src)
 			}
 		}
 		newline = (g.r == '\n')
@@ -957,7 +954,7 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 			if onpmatch && len(fr.Colors) > 4 {
 				color = &fr.Colors[4][g.color]
 			}
-			fr.drawingFuncs.DrawGlyphOver(fr.B, dr, color, mask, mp)
+			draw.DrawMask(fr.B, dr, color, dr.Min, mask, mp, draw.Over)
 		}
 	}
 }
@@ -994,10 +991,10 @@ func (fr *Frame) drawSingleGlyph(g *glyph, ssel int) {
 				fr.scrubGlyph.Pix[i] = 0x00
 			}
 		}
-		fr.drawingFuncs.DrawGlyphOver(fr.B, dr, bgcolor, &fr.scrubGlyph, mp)
+		draw.DrawMask(fr.B, dr, bgcolor, dr.Min, &fr.scrubGlyph, mp, draw.Over)
 
 		// Redraw glyph
-		fr.drawingFuncs.DrawGlyphOver(fr.B, dr, color, mask, mp)
+		draw.DrawMask(fr.B, dr, color, dr.Min, mask, mp, draw.Over)
 	}
 }
 
@@ -1120,8 +1117,6 @@ func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 	fr.lastFull = len(fr.glyphs)
 
 	if fr.allSelectionsEmpty() && drawOpt {
-		fr.drawingFuncs = GetOptimizedDrawing(fr.B)
-
 		h := ln * util.FixedToInt(lh)
 
 		for fr.redrawOpt.scrollStart = len(fr.glyphs) - 1; fr.redrawOpt.scrollStart > 0; fr.redrawOpt.scrollStart-- {
@@ -1136,7 +1131,7 @@ func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 		p.Y += h
 		r := fr.R
 		r.Max.Y -= h
-		fr.drawingFuncs.DrawCopy(fr.B, r, fr.B, p)
+		draw.Draw(fr.B, r, fr.B, p, draw.Src)
 
 		r = fr.R
 		if (fr.redrawOpt.scrollStart >= 0) && (fr.redrawOpt.scrollStart < len(fr.glyphs)) {
@@ -1145,7 +1140,7 @@ func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 		} else {
 			r.Min.Y = fr.R.Max.Y - h
 		}
-		fr.drawingFuncs.DrawFillSrc(fr.B, r.Intersect(fr.R), &fr.Colors[0][0])
+		draw.Draw(fr.B, r.Intersect(fr.R), &fr.Colors[0][0], r.Intersect(fr.R).Min, draw.Src)
 	}
 
 	return len(fr.glyphs)
@@ -1197,20 +1192,18 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) {
 	lh := fr.Font.LineHeightRaster()
 
 	if fr.allSelectionsEmpty() {
-		fr.drawingFuncs = GetOptimizedDrawing(fr.B)
-
 		fr.redrawOpt.scrollStart = 0
 		fr.redrawOpt.scrollEnd = len(fr.glyphs)
 
 		h := len(fr.PhisicalLines()) * util.FixedToInt(lh)
 		r := fr.R
 		r.Min.Y += h
-		fr.drawingFuncs.DrawCopy(fr.B, r, fr.B, fr.R.Min)
+		draw.Draw(fr.B, r, fr.B, fr.R.Min, draw.Src)
 
 		r = fr.R
 		r.Max.Y = r.Min.Y + h
 		r = r.Intersect(fr.R)
-		fr.drawingFuncs.DrawFillSrc(fr.B, r, &fr.Colors[0][0])
+		draw.Draw(fr.B, r, &fr.Colors[0][0], r.Min, draw.Src)
 	}
 
 	fr.leftMargin = fixed.I(fr.R.Min.X) + fr.margin

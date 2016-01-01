@@ -4,7 +4,6 @@ import (
 	"image"
 	"image/draw"
 	"yacco/config"
-	"yacco/textframe"
 )
 
 type Cols struct {
@@ -95,8 +94,7 @@ func (cs *Cols) RecalcRects() {
 
 func (cs *Cols) Redraw() {
 	if len(cs.cols) <= 0 {
-		drawingFuncs := textframe.GetOptimizedDrawing(cs.b)
-		drawingFuncs.DrawFillSrc(cs.b, cs.r, &config.TheColorScheme.WindowBG)
+		draw.Draw(cs.b, cs.r, &config.TheColorScheme.WindowBG, cs.r.Min, draw.Src)
 	}
 
 	for _, c := range cs.cols {

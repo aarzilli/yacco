@@ -36,6 +36,10 @@ type Window struct {
 	Words     []string
 	Prop      map[string]string
 	lastWhere image.Point
+	
+	invalidRects []image.Rectangle
+	uploadMutex sync.Mutex
+	uploaderRunning bool
 }
 
 type LogicalPos struct {
@@ -102,7 +106,7 @@ func (w *Window) Init(s screen.Screen, width, height int) (err error) {
 		return err
 	}
 	
-	w.startUploader(image.Point{ width, height })
+	w.setupBuffer(image.Point{ width, height })
 		
 	w.SetTitle("Yacco")
 	//w.wnd.SetClass("yacco", "Yacco")
@@ -155,16 +159,62 @@ func (w *Window) SetTitle(title string) {
 func (w *Window) FlushImage(rects ...image.Rectangle) {
 	if len(rects) == 0 {
 		rects = append(rects, w.wndb.Bounds())
-	} else {
 	}
-	uploadMutex.Lock()
+	
+	w.invalidRects = append(w.invalidRects, rects...)
+	
+	if w.uploaderIsRunning() {
+		return
+	}
+	
+	rects = make([]image.Rectangle, 0, len(w.invalidRects))
+	for i := range w.invalidRects {
+		if w.invalidRects[i].Dx() == 0 || w.invalidRects[i].Dy() == 0 {
+			continue
+		}
+		add := true
+		for j := range rects {
+			if w.invalidRects[i].In(rects[j]) {
+				add = false
+				break
+			}
+		}
+		if add {
+			rects = append(rects, w.invalidRects[i])
+		}
+	}
+	w.invalidRects = w.invalidRects[:0]
+	if len(rects) == 0 {
+		return
+	}
 	for _, rect := range rects {
 		draw.Draw(w.wndb.RGBA(), rect, w.img, rect.Min, draw.Src)
 	}
-	uploadMutex.Unlock()
+	w.uploaderRunning = true
+	go w.upload(rects)
+}
+
+func (w *Window) upload(rects []image.Rectangle) {
+	defer func() {
+		w.uploadMutex.Lock()
+		w.uploaderRunning = false
+		w.uploadMutex.Unlock()
+		// runs a check for outstanding redraw requests that were queued while we were uploading
+		select {
+		case sideChan <- func() { w.FlushImage(image.Rect(0, 0, 0, 0)) }:
+		default:
+		}
+	}()
 	for _, rect := range rects {
-		uploadChan <- rect
+		w.wnd.Upload(rect.Min, w.wndb, rect)
 	}
+	w.wnd.Publish()
+}
+
+func (w *Window) uploaderIsRunning() bool {
+	w.uploadMutex.Lock()
+	defer w.uploadMutex.Unlock()
+	return w.uploaderRunning
 }
 
 func (w *Window) calcRects(screen draw.Image) {
@@ -186,66 +236,33 @@ func (w *Window) calcRects(screen draw.Image) {
 func (w *Window) padDraw(screen draw.Image) {
 	pad := screen.Bounds()
 
-	drawingFuncs := textframe.GetOptimizedDrawing(screen)
-	drawingFuncs.DrawFillSrc(screen, screen.Bounds().Intersect(pad), &config.TheColorScheme.WindowBG)
+	draw.Draw(screen, screen.Bounds().Intersect(pad), &config.TheColorScheme.WindowBG, screen.Bounds().Intersect(pad).Min, draw.Src)
 
 	pad.Max.X = config.ScrollWidth
 	pad.Max.Y = TagHeight(&Wnd.tagfr)
-	drawingFuncs.DrawFillSrc(screen, screen.Bounds().Intersect(pad), &config.TheColorScheme.TagPlain[0])
+	draw.Draw(screen, screen.Bounds().Intersect(pad), &config.TheColorScheme.TagPlain[0], screen.Bounds().Intersect(pad).Min, draw.Src)
 }
 
 func (w *Window) Resized(sz image.Point) {
-	if uploadChan != nil {
-		close(uploadChan)
-		<-uploadDone
+	if sz.X == w.wndb.Bounds().Dx() && sz.Y == w.wndb.Bounds().Dy() {
+		return
 	}
+	for w.uploaderIsRunning() {
+		time.Sleep(20 * time.Millisecond)
+	}
+	w.invalidRects = w.invalidRects[:0]
 	if w.wndb != nil {
 		w.wndb.Release()
 	}
-	w.startUploader(sz)
+	w.setupBuffer(sz)
 	w.RedrawHard()
 }
 
-func (w *Window) startUploader(sz image.Point) {
+func (w *Window) setupBuffer(sz image.Point) {
 	var err error
 	w.wndb, err = w.screen.NewBuffer(sz)
 	util.Must(err, "Buffer allocation failed")
 	w.img = image.NewRGBA(w.wndb.Bounds())
-	uploadChan = make(chan image.Rectangle, 1)
-	uploadDone = make(chan struct{})
-	go uploadFunc(w, uploadChan, uploadDone)
-}
-
-var uploadMutex sync.Mutex
-var uploadChan chan image.Rectangle
-var uploadDone chan struct{}
-
-func uploadFunc(w *Window, uploadChan <- chan image.Rectangle, uploadDone chan <- struct{}) {
-	fmt.Printf("uploadFunc started\n")
-	for rect := range uploadChan {
-		fmt.Printf("uploading %s\n", rect)
-		w.wnd.Upload(rect.Min, w.wndb, rect)
-		k := true
-		for k {
-			select {
-			case rect, ok := <- uploadChan:
-				if !ok {
-					k = false
-				} else {
-					fmt.Printf("uploading* %s %v\n", rect, ok)
-					uploadMutex.Lock()
-					w.wnd.Upload(rect.Min, w.wndb, rect)
-					uploadMutex.Unlock()
-				}
-			default:
-				k = false
-			}
-		}
-		fmt.Printf("publish!\n")
-		w.wnd.Publish()
-	}
-	fmt.Printf("uploadFunc dead\n")
-	close(uploadDone)
 }
 
 func (w *Window) RedrawHard() {

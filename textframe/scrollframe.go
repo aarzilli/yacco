@@ -58,12 +58,10 @@ When rdir > 0, rpar is the number of glyphs that don't need to be redrawn
 When rdir < 0, rpar is the first glyph that doesn't need to be redrawn
 */
 func (sfr *ScrollFrame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
-	drawingFuncs := GetOptimizedDrawing(sfr.b)
-
 	// scrollbar background
 	bgr := sfr.r
 	bgr.Max.X = bgr.Min.X + sfr.Width
-	drawingFuncs.DrawFillSrc(sfr.b, sfr.r.Intersect(bgr), &sfr.Color)
+	draw.Draw(sfr.b, sfr.r.Intersect(bgr), &sfr.Color, sfr.r.Intersect(bgr).Min, draw.Src)
 
 	// position indicator
 	posr := bgr
@@ -74,7 +72,7 @@ func (sfr *ScrollFrame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 		posz = 5
 	}
 	posr.Max.Y = posz + posr.Min.Y
-	drawingFuncs.DrawFillSrc(sfr.b, sfr.r.Intersect(posr), &sfr.Fr.Colors[0][0])
+	draw.Draw(sfr.b, sfr.r.Intersect(posr), &sfr.Fr.Colors[0][0], sfr.r.Intersect(posr).Min, draw.Src)
 
 	sfr.Fr.Redraw(false, predrawRects)
 

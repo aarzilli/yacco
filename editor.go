@@ -248,9 +248,7 @@ func (e *Editor) MinHeight() int {
 }
 
 func (e *Editor) redrawResizeHandle() {
-	drawingFuncs := textframe.GetOptimizedDrawing(e.sfr.Fr.B)
-
-	drawingFuncs.DrawFillSrc(e.sfr.Fr.B, e.rhandle, &config.TheColorScheme.HandleBG)
+	draw.Draw(e.sfr.Fr.B, e.rhandle, &config.TheColorScheme.HandleBG, e.rhandle.Min, draw.Src)
 
 	hir := e.rhandle
 	hir.Min.X += 2
@@ -267,12 +265,10 @@ func (e *Editor) redrawResizeHandle() {
 			rhc = &config.TheColorScheme.HandleFG
 		}
 	}
-	drawingFuncs.DrawFillSrc(e.sfr.Fr.B, hir, rhc)
+	draw.Draw(e.sfr.Fr.B, hir, rhc, hir.Min, draw.Src)
 }
 
 func (e *Editor) Redraw() {
-	drawingFuncs := textframe.GetOptimizedDrawing(e.sfr.Fr.B)
-
 	e.redrawResizeHandle()
 
 	// draw text frames
@@ -282,20 +278,18 @@ func (e *Editor) Redraw() {
 	// draw two-pixel border at the top and at the right of the editor
 	border := e.r
 	border.Max.Y = border.Min.Y + 2
-	drawingFuncs.DrawFillSrc(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.Border)
+	draw.Draw(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.Border, e.r.Intersect(border).Min,draw.Src)
 
 	if !e.last {
 		border = e.r
 		border.Min.X = border.Max.X - 2
-		drawingFuncs.DrawFillSrc(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.Border)
+		draw.Draw(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.Border, e.r.Intersect(border).Min, draw.Src)
 	}
 
 	e.redrawTagBorder()
 }
 
 func (e *Editor) redrawTagBorder() {
-	drawingFuncs := textframe.GetOptimizedDrawing(e.sfr.Fr.B)
-
 	// draw one-pixel tag border
 	border := e.r
 	if !e.last {
@@ -303,7 +297,7 @@ func (e *Editor) redrawTagBorder() {
 	}
 	border.Min.Y = e.tagfr.R.Max.Y
 	border.Max.Y = border.Min.Y + 1
-	drawingFuncs.DrawFillSrc(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.HandleBG)
+	draw.Draw(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.HandleBG, e.r.Intersect(border).Min, draw.Src)
 }
 
 func (e *Editor) GenTag() bool {

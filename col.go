@@ -198,23 +198,21 @@ func (c *Col) RecalcRects(last bool) {
 }
 
 func (c *Col) Redraw() {
-	drawingFuncs := textframe.GetOptimizedDrawing(c.tagfr.B)
-
 	br := c.r
 	if len(c.editors) == 0 {
-		drawingFuncs.DrawFillSrc(c.tagfr.B, br, &config.TheColorScheme.WindowBG)
+		draw.Draw(c.tagfr.B, br, &config.TheColorScheme.WindowBG, br.Min, draw.Src)
 	}
 
 	// border at the top of the column
 	br.Max.Y = br.Min.Y + 2
-	drawingFuncs.DrawFillSrc(c.tagfr.B, br, &config.TheColorScheme.Border)
+	draw.Draw(c.tagfr.B, br, &config.TheColorScheme.Border, br.Min, draw.Src)
 
 	// rectangle where the "button" would be
 	br = c.r
 	br.Min.Y += 2
 	br.Max.X = br.Min.X + config.ScrollWidth
 	br.Max.Y = c.tagfr.R.Max.Y
-	drawingFuncs.DrawFillSrc(c.tagfr.B, br, &config.TheColorScheme.HandleBG)
+	draw.Draw(c.tagfr.B, br, &config.TheColorScheme.HandleBG, br.Min, draw.Src)
 
 	// border right of the column tag
 	br.Min.X = c.r.Max.X - 2
@@ -222,7 +220,7 @@ func (c *Col) Redraw() {
 	if len(c.editors) <= 0 && (Wnd.cols.IndexOf(c) < len(Wnd.cols.cols)-1) {
 		br.Max.Y = c.r.Max.Y
 	}
-	drawingFuncs.DrawFillSrc(c.tagfr.B, br, &config.TheColorScheme.Border)
+	draw.Draw(c.tagfr.B, br, &config.TheColorScheme.Border, br.Min, draw.Src)
 
 	c.tagfr.Redraw(false, nil)
 
