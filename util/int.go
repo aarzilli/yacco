@@ -108,7 +108,7 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 					//println("Alting end")
 					em.alting = false
 				}
-			} else if conv, ok := keyConversion[e.String()]; ok {
+			} else if conv, ok := keyConversion[KeyEvent(e)]; ok {
 				e.Rune = conv.Rune
 				e.Code = conv.Code
 				e.Modifiers = conv.Modifiers
@@ -119,7 +119,7 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 			//println("Typed:", e.Glyph, e.Chord, "alting:", alting)
 
 		case key.DirRelease:
-			if e.Code == key.CodeRightAlt {
+			if e.Code == key.CodeRightAlt || e.Code == key.CodeCompose {
 				em.alting = true
 				em.altingSeq = ""
 			}

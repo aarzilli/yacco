@@ -972,7 +972,8 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 
 	default:
 		ec := lp.asExecContext(true)
-		if fcmd, ok := KeyBindings[e.String()]; ok {
+		//fmt.Printf("keypress: <%s>\n", util.KeyEvent(e))
+		if fcmd, ok := KeyBindings[util.KeyEvent(e)]; ok {
 			HideCompl()
 			//println("Execute command: <" + cmd + ">")
 			fcmd(ec)
