@@ -149,7 +149,7 @@ func (w *Window) Init(s screen.Screen, width, height int) (err error) {
 }
 
 func (w *Window) WarpMouse(p image.Point) {
-	//TODO: reimplement
+	w.wnd.WarpMouse(p)
 }
 
 func (w *Window) SetTitle(title string) {
