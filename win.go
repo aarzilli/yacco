@@ -153,7 +153,7 @@ func (w *Window) WarpMouse(p image.Point) {
 }
 
 func (w *Window) SetTitle(title string) {
-	//TODO: reimplement
+	w.wnd.SetTitle(title)
 }
 
 func (w *Window) FlushImage(rects ...image.Rectangle) {
@@ -540,8 +540,7 @@ func dist(a, b image.Point) float32 {
 }
 
 func (w *Window) EditorMove(col *Col, ed *Editor, e util.MouseDownEvent, events <-chan interface{}) {
-	//TODO: SetCursor
-	//w.wnd.SetCursor(wde.FleurCursor)
+	w.wnd.SetCursor(screen.FleurCursor)
 
 	startPos := e.Where
 	endPos := startPos
@@ -560,8 +559,7 @@ loop:
 			break loop
 
 		case mouse.DirPress:
-			//TODO: SetCursor
-			//w.wnd.SetCursor(DEFAULT_CURSOR)
+			w.wnd.SetCursor(screen.NormalCursor)
 			return // cancelled
 
 		case mouse.DirNone:
@@ -644,8 +642,7 @@ loop:
 		}
 	}
 
-	//TODO: SetCursor
-	//w.wnd.SetCursor(DEFAULT_CURSOR)
+	w.wnd.SetCursor(screen.NormalCursor)
 
 	if dist(startPos, endPos) < 10 {
 		d := endPos.Sub(ed.r.Min)
@@ -725,8 +722,7 @@ func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
 }
 
 func (w *Window) ColResize(col *Col, e util.MouseDownEvent, events <-chan interface{}) {
-	//TODO: SetCursor
-	//w.wnd.SetCursor(wde.FleurCursor)
+	w.wnd.SetCursor(screen.FleurCursor)
 
 	startPos := e.Where
 	endPos := startPos
@@ -744,8 +740,7 @@ loop:
 			break loop
 
 		case mouse.DirPress:
-			//TODO: SetCursor
-			//w.wnd.SetCursor(DEFAULT_CURSOR)
+			w.wnd.SetCursor(screen.NormalCursor)
 			return // cancelled
 
 		case mouse.DirNone:
@@ -786,8 +781,7 @@ loop:
 		}
 	}
 
-	//TODO: SetCursor
-	//w.wnd.SetCursor(DEFAULT_CURSOR)
+	w.wnd.SetCursor(screen.NormalCursor)
 }
 
 func (lp *LogicalPos) asExecContext(chord bool) ExecContext {
