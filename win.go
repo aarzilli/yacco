@@ -309,6 +309,14 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 	case paint.Event:
 		w.FlushImage()
 
+	case screen.CloseWindowEvent:
+		for w.uploaderIsRunning() {
+			time.Sleep(20 * time.Millisecond)
+		}
+		w.Close()
+		HideCompl()
+		FsQuit()
+
 	case size.Event:
 		HideCompl()
 		Wnd.Resized(e.Size())
