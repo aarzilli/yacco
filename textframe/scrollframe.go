@@ -104,9 +104,7 @@ func (sfr *ScrollFrame) scrollSetClick(event util.MouseDownEvent, events <-chan 
 			case mouse.DirRelease:
 				return
 			default:
-				if e.Button != mouse.ButtonNone {
-					set(image.Point{int(e.X), int(e.Y)})
-				}
+				set(image.Point{int(e.X), int(e.Y)})
 			}
 		}
 	}

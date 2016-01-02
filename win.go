@@ -563,9 +563,6 @@ loop:
 			return // cancelled
 
 		case mouse.DirNone:
-			if e.Button == mouse.ButtonNone {
-				break loop
-			}
 			endPos = image.Point{int(e.X), int(e.Y)}
 
 			// a bit of X stickiness after crossing columns
@@ -744,10 +741,6 @@ loop:
 			return // cancelled
 
 		case mouse.DirNone:
-			if e.Button != mouse.ButtonNone {
-				break loop
-			}
-
 			endPos = image.Point{int(e.X), int(e.Y)}
 
 			if !endPos.In(Wnd.cols.r) {
