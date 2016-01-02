@@ -12,7 +12,7 @@ import (
 
 type AltingEntry struct {
 	Seq   string
-	Glyph string
+	Glyph rune
 }
 
 type WheelEvent struct {
@@ -66,8 +66,7 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 				for _, altingEntry := range altingList {
 					if altingEntry.Seq == em.altingSeq {
 						//println("Emitting:", altingEntry.Glyph)
-						//TODO: inefficient, just have Glyph be a rune
-						em.appendEventOther(ET_OTHER, key.Event{Rune: ([]rune(altingEntry.Glyph))[0]})
+						em.appendEventOther(ET_OTHER, key.Event{Rune: altingEntry.Glyph})
 						em.alting = false
 						break
 					}
