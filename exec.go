@@ -168,7 +168,7 @@ The address "," represents the whole file.
 Select = left click (and drag)
 Execute = middle click, control + left click
 Search = right click, alt + left click
-Execute with argument = control + middle click, control + left click, super + left click
+Execute with argument = control + middle click, control + right click, super + left click
 
 Chords:
 - Left + middle: cut

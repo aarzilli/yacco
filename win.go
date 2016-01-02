@@ -1012,6 +1012,12 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *mouse.Event, events <-c
 		ee.Modifiers = e.Modifiers
 	}
 
+	alt := e.Modifiers&key.ModAlt != 0
+	ctrl := e.Modifiers&key.ModControl != 0
+	shift := e.Modifiers&key.ModShift != 0
+	meta := e.Modifiers&key.ModMeta != 0
+	_ = shift
+
 	switch e.Which {
 	case mouse.ButtonMiddle:
 		switch ee.Button {
@@ -1022,21 +1028,35 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *mouse.Event, events <-c
 		case mouse.ButtonRight:
 			// cancelled
 		default:
-			clickExec2(lp, e)
+			if ctrl {
+				clickExec2extra(lp, e)
+			} else {
+				clickExec2(lp, e)
+			}
 		}
 
-	/*
-		TODO: this is impossible :(
-		case mouse.ButtonRight | mouse.ButtonLeft:
-			clickExec2extra(lp, e)
-	*/
-
 	case mouse.ButtonRight:
-		if ee.Button != mouse.ButtonMiddle { // middle button cancels right button
-			clickExec3(lp, e)
+		if ctrl {
+			clickExec2extra(lp, e)
+		} else {
+			if ee.Button != mouse.ButtonMiddle { // middle button cancels right button
+				clickExec3(lp, e)
+			}
 		}
 
 	case mouse.ButtonLeft:
+		switch {
+		case alt:
+			clickExec3(lp, e)
+			return
+		case ctrl:
+			clickExec2(lp, e)
+			return
+		case meta:
+			clickExec2extra(lp, e)
+			return
+		}
+
 		switch ee.Button {
 		case mouse.ButtonMiddle:
 			clickExec12(lp, events)

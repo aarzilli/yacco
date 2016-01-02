@@ -54,35 +54,6 @@ type eventMachine struct {
 	events []eventWrapper
 }
 
-func (em *eventMachine) fixButton(which *mouse.Button, modifiers key.Modifiers, down bool, up bool) {
-	alt := (modifiers & key.ModAlt) != 0
-	ctrl := modifiers&key.ModControl != 0
-	shift := modifiers&key.ModShift != 0
-	meta := modifiers&key.ModMeta != 0
-	_ = shift
-
-	switch *which {
-	case mouse.ButtonLeft:
-		switch {
-		case alt:
-			*which = mouse.ButtonRight
-		case ctrl:
-			*which = mouse.ButtonMiddle
-		case meta:
-			*which = mouse.ButtonMiddle | mouse.ButtonLeft
-		}
-	case mouse.ButtonMiddle:
-		switch {
-		case ctrl:
-			*which = mouse.ButtonMiddle | mouse.ButtonLeft
-		}
-	case mouse.ButtonRight:
-		if ctrl {
-			*which = mouse.ButtonMiddle | mouse.ButtonLeft
-		}
-	}
-}
-
 func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, keyConversion map[string]key.Event) {
 	switch e := ei.(type) {
 	case key.Event:
@@ -132,7 +103,6 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 			if e.Button == mouse.ButtonNone {
 				em.appendMouseMovedEvent(e)
 			} else {
-				em.fixButton(&e.Button, e.Modifiers, false, false)
 				em.appendMouseDraggedEvent(e)
 			}
 
@@ -142,7 +112,6 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 			}
 
 			where := image.Point{int(e.X), int(e.Y)}
-			em.fixButton(&e.Button, e.Modifiers, true, false)
 			switch e.Button {
 			case mouse.ButtonWheelUp:
 				em.appendWheelEvent(where, -1)
@@ -179,7 +148,6 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 			if e.Button == mouse.ButtonNone {
 				break
 			}
-			em.fixButton(&e.Button, e.Modifiers, false, true)
 			em.appendEventOther(ET_OTHER, e)
 		}
 

@@ -423,7 +423,7 @@ func (fr *Frame) Select(idx, kind int, button mouse.Button, events <-chan interf
 		case ei := <-events:
 			switch e := ei.(type) {
 			case mouse.Event:
-				if e.Button == 0 || e.Direction == mouse.DirRelease {
+				if e.Direction == mouse.DirRelease {
 					stopAutoscroll()
 					return &e
 				}
