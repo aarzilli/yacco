@@ -417,6 +417,9 @@ func (fr *Frame) Select(idx, kind int, button mouse.Button, events <-chan interf
 
 	var lastPos image.Point
 
+	r := fr.R
+	r.Max.Y -= 2
+
 	for {
 		runtime.Gosched()
 		select {
@@ -430,7 +433,7 @@ func (fr *Frame) Select(idx, kind int, button mouse.Button, events <-chan interf
 
 				where := image.Point{int(e.X), int(e.Y)}
 				lastPos = where
-				if where.In(fr.R) {
+				if where.In(r) {
 					stopAutoscroll()
 
 					p := fr.CoordToPoint(where)
@@ -1003,11 +1006,13 @@ func (fr *Frame) scrollDir(recalcPos image.Point) int {
 		return 0
 	}
 
-	if recalcPos.Y < fr.R.Min.Y {
+	mid := (fr.R.Min.Y + fr.R.Max.Y) / 2
+
+	if recalcPos.Y < mid {
 		return -1
 	}
 
-	if recalcPos.Y > fr.R.Max.Y {
+	if recalcPos.Y > mid {
 		return +1
 	}
 
