@@ -78,7 +78,9 @@ func main() {
 		util.Allergic(debug, err)
 		defer fd.Close()
 		entries, err := fd.Readdir(0)
-		util.Allergic(debug, err)
+		if err != io.EOF {
+			util.Allergic(debug, err)
+		}
 
 		for _, entry := range entries {
 			t := ""
