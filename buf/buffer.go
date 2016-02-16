@@ -538,7 +538,7 @@ func (b *Buffer) At(p int) *textframe.ColorRune {
 
 // Returns the specified selection as two slices. The slices are to be treated as contiguous and may be empty
 func (b *Buffer) Selection(sel util.Sel) ([]textframe.ColorRune, []textframe.ColorRune) {
-	//println(sel.S, sel.E)
+	b.FixSel(&sel)
 	ps := b.phisical(sel.S)
 	pe := b.phisical(sel.E)
 
