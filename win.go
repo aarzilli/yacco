@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
@@ -1283,12 +1282,7 @@ func (w *Window) GenTag() {
 	pwd, _ := os.Getwd()
 	pwd = util.ShortPath(pwd, false)
 
-	njobs := JobsNum()
-
-	t := pwd + " " + string(config.DefaultWindowTag) + usertext
-	if njobs > 0 {
-		t = fmt.Sprintf("%d", njobs) + " " + t
-	}
+	t := JobsDescr() + pwd + " " + string(config.DefaultWindowTag) + usertext
 
 	w.tagbuf.EditableStart = -1
 	w.tagbuf.Replace([]rune(t), &w.tagfr.Sel, true, nil, 0)

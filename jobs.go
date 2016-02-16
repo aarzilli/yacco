@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -320,4 +321,27 @@ func JobsNum() int {
 	}
 	jobsMutex.Unlock()
 	return n
+}
+
+func JobsDescr() string {
+	v := []string{}
+	jobsMutex.Lock()
+	for _, job := range jobs {
+		if job == nil {
+			continue
+		}
+		v = append(v, filepath.Base(job.cmd.Path))
+	}
+	jobsMutex.Unlock()
+
+	tl := 0
+	for _, s := range v {
+		tl += len(s)
+	}
+
+	if tl > 30 {
+		return strconv.Itoa(JobsNum())
+	}
+
+	return strings.Join(v, " ") + " "
 }
