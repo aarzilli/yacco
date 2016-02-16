@@ -94,7 +94,6 @@ func readEvents(buf *util.BufferConn, searchChan chan<- string, openChan chan<- 
 			if arg == needle {
 				select {
 				case openChan <- struct{}{}:
-					return
 				default:
 				}
 			} else {
