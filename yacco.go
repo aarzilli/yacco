@@ -61,12 +61,6 @@ func setTheme(t string) {
 		config.TheColorScheme = config.AtomColorScheme
 	}
 
-	if !config.ColorEnabled {
-		for _, uv := range []*[]image.Uniform{&config.TheColorScheme.EditorPlain, &config.TheColorScheme.EditorSel1, &config.TheColorScheme.EditorSel2, &config.TheColorScheme.EditorSel3} {
-			*uv = (*uv)[:2]
-		}
-	}
-
 	tagColors[0] = config.TheColorScheme.TagPlain
 	tagColors[1] = config.TheColorScheme.TagSel1
 	tagColors[2] = config.TheColorScheme.TagSel2

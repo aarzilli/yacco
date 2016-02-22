@@ -44,7 +44,6 @@ const (
 
 type Frame struct {
 	Font            *util.Font
-	Font2           *util.Font
 	Hackflags       uint32
 	B               draw.Image      // the image the text will be drawn upon
 	R               image.Rectangle // the rectangle occupied by the frame
@@ -99,20 +98,15 @@ The color matrix must have as many rows as there are selections (empty or otherw
 The very first row of the color matrix are the colors used for unselected text.
 */
 
-type subfont struct {
-	idx     int
-	fontIdx int
-}
-
 type glyph struct {
-	r       rune
-	subfont subfont
-	index   truetype.Index
-	width   fixed.Int26_6
-	kerning fixed.Int26_6
-	widthy  fixed.Int26_6
-	p       fixed.Point26_6
-	color   uint8
+	r         rune
+	fontIndex int
+	index     truetype.Index
+	width     fixed.Int26_6
+	kerning   fixed.Int26_6
+	widthy    fixed.Int26_6
+	p         fixed.Point26_6
+	color     uint8
 }
 
 // Initializes frame
@@ -226,13 +220,13 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 
 		if crune.R == '\n' {
 			g := glyph{
-				r:       crune.R,
-				subfont: subfont{0, 0},
-				index:   spaceIndex,
-				p:       fr.ins,
-				color:   uint8(crune.C & COLORMASK),
-				width:   fixed.I(fr.R.Max.X) - fr.ins.X - fr.margin,
-				widthy:  lh,
+				r:         crune.R,
+				fontIndex: 0,
+				index:     spaceIndex,
+				p:         fr.ins,
+				color:     uint8(crune.C & COLORMASK),
+				width:     fixed.I(fr.R.Max.X) - fr.ins.X - fr.margin,
+				widthy:    lh,
 			}
 
 			fr.glyphs = append(fr.glyphs, g)
@@ -244,12 +238,12 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 			toNextCell := fr.toNextCell(spaceWidth, tabWidth, fr.leftMargin)
 
 			g := glyph{
-				r:       crune.R,
-				subfont: subfont{0, 0},
-				index:   spaceIndex,
-				p:       fr.ins,
-				color:   uint8(crune.C & COLORMASK),
-				width:   toNextCell,
+				r:         crune.R,
+				fontIndex: 0,
+				index:     spaceIndex,
+				p:         fr.ins,
+				color:     uint8(crune.C & COLORMASK),
+				width:     toNextCell,
 			}
 
 			fr.glyphs = append(fr.glyphs, g)
@@ -278,12 +272,12 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 			}
 
 			g := glyph{
-				r:       crune.R,
-				subfont: subfont{0, 0},
-				index:   spaceIndex,
-				p:       fr.ins,
-				color:   uint8(crune.C & COLORMASK),
-				width:   width,
+				r:         crune.R,
+				fontIndex: 0,
+				index:     spaceIndex,
+				p:         fr.ins,
+				color:     uint8(crune.C & COLORMASK),
+				width:     width,
 			}
 
 			fr.glyphs = append(fr.glyphs, g)
@@ -300,18 +294,11 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 				}
 			}
 
-			f := fr.Font
-			fidx := 0
-			if crune.C > 1 {
-				fidx = 1
-				f = fr.Font2
-			}
-
-			fontIdx, index := f.Index(lur)
-			width, _, _, _ := f.Glyph(fontIdx, index, fr.ins)
+			fontIdx, index := fr.Font.Index(lur)
+			width, _, _, _ := fr.Font.Glyph(fontIdx, index, fr.ins)
 			kerning := fixed.I(0)
 			if hasPrev && (fontIdx == prevFontIdx) {
-				kerning = f.GlyphKerning(fontIdx, prev, index)
+				kerning = fr.Font.GlyphKerning(fontIdx, prev, index)
 				fr.ins.X += kerning
 			}
 
@@ -323,13 +310,13 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 			}
 
 			g := glyph{
-				r:       crune.R,
-				subfont: subfont{fidx, fontIdx},
-				index:   index,
-				p:       fr.ins,
-				color:   uint8(crune.C & COLORMASK),
-				kerning: kerning,
-				width:   width,
+				r:         crune.R,
+				fontIndex: fontIdx,
+				index:     index,
+				p:         fr.ins,
+				color:     uint8(crune.C & COLORMASK),
+				kerning:   kerning,
+				width:     width,
 			}
 
 			fr.glyphs = append(fr.glyphs, g)
@@ -350,6 +337,19 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 		fr.lastFull = len(fr.glyphs)
 	}
 	return
+}
+
+func (fr *Frame) RefreshColors(a, b []ColorRune) {
+	for i := range fr.glyphs {
+		var crune ColorRune
+		if i < len(a) {
+			crune = a[i]
+		} else {
+			crune = b[i-len(a)]
+		}
+		fr.glyphs[i].r = crune.R
+		fr.glyphs[i].color = uint8(crune.C & COLORMASK)
+	}
 }
 
 // Mesures the length of the string
@@ -940,13 +940,8 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 		}
 		newline = (g.r == '\n')
 
-		f := fr.Font
-		if g.subfont.idx != 0 {
-			f = fr.Font2
-		}
-
 		// Glyph drawing
-		_, mask, gr, _ := f.Glyph(g.subfont.fontIdx, g.index, g.p)
+		_, mask, gr, _ := fr.Font.Glyph(g.fontIndex, g.index, g.p)
 		dr := fr.R.Intersect(gr)
 		if !dr.Empty() {
 			mp := image.Point{dr.Min.X - gr.Min.X, dr.Min.Y - gr.Min.Y}
@@ -963,11 +958,7 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 }
 
 func (fr *Frame) drawSingleGlyph(g *glyph, ssel int) {
-	f := fr.Font
-	if g.subfont.idx != 0 {
-		f = fr.Font2
-	}
-	_, mask, gr, _ := f.Glyph(g.subfont.fontIdx, g.index, g.p)
+	_, mask, gr, _ := fr.Font.Glyph(g.fontIndex, g.index, g.p)
 	// Glyph drawing
 	dr := fr.R.Intersect(gr)
 	if !dr.Empty() {

@@ -94,7 +94,6 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 		Color: config.TheColorScheme.Scrollbar,
 		Fr: textframe.Frame{
 			Font:            config.MainFont,
-			Font2:           config.MainFont2,
 			Hackflags:       hf,
 			Scroll:          nil,
 			ExpandSelection: edutil.MakeExpandSelectionFn(e.bodybuf),
@@ -111,7 +110,6 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 
 	e.tagfr = textframe.Frame{
 		Font:            config.TagFont,
-		Font2:           config.TagFont,
 		Hackflags:       hf,
 		Scroll:          func(sd, sl int) {},
 		ExpandSelection: edutil.MakeExpandSelectionFn(e.tagbuf),
@@ -358,8 +356,6 @@ func (e *Editor) refreshIntl(full bool) {
 	}
 	e.refreshOpt.top = e.otherSel[OS_TOP].E
 
-	edutil.DoHighlightingConsistency(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, Highlight)
-
 	e.sfr.Fr.Clear()
 	e.sfr.Set(e.otherSel[OS_TOP].E, e.bodybuf.Size())
 	e.bodybuf.Rdlock()
@@ -370,6 +366,7 @@ func (e *Editor) refreshIntl(full bool) {
 
 	e.refreshOpt.revCount = e.bodybuf.RevCount
 
+	edutil.DoHighlightingConsistency(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, Highlight)
 }
 
 func (e *Editor) TagRefresh() {

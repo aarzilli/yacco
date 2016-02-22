@@ -17,14 +17,13 @@ type configObj struct {
 		ServeTCP           bool
 		HideHidden         bool
 		QuoteHack          bool
-		ColorEnabled       bool
 	}
 	Fonts       map[string]*configFont
 	Load        *configLoadRules
 	KeyBindings *configKeys
 }
 
-var admissibleFonts = []string{"Main", "Main2", "Tag", "Alt", "Compl"}
+var admissibleFonts = []string{"Main", "Tag", "Alt", "Compl"}
 
 type configFont struct {
 	Pixel       int
@@ -112,16 +111,13 @@ func LoadConfiguration(path string) {
 	}
 
 	MainFont = fontFromConf(*co.Fonts["Main"], co.Fonts)
-	MainFont2 = fontFromConf(*co.Fonts["Main2"], co.Fonts)
 	TagFont = fontFromConf(*co.Fonts["Tag"], co.Fonts)
 	AltFont = fontFromConf(*co.Fonts["Alt"], co.Fonts)
 	ComplFont = fontFromConf(*co.Fonts["Compl"], co.Fonts)
 	EnableHighlighting = co.Core.EnableHighlighting
-	ColorEnabled = co.Core.ColorEnabled
 	ServeTCP = co.Core.ServeTCP
 	HideHidden = co.Core.HideHidden
 	QuoteHack = co.Core.QuoteHack
-
 }
 
 func admissibleValues(m []string, a []string) (bool, string) {
