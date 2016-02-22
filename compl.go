@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-	"golang.org/x/exp/shiny/screen"
 	"image"
 	"image/draw"
 	"os"
@@ -15,9 +13,7 @@ import (
 	"yacco/util"
 )
 
-var ComplWnd screen.Window
-var ComplWndSaved screen.Window
-var complWndBuf screen.Buffer
+var complVisible bool
 var complRect image.Rectangle
 var complImg *image.RGBA
 var complPrefixSuffix string
@@ -26,6 +22,9 @@ const COMPL_MAXX = 512
 const COMPL_MAXY = 200
 
 func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
+	if complImg == nil {
+		complImg = image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{COMPL_MAXX, COMPL_MAXY}})
+	}
 	fr := textframe.Frame{
 		Font:      config.ComplFont,
 		Hackflags: textframe.HF_TRUNCATE,
@@ -52,6 +51,7 @@ func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 	if limit.Y > COMPL_MAXY {
 		limit.Y = COMPL_MAXY
 	}
+	complRect.Min = image.ZP
 	complRect.Max = limit
 
 	bd := complRect
@@ -73,37 +73,16 @@ func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 	return complRect, complImg
 }
 
-/*
-func ComplWndEventLoop(eventLoopExit chan struct{}) {
-	//println("Compl event loop started")
-	events := ComplWnd.Events()
-	for {
-		runtime.Gosched()
-		select {
-		case ei := <-events:
-			switch ei.(type) {
-			case size.Event:
-				ComplDraw(complImg, complRect)
-			}
-		case <-eventLoopExit:
-			return
-		}
-	}
-	//println("Loop done")
-}*/
-
 func HideCompl() bool {
-	if ComplWnd != nil {
-		ComplWnd.Hide()
-		ComplWnd = nil
-		return true
+	if !complVisible {
+		return false
 	}
-	return false
-}
-
-func ComplDraw(b *image.RGBA, r image.Rectangle) {
-	ComplWndSaved.Upload(complRect.Min, complWndBuf, complRect)
-	ComplWndSaved.Publish()
+	complVisible = false
+	select {
+	case sideChan <- func() { Wnd.FlushImage(Wnd.img.Bounds().Intersect(complRect)) }:
+	default:
+	}
+	return true
 }
 
 func ComplStart(ec ExecContext) {
@@ -198,32 +177,26 @@ func ComplStart(ec ExecContext) {
 		txt += "\n...\n"
 	}
 
-	if ComplWndSaved == nil {
-		ComplWnd, _ = Wnd.wnd.NewTemp(nil)
-		ComplWndSaved = ComplWnd
-		if ComplWnd == nil {
-			fmt.Println("Error creating completion window")
-			return
-		}
+	complWasVisible := complVisible
+	oldComplRect := complRect
+	complRect, complImg = PrepareCompl(txt)
+	complRect = complRect.Add(ec.fr.PointToCoord(ec.fr.Sel.S).Add(image.Point{2, 4}))
+	complVisible = true
 
-		var err error
-		complWndBuf, err = Wnd.screen.NewBuffer(image.Point{COMPL_MAXX, COMPL_MAXY})
-		if err != nil {
-			fmt.Println("Error creating buffer")
-			return
-		}
+	var fn func()
 
-		complRect = complWndBuf.Bounds()
+	if complWasVisible {
+		fn = func() {
+			Wnd.FlushImage(Wnd.img.Bounds().Intersect(oldComplRect), Wnd.img.Bounds().Intersect(complRect))
+		}
 	} else {
-		ComplWnd = ComplWndSaved
+		fn = func() { Wnd.FlushImage(Wnd.img.Bounds().Intersect(complRect)) }
 	}
 
-	complImg = complWndBuf.RGBA()
-	complRect, complImg = PrepareCompl(txt)
-	p := ec.fr.PointToCoord(ec.fr.Sel.S).Add(image.Point{2, 4})
-	ComplWnd.Move(p, complRect.Max)
-	ComplDraw(complImg, complRect)
-	ComplWnd.Show()
+	select {
+	case sideChan <- fn:
+	default:
+	}
 }
 
 var fsComplRunning = map[string]bool{}

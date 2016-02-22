@@ -3,10 +3,10 @@ package main
 import (
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/mobile/event/key"
+	"golang.org/x/mobile/event/lifecycle"
 	"golang.org/x/mobile/event/mouse"
 	"golang.org/x/mobile/event/paint"
 	"golang.org/x/mobile/event/size"
-	"golang.org/x/mobile/event/lifecycle"
 	"image"
 	"image/draw"
 	"math"
@@ -188,6 +188,9 @@ func (w *Window) FlushImage(rects ...image.Rectangle) {
 	}
 	for _, rect := range rects {
 		draw.Draw(w.wndb.RGBA(), rect, w.img, rect.Min, draw.Src)
+	}
+	if complVisible {
+		draw.Draw(w.wndb.RGBA(), complRect, complImg, image.ZP, draw.Src)
 	}
 	w.uploaderRunning = true
 	go w.upload(rects)
@@ -943,7 +946,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 	case key.CodeTab:
 		ec := lp.asExecContext(true)
 		if ec.buf != nil {
-			if ComplWnd != nil {
+			if complVisible {
 				ec.buf.Replace([]rune(complPrefixSuffix), &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
 				ec.br()
 				ComplStart(ec)
@@ -961,7 +964,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		}
 
 	case key.CodeInsert:
-		if ComplWnd == nil {
+		if !complVisible {
 			ec := lp.asExecContext(true)
 			ComplStart(ec)
 		}
