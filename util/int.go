@@ -1,7 +1,9 @@
 package util
 
 import (
+	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/mobile/event/key"
+	"golang.org/x/mobile/event/lifecycle"
 	"golang.org/x/mobile/event/mouse"
 	"golang.org/x/mobile/event/size"
 	"image"
@@ -158,7 +160,7 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 	}
 }
 
-func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion map[string]key.Event) chan interface{} {
+func FilterEvents(queue screen.EventQueue, altingList []AltingEntry, keyConversion map[string]key.Event) chan interface{} {
 	var em eventMachine
 
 	em.dblclickp = image.Point{0, 0}
@@ -177,6 +179,21 @@ func FilterEvents(in <-chan interface{}, altingList []AltingEntry, keyConversion
 	lastWheel := time.Unix(0, 0)
 
 	var ticker *time.Ticker = nil
+
+	in := make(chan interface{})
+
+	go func() {
+		for {
+			event := queue.NextEvent()
+			in <- event
+			switch e := event.(type) {
+			case lifecycle.Event:
+				if e.To == lifecycle.StageDead {
+					return
+				}
+			}
+		}
+	}()
 
 	go func() {
 		for {

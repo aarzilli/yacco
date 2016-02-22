@@ -7,6 +7,7 @@ import (
 	"golang.org/x/mobile/event/mouse"
 	"golang.org/x/mobile/event/paint"
 	"golang.org/x/mobile/event/size"
+	"golang.org/x/mobile/event/lifecycle"
 	"image"
 	"image/draw"
 	"math"
@@ -277,7 +278,7 @@ func (w *Window) RedrawHard() {
 }
 
 func (w *Window) EventLoop() {
-	wndEvents := util.FilterEvents(Wnd.wnd.Events(), config.AltingList, config.KeyConversion)
+	wndEvents := util.FilterEvents(Wnd.wnd, config.AltingList, config.KeyConversion)
 
 	lastWordUpdate := time.Now()
 
@@ -309,13 +310,15 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 	case paint.Event:
 		w.FlushImage()
 
-	case screen.CloseWindowEvent:
-		for w.uploaderIsRunning() {
-			time.Sleep(20 * time.Millisecond)
+	case lifecycle.Event:
+		if e.To == lifecycle.StageDead {
+			for w.uploaderIsRunning() {
+				time.Sleep(20 * time.Millisecond)
+			}
+			w.Close()
+			HideCompl()
+			FsQuit()
 		}
-		w.Close()
-		HideCompl()
-		FsQuit()
 
 	case size.Event:
 		HideCompl()
