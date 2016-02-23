@@ -122,9 +122,21 @@ func realmain(s screen.Screen) {
 
 	hasarg := false
 	if *dumpFlag == "" {
+		toline := -1
 		for _, arg := range flag.Args() {
-			hasarg = true
-			EditFind(wd, arg, false, true)
+			if len(arg) > 0 && arg[0] == '+' {
+				toline, _ = strconv.Atoi(arg)
+			} else {
+				hasarg = true
+				ed, _ := EditFind(wd, arg, false, true)
+				if toline > 0 && ed != nil {
+					addr := edit.AddrList{
+						[]edit.Addr{&edit.AddrBase{"", strconv.Itoa(toline), +1},
+							&edit.AddrBase{"#", "0", -1}}}
+					ed.sfr.Fr.Sel = addr.Eval(ed.bodybuf, ed.sfr.Fr.Sel)
+					ed.BufferRefresh()
+				}
+			}
 		}
 	} else {
 		dumpDest := getDumpPath(*dumpFlag, false)

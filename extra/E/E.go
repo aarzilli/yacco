@@ -32,7 +32,15 @@ func main() {
 	util.Allergic(debug, err)
 
 	wd, _ := os.Getwd()
+	toline := ""
 	path := os.Args[1]
+	if len(path) > 0 && path[0] == '+' {
+		if len(os.Args) < 3 {
+			return
+		}
+		toline = os.Args[1]
+		path = os.Args[2]
+	}
 	abspath := util.ResolvePath(wd, path)
 
 	ctlfd, err := p9clnt.FOpen("/new/ctl", p.ORDWR)
@@ -40,10 +48,20 @@ func main() {
 	ctlln := read(ctlfd)
 	outbufid := strings.TrimSpace(ctlln[:11])
 
-	_, err = ctlfd.Write([]byte(fmt.Sprintf("name %s", abspath)))
+	_, err = fmt.Fprintf(ctlfd, "name %s", abspath)
 	util.Allergic(debug, err)
-	_, err = ctlfd.Write([]byte(fmt.Sprintf("get")))
+	_, err = fmt.Fprintf(ctlfd, "get")
 	util.Allergic(debug, err)
+
+	if toline != "" {
+		addrfd, err := p9clnt.FOpen("/"+outbufid+"/addr", p.OWRITE)
+		util.Allergic(debug, err)
+		_, err = io.WriteString(addrfd, toline)
+		util.Allergic(debug, err)
+		_, err = fmt.Fprintf(ctlfd, "dot=addr")
+		util.Allergic(debug, err)
+	}
+
 	ctlfd.Close()
 
 	for {
