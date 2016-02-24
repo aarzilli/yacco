@@ -168,7 +168,8 @@ func (w *Window) FlushImage(rects ...image.Rectangle) {
 
 	rects = make([]image.Rectangle, 0, len(w.invalidRects))
 	for i := range w.invalidRects {
-		if w.invalidRects[i].Dx() == 0 || w.invalidRects[i].Dy() == 0 {
+		w.invalidRects[i] = w.wndb.Bounds().Intersect(w.invalidRects[i])
+		if w.invalidRects[i].Dx() <= 0 || w.invalidRects[i].Dy() <= 0 {
 			continue
 		}
 		add := true
@@ -208,7 +209,10 @@ func (w *Window) upload(rects []image.Rectangle) {
 		}
 	}()
 	for _, rect := range rects {
-		w.wnd.Upload(rect.Min, w.wndb, rect)
+		rect := w.wndb.Bounds().Intersect(rect)
+		if rect.Dx() > 0 && rect.Dy() > 0 {
+			w.wnd.Upload(rect.Min, w.wndb, rect)
+		}
 	}
 	w.wnd.Publish()
 }
