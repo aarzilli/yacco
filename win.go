@@ -30,6 +30,7 @@ type Window struct {
 	wnd       screen.Window
 	wndb      screen.Buffer
 	img       *image.RGBA
+	bounds    image.Rectangle
 	cols      *Cols
 	tagfr     textframe.Frame
 	tagbuf    *buf.Buffer
@@ -110,7 +111,7 @@ func (w *Window) Init(s screen.Screen, width, height int) (err error) {
 
 	w.SetTitle("Yacco")
 	//w.wnd.SetClass("yacco", "Yacco")
-	w.cols = NewCols(w, w.wndb.Bounds())
+	w.cols = NewCols(w, w.bounds)
 	cwd, _ := os.Getwd()
 	w.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true, Wnd.Prop["indentchar"])
 	if err != nil {
@@ -138,9 +139,9 @@ func (w *Window) Init(s screen.Screen, width, height int) (err error) {
 
 	w.GenTag()
 
-	w.calcRects(w.img)
+	w.calcRects()
 
-	w.padDraw(w.img)
+	w.padDraw()
 	w.tagfr.Redraw(false, nil)
 	w.cols.Redraw()
 
@@ -157,7 +158,7 @@ func (w *Window) SetTitle(title string) {
 
 func (w *Window) FlushImage(rects ...image.Rectangle) {
 	if len(rects) == 0 {
-		rects = append(rects, w.wndb.Bounds())
+		rects = append(rects, w.bounds)
 	}
 
 	w.invalidRects = append(w.invalidRects, rects...)
@@ -168,7 +169,7 @@ func (w *Window) FlushImage(rects ...image.Rectangle) {
 
 	rects = make([]image.Rectangle, 0, len(w.invalidRects))
 	for i := range w.invalidRects {
-		w.invalidRects[i] = w.wndb.Bounds().Intersect(w.invalidRects[i])
+		w.invalidRects[i] = w.bounds.Intersect(w.invalidRects[i])
 		if w.invalidRects[i].Dx() <= 0 || w.invalidRects[i].Dy() <= 0 {
 			continue
 		}
@@ -209,7 +210,7 @@ func (w *Window) upload(rects []image.Rectangle) {
 		}
 	}()
 	for _, rect := range rects {
-		rect := w.wndb.Bounds().Intersect(rect)
+		rect := w.bounds.Intersect(rect)
 		if rect.Dx() > 0 && rect.Dy() > 0 {
 			w.wnd.Upload(rect.Min, w.wndb, rect)
 		}
@@ -223,34 +224,41 @@ func (w *Window) uploaderIsRunning() bool {
 	return w.uploaderRunning
 }
 
-func (w *Window) calcRects(screen draw.Image) {
-	r := screen.Bounds()
+func (w *Window) calcRects() {
+	r := w.bounds
 
 	colsr := r
 	colsr.Min.Y += TagHeight(&w.tagfr)
 
-	w.cols.SetRects(w, screen, r.Intersect(colsr))
+	w.cols.SetRects(w, w.img, r.Intersect(colsr))
 
 	w.tagfr.R = r
 	w.tagfr.R.Min.X += config.ScrollWidth
 	w.tagfr.R.Max.Y = w.tagfr.R.Min.Y + TagHeight(&w.tagfr)
 	w.tagfr.R = r.Intersect(w.tagfr.R)
-	w.tagfr.B = screen
+	w.tagfr.B = w.img
 	w.BufferRefresh()
 }
 
-func (w *Window) padDraw(screen draw.Image) {
-	pad := screen.Bounds()
+func (w *Window) padDraw() {
+	pad := w.bounds
 
-	draw.Draw(screen, screen.Bounds().Intersect(pad), &config.TheColorScheme.WindowBG, screen.Bounds().Intersect(pad).Min, draw.Src)
+	draw.Draw(w.img, pad, &config.TheColorScheme.WindowBG, pad.Min, draw.Src)
 
 	pad.Max.X = config.ScrollWidth
 	pad.Max.Y = TagHeight(&Wnd.tagfr)
-	draw.Draw(screen, screen.Bounds().Intersect(pad), &config.TheColorScheme.TagPlain[0], screen.Bounds().Intersect(pad).Min, draw.Src)
+	draw.Draw(w.img, w.bounds.Intersect(pad), &config.TheColorScheme.TagPlain[0], w.bounds.Intersect(pad).Min, draw.Src)
 }
 
 func (w *Window) Resized(sz image.Point) {
 	if sz.X == w.wndb.Bounds().Dx() && sz.Y == w.wndb.Bounds().Dy() {
+		return
+	}
+	if sz.X <= w.bounds.Dx() && sz.Y <= w.bounds.Dy() {
+		w.bounds.Max.Y = w.bounds.Min.Y + sz.Y
+		w.bounds.Max.X = w.bounds.Min.X + sz.X
+		w.invalidRects = w.invalidRects[:0]
+		w.RedrawHard()
 		return
 	}
 	for w.uploaderIsRunning() {
@@ -269,12 +277,13 @@ func (w *Window) setupBuffer(sz image.Point) {
 	w.wndb, err = w.screen.NewBuffer(sz)
 	util.Must(err, "Buffer allocation failed")
 	w.img = image.NewRGBA(w.wndb.Bounds())
+	w.bounds = w.wndb.Bounds()
 }
 
 func (w *Window) RedrawHard() {
-	w.calcRects(w.img)
+	w.calcRects()
 
-	w.padDraw(w.img)
+	w.padDraw()
 
 	w.cols.Redraw()
 	w.tagfr.Invalidate()
