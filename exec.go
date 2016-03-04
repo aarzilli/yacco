@@ -841,6 +841,7 @@ func SendCmd(ec ExecContext, arg string) {
 	} else {
 		txt = []rune(clipboard.Get())
 	}
+	ec.ed.sfr.Fr.SelColor = 0
 	ec.ed.sfr.Fr.Sel = util.Sel{ec.buf.Size(), ec.buf.Size()}
 	if (len(txt) > 0) && (txt[len(txt)-1] != '\n') {
 		txt = append(txt, rune('\n'))

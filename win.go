@@ -952,6 +952,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 			addr := edit.AddrList{
 				[]edit.Addr{&edit.AddrBase{"", strconv.Itoa(n), dir},
 					&edit.AddrBase{"#", "0", -1}}}
+			lp.ed.sfr.Fr.SelColor = 0
 			lp.ed.sfr.Fr.Sel = addr.Eval(lp.ed.bodybuf, lp.ed.sfr.Fr.Sel)
 			lp.ed.BufferRefresh()
 		}

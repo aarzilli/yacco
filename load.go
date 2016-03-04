@@ -199,6 +199,7 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 					recover()
 					// do nothing, doesn't matter anyway
 				}()
+				newed.sfr.Fr.SelColor = 0
 				newed.sfr.Fr.Sel = util.Sel{0, 0}
 				newed.sfr.Fr.Sel = edit.AddrEval(addrExpr, newed.bodybuf, newed.sfr.Fr.Sel)
 				newed.PushJump()

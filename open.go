@@ -120,6 +120,7 @@ func Warnfull(bufname, msg string, clear bool, selectit bool) {
 	if err != nil {
 		fmt.Printf("Warn: %s (additionally error %s while displaying this warning)\n", msg, err.Error())
 	} else {
+		ed.sfr.Fr.SelColor = 0
 		if clear {
 			ed.sfr.Fr.Sel.S = 0
 		} else {

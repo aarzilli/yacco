@@ -538,6 +538,7 @@ func (ed *Editor) WarpToTag() {
 	p := ed.tagfr.PointToCoord(0)
 	p.Y -= 3
 	Wnd.WarpMouse(p)
+	ed.tagfr.SelColor = 0
 	ed.tagfr.Sel.S = ed.tagbuf.EditableStart
 	ed.tagfr.Sel.E = ed.tagbuf.Size()
 	ed.TagRefresh()

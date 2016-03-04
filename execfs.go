@@ -36,6 +36,7 @@ func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 		DelCmd(*ec, "", true)
 
 	case "dot=addr":
+		ec.fr.SelColor = 0
 		ec.fr.Sel = ec.ed.otherSel[OS_ADDR]
 		sideChan <- RefreshMsg(ec.buf, ec.ed, true)
 
