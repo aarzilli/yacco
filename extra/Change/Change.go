@@ -82,7 +82,7 @@ func changeCurDirectory(p9clnt *clnt.Clnt, newdir string) {
 	defer propfd.Close()
 	_, err = fmt.Fprintf(propfd, "cwd=%s", newdir)
 	util.Allergic(debug, err)
-	openFile(p9clnt, ".")
+	openFile(p9clnt, "./")
 }
 
 func openGuide(p9clnt *clnt.Clnt, newdir string) {
