@@ -251,10 +251,11 @@ func (w *Window) padDraw() {
 }
 
 func (w *Window) Resized(sz image.Point) {
-	if sz.X == w.wndb.Bounds().Dx() && sz.Y == w.wndb.Bounds().Dy() {
+	if sz.X == w.bounds.Dx() && sz.Y == w.bounds.Dy() {
 		return
 	}
-	if sz.X <= w.bounds.Dx() && sz.Y <= w.bounds.Dy() {
+	if sz.X <= w.wndb.Bounds().Dx() && sz.Y <= w.wndb.Bounds().Dy() {
+		w.bounds = w.wndb.Bounds()
 		w.bounds.Max.Y = w.bounds.Min.Y + sz.Y
 		w.bounds.Max.X = w.bounds.Min.X + sz.X
 		w.invalidRects = w.invalidRects[:0]
