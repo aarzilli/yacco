@@ -4,47 +4,47 @@ import (
 	"fmt"
 	"github.com/BurntSushi/xgb"
 	"github.com/BurntSushi/xgb/xproto"
-	"github.com/BurntSushi/xgbutil"
-	"github.com/BurntSushi/xgbutil/xprop"
-	"github.com/BurntSushi/xgbutil/xwindow"
 	"os"
 	"time"
 )
 
 const debugClipboardRequests = false
 
-var X *xgbutil.XUtil
-var win *xwindow.Window
+var X *xgb.Conn
+var win xproto.Window
 var clipboardText string
 var selnotify chan bool
 
 var clipboardAtom, primaryAtom, textAtom, targetsAtom, atomAtom xproto.Atom
 var targetAtoms []xproto.Atom
+var clipboardAtomCache = map[xproto.Atom]string{}
 
 func Start() {
 	var err error
-	X, err = xgbutil.NewConn()
+	X, err = xgb.NewConnDisplay("")
 	if err != nil {
 		panic(err)
 	}
 
 	selnotify = make(chan bool, 1)
 
-	win, err = xwindow.Generate(X)
+	win, err = xproto.NewWindowId(X)
 	if err != nil {
 		panic(err)
 	}
 
-	err = win.CreateChecked(X.Screen().Root, 100, 100, 1, 1, 0)
+	setup := xproto.Setup(X)
+	s := setup.DefaultScreen(X)
+	err = xproto.CreateWindowChecked(X, s.RootDepth, win, s.Root, 100, 100, 1, 1, 0, xproto.WindowClassInputOutput, s.RootVisual, 0, []uint32{}).Check()
 	if err != nil {
 		panic(err)
 	}
 
-	clipboardAtom = internAtom(X.Conn(), "CLIPBOARD")
-	primaryAtom = internAtom(X.Conn(), "PRIMARY")
-	textAtom = internAtom(X.Conn(), "UTF8_STRING")
-	targetsAtom = internAtom(X.Conn(), "TARGETS")
-	atomAtom = internAtom(X.Conn(), "ATOM")
+	clipboardAtom = internAtom(X, "CLIPBOARD")
+	primaryAtom = internAtom(X, "PRIMARY")
+	textAtom = internAtom(X, "UTF8_STRING")
+	targetsAtom = internAtom(X, "TARGETS")
+	atomAtom = internAtom(X, "ATOM")
 
 	targetAtoms = []xproto.Atom{targetsAtom, textAtom}
 
@@ -53,11 +53,11 @@ func Start() {
 
 func Set(text string) {
 	clipboardText = text
-	ssoc := xproto.SetSelectionOwnerChecked(X.Conn(), win.Id, clipboardAtom, xproto.TimeCurrentTime)
+	ssoc := xproto.SetSelectionOwnerChecked(X, win, clipboardAtom, xproto.TimeCurrentTime)
 	if err := ssoc.Check(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error setting clipboard: %v", err)
 	}
-	ssoc = xproto.SetSelectionOwnerChecked(X.Conn(), win.Id, primaryAtom, xproto.TimeCurrentTime)
+	ssoc = xproto.SetSelectionOwnerChecked(X, win, primaryAtom, xproto.TimeCurrentTime)
 	if err := ssoc.Check(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error setting primary selection: %v", err)
 	}
@@ -72,7 +72,7 @@ func GetPrimary() string {
 }
 
 func getSelection(selAtom xproto.Atom) string {
-	csc := xproto.ConvertSelectionChecked(X.Conn(), win.Id, selAtom, textAtom, selAtom, xproto.TimeCurrentTime)
+	csc := xproto.ConvertSelectionChecked(X, win, selAtom, textAtom, selAtom, xproto.TimeCurrentTime)
 	err := csc.Check()
 	if err != nil {
 		fmt.Println(err)
@@ -84,14 +84,12 @@ func getSelection(selAtom xproto.Atom) string {
 		if !r {
 			return ""
 		}
-		gpc := xproto.GetProperty(X.Conn(), true, win.Id, selAtom, textAtom, 0, 5*1024*1024)
+		gpc := xproto.GetProperty(X, true, win, selAtom, textAtom, 0, 5*1024*1024)
 		gpr, err := gpc.Reply()
 		if err != nil {
 			fmt.Println(err)
 			return ""
 		}
-		/*typename, _ := xprop.AtomName(w.xu, gpr.Type)
-		println("Type", typename)*/
 		if gpr.BytesAfter != 0 {
 			fmt.Println("Clipboard too large")
 			return ""
@@ -104,9 +102,8 @@ func getSelection(selAtom xproto.Atom) string {
 }
 
 func eventLoop() {
-	conn := X.Conn()
 	for {
-		e, err := conn.WaitForEvent()
+		e, err := X.WaitForEvent()
 		if err != nil {
 			continue
 		}
@@ -114,7 +111,7 @@ func eventLoop() {
 		switch e := e.(type) {
 		case xproto.SelectionRequestEvent:
 			if debugClipboardRequests {
-				tgtname, _ := xprop.AtomName(X, e.Target)
+				tgtname := lookupAtom(e.Target)
 				fmt.Println("SelectionRequest", e, textAtom, tgtname, "isPrimary:", e.Selection == primaryAtom, "isClipboard:", e.Selection == clipboardAtom)
 			}
 			t := clipboardText
@@ -124,7 +121,7 @@ func eventLoop() {
 				if debugClipboardRequests {
 					fmt.Println("Sending as text")
 				}
-				cpc := xproto.ChangePropertyChecked(X.Conn(), xproto.PropModeReplace, e.Requestor, e.Property, textAtom, 8, uint32(len(t)), []byte(t))
+				cpc := xproto.ChangePropertyChecked(X, xproto.PropModeReplace, e.Requestor, e.Property, textAtom, 8, uint32(len(t)), []byte(t))
 				err := cpc.Check()
 				if err == nil {
 					sendSelectionNotify(e)
@@ -136,8 +133,12 @@ func eventLoop() {
 				if debugClipboardRequests {
 					fmt.Println("Sending targets")
 				}
-				propName, _ := xprop.AtomName(X, e.Property)
-				err := xprop.ChangeProp32(X, e.Requestor, propName, "ATOM", xprop.AtomToUint(targetAtoms)...)
+				buf := make([]byte, len(targetAtoms)*4)
+				for i, atom := range targetAtoms {
+					xgb.Put32(buf[i*4:], uint32(atom))
+				}
+
+				xproto.ChangePropertyChecked(X, xproto.PropModeReplace, e.Requestor, e.Property, atomAtom, 32, uint32(len(targetAtoms)), buf).Check()
 				if err == nil {
 					sendSelectionNotify(e)
 				} else {
@@ -148,7 +149,6 @@ func eventLoop() {
 				if debugClipboardRequests {
 					fmt.Println("Skipping")
 				}
-				//println("Skipping")
 				e.Property = 0
 				sendSelectionNotify(e)
 			}
@@ -159,6 +159,22 @@ func eventLoop() {
 	}
 }
 
+func lookupAtom(at xproto.Atom) string {
+	if s, ok := clipboardAtomCache[at]; ok {
+		return s
+	}
+
+	reply, err := xproto.GetAtomName(X, at).Reply()
+	if err != nil {
+		panic(err)
+	}
+
+	// If we're here, it means we didn't have ths ATOM id cached. So cache it.
+	atomName := string(reply.Name)
+	clipboardAtomCache[at] = atomName
+	return atomName
+}
+
 func sendSelectionNotify(e xproto.SelectionRequestEvent) {
 	sn := xproto.SelectionNotifyEvent{
 		Time:      xproto.TimeCurrentTime,
@@ -166,7 +182,7 @@ func sendSelectionNotify(e xproto.SelectionRequestEvent) {
 		Selection: e.Selection,
 		Target:    e.Target,
 		Property:  e.Property}
-	sec := xproto.SendEventChecked(X.Conn(), false, e.Requestor, 0, string(sn.Bytes()))
+	sec := xproto.SendEventChecked(X, false, e.Requestor, 0, string(sn.Bytes()))
 	err := sec.Check()
 	if err != nil {
 		fmt.Println(err)
