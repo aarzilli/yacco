@@ -91,6 +91,8 @@ func FsInit() {
 	prop.Add(p9root, "prop", user, nil, 0666, prop)
 	log := &ReadOpenP9{srv.File{}, openLogFileFn, readLogFileFn, clunkLogFileFn}
 	log.Add(p9root, "log", user, nil, 0666, log)
+	last := &ReadOnlyP9{srv.File{}, lastFileFn}
+	last.Add(p9root, "last", user, nil, 0444, last)
 
 	p9Srv = &CustomP9Server{srv.NewFileSrv(p9root)}
 	p9Srv.Dotu = true
@@ -445,6 +447,21 @@ func indexFileFn(off int64) ([]byte, syscall.Errno) {
 		done <- t
 	}
 	return []byte(<-done), 0
+}
+
+func lastFileFn(off int64) ([]byte, syscall.Errno) {
+	debugfsf("Read last %d\n", off)
+	if off > 0 {
+		return []byte{}, 0
+	}
+	a, b := -1, -1
+	if activeSel.ed != nil {
+		a = activeSel.ed.edid
+	}
+	if activeSel.zeroxEd != nil {
+		b = activeSel.zeroxEd.edid
+	}
+	return []byte(fmt.Sprintf("%d %d\n", a, b)), 0
 }
 
 func stackFileFn(off int64) ([]byte, syscall.Errno) {

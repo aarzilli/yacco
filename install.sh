@@ -8,6 +8,10 @@ cp -f extra/Watch/Watch $1/yaccodir/Watch
 cp -f extra/y9p/y9p $1/yaccodir/y9p
 cp -f extra/Change/Change $1/yaccodir/Change
 cp -f extra/LookFile/LookFile $1/yaccodir/LookFile
+cp -f extra/Go/Go $1/yaccodir/Go
+ln -sf $1/yaccodir/Go $1/yaccodir/Gofmt
+ln -sf $1/yaccodir/Go $1/yaccodir/God
+ln -sf $1/yaccodir/Go $1/yaccodir/Gor
 cp -f bin/yacco $1/yaccodir/yacco
 for scpt in m g a+ a- Font Indent Tab Mount Fs in LookExact comment_char.sh c+ c- yclear gg DiskDiff; do
 	cp -f extra/$scpt $1/yaccodir/$scpt
