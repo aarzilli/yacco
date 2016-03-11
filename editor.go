@@ -6,6 +6,7 @@ import (
 	"image/draw"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -239,6 +240,7 @@ func (e *Editor) Close() {
 	for i := range e.otherSel {
 		e.bodybuf.RmSel(&e.otherSel[i])
 	}
+	debug.FreeOSMemory()
 }
 
 func (e *Editor) MinHeight() int {

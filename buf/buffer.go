@@ -57,6 +57,13 @@ type Buffer struct {
 	DumpCmd, DumpDir string
 }
 
+// description of buffer size, for debugging purposes
+type BufferSize struct {
+	GapUsed, GapGap uintptr
+	Words           uintptr
+	Undo            uintptr
+}
+
 func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err error) {
 	//println("NewBuffer call:", dir, name)
 	b = &Buffer{
@@ -1007,4 +1014,17 @@ func (b *Buffer) LastTypePos() int {
 		return 0
 	}
 	return start
+}
+
+func (buf *Buffer) BytesSize() (r BufferSize) {
+	r.GapUsed = uintptr((cap(buf.buf) - buf.gapsz) * 6)
+	r.GapGap = uintptr(buf.gapsz * 6)
+	for i := range buf.Words {
+		r.Words += uintptr(len(buf.Words[i]))
+	}
+	r.Undo = uintptr(cap(buf.ul.lst) * (8 + (8 * 3) + (8 * 3) + 16 + 2))
+	for i := range buf.ul.lst {
+		r.Undo += uintptr(len(buf.ul.lst[i].before.text) + len(buf.ul.lst[i].after.text))
+	}
+	return
 }

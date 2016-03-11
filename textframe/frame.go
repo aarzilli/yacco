@@ -100,7 +100,7 @@ The very first row of the color matrix are the colors used for unselected text.
 
 type glyph struct {
 	r         rune
-	fontIndex int
+	fontIndex uint16
 	index     truetype.Index
 	width     fixed.Int26_6
 	kerning   fixed.Int26_6
@@ -139,6 +139,11 @@ func (fr *Frame) Init(margin int) error {
 
 func (fr *Frame) ReinitFont() {
 	fr.Invalidate()
+}
+
+func (fr *Frame) BytesSize() uintptr {
+	n := cap(fr.glyphs)
+	return uintptr(n * 31)
 }
 
 func (fr *Frame) initialInsPoint() fixed.Point26_6 {
@@ -195,7 +200,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 
 	_, spaceIndex := fr.Font.Index(' ')
 
-	prev, prevFontIdx, hasPrev := truetype.Index(0), 0, false
+	prev, prevFontIdx, hasPrev := truetype.Index(0), uint16(0), false
 
 	fr.rightMargin = fixed.I(fr.R.Max.X) - fr.margin
 	fr.leftMargin = fixed.I(fr.R.Min.X) + fr.margin
@@ -311,7 +316,7 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 
 			g := glyph{
 				r:         crune.R,
-				fontIndex: fontIdx,
+				fontIndex: uint16(fontIdx),
 				index:     index,
 				p:         fr.ins,
 				color:     uint8(crune.C & COLORMASK),
@@ -360,7 +365,7 @@ func (fr *Frame) Measure(rs []rune) int {
 	spaceWidth, _, _, _ := fr.Font.Glyph(0, spaceIndex, fixed.P(0, 0))
 	tabWidth := spaceWidth * fixed.Int26_6(fr.TabWidth)
 
-	prev, prevFontIdx, hasPrev := truetype.Index(0), 0, false
+	prev, prevFontIdx, hasPrev := truetype.Index(0), uint16(0), false
 
 	for _, r := range rs {
 		if r == '\t' {

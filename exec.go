@@ -1,11 +1,13 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
@@ -1199,6 +1201,9 @@ Debug trace
 	
 Debug compile <command>
 	Compiles Edit command, shows the result of the compilation
+	
+Debug memory
+	Prints a summary of memory usage
 `)
 	}
 
@@ -1228,6 +1233,11 @@ Debug compile <command>
 		}
 		pgm := edit.Parse([]rune(v[1]))
 		Warn(pgm.String())
+	case "memory":
+		debug.FreeOSMemory()
+		var buf bytes.Buffer
+		memdebug(&buf)
+		Warn(buf.String())
 	default:
 		usage()
 		return

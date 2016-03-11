@@ -102,11 +102,11 @@ func (f *Font) Bounds() fixed.Rectangle26_6 {
 	return f.fonts[0].Bounds(FloatToFixed(f.Size))
 }
 
-func (f *Font) GlyphKerning(fontIdx int, pidx, idx truetype.Index) fixed.Int26_6 {
+func (f *Font) GlyphKerning(fontIdx uint16, pidx, idx truetype.Index) fixed.Int26_6 {
 	return f.fonts[fontIdx].Kern(f.cs[fontIdx].Scale, pidx, idx)
 }
 
-func (f *Font) Glyph(fontIdx int, idx truetype.Index, p fixed.Point26_6) (width fixed.Int26_6, mask *image.Alpha, glyphRect image.Rectangle, err error) {
+func (f *Font) Glyph(fontIdx uint16, idx truetype.Index, p fixed.Point26_6) (width fixed.Int26_6, mask *image.Alpha, glyphRect image.Rectangle, err error) {
 	var offset image.Point
 	width, mask, offset, err = f.cs[fontIdx].Glyph(idx, p)
 	if err != nil {
@@ -116,15 +116,12 @@ func (f *Font) Glyph(fontIdx int, idx truetype.Index, p fixed.Point26_6) (width 
 	return
 }
 
-func (f *Font) Index(x rune) (fontIdx int, idx truetype.Index) {
-	var font *truetype.Font
-	for fontIdx, font = range f.fonts {
-		idx = font.Index(x)
+func (f *Font) Index(x rune) (uint16, truetype.Index) {
+	for fontIdx, font := range f.fonts {
+		idx := font.Index(x)
 		if idx != 0 {
-			return
+			return uint16(fontIdx), idx
 		}
 	}
-	fontIdx = 0
-	idx = 0
-	return
+	return 0, 0
 }

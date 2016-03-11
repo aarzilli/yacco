@@ -7,6 +7,8 @@ import (
 	"image"
 	"log"
 	"os"
+	"runtime/debug"
+	"runtime/pprof"
 	"strconv"
 	"strings"
 	"yacco/buf"
@@ -25,6 +27,8 @@ var dumpFlag = flag.String("d", "", "Dump file to load")
 var sizeFlag = flag.String("s", "", "Size of window")
 var configFlag = flag.String("c", "", "Configuration file (defaults to ~/.config/yacco/rc)")
 var acmeCompatFlag = flag.Bool("acme", false, "Uses acme file to listen")
+var cpuprofileFlag = flag.String("cpuprofile", "", "Write cpu profile to file")
+var memprofileFlag = flag.String("memprofile", "", "Write memory profile to file")
 
 var tagColors = [][]image.Uniform{
 	config.TheColorScheme.TagPlain,
@@ -161,6 +165,8 @@ func realmain(s screen.Screen) {
 
 	Wnd.FlushImage()
 
+	debug.FreeOSMemory()
+
 	Wnd.EventLoop()
 }
 
@@ -170,6 +176,15 @@ func main() {
 	LoadInit()
 	KeysInit()
 	clipboard.Start()
+
+	if *cpuprofileFlag != "" {
+		f, err := os.Create(*cpuprofileFlag)
+		if err != nil {
+			log.Fatal(err)
+		}
+		pprof.StartCPUProfile(f)
+		defer pprof.StopCPUProfile()
+	}
 
 	edit.Warnfn = Warn
 	edit.NewJob = func(wd, cmd, input string, buf *buf.Buffer, resultChan chan<- string) {
