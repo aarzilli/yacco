@@ -327,7 +327,7 @@ func winInternalCommand(cmd string, controlChan chan<- interface{}) bool {
 	return false
 }
 
-func getPrompt(s int, delete bool, buf *util.BufferConn) []byte {
+func getPrompt(s int, delete, clearNewlines bool, buf *util.BufferConn) []byte {
 	if s < 0 {
 		addr, err := buf.ReadAddr()
 		util.Allergic3(debug, err, isDelSeen())
@@ -339,6 +339,12 @@ func getPrompt(s int, delete bool, buf *util.BufferConn) []byte {
 
 	if delete {
 		buf.XDataFd.Write([]byte{0})
+	} else if clearNewlines {
+		if command[len(command)-1] != '\n' {
+			command = []byte(strings.Replace(string(command), "\n", "", -1) + "\n")
+			buf.XDataFd.Write(command)
+			return command
+		}
 	}
 
 	return command
@@ -415,7 +421,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 
 		case AppendMsg:
 			if !floating {
-				oldPrompt = getPrompt(-1, true, buf)
+				oldPrompt = getPrompt(-1, true, false, buf)
 			}
 			maybeWriteBody(msg.s)
 			if !floating {
@@ -446,7 +452,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 			if floating {
 				anchorDown()
 			}
-			oldPrompt = getPrompt(-1, true, buf)
+			oldPrompt = getPrompt(-1, true, false, buf)
 			_, err := buf.AddrFd.Write([]byte(msg.addr))
 			util.Allergic3(debug, err, isDelSeen())
 			buf.XDataFd.Write([]byte{0})
@@ -464,10 +470,10 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 			if (msg.s >= 0) && (addr[0] > msg.s) {
 				break
 			}
-			command := getPrompt(addr[0], false, buf)
+			command := getPrompt(addr[0], false, true, buf)
 			updateAddr([]byte{}, buf)
 			if debug {
-				fmt.Printf("Sending: %s", command)
+				fmt.Printf("Sending: <%s>", command)
 			}
 			historyAppend(string(command))
 			pty.Write(command)
