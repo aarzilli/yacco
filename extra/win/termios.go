@@ -212,6 +212,10 @@ func (tios *Termios) SetSpeed(speed int) error {
 	return nil
 }
 
+func (tios *Termios) IsLFlag(lflag LFlag) bool {
+	return (tios.ios.c_lflag & C.tcflag_t(lflag)) != 0
+}
+
 func TcGetPGrp(pty *os.File) int {
 	return int(C.int(C.tcgetpgrp(C.int(pty.Fd()))))
 }

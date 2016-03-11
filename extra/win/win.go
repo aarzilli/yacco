@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"github.com/kr/pty"
 	"io"
@@ -23,6 +24,7 @@ var debug = false
 var stopping int32 = 0
 var delSeenSupport int32 = 0
 var delSeen *int32 = &delSeenSupport
+var cookTabs = true
 
 func isDelSeen() bool {
 	return atomic.LoadInt32(delSeen) != 0
@@ -316,6 +318,12 @@ func winInternalCommand(cmd string, controlChan chan<- interface{}) bool {
 			buf.SetTag(cts)
 		}}
 		return true
+	case "CookTabs":
+		cookTabs = true
+		return true
+	case "NoCookTabs":
+		cookTabs = false
+		return true
 	}
 
 	if strings.Index(cmd, "\"") == 0 {
@@ -327,7 +335,7 @@ func winInternalCommand(cmd string, controlChan chan<- interface{}) bool {
 	return false
 }
 
-func getPrompt(s int, delete, clearNewlines bool, buf *util.BufferConn) []byte {
+func getPrompt(s int, clearNewlines bool, buf *util.BufferConn) []byte {
 	if s < 0 {
 		addr, err := buf.ReadAddr()
 		util.Allergic3(debug, err, isDelSeen())
@@ -337,15 +345,24 @@ func getPrompt(s int, delete, clearNewlines bool, buf *util.BufferConn) []byte {
 	command, err := buf.ReadXData()
 	util.Allergic3(debug, err, isDelSeen())
 
-	if delete {
-		buf.XDataFd.Write([]byte{0})
-	} else if clearNewlines {
+	if clearNewlines {
 		if command[len(command)-1] != '\n' {
 			command = []byte(strings.Replace(string(command), "\n", "", -1) + "\n")
-			buf.XDataFd.Write(command)
-			return command
+		}
+		if cookTabs && bytes.IndexByte(command, '\t') >= 0 {
+			// replace every tab with the sequence ^V\t
+			ncmd := make([]byte, 0, len(command)+1)
+			for _, b := range command {
+				if b == '\t' {
+					// add ^V
+					ncmd = append(ncmd, 0x16)
+				}
+				ncmd = append(ncmd, b)
+			}
+			command = ncmd
 		}
 	}
+	buf.XDataFd.Write([]byte{0})
 
 	return command
 }
@@ -421,7 +438,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 
 		case AppendMsg:
 			if !floating {
-				oldPrompt = getPrompt(-1, true, false, buf)
+				oldPrompt = getPrompt(-1, false, buf)
 			}
 			maybeWriteBody(msg.s)
 			if !floating {
@@ -452,7 +469,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 			if floating {
 				anchorDown()
 			}
-			oldPrompt = getPrompt(-1, true, false, buf)
+			oldPrompt = getPrompt(-1, false, buf)
 			_, err := buf.AddrFd.Write([]byte(msg.addr))
 			util.Allergic3(debug, err, isDelSeen())
 			buf.XDataFd.Write([]byte{0})
@@ -470,7 +487,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 			if (msg.s >= 0) && (addr[0] > msg.s) {
 				break
 			}
-			command := getPrompt(addr[0], false, true, buf)
+			command := getPrompt(addr[0], true, buf)
 			updateAddr([]byte{}, buf)
 			if debug {
 				fmt.Printf("Sending: <%s>", command)
@@ -535,7 +552,6 @@ func run(c *exec.Cmd) *os.File {
 	termios.SetIFlags(ICRNL | IUTF8)
 	termios.SetOFlags(ONLRET)
 	termios.SetCFlags(CS8 | CREAD)
-	termios.SetLFlags(ICANON)
 	termios.SetSpeed(38400)
 	err = TcSetAttr(tty, TCSANOW, termios)
 	util.Allergic3(debug, err, isDelSeen())
