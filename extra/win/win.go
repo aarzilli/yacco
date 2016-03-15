@@ -84,7 +84,7 @@ func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReader
 	for {
 		if bufout.Buffered() == 0 {
 			if debug {
-				log.Println("flushing1")
+				log.Printf("flushing1 <%s>\n", s)
 			}
 			controlChan <- AppendMsg{s}
 			s = []byte{}
@@ -115,7 +115,7 @@ func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReader
 				s = append(s, ch)
 				if ch == '\n' {
 					if debug {
-						log.Println("flushing2")
+						log.Printf("flushing2 <%s>\n", s)
 					}
 					controlChan <- AppendMsg{s}
 					s = []byte{}
@@ -181,7 +181,7 @@ func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReader
 
 			default:
 				if debug {
-					fmt.Println("Requesting line delete")
+					fmt.Printf("Requesting line delete <%s>\n", s)
 				}
 				controlChan <- AppendMsg{s}
 				controlChan <- DeleteAddrMsg{"-+"}
@@ -490,7 +490,7 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 			command := getPrompt(addr[0], true, buf)
 			updateAddr([]byte{}, buf)
 			if debug {
-				fmt.Printf("Sending: <%s>", command)
+				fmt.Printf("Sending: <%s>\n", command)
 			}
 			historyAppend(string(command))
 			pty.Write(command)
@@ -558,7 +558,7 @@ func run(c *exec.Cmd) *os.File {
 	err = TcSetAttr(pty, TCSANOW, termios)
 	util.Allergic3(debug, err, isDelSeen())
 
-	ws := winSize{25, 80, 0, 0}
+	ws := winSize{2048, 2048, 0, 0}
 	syscall.Syscall(syscall.SYS_IOCTL, tty.Fd(), syscall.TIOCSWINSZ, uintptr(unsafe.Pointer(&ws)))
 
 	c.Stdout = tty

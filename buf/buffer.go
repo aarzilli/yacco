@@ -258,11 +258,11 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, solid bool, eventChan chan 
 		return
 	}
 
-	b.generateEvent(text, *sel, eventChan, origin)
-
 	b.wrlock()
 
 	b.Modified = true
+
+	osel := *sel
 
 	b.pushUndo(*sel, text, solid)
 	b.replaceIntl(text, sel)
@@ -272,6 +272,8 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, solid bool, eventChan chan 
 
 	sel.S = sel.S + len(text)
 	sel.E = sel.S
+
+	b.generateEvent(text, osel, eventChan, origin)
 
 	if origin == util.EO_FILES {
 		b.updcount += len(text)
