@@ -259,3 +259,34 @@ var AtomColorScheme = ColorScheme{
 	HandleSpecialFG:  *DMedgreen,
 	HandleBG:         atomwinbg,
 }
+
+var tanbg = c(0xcb, 0x97, 0x62, 0xff)
+var tanscroll = c(0xe4, 0xc7, 0x78, 0xff)
+var tannormfg = c(0x29, 0x2a, 0x2d, 0xff)
+var tantagbg = c(0x38, 0x3b, 0x41, 0xff)
+var tantagfg = c(0xe4, 0xc7, 0x78, 0xff)
+
+var TanColorScheme = ColorScheme{
+	WindowBG: tanbg,
+
+	Border:    *image.Black,
+	Scrollbar: tanscroll,
+
+	EditorPlain:               []image.Uniform{tanbg, tannormfg, darkergreen, *DDarkblue},
+	EditorSel1:                []image.Uniform{tannormfg, tanbg, tanbg, tanbg},
+	EditorSel2:                []image.Uniform{tannormfg, tanbg, tanbg, tanbg},
+	EditorSel3:                []image.Uniform{tannormfg, tanbg, tanbg, tanbg},
+	EditorMatchingParenthesis: []image.Uniform{tannormfg, tanbg, tannormfg, tannormfg},
+	Compl: []image.Uniform{*image.White, *image.Black},
+
+	TagPlain:               []image.Uniform{tantagbg, tantagfg},
+	TagSel1:                []image.Uniform{tantagfg, tantagbg},
+	TagSel2:                []image.Uniform{tantagfg, tantagbg},
+	TagSel3:                []image.Uniform{tantagfg, tantagbg},
+	TagMatchingParenthesis: []image.Uniform{tantagfg, tantagbg},
+
+	HandleFG:         tantagbg,
+	HandleModifiedFG: c(224, 108, 107, 0xff),
+	HandleSpecialFG:  *DMedgreen,
+	HandleBG:         c(0x72, 0x78, 0x80, 0xff),
+}
