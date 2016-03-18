@@ -153,12 +153,9 @@ func (b *Buffer) Reload(create bool) error {
 		if fi.IsDir() {
 			return b.reloadDir(infile)
 		}
-
-		if fi.Size() > 10*1024*1024 {
-			return fmt.Errorf("Refusing to open files larger than 10MB")
+		if fi.Size() > 500*1024*1024 {
+			return fmt.Errorf("Refusing to open files larger than 500MB")
 		}
-
-		b.ModTime = fi.ModTime()
 
 		bytes, err := ioutil.ReadAll(infile)
 		if err != nil {
@@ -167,12 +164,17 @@ func (b *Buffer) Reload(create bool) error {
 		if isBinary(bytes) {
 			return fmt.Errorf("Can not open binary file")
 		}
-		str := string(bytes)
-		b.Words = util.Dedup(nonwdRe.Split(str, -1))
-		b.WordsUpdate = time.Now()
-		b.ReplaceFull([]rune(str))
+		b.ReplaceFull([]rune(string(bytes)))
+
+		b.ModTime = fi.ModTime()
 		b.Modified = false
 		b.ul.Reset()
+
+		if len(b.buf)-b.gapsz < 1*1024*1024 {
+			str := string(b.SelectionRunes(util.Sel{0, b.Size()}))
+			b.Words = util.Dedup(nonwdRe.Split(str, -1))
+			b.WordsUpdate = time.Now()
+		}
 	} else {
 		if create {
 			// doesn't exist, mark as modified
@@ -192,15 +194,21 @@ func isBinary(bytes []byte) bool {
 	if len(testb) > 1024 {
 		testb = testb[:1024]
 	}
-	for j := 0; j < 10; j++ {
-		if len(testb) <= 0 {
-			break
-		}
-		if testb[len(testb)-1]&0x8f != 0 {
-			testb = testb[:len(testb)]
+	good := 0
+	bad := 0
+	for len(testb) > 0 {
+		r, size := utf8.DecodeRune(testb)
+		testb = testb[size:]
+		if r == utf8.RuneError || r == 0 {
+			bad++
+		} else {
+			good++
 		}
 	}
-	return !utf8.Valid(testb)
+	if bad == 0 {
+		return false
+	}
+	return bad > good
 }
 
 func (b *Buffer) reloadDir(fh *os.File) error {
