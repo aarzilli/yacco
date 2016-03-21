@@ -273,10 +273,10 @@ var TanColorScheme = ColorScheme{
 	Scrollbar: tanscroll,
 
 	EditorPlain:               []image.Uniform{tanbg, tannormfg, darkergreen, *DDarkblue},
-	EditorSel1:                []image.Uniform{tannormfg, tanbg, tanbg, tanbg},
-	EditorSel2:                []image.Uniform{tannormfg, tanbg, tanbg, tanbg},
-	EditorSel3:                []image.Uniform{tannormfg, tanbg, tanbg, tanbg},
-	EditorMatchingParenthesis: []image.Uniform{tannormfg, tanbg, tannormfg, tannormfg},
+	EditorSel1:                []image.Uniform{tanscroll, tannormfg, tannormfg, tannormfg},
+	EditorSel2:                []image.Uniform{tanscroll, tannormfg, tannormfg, tannormfg},
+	EditorSel3:                []image.Uniform{tanscroll, tannormfg, tannormfg, tannormfg},
+	EditorMatchingParenthesis: []image.Uniform{tanscroll, tannormfg, tannormfg, tannormfg},
 	Compl: []image.Uniform{*image.White, *image.Black},
 
 	TagPlain:               []image.Uniform{tantagbg, tantagfg},
