@@ -38,9 +38,6 @@ func NewCol(wnd *Window, r image.Rectangle) *Col {
 		return c
 	}
 	hf := textframe.HF_TRUNCATE
-	if config.QuoteHack {
-		hf |= textframe.HF_QUOTEHACK
-	}
 	c.tagfr = textframe.Frame{
 		Font:            config.TagFont,
 		Hackflags:       hf,

@@ -88,7 +88,7 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 	} else {
 		emptyed := col.editors[0]
 		biged := col.editors[0]
-		lh := int(biged.sfr.Fr.Font.LineHeight())
+		lh := util.FixedToInt(biged.sfr.Fr.Font.Metrics().Height)
 
 		for _, ced := range col.editors {
 			if ced.Height() >= biged.Height()-lh {

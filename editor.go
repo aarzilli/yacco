@@ -85,17 +85,12 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 	e.tagbuf, _ = buf.NewBuffer(bodybuf.Dir, "+Tag", true, Wnd.Prop["indentchar"])
 	e.expandedTag = true
 
-	hf := textframe.HF_MARKSOFTWRAP
-	if config.QuoteHack {
-		hf |= textframe.HF_QUOTEHACK
-	}
-
 	e.sfr = textframe.ScrollFrame{
 		Width: config.ScrollWidth,
 		Color: config.TheColorScheme.Scrollbar,
 		Fr: textframe.Frame{
 			Font:            config.MainFont,
-			Hackflags:       hf,
+			Hackflags:       textframe.HF_MARKSOFTWRAP,
 			Scroll:          nil,
 			ExpandSelection: edutil.MakeExpandSelectionFn(e.bodybuf),
 			VisibleTick:     false,
@@ -104,14 +99,10 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 	}
 	e.otherSel = make([]util.Sel, NUM_OTHER_SEL)
 	e.sfr.Fr.Scroll = edutil.MakeScrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, Highlight)
-	hf = textframe.HF_MARKSOFTWRAP | textframe.HF_NOVERTSTOP
-	if config.QuoteHack {
-		hf |= textframe.HF_QUOTEHACK
-	}
 
 	e.tagfr = textframe.Frame{
 		Font:            config.TagFont,
-		Hackflags:       hf,
+		Hackflags:       textframe.HF_MARKSOFTWRAP | textframe.HF_NOVERTSTOP,
 		Scroll:          func(sd, sl int) {},
 		ExpandSelection: edutil.MakeExpandSelectionFn(e.tagbuf),
 		VisibleTick:     false,
@@ -374,8 +365,7 @@ func (e *Editor) refreshIntl(full bool) {
 func (e *Editor) TagRefresh() {
 	e.tagRefreshIntl()
 
-	bounds := e.sfr.Fr.Font.Bounds()
-	ly := e.tagfr.LimitY() - util.FixedToInt(bounds.Min.Y)
+	ly := e.tagfr.LimitY() + util.FixedToInt(e.tagfr.Font.Metrics().Descent)
 
 	recalcExpansion := e.expandedTag && (e.tagfr.R.Max.Y-ly) != 0
 	if !recalcExpansion {
@@ -548,7 +538,7 @@ func (ed *Editor) WarpToTag() {
 
 func (ed *Editor) WarpToHandle() {
 	p := ed.r.Min
-	p = p.Add(image.Point{config.ScrollWidth / 2, int(ed.tagfr.Font.LineHeight() / 2)})
+	p = p.Add(image.Point{config.ScrollWidth / 2, int(util.FixedToInt(ed.tagfr.Font.Metrics().Height) / 2)})
 	Wnd.WarpMouse(p)
 }
 
@@ -742,12 +732,12 @@ func (e *Editor) readDir() {
 		r = append(r, n)
 	}
 
-	spaceWidth := e.sfr.Fr.Measure([]rune(" "))
+	spaceWidth := e.sfr.Fr.Measure(" ")
 
 	maxsz := 0
 
 	for i := range r {
-		if sz := e.sfr.Fr.Measure([]rune(r[i])); sz > maxsz {
+		if sz := e.sfr.Fr.Measure(r[i]); sz > maxsz {
 			maxsz = sz
 		}
 	}

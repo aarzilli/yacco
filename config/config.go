@@ -14,6 +14,7 @@ var StartupWidth = 640
 var ScrollWidth = 10
 var StartupHeight = 480
 
+var MainFontSize int
 var MainFont = util.MustNewFont(72, 16, 1.0, true, "$HOME/.config/yacco/luxisr.ttf:$HOME/.config/yacco/DejaVuSans.ttf")
 var TagFont = util.MustNewFont(72, 16, 0.9, true, "$HOME/.config/yacco/luxisr.ttf:$HOME/.config/yacco/DejaVuSans.ttf")
 var AltFont = util.MustNewFont(72, 16, 1.0, true, "$HOME/.config/yacco/luximr.ttf")
@@ -24,4 +25,3 @@ var EditErrorTrace = false
 var EnableHighlighting = true
 var ServeTCP = false
 var HideHidden = true
-var QuoteHack = true

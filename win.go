@@ -118,15 +118,11 @@ func (w *Window) Init(s screen.Screen, width, height int) (err error) {
 		return err
 	}
 
-	hf := textframe.HF_TRUNCATE
-	if config.QuoteHack {
-		hf |= textframe.HF_QUOTEHACK
-	}
 	w.tagfr = textframe.Frame{
 		Font:            config.TagFont,
 		Scroll:          func(sd, sl int) {},
 		ExpandSelection: edutil.MakeExpandSelectionFn(w.tagbuf),
-		Hackflags:       hf,
+		Hackflags:       textframe.HF_TRUNCATE,
 		VisibleTick:     false,
 		Flush:           w.FlushImage,
 		Colors:          tagColors,
@@ -422,8 +418,8 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 }
 
 func TagHeight(tagfr *textframe.Frame) int {
-	b := tagfr.Font.Bounds()
-	return int(float64(util.FixedToInt(b.Max.Y - b.Min.Y)))
+	fm := tagfr.Font.Metrics()
+	return int(float64(util.FixedToInt(fm.Ascent + fm.Descent)))
 }
 
 func TagSetEditableStart(tagbuf *buf.Buffer) {
@@ -949,7 +945,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 			dir = -1
 		}
 		if lp.ed != nil {
-			n := int(float32(lp.ed.sfr.Fr.R.Max.Y-lp.ed.sfr.Fr.R.Min.Y)/(2*float32(lp.ed.sfr.Fr.Font.LineHeight()))) + 1
+			n := int(float32(lp.ed.sfr.Fr.R.Max.Y-lp.ed.sfr.Fr.R.Min.Y)/(2*float32(util.FixedToInt(lp.ed.sfr.Fr.Font.Metrics().Height)))) + 1
 			addr := edit.AddrList{
 				[]edit.Addr{&edit.AddrBase{"", strconv.Itoa(n), dir},
 					&edit.AddrBase{"#", "0", -1}}}

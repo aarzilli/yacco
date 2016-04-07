@@ -3,7 +3,7 @@ package textframe
 import (
 	"fmt"
 	"github.com/golang/freetype"
-	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/font"
 	"golang.org/x/image/math/fixed"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/mouse"
@@ -37,13 +37,12 @@ type ExpandSelectionFn func(kind, start, end int) (int, int)
 const (
 	HF_BOLSPACES uint32 = 1 << iota
 	HF_MARKSOFTWRAP
-	HF_QUOTEHACK
 	HF_TRUNCATE   // truncates instead of softwrapping
 	HF_NOVERTSTOP // Insert and InsertColor don't stop after they are past the bottom of the visible area
 )
 
 type Frame struct {
-	Font            *util.Font
+	Font            font.Face
 	Hackflags       uint32
 	B               draw.Image      // the image the text will be drawn upon
 	R               image.Rectangle // the rectangle occupied by the frame
@@ -81,7 +80,6 @@ type Frame struct {
 
 	debugRedraw bool
 
-	glyphBounds             fixed.Rectangle26_6
 	leftMargin, rightMargin fixed.Int26_6
 }
 
@@ -99,14 +97,13 @@ The very first row of the color matrix are the colors used for unselected text.
 */
 
 type glyph struct {
-	r         rune
-	fontIndex uint16
-	index     truetype.Index
-	width     fixed.Int26_6
-	kerning   fixed.Int26_6
-	widthy    fixed.Int26_6
-	p         fixed.Point26_6
-	color     uint8
+	r        rune
+	fakerune bool
+	width    fixed.Int26_6
+	kerning  fixed.Int26_6
+	widthy   fixed.Int26_6
+	p        fixed.Point26_6
+	color    uint8
 }
 
 // Initializes frame
@@ -147,9 +144,7 @@ func (fr *Frame) BytesSize() uintptr {
 }
 
 func (fr *Frame) initialInsPoint() fixed.Point26_6 {
-	gb := fr.Font.Bounds()
-	//p := fixed.P(fr.R.Min.X + fr.Offset, fr.R.Min.Y + int(fr.Font.SpacingFix(int32(util.FixedToInt(gb.Max.Y)))))
-	p := fixed.P(fr.R.Min.X+fr.Offset, fr.R.Min.Y+util.FixedToInt(gb.Max.Y))
+	p := fixed.P(fr.R.Min.X+fr.Offset, fr.R.Min.Y+util.FixedToInt(fr.Font.Metrics().Ascent))
 	p.X += fr.margin
 	return p
 }
@@ -196,19 +191,16 @@ func (fr *Frame) toNextCell(spaceWidth, tabWidth, leftMargin fixed.Int26_6) fixe
 // Inserts text into the frame, returns the maximum X and Y used
 func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	fr.redrawOpt.reloaded = true
-	lh := fr.Font.LineHeightRaster()
+	lh := fr.Font.Metrics().Height
 
-	_, spaceIndex := fr.Font.Index(' ')
-
-	prev, prevFontIdx, hasPrev := truetype.Index(0), uint16(0), false
+	prevRune, hasPrev := rune(0), false
 
 	fr.rightMargin = fixed.I(fr.R.Max.X) - fr.margin
 	fr.leftMargin = fixed.I(fr.R.Min.X) + fr.margin
 	bottom := fixed.I(fr.R.Max.Y) + lh
 
-	_, xIndex := fr.Font.Index('x')
-	spaceWidth, _, _, _ := fr.Font.Glyph(0, spaceIndex, fixed.P(0, 0))
-	bigSpaceWidth, _, _, _ := fr.Font.Glyph(0, xIndex, fixed.P(0, 0))
+	_, _, _, spaceWidth, _ := fr.Font.Glyph(fixed.P(0, 0), ' ')
+	_, _, _, bigSpaceWidth, _ := fr.Font.Glyph(fixed.P(0, 0), 'x')
 	tabWidth := spaceWidth * fixed.Int26_6(fr.TabWidth)
 
 	limit.X = util.FixedToInt(fr.ins.X)
@@ -225,36 +217,34 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 
 		if crune.R == '\n' {
 			g := glyph{
-				r:         crune.R,
-				fontIndex: 0,
-				index:     spaceIndex,
-				p:         fr.ins,
-				color:     uint8(crune.C & COLORMASK),
-				width:     fixed.I(fr.R.Max.X) - fr.ins.X - fr.margin,
-				widthy:    lh,
+				r:        crune.R,
+				fakerune: true,
+				p:        fr.ins,
+				color:    uint8(crune.C & COLORMASK),
+				width:    fixed.I(fr.R.Max.X) - fr.ins.X - fr.margin,
+				widthy:   lh,
 			}
 
 			fr.glyphs = append(fr.glyphs, g)
 
 			fr.ins.X = fr.leftMargin
 			fr.ins.Y += lh
-			prev, prevFontIdx, hasPrev = spaceIndex, 0, true
+			prevRune, hasPrev = ' ', true
 		} else if crune.R == '\t' {
 			toNextCell := fr.toNextCell(spaceWidth, tabWidth, fr.leftMargin)
 
 			g := glyph{
-				r:         crune.R,
-				fontIndex: 0,
-				index:     spaceIndex,
-				p:         fr.ins,
-				color:     uint8(crune.C & COLORMASK),
-				width:     toNextCell,
+				r:        crune.R,
+				fakerune: true,
+				p:        fr.ins,
+				color:    uint8(crune.C & COLORMASK),
+				width:    toNextCell,
 			}
 
 			fr.glyphs = append(fr.glyphs, g)
 
 			fr.ins.X += toNextCell
-			prev, prevFontIdx, hasPrev = spaceIndex, 0, true
+			prevRune, hasPrev = ' ', true
 		} else if (crune.R == ' ') && (fr.Hackflags&HF_BOLSPACES != 0) {
 			width := fixed.I(0)
 			if i == 0 {
@@ -277,33 +267,21 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 			}
 
 			g := glyph{
-				r:         crune.R,
-				fontIndex: 0,
-				index:     spaceIndex,
-				p:         fr.ins,
-				color:     uint8(crune.C & COLORMASK),
-				width:     width,
+				r:        crune.R,
+				fakerune: true,
+				p:        fr.ins,
+				color:    uint8(crune.C & COLORMASK),
+				width:    width,
 			}
 
 			fr.glyphs = append(fr.glyphs, g)
 			fr.ins.X += width
-			prev, prevFontIdx, hasPrev = spaceIndex, 0, true
+			prevRune, hasPrev = ' ', true
 		} else {
-			lur := crune.R
-
-			if (fr.Hackflags & HF_QUOTEHACK) != 0 {
-				if lur == '`' {
-					lur = 0x2018
-				} else if lur == '\'' {
-					lur = 0x2019
-				}
-			}
-
-			fontIdx, index := fr.Font.Index(lur)
-			width, _, _, _ := fr.Font.Glyph(fontIdx, index, fr.ins)
+			width, _ := fr.Font.GlyphAdvance(crune.R)
 			kerning := fixed.I(0)
-			if hasPrev && (fontIdx == prevFontIdx) {
-				kerning = fr.Font.GlyphKerning(fontIdx, prev, index)
+			if hasPrev {
+				kerning = fr.Font.Kern(prevRune, crune.R)
 				fr.ins.X += kerning
 			}
 
@@ -315,19 +293,18 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 			}
 
 			g := glyph{
-				r:         crune.R,
-				fontIndex: uint16(fontIdx),
-				index:     index,
-				p:         fr.ins,
-				color:     uint8(crune.C & COLORMASK),
-				kerning:   kerning,
-				width:     width,
+				r:        crune.R,
+				fakerune: false,
+				p:        fr.ins,
+				color:    uint8(crune.C & COLORMASK),
+				kerning:  kerning,
+				width:    width,
 			}
 
 			fr.glyphs = append(fr.glyphs, g)
 
 			fr.ins.X += width
-			prev, prevFontIdx, hasPrev = index, fontIdx, true
+			prevRune, hasPrev = crune.R, true
 		}
 
 		if util.FixedToInt(fr.ins.X) > limit.X {
@@ -358,39 +335,9 @@ func (fr *Frame) RefreshColors(a, b []ColorRune) {
 }
 
 // Mesures the length of the string
-func (fr *Frame) Measure(rs []rune) int {
-	ret := fixed.I(0)
-
-	_, spaceIndex := fr.Font.Index(' ')
-	spaceWidth, _, _, _ := fr.Font.Glyph(0, spaceIndex, fixed.P(0, 0))
-	tabWidth := spaceWidth * fixed.Int26_6(fr.TabWidth)
-
-	prev, prevFontIdx, hasPrev := truetype.Index(0), uint16(0), false
-
-	for _, r := range rs {
-		if r == '\t' {
-			ret += tabWidth
-		}
-
-		lur := r
-
-		if (fr.Hackflags & HF_QUOTEHACK) != 0 {
-			if lur == '`' {
-				lur = 0x2018
-			} else if lur == '\'' {
-				lur = 0x2019
-			}
-		}
-
-		fontIdx, index := fr.Font.Index(lur)
-		width, _, _, _ := fr.Font.Glyph(fontIdx, index, fixed.P(0, 0))
-		if hasPrev && (fontIdx == prevFontIdx) {
-			width += fr.Font.GlyphKerning(fontIdx, prev, index)
-		}
-		ret += width
-	}
-
-	return util.FixedToInt(ret)
+func (fr *Frame) Measure(s string) int {
+	d := font.Drawer{Face: fr.Font}
+	return util.FixedToInt(d.MeasureString(s))
 }
 
 // Tracks the mouse position, selecting text, the events channel is from go.wde
@@ -503,11 +450,11 @@ func (fr *Frame) CoordToPoint(coord image.Point) int {
 	}
 
 	ftcoord := freetype.Pt(coord.X, coord.Y)
-	lh := fr.Font.LineHeightRaster()
-	fr.glyphBounds = fr.Font.Bounds()
+	lh := fr.Font.Metrics().Height
+	fm := fr.Font.Metrics()
 
 	for i, g := range fr.glyphs {
-		if g.p.Y-fr.glyphBounds.Min.Y < ftcoord.Y {
+		if g.p.Y+fm.Descent < ftcoord.Y {
 			continue
 		} else if (g.p.Y - lh) > ftcoord.Y {
 			return i + fr.Top
@@ -549,26 +496,26 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform, invalid *[]imag
 	if s < 0 {
 		s = 0
 	}
-	glyphBounds := fr.Font.Bounds()
+	fm := fr.Font.Metrics()
 
 	var sp, ep, sep image.Point
 
 	ss := fr.glyphs[s]
-	sp = image.Point{util.FixedToInt(ss.p.X), util.FixedToInt(ss.p.Y - glyphBounds.Max.Y)}
+	sp = image.Point{util.FixedToInt(ss.p.X), util.FixedToInt(ss.p.Y - fm.Ascent)}
 
 	var se glyph
 
 	if e < len(fr.glyphs) {
 		se = fr.glyphs[e]
-		sep = image.Point{util.FixedToInt(fr.leftMargin), util.FixedToInt(se.p.Y - glyphBounds.Max.Y)}
-		ep = image.Point{util.FixedToInt(se.p.X), util.FixedToInt(se.p.Y - glyphBounds.Min.Y)}
+		sep = image.Point{util.FixedToInt(fr.leftMargin), util.FixedToInt(se.p.Y - fm.Ascent)}
+		ep = image.Point{util.FixedToInt(se.p.X), util.FixedToInt(se.p.Y + fm.Descent)}
 	} else if e == len(fr.glyphs) {
 		se = fr.glyphs[len(fr.glyphs)-1]
-		sep = image.Point{util.FixedToInt(fr.leftMargin), util.FixedToInt(se.p.Y - glyphBounds.Max.Y)}
-		ep = image.Point{util.FixedToInt(se.p.X + se.width), util.FixedToInt(se.p.Y - glyphBounds.Min.Y)}
+		sep = image.Point{util.FixedToInt(fr.leftMargin), util.FixedToInt(se.p.Y - fm.Ascent)}
+		ep = image.Point{util.FixedToInt(se.p.X + se.width), util.FixedToInt(se.p.Y + fm.Descent)}
 	} else {
 		se = fr.glyphs[len(fr.glyphs)-1]
-		sep = image.Point{util.FixedToInt(fr.leftMargin), util.FixedToInt(se.p.Y - glyphBounds.Max.Y)}
+		sep = image.Point{util.FixedToInt(fr.leftMargin), util.FixedToInt(se.p.Y - fm.Ascent)}
 		ep = image.Point{util.FixedToInt(fr.rightMargin), fr.R.Max.Y}
 	}
 
@@ -580,10 +527,10 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform, invalid *[]imag
 		}
 		draw.Draw(fr.B, r, color, r.Min, draw.Src)
 	} else {
-		rs := fr.R.Intersect(image.Rectangle{sp, image.Point{util.FixedToInt(fr.rightMargin), util.FixedToInt(ss.p.Y - glyphBounds.Min.Y)}})
+		rs := fr.R.Intersect(image.Rectangle{sp, image.Point{util.FixedToInt(fr.rightMargin), util.FixedToInt(ss.p.Y + fm.Descent)}})
 		re := fr.R.Intersect(image.Rectangle{sep, ep})
 		rb := fr.R.Intersect(image.Rectangle{
-			image.Point{sep.X, util.FixedToInt(ss.p.Y - glyphBounds.Min.Y)},
+			image.Point{sep.X, util.FixedToInt(ss.p.Y + fm.Descent)},
 			image.Point{util.FixedToInt(fr.rightMargin), sep.Y},
 		})
 		if invalid != nil {
@@ -632,10 +579,9 @@ func (fr *Frame) drawTick(idx int) image.Rectangle {
 		}
 	}
 
-	//h := int(fr.Font.SpacingFix(fr.glyphBounds.YMax))
-	h := util.FixedToInt(fr.glyphBounds.Max.Y)
+	fm := fr.Font.Metrics()
 
-	basedx := int(math.Floor(fr.Font.Size/14 + .5))
+	basedx := int(math.Floor(float64(util.FixedToInt(fm.Height))/14 + .5))
 	if basedx < 1 {
 		basedx = 1
 	}
@@ -647,8 +593,8 @@ func (fr *Frame) drawTick(idx int) image.Rectangle {
 	}
 
 	r := image.Rectangle{
-		Min: image.Point{x - basedxl, y - h},
-		Max: image.Point{x + basedxr, y - util.FixedToInt(fr.glyphBounds.Min.Y)}}
+		Min: image.Point{x - basedxl, y - util.FixedToInt(fm.Ascent)},
+		Max: image.Point{x + basedxr, y + util.FixedToInt(fm.Descent) + 1}}
 
 	draw.Draw(fr.B, fr.R.Intersect(r), &fr.Colors[0][idx], fr.R.Intersect(r).Min, draw.Src)
 
@@ -796,7 +742,6 @@ func calcPixels(invalid []image.Rectangle) int {
 }
 
 func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
-	fr.glyphBounds = fr.Font.Bounds()
 	fr.rightMargin = fixed.I(fr.R.Max.X) - fr.margin
 	fr.leftMargin = fixed.I(fr.R.Min.X) + fr.margin
 
@@ -882,6 +827,14 @@ func (fr *Frame) getSsel(i int) (bool, int) {
 	return false, -1
 }
 
+func (g *glyph) glyph(face font.Face) (dr image.Rectangle, mask image.Image, maskp image.Point, advance fixed.Int26_6, ok bool) {
+	r := g.r
+	if g.fakerune {
+		r = ' '
+	}
+	return face.Glyph(g.p, r)
+}
+
 func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 	ssel := 0
 	cury := fixed.I(0)
@@ -924,7 +877,7 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 
 		// Softwrap mark drawing
 		if (g.p.Y != cury) && ((fr.Hackflags & HF_MARKSOFTWRAP) != 0) {
-			midline := util.FixedToInt(cury) - util.FixedToInt((fr.glyphBounds.Max.Y+fr.glyphBounds.Min.Y))/2
+			midline := util.FixedToInt(cury) - util.FixedToInt(fr.Font.Metrics().Height)/2
 			if !newline {
 				r := image.Rectangle{
 					image.Point{util.FixedToInt(fr.rightMargin), midline},
@@ -934,7 +887,7 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 
 			cury = g.p.Y
 
-			midline = util.FixedToInt(cury) - util.FixedToInt((fr.glyphBounds.Max.Y+fr.glyphBounds.Min.Y))/2
+			midline = util.FixedToInt(cury) - util.FixedToInt(fr.Font.Metrics().Height)/2
 
 			if !newline {
 				r := image.Rectangle{
@@ -946,10 +899,10 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 		newline = (g.r == '\n')
 
 		// Glyph drawing
-		_, mask, gr, _ := fr.Font.Glyph(g.fontIndex, g.index, g.p)
+		gr, mask, mp, _, _ := g.glyph(fr.Font)
 		dr := fr.R.Intersect(gr)
 		if !dr.Empty() {
-			mp := image.Point{dr.Min.X - gr.Min.X, dr.Min.Y - gr.Min.Y}
+			//mp := image.Point{dr.Min.X - gr.Min.X, dr.Min.Y - gr.Min.Y}
 			color := &fr.Colors[1][1]
 			if (ssel >= 0) && (ssel < len(fr.Colors)) && (g.color >= 0) && (int(g.color) < len(fr.Colors[ssel])) {
 				color = &fr.Colors[ssel][g.color]
@@ -963,11 +916,11 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 }
 
 func (fr *Frame) drawSingleGlyph(g *glyph, ssel int) {
-	_, mask, gr, _ := fr.Font.Glyph(g.fontIndex, g.index, g.p)
+	gr, mask, mp, _, _ := g.glyph(fr.Font)
 	// Glyph drawing
 	dr := fr.R.Intersect(gr)
 	if !dr.Empty() {
-		mp := image.Point{dr.Min.X - gr.Min.X, dr.Min.Y - gr.Min.Y}
+		//mp := image.Point{dr.Min.X - gr.Min.X, dr.Min.Y - gr.Min.Y}
 		color := &fr.Colors[1][1]
 		bgcolor := &fr.Colors[1][0]
 		if (ssel >= 0) && (ssel < len(fr.Colors)) && (g.color >= 0) && (int(g.color) < len(fr.Colors[ssel])) {
@@ -976,19 +929,17 @@ func (fr *Frame) drawSingleGlyph(g *glyph, ssel int) {
 		}
 
 		// Clear old glyph
-		if fr.scrubGlyph.Pix == nil || len(mask.Pix) > cap(fr.scrubGlyph.Pix) {
-			fr.scrubGlyph.Pix = make([]uint8, len(mask.Pix))
+		mb := mask.Bounds()
+		lsz := mb.Dx() * mb.Dy()
+		if fr.scrubGlyph.Pix == nil || lsz > cap(fr.scrubGlyph.Pix) {
+			fr.scrubGlyph.Pix = make([]uint8, lsz)
 		} else {
-			fr.scrubGlyph.Pix = fr.scrubGlyph.Pix[:len(mask.Pix)]
+			fr.scrubGlyph.Pix = fr.scrubGlyph.Pix[:lsz]
 		}
-		fr.scrubGlyph.Stride = mask.Stride
-		fr.scrubGlyph.Rect = mask.Rect
-		for i := range mask.Pix {
-			if mask.Pix[i] > 0 {
-				fr.scrubGlyph.Pix[i] = 0xff
-			} else {
-				fr.scrubGlyph.Pix[i] = 0x00
-			}
+		fr.scrubGlyph.Stride = mb.Dx()
+		fr.scrubGlyph.Rect = mb
+		for i := range fr.scrubGlyph.Pix {
+			fr.scrubGlyph.Pix[i] = 0xff
 		}
 		draw.DrawMask(fr.B, dr, bgcolor, dr.Min, &fr.scrubGlyph, mp, draw.Over)
 
@@ -1058,7 +1009,7 @@ func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *mouse
 }
 
 func (fr *Frame) LineNo() int {
-	return int(float32(fr.R.Max.Y-fr.R.Min.Y) / float32(fr.Font.LineHeight()))
+	return int(float32(fr.R.Max.Y-fr.R.Min.Y) / float32(util.FixedToInt(fr.Font.Metrics().Height)))
 }
 
 func (fr *Frame) Inside(p int) bool {
@@ -1092,7 +1043,7 @@ func (fr *Frame) PhisicalLines() []int {
 func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 	fr.ins = fr.initialInsPoint()
 
-	lh := fr.Font.LineHeightRaster()
+	lh := fr.Font.Metrics().Height
 
 	off := -1
 	for i := range fr.glyphs {
@@ -1136,8 +1087,7 @@ func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 
 		r = fr.R
 		if (fr.redrawOpt.scrollStart >= 0) && (fr.redrawOpt.scrollStart < len(fr.glyphs)) {
-			bounds := fr.Font.Bounds()
-			r.Min.Y = util.FixedToInt(fr.glyphs[fr.redrawOpt.scrollStart].p.Y - bounds.Min.Y)
+			r.Min.Y = util.FixedToInt(fr.glyphs[fr.redrawOpt.scrollStart].p.Y + fr.Font.Metrics().Descent)
 		} else {
 			r.Min.Y = fr.R.Max.Y - h
 		}
@@ -1190,7 +1140,7 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) {
 		}
 	}
 
-	lh := fr.Font.LineHeightRaster()
+	lh := fr.Font.Metrics().Height
 
 	if fr.allSelectionsEmpty() {
 		fr.redrawOpt.scrollStart = 0
@@ -1253,6 +1203,5 @@ func (fr *Frame) Size() int {
 
 func (fr *Frame) LimitY() int {
 	p := fr.PointToCoord(fr.Top + len(fr.glyphs) - 1)
-	gb := fr.Font.Bounds()
-	return p.Y - util.FixedToInt(gb.Min.Y)
+	return p.Y + util.FixedToInt(fr.Font.Metrics().Descent)
 }

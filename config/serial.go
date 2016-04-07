@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"golang.org/x/image/font"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -41,7 +42,7 @@ type configKeys struct {
 	keys map[string]string
 }
 
-func fontFromConf(font configFont, Fonts map[string]*configFont) *util.Font {
+func fontFromConf(font configFont, Fonts map[string]*configFont) font.Face {
 	if font.CopyFrom != "" {
 		otherFont := Fonts[font.CopyFrom]
 		if otherFont == nil {
@@ -110,6 +111,7 @@ func LoadConfiguration(path string) {
 		KeyBindings = co.KeyBindings.keys
 	}
 
+	MainFontSize = co.Fonts["Main"].Pixel
 	MainFont = fontFromConf(*co.Fonts["Main"], co.Fonts)
 	TagFont = fontFromConf(*co.Fonts["Tag"], co.Fonts)
 	AltFont = fontFromConf(*co.Fonts["Alt"], co.Fonts)
@@ -117,7 +119,6 @@ func LoadConfiguration(path string) {
 	EnableHighlighting = co.Core.EnableHighlighting
 	ServeTCP = co.Core.ServeTCP
 	HideHidden = co.Core.HideHidden
-	QuoteHack = co.Core.QuoteHack
 }
 
 func admissibleValues(m []string, a []string) (bool, string) {

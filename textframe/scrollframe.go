@@ -135,7 +135,7 @@ func (sfr *ScrollFrame) ScrollClick(e util.MouseDownEvent, events <-chan interfa
 	inertia := 0
 
 	scroll := func() {
-		c := int(float32(where.Y-sfr.r.Min.Y) / float32(sfr.Fr.Font.LineHeightRaster()>>8))
+		c := int(float32(where.Y-sfr.r.Min.Y) / float32(util.FixedToInt(sfr.Fr.Font.Metrics().Height)))
 
 		switch which {
 		case mouse.ButtonLeft:
