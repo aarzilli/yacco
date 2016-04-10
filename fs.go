@@ -480,6 +480,14 @@ func readColumnsFn(off int64) ([]byte, syscall.Errno) {
 
 	var bw bytes.Buffer
 
+	fmt.Fprintf(&bw, "sz")
+
+	for i := range Wnd.cols.cols {
+		fmt.Fprintf(&bw, " %0.4f", Wnd.cols.cols[i].frac/10)
+	}
+
+	fmt.Fprintf(&bw, "\n")
+
 	for i := range Wnd.cols.cols {
 		fmt.Fprintf(&bw, "%d", i)
 		for j := range Wnd.cols.cols[i].editors {
@@ -492,6 +500,7 @@ func readColumnsFn(off int64) ([]byte, syscall.Errno) {
 }
 
 func writeColumnsFn(data []byte, off int64) syscall.Errno {
+	const szCmd = "sz "
 	s := strings.TrimSpace(string(data))
 	switch s {
 	case "new":
@@ -500,6 +509,20 @@ func writeColumnsFn(data []byte, off int64) syscall.Errno {
 		}
 		return 0
 	default:
+		if strings.HasPrefix(s, szCmd) {
+			v := strings.Split(s[len(szCmd):], " ")
+			for i := range v {
+				f, _ := strconv.ParseFloat(v[i], 64)
+				if f < 0 {
+					f = 0
+				}
+				if i < len(Wnd.cols.cols) {
+					Wnd.cols.cols[i].frac = f * 10
+				}
+			}
+			Wnd.RedrawHard()
+			return 0
+		}
 		return syscall.EIO
 	}
 }
