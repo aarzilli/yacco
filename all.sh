@@ -41,3 +41,8 @@ cd -
 cd extra/Go/
 go build
 cd -
+
+# building Eqcol
+cd extra/Eqcol
+go build
+cd -

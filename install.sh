@@ -9,6 +9,7 @@ cp -f extra/y9p/y9p $1/yaccodir/y9p
 cp -f extra/Change/Change $1/yaccodir/Change
 cp -f extra/LookFile/LookFile $1/yaccodir/LookFile
 cp -f extra/Go/Go $1/yaccodir/Go
+cp -f extra/Eqcol/Eqcol $1/yaccodir/Eqcol
 ln -sf $1/yaccodir/Go $1/yaccodir/Gofmt
 ln -sf $1/yaccodir/Go $1/yaccodir/God
 ln -sf $1/yaccodir/Go $1/yaccodir/Gor

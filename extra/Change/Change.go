@@ -61,7 +61,7 @@ func setColumns(p9clnt *clnt.Clnt) {
 	bs, err := ioutil.ReadAll(cfd)
 	util.Allergic(debug, err)
 	v := strings.Split(string(bs), "\n")
-	if len(v) <= 2 {
+	if len(v) <= 3 {
 		io.WriteString(cfd, "new\n")
 	}
 }
