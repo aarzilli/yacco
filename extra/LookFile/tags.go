@@ -15,6 +15,7 @@ type tagItem struct {
 	tag    string
 	path   string
 	search string
+	lineno int
 }
 
 var tagMu sync.Mutex
@@ -23,7 +24,7 @@ var lastTs time.Time = time.Unix(0, 0)
 var lastSz int64 = 0
 var lastWd string = ""
 
-func tagsLoadMaybe() {
+func tagsLoadMaybe() bool {
 	wd, _ := os.Getwd()
 	fi, err := os.Stat("tags")
 
@@ -32,16 +33,18 @@ func tagsLoadMaybe() {
 		lastSz = 0
 		lastWd = ""
 		tags = tags[:0]
-	} else {
-		if !fi.ModTime().Equal(lastTs) || (lastWd != wd) || (lastSz != fi.Size()) {
-			tagMu.Lock()
-			defer tagMu.Unlock()
-			tagsLoad()
-			lastTs = fi.ModTime()
-			lastWd = wd
-			lastSz = fi.Size()
-		}
+		return false
 	}
+
+	if !fi.ModTime().Equal(lastTs) || (lastWd != wd) || (lastSz != fi.Size()) {
+		tagMu.Lock()
+		defer tagMu.Unlock()
+		tagsLoad()
+		lastTs = fi.ModTime()
+		lastWd = wd
+		lastSz = fi.Size()
+	}
+	return true
 }
 
 func tagsLoad() {
@@ -124,7 +127,7 @@ func tagsLoad() {
 		search = search[1 : len(search)-1]
 
 		search = regexpEx2Go(search)
-		tags = append(tags, tagItem{tag, path, search})
+		tags = append(tags, tagItem{tag, path, search, 0})
 	}
 }
 

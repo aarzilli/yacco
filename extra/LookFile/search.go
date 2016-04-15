@@ -1,12 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"unicode"
-	"unicode/utf8"
-	"yacco/regexp"
 	"yacco/util"
 )
 
@@ -32,7 +31,6 @@ func exactMatch(needle []rune) bool {
 func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool) {
 	x := util.ResolvePath(edDir, needle)
 	startDir := filepath.Dir(x)
-	needlerx := regexp.CompileFuzzySearch([]rune(filepath.Base(x)))
 
 	//println("Searching for", needle, "starting at", startDir)
 
@@ -89,67 +87,36 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 				continue
 			}
 
-			off := utf8.RuneCountInString(relPath) - utf8.RuneCountInString(fi[i].Name())
-
-			if !strings.HasSuffix(relPath, fi[i].Name()) {
-				off = -1
-			}
-
-			d := depth
 			if fi[i].IsDir() {
 				relPath += "/"
-				d++
 			}
 
-			r := fileSystemSearchMatch(fi[i].Name(), off, exact, needlerx, relPath, needle, d, resultChan, searchDone)
-			if r < 0 {
+			match, score := fuzzyMatch(needle, relPath)
+			if !match {
+				continue
+			}
+
+			if fi[i].IsDir() {
+				score -= 10
+			}
+
+			if depth > 1 {
+				score -= 10 * (depth - 1)
+			}
+
+			select {
+			case resultChan <- &lookFileResult{score + 100, relPath, nil, needle}:
+			case <-searchDone:
 				return
 			}
 
-			sent += r
+			sent++
 
 			if sent > MAX_RESULTS {
 				return
 			}
 		}
 	}
-}
-
-func fileSystemSearchMatch(name string, off int, exact bool, needlerx regexp.Regex, relPath, needle string, depth int, resultChan chan<- *lookFileResult, searchDone chan struct{}) int {
-	if !exact {
-		name = strings.ToLower(name)
-	}
-	rname := []rune(name)
-	mg := needlerx.Match(regexp.RuneArrayMatchable(rname), 0, len(rname), 1)
-	if mg == nil {
-		return 0
-	}
-
-	//println("Match successful", name, "at", relPath)
-
-	mpos := make([]int, 0, len(mg)/4)
-	ngaps := 0
-	mstart := mg[2]
-
-	for i := 0; i < len(mg); i += 4 {
-		if mg[i] != mg[i+1] {
-			ngaps++
-		}
-
-		if off >= 0 {
-			mpos = append(mpos, mg[i+2]+off)
-		}
-	}
-
-	score := mstart*1000 + depth*100 + ngaps*10 + len(rname) + off
-
-	select {
-	case resultChan <- &lookFileResult{score, relPath, mpos, needle}:
-	case <-searchDone:
-		return -1
-	}
-
-	return 1
 }
 
 func countSlash(str string) int {
@@ -163,7 +130,9 @@ func countSlash(str string) int {
 }
 
 func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool) {
-	tagsLoadMaybe()
+	if !tagsLoadMaybe() {
+		gtagsLoadMaybe()
+	}
 
 	tagMu.Lock()
 	defer tagMu.Unlock()
@@ -174,7 +143,9 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 
 	sent := 0
 
-	needle = strings.ToLower(needle)
+	if !exact {
+		needle = strings.ToLower(needle)
+	}
 
 	for i := range tags {
 		stillGoing := true
@@ -194,30 +165,20 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 
 		haystack := tags[i].tag
 
-		if !exact {
-			haystack = strings.ToLower(haystack)
-		}
-		n := strings.Index(haystack, needle)
-		if n <= 0 {
+		match, score := fuzzyMatch(needle, haystack)
+		if !match {
 			continue
 		}
-
-		mpos := make([]int, len(needle))
-		for i := range mpos {
-			mpos[i] = n + i
-		}
-
-		match := mpos[0]
-
-		score := 1000 + match*10 + len(tags[i].tag)
 
 		x := tags[i].path
 		if tags[i].search != "" {
 			x += ":\t/^" + tags[i].search + "/"
+		} else if tags[i].lineno > 0 {
+			x += fmt.Sprintf(":%d\t%s", tags[i].lineno, tags[i].tag)
 		}
 
 		select {
-		case resultChan <- &lookFileResult{score, x, []int{}, needle}:
+		case resultChan <- &lookFileResult{score, x, nil, needle}:
 		case <-searchDone:
 			return
 		}
