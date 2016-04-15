@@ -558,6 +558,13 @@ func (b *Buffer) Selection(sel util.Sel) ([]textframe.ColorRune, []textframe.Col
 	b.FixSel(&sel)
 	ps := b.phisical(sel.S)
 	pe := b.phisical(sel.E)
+	
+	if ps < 0 {
+		ps = 0
+	}
+	if pe > len(b.buf) {
+		pe = len(b.buf)
+	}
 
 	if (ps < b.gap) && (pe >= b.gap) {
 		//println(len(b.buf), b.gap, b.gapsz, ps, pe)
