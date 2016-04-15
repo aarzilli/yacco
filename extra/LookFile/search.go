@@ -9,7 +9,7 @@ import (
 	"yacco/util"
 )
 
-const MAX_RESULTS = 20
+const MAX_RESULTS = 50
 const MAX_FS_RECUR_DEPTH = 11
 
 type lookFileResult struct {
@@ -91,8 +91,25 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 				relPath += "/"
 			}
 
-			match, score := fuzzyMatch(needle, relPath)
-			if !match {
+			match1, score1 := fuzzyMatch(needle, relPath)
+			match2, score2 := fuzzyMatch(needle, fi[i].Name())
+
+			if match2 && !fi[i].IsDir() {
+				score2 += 10
+			}
+
+			var score int
+			switch {
+			case match1 && match2:
+				score = score1
+				if score2 > score {
+					score = score2
+				}
+			case match1:
+				score = score1
+			case match2:
+				score = score2
+			default:
 				continue
 			}
 
@@ -130,12 +147,12 @@ func countSlash(str string) int {
 }
 
 func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool) {
-	if !tagsLoadMaybe() {
-		gtagsLoadMaybe()
+	tagsMu.Lock()
+	if !tagsLoadingDone {
+		tagsMu.Unlock()
+		return
 	}
-
-	tagMu.Lock()
-	defer tagMu.Unlock()
+	tagsMu.Unlock()
 
 	if len(tags) == 0 {
 		return

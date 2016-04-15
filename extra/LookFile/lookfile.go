@@ -101,8 +101,17 @@ func readEvents(buf *util.BufferConn, searchChan chan<- string, openChan chan<- 
 				util.Allergic(debug, er.SendBack(buf.EventFd))
 			}
 
-		case util.ET_BODYEXEC, util.ET_TAGLOAD, util.ET_BODYLOAD:
+		case util.ET_BODYEXEC, util.ET_TAGLOAD:
 			util.Allergic(debug, er.SendBack(buf.EventFd))
+
+		case util.ET_BODYLOAD:
+			util.Allergic(debug, er.SendBack(buf.EventFd))
+			_, err = fmt.Fprintf(buf.EventFd, "EX0 0 0 3 Del\n")
+			util.Allergic(debug, err)
+			buf.Close()
+			close(searchChan)
+			close(openChan)
+			os.Exit(0)
 
 		case util.ET_TAGINS, util.ET_TAGDEL:
 			buf.TagFd.Seek(0, 0)
@@ -224,6 +233,15 @@ func displayResults(buf *util.BufferConn, resultList []*lookFileResult) {
 
 func main() {
 	flag.Parse()
+
+	go func() {
+		if !tagsLoadMaybe() {
+			gtagsLoadMaybe()
+		}
+		tagsMu.Lock()
+		tagsLoadingDone = true
+		tagsMu.Unlock()
+	}()
 
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)

@@ -20,9 +20,6 @@ func gtagsLoadMaybe() bool {
 		return false
 	}
 
-	tagMu.Lock()
-	defer tagMu.Unlock()
-
 	scan := bufio.NewScanner(bytes.NewReader(bs))
 
 	for scan.Scan() {

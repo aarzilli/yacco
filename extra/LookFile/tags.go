@@ -18,11 +18,12 @@ type tagItem struct {
 	lineno int
 }
 
-var tagMu sync.Mutex
 var tags []tagItem = []tagItem{}
 var lastTs time.Time = time.Unix(0, 0)
 var lastSz int64 = 0
 var lastWd string = ""
+var tagsMu sync.Mutex
+var tagsLoadingDone bool = false
 
 func tagsLoadMaybe() bool {
 	wd, _ := os.Getwd()
@@ -37,8 +38,6 @@ func tagsLoadMaybe() bool {
 	}
 
 	if !fi.ModTime().Equal(lastTs) || (lastWd != wd) || (lastSz != fi.Size()) {
-		tagMu.Lock()
-		defer tagMu.Unlock()
 		tagsLoad()
 		lastTs = fi.ModTime()
 		lastWd = wd
