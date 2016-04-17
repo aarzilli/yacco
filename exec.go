@@ -90,6 +90,7 @@ func init() {
 	cmds["Help"] = HelpCmd
 	cmds["Theme"] = ThemeCmd
 	cmds["Direxec"] = DirexecCmd
+	cmds["Mark"] = MarkCmd
 }
 
 func HelpCmd(ec ExecContext, arg string) {
@@ -202,10 +203,12 @@ Rename <name>
 LookFile			Opens special frame to search and open files interactively
 
 == Clipboard ==
-Cut
-Copy
+Cut			Cuts current selection, or between mark and cursor if the selection is empty
+Copy			Copies current selection, or between mark and cursor if the selection is empty
 Snarf			Same as Copy
 Paste [primary|indent]
+
+All of Cut, Copy and Paste will reset the mark
 
 == Session ==
 Dump [<name>]	Starts saving session to <name>
@@ -241,7 +244,8 @@ Rehash			Recalculates completions
 Send			Inserts clipboard or last selection in buffer
 Builtin <…>		Runs command as builtin (skip attached processes)
 Debug <…>		Run without arguments for informations
-Jump			Cycles through insetion points
+Mark			Sets the mark
+Jump			Swap cursor and mark
 `)
 	}
 }
@@ -345,6 +349,11 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 	}
 	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
 		return
+	}
+
+	if ec.ed != nil && ec.buf == ec.ed.bodybuf && ec.fr.Sel.S == ec.fr.Sel.E && ec.ed.otherSel[OS_MARK].S >= 0 && ec.ed.otherSel[OS_MARK].E >= 0 {
+		ec.fr.Sel.S = ec.ed.otherSel[OS_MARK].S
+		ec.ed.otherSel[OS_MARK] = util.Sel{-1, -1}
 	}
 
 	s := string(ec.buf.SelectionRunes(ec.fr.Sel))
@@ -570,7 +579,7 @@ func LookCmd(ec ExecContext, arg string) {
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
 	if arg != "" {
-		lookfwd(ec.ed, []rune(arg), true, true, Wnd.Prop["lookexact"] == "yes")
+		lookfwd(ec.ed, []rune(arg), true, Wnd.Prop["lookexact"] == "yes")
 	} else {
 		ec.fr = &ec.ed.sfr.Fr
 		go lookproc(ec)
@@ -585,7 +594,7 @@ func LookAgainCmd(ec ExecContext, arg string) {
 	if ec.ed.eventChanSpecial && ec.ed.eventChan != nil {
 		SpecialSendCmd(ec, "Look!Again")
 	} else {
-		lookfwd(ec.ed, lastNeedle, true, true, Wnd.Prop["lookexact"] == "yes")
+		lookfwd(ec.ed, lastNeedle, true, Wnd.Prop["lookexact"] == "yes")
 	}
 }
 
@@ -1029,8 +1038,12 @@ func JumpCmd(ec ExecContext, arg string) {
 	}
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
-	ec.ed.RestoreJump()
-	ec.ed.BufferRefresh()
+	if ec.ed.otherSel[OS_MARK].S >= 0 && ec.ed.otherSel[OS_MARK].E >= 0 {
+		s := ec.ed.sfr.Fr.Sel
+		ec.ed.sfr.Fr.Sel = ec.ed.otherSel[OS_MARK]
+		ec.ed.otherSel[OS_MARK] = s
+		ec.ed.BufferRefresh()
+	}
 }
 
 func KeysInit() {
@@ -1244,17 +1257,20 @@ Debug memory
 	}
 }
 
-func makeEditContext(buf *buf.Buffer, sel *util.Sel, eventChan chan string, ed *Editor) edit.EditContext {
-	var pj func() = nil
-	if ed != nil {
-		pj = ed.PushJump
+func MarkCmd(ec ExecContext, arg string) {
+	if ec.ed == nil {
+		return
 	}
+	ec.ed.confirmDel = false
+	ec.ed.confirmSave = false
+	ec.ed.otherSel[OS_MARK] = ec.ed.sfr.Fr.Sel
+}
 
+func makeEditContext(buf *buf.Buffer, sel *util.Sel, eventChan chan string, ed *Editor) edit.EditContext {
 	return edit.EditContext{
 		Buf:       buf,
 		Sel:       sel,
 		EventChan: eventChan,
-		PushJump:  pj,
 		BufMan:    &BufMan{},
 	}
 }

@@ -301,7 +301,6 @@ func kcmdfn(c *Cmd, ec *EditContext) {
 	if ec.Sel != nil {
 		*ec.Sel = *ec.atsel
 	}
-	ec.PushJump()
 }
 
 func Mcmdfn(c *Cmd, ec *EditContext) {

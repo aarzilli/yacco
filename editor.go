@@ -43,7 +43,6 @@ type Editor struct {
 	pw int
 
 	otherSel     []util.Sel
-	jumps        []util.Sel
 	restoredJump int
 
 	refreshOpt struct {
@@ -62,6 +61,7 @@ const JUMP_THRESHOLD = 100
 const (
 	OS_TOP = iota
 	OS_ADDR
+	OS_MARK
 	NUM_OTHER_SEL
 )
 
@@ -109,12 +109,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 		Colors:          tagColors,
 	}
 
-	e.jumps = make([]util.Sel, NUM_JUMPS)
-	for i := range e.jumps {
-		e.jumps[i].S = -1
-		e.jumps[i].E = -1
-	}
-
+	e.otherSel[OS_MARK] = util.Sel{-1, -1}
 	e.otherSel[OS_TOP].E = 0
 
 	bodybuf.Props["font"] = Wnd.Prop["font"]
@@ -142,9 +137,6 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 	e.tagbuf.AddSel(&e.tagfr.PMatch)
 	e.bodybuf.AddSel(&e.sfr.Fr.Sel)
 	e.bodybuf.AddSel(&e.sfr.Fr.PMatch)
-	for i := range e.jumps {
-		e.bodybuf.AddSel(&e.jumps[i])
-	}
 	for i := range e.otherSel {
 		e.bodybuf.AddSel(&e.otherSel[i])
 	}
@@ -225,9 +217,6 @@ func (e *Editor) Close() {
 	e.closed = true
 	e.bodybuf.RmSel(&e.sfr.Fr.Sel)
 	e.bodybuf.RmSel(&e.sfr.Fr.PMatch)
-	for i := range e.jumps {
-		e.bodybuf.RmSel(&e.jumps[i])
-	}
 	for i := range e.otherSel {
 		e.bodybuf.RmSel(&e.otherSel[i])
 	}
@@ -396,6 +385,7 @@ func (e *Editor) badTop() bool {
 }
 
 func (e *Editor) BufferRefreshEx(recur, scroll bool) {
+	// adjust matching parenthesis highlight
 	match := findPMatch(e.tagbuf, e.tagfr.Sel)
 	if match.S >= 0 {
 		e.tagfr.PMatch = match
@@ -409,6 +399,14 @@ func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 		e.sfr.Fr.PMatch.S = e.sfr.Fr.PMatch.E
 	}
 
+	// adjust editor insertion point
+	top := e.otherSel[OS_TOP].E
+	for top > 0 && e.bodybuf.At(top-1).R != '\n' {
+		top--
+	}
+	e.otherSel[OS_TOP].E = top
+
+	// refresh, possibly scroll the editor to show cursor
 	e.refreshIntl(false)
 	if (!(e.sfr.Fr.Inside(e.sfr.Fr.Sel.E) || e.sfr.Fr.Inside(e.sfr.Fr.Sel.S)) || e.badTop()) && scroll {
 		x := e.bodybuf.Tonl(e.sfr.Fr.Sel.E-2, -1)
@@ -418,6 +416,7 @@ func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 		edutil.Scrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, -1, e.sfr.Fr.LineNo()/4-1, Highlight)
 	}
 
+	// redraw
 	if e.GenTag() {
 		e.tagRefreshIntl()
 	}
@@ -651,47 +650,6 @@ func (ed *Editor) Dump(buffers map[string]int, h int) DumpEditor {
 		fontName,
 		string(ed.tagbuf.SelectionRunes(util.Sel{ed.tagbuf.EditableStart, ed.tagbuf.Size()})),
 		ed.sfr.Fr.Sel.S,
-	}
-}
-
-func (ed *Editor) PushJump() {
-	mind := 1000
-	for i := 1; i < len(ed.jumps); i++ {
-		d := ed.jumps[i].S - ed.sfr.Fr.Sel.S
-		if d < 0 {
-			d = -d
-		}
-		if d < mind {
-			mind = d
-		}
-	}
-
-	if mind < 50 {
-		return
-	}
-
-	for i := 1; i < len(ed.jumps); i++ {
-		ed.jumps[i-1] = ed.jumps[i]
-	}
-
-	ed.jumps[len(ed.jumps)-1].S = ed.sfr.Fr.Sel.S
-}
-
-func (ed *Editor) RestoreJump() {
-	start := 0
-	for i := range ed.jumps {
-		if ed.jumps[i].S == ed.sfr.Fr.Sel.S {
-			start = i + 1
-		}
-	}
-
-	for i := range ed.jumps {
-		k := (i + start) % len(ed.jumps)
-		if ed.jumps[k].S != -1 {
-			ed.sfr.Fr.Sel.S = ed.jumps[k].S
-			ed.sfr.Fr.Sel.E = ed.jumps[k].S
-			return
-		}
 	}
 }
 

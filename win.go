@@ -993,9 +993,6 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 				activeCol = nil
 			}
 			if ec.buf != nil {
-				if ec.ed != nil && time.Since(ec.buf.LastEdit()) > (1*time.Minute) {
-					ec.ed.PushJump()
-				}
 				ec.buf.Replace([]rune{e.Rune}, &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
 				ec.br()
 				ComplStart(ec)

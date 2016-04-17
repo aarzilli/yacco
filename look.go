@@ -51,7 +51,7 @@ func lookfwdEx(ed *Editor, needle []rune, start int, exact bool) bool {
 	return false
 }
 
-func lookfwd(ed *Editor, needle []rune, fromEnd bool, setJump bool, exact bool) {
+func lookfwd(ed *Editor, needle []rune, fromEnd bool, exact bool) {
 	start := ed.sfr.Fr.Sel.S
 	if fromEnd {
 		start = ed.sfr.Fr.Sel.E
@@ -63,9 +63,6 @@ func lookfwd(ed *Editor, needle []rune, fromEnd bool, setJump bool, exact bool) 
 	}
 	ed.BufferRefresh()
 	ed.Warp()
-	if setJump {
-		ed.PushJump()
-	}
 }
 
 var lastNeedle []rune
@@ -77,11 +74,6 @@ func lookproc(ec ExecContext) {
 	if !ok {
 		return
 	}
-	defer func() {
-		sideChan <- func() {
-			ec.ed.PushJump()
-		}
-	}()
 
 	exact := Wnd.Prop["lookexact"] == "yes"
 
@@ -119,7 +111,7 @@ func lookproc(ec ExecContext) {
 			switch cmd {
 			case "Look!Again":
 				sideChan <- func() {
-					lookfwd(ec.ed, needle, true, false, exact)
+					lookfwd(ec.ed, needle, true, exact)
 					if ec.fr.Sel.S != ec.fr.Sel.E {
 						matches = append(matches, ec.fr.Sel)
 					}
@@ -157,7 +149,7 @@ func lookproc(ec ExecContext) {
 			needle = newNeedle
 			lastNeedle = needle
 			sideChan <- func() {
-				lookfwd(ec.ed, needle, false, false, exact)
+				lookfwd(ec.ed, needle, false, exact)
 				if doAppend && (ec.fr.Sel.S != ec.fr.Sel.E) {
 					matches = append(matches, ec.fr.Sel)
 				}

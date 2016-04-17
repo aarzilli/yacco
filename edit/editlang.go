@@ -33,7 +33,6 @@ type EditContext struct {
 	Sel       *util.Sel
 	atsel     *util.Sel
 	EventChan chan string
-	PushJump  func()
 	BufMan    BufferManaging
 }
 
@@ -140,7 +139,6 @@ func (ec *EditContext) subec(buf *buf.Buffer, atsel *util.Sel) EditContext {
 			Sel:       ec.Sel,
 			atsel:     atsel,
 			EventChan: ec.EventChan,
-			PushJump:  ec.PushJump,
 			BufMan:    ec.BufMan,
 		}
 	} else {
@@ -149,7 +147,6 @@ func (ec *EditContext) subec(buf *buf.Buffer, atsel *util.Sel) EditContext {
 			Sel:       nil,
 			atsel:     atsel,
 			EventChan: nil,
-			PushJump:  nil,
 			BufMan:    ec.BufMan,
 		}
 	}
