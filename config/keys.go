@@ -68,6 +68,7 @@ var KeyBindings = map[string]string{
 	"delete":    "Do\nEdit g// .,+#1\nEdit c//",
 	
 	"control+`": "Mark",
+	"control+p": "Savepos",
 }
 
 var KeyConversion = map[string]key.Event{

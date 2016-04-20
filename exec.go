@@ -91,6 +91,7 @@ func init() {
 	cmds["Theme"] = ThemeCmd
 	cmds["Direxec"] = DirexecCmd
 	cmds["Mark"] = MarkCmd
+	cmds["Savepos"] = SaveposCmd
 }
 
 func HelpCmd(ec ExecContext, arg string) {
@@ -1264,6 +1265,33 @@ func MarkCmd(ec ExecContext, arg string) {
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
 	ec.ed.otherSel[OS_MARK] = ec.ed.sfr.Fr.Sel
+}
+
+func SaveposCmd(ec ExecContext, arg string) {
+	if ec.ed == nil {
+		return
+	}
+	b := ec.ed.bodybuf
+	s := ec.ed.sfr.Fr.Sel
+	if fakebuf(b.Name) {
+		return
+	}
+	p := b.Path()
+	if arg == "char" {
+		if s.S == s.E {
+			clipboard.Set(fmt.Sprintf("%s:#%d", p, s.S))
+		} else {
+			clipboard.Set(fmt.Sprintf("%s:#%d,#%d", p, s.S, s.E))
+		}
+	} else {
+		sln, _ := b.GetLine(s.S)
+		if s.S == s.E {
+			clipboard.Set(fmt.Sprintf("%s:%d", p, sln))
+		} else {
+			eln, _ := b.GetLine(s.E)
+			clipboard.Set(fmt.Sprintf("%s:%d,%d", p, sln, eln))
+		}
+	}
 }
 
 func makeEditContext(buf *buf.Buffer, sel *util.Sel, eventChan chan string, ed *Editor) edit.EditContext {
