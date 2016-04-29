@@ -401,6 +401,9 @@ func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 
 	// adjust editor insertion point
 	top := e.otherSel[OS_TOP].E
+	if top > e.bodybuf.Size() {
+		top = e.bodybuf.Size()
+	}
 	for top > 0 && e.bodybuf.At(top-1).R != '\n' {
 		top--
 	}
