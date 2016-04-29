@@ -353,7 +353,11 @@ func CopyCmd(ec ExecContext, arg string, del bool) {
 	}
 
 	if ec.ed != nil && ec.buf == ec.ed.bodybuf && ec.fr.Sel.S == ec.fr.Sel.E && ec.ed.otherSel[OS_MARK].S >= 0 && ec.ed.otherSel[OS_MARK].E >= 0 {
-		ec.fr.Sel.S = ec.ed.otherSel[OS_MARK].S
+		if ec.ed.otherSel[OS_MARK].S >= ec.fr.Sel.S {
+			ec.fr.Sel.E = ec.ed.otherSel[OS_MARK].S
+		} else {
+			ec.fr.Sel.S = ec.ed.otherSel[OS_MARK].S
+		}
 		ec.ed.otherSel[OS_MARK] = util.Sel{-1, -1}
 	}
 
