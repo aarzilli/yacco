@@ -349,6 +349,7 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 
 		if (lp.tagfr != nil) && lp.notReallyOnTag && (lp.ed != nil) {
 			if lp.ed.eventChanSpecial {
+				// requests look to exit
 				util.FmteventBase(lp.ed.eventChan, util.EO_MOUSE, false, util.ET_BODYINS, 0, 0, "", nil)
 			}
 			lp = w.TranslatePosition(e.Where, false)
@@ -1155,7 +1156,7 @@ func clickExec3(lp LogicalPos, e util.MouseDownEvent) {
 	ec := lp.asExecContext(true)
 	s, original := expandedSelection(lp, 2)
 
-	if (lp.ed == nil) || (lp.ed.eventChan == nil) {
+	if (lp.ed == nil) || (lp.ed.eventChan == nil) || lp.ed.eventChanSpecial {
 		Load(ec, original)
 	} else {
 		fr := lp.tagfr
