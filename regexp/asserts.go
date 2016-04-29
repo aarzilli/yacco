@@ -97,7 +97,7 @@ var SClass = nodeClass{
 }
 
 func isw(r rune) bool {
-	return unicode.IsLetter(r) || unicode.IsDigit(r)
+	return unicode.IsLetter(r) || unicode.IsDigit(r) || r == '_'
 }
 
 var wClass = nodeClass{
