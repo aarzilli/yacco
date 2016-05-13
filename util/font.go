@@ -160,3 +160,9 @@ func FloatToFixed(x float64) fixed.Int26_6 {
 	frac := int(0x3f * (x - float64(n)))
 	return fixed.Int26_6(n<<6 + frac)
 }
+
+// Mesures the length of the string
+func MeasureString(face font.Face, in string) int {
+	d := font.Drawer{Face: face}
+	return FixedToInt(d.MeasureString(in))
+}

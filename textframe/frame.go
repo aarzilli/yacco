@@ -12,6 +12,7 @@ import (
 	"math"
 	"runtime"
 	"time"
+	"unicode/utf8"
 	"yacco/util"
 )
 
@@ -35,10 +36,9 @@ type FrameScrollFn func(scrollDir int, n int)
 type ExpandSelectionFn func(kind, start, end int) (int, int)
 
 const (
-	HF_BOLSPACES uint32 = 1 << iota
-	HF_MARKSOFTWRAP
-	HF_TRUNCATE   // truncates instead of softwrapping
-	HF_NOVERTSTOP // Insert and InsertColor don't stop after they are past the bottom of the visible area
+	HF_MARKSOFTWRAP uint32 = 1 << iota
+	HF_TRUNCATE            // truncates instead of softwrapping
+	HF_NOVERTSTOP          // Insert and InsertColor don't stop after they are past the bottom of the visible area
 )
 
 type Frame struct {
@@ -100,7 +100,6 @@ type glyph struct {
 	r        rune
 	fakerune bool
 	width    fixed.Int26_6
-	kerning  fixed.Int26_6
 	widthy   fixed.Int26_6
 	p        fixed.Point26_6
 	color    uint8
@@ -134,8 +133,8 @@ func (fr *Frame) Init(margin int) error {
 	return nil
 }
 
-func (fr *Frame) ReinitFont() {
-	fr.Invalidate()
+func (fr *Frame) Invalidate() {
+	fr.redrawOpt.reloaded = true
 }
 
 func (fr *Frame) BytesSize() uintptr {
@@ -158,38 +157,16 @@ func (fr *Frame) Clear() {
 	fr.redrawOpt.scrollEnd = -1
 }
 
-func (fr *Frame) Invalidate() {
-	fr.redrawOpt.reloaded = true
+func ColorRunes(str string) []ColorRune {
+	cr := make([]ColorRune, 0, utf8.RuneCountInString(str))
+	for _, ch := range str {
+		cr = append(cr, ColorRune{1, ch})
+	}
+	return cr
 }
 
 // Inserts text into the frame, returns the maximum X and Y used
-func (fr *Frame) Insert(runes []rune) (limit image.Point) {
-	cr := make([]ColorRune, len(runes))
-	for i, _ := range runes {
-		cr[i].C = 1
-		cr[i].R = runes[i]
-	}
-	return fr.InsertColor(cr)
-}
-
-func (fr *Frame) toNextCell(spaceWidth, tabWidth, leftMargin fixed.Int26_6) fixed.Int26_6 {
-	if fr.Tabs != nil {
-		for i := range fr.Tabs {
-			t := fixed.I(fr.Tabs[i]) + leftMargin
-			if fr.ins.X+spaceWidth/2 < t {
-				return t - fr.ins.X
-			}
-		}
-	}
-	toNextCell := tabWidth - ((fr.ins.X - leftMargin) % tabWidth)
-	if toNextCell <= spaceWidth/2 {
-		toNextCell += tabWidth
-	}
-	return toNextCell
-}
-
-// Inserts text into the frame, returns the maximum X and Y used
-func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
+func (fr *Frame) Insert(runes []ColorRune) (limit image.Point) {
 	fr.redrawOpt.reloaded = true
 	lh := fr.Font.Metrics().Height
 
@@ -200,13 +177,12 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 	bottom := fixed.I(fr.R.Max.Y) + lh
 
 	_, _, _, spaceWidth, _ := fr.Font.Glyph(fixed.P(0, 0), ' ')
-	_, _, _, bigSpaceWidth, _ := fr.Font.Glyph(fixed.P(0, 0), 'x')
 	tabWidth := spaceWidth * fixed.Int26_6(fr.TabWidth)
 
 	limit.X = util.FixedToInt(fr.ins.X)
 	limit.Y = util.FixedToInt(fr.ins.Y)
 
-	for i, crune := range runes {
+	for _, crune := range runes {
 		if fr.ins.Y > bottom && (fr.Hackflags&HF_NOVERTSTOP == 0) {
 			return
 		}
@@ -215,7 +191,8 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 			fr.lastFull = len(fr.glyphs)
 		}
 
-		if crune.R == '\n' {
+		switch crune.R {
+		case '\n':
 			g := glyph{
 				r:        crune.R,
 				fakerune: true,
@@ -230,8 +207,24 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 			fr.ins.X = fr.leftMargin
 			fr.ins.Y += lh
 			prevRune, hasPrev = ' ', true
-		} else if crune.R == '\t' {
-			toNextCell := fr.toNextCell(spaceWidth, tabWidth, fr.leftMargin)
+
+		case '\t':
+			var toNextCell fixed.Int26_6
+
+			if fr.Tabs != nil {
+				for i := range fr.Tabs {
+					t := fixed.I(fr.Tabs[i]) + fr.leftMargin
+					if fr.ins.X+spaceWidth/2 < t {
+						toNextCell = t - fr.ins.X
+						break
+					}
+				}
+			} else {
+				toNextCell = tabWidth - ((fr.ins.X - fr.leftMargin) % tabWidth)
+				if toNextCell <= spaceWidth/2 {
+					toNextCell += tabWidth
+				}
+			}
 
 			g := glyph{
 				r:        crune.R,
@@ -243,41 +236,10 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 
 			fr.glyphs = append(fr.glyphs, g)
 
-			fr.ins.X += toNextCell
+			fr.ins.X += g.width
 			prevRune, hasPrev = ' ', true
-		} else if (crune.R == ' ') && (fr.Hackflags&HF_BOLSPACES != 0) {
-			width := fixed.I(0)
-			if i == 0 {
-				if len(fr.glyphs) == 0 {
-					width = bigSpaceWidth
-				} else {
-					width = spaceWidth
-				}
-			} else {
-				switch fr.glyphs[len(fr.glyphs)-1].r {
-				case '\t':
-					fallthrough
-				case '\n':
-					width = bigSpaceWidth
-				case ' ':
-					width = fr.glyphs[len(fr.glyphs)-1].width
-				default:
-					width = spaceWidth
-				}
-			}
 
-			g := glyph{
-				r:        crune.R,
-				fakerune: true,
-				p:        fr.ins,
-				color:    uint8(crune.C & COLORMASK),
-				width:    width,
-			}
-
-			fr.glyphs = append(fr.glyphs, g)
-			fr.ins.X += width
-			prevRune, hasPrev = ' ', true
-		} else {
+		default:
 			width, _ := fr.Font.GlyphAdvance(crune.R)
 			kerning := fixed.I(0)
 			if hasPrev {
@@ -297,13 +259,12 @@ func (fr *Frame) InsertColor(runes []ColorRune) (limit image.Point) {
 				fakerune: false,
 				p:        fr.ins,
 				color:    uint8(crune.C & COLORMASK),
-				kerning:  kerning,
 				width:    width,
 			}
 
 			fr.glyphs = append(fr.glyphs, g)
 
-			fr.ins.X += width
+			fr.ins.X += g.width
 			prevRune, hasPrev = crune.R, true
 		}
 
@@ -332,12 +293,6 @@ func (fr *Frame) RefreshColors(a, b []ColorRune) {
 		fr.glyphs[i].r = crune.R
 		fr.glyphs[i].color = uint8(crune.C & COLORMASK)
 	}
-}
-
-// Mesures the length of the string
-func (fr *Frame) Measure(s string) int {
-	d := font.Drawer{Face: fr.Font}
-	return util.FixedToInt(d.MeasureString(s))
 }
 
 // Tracks the mouse position, selecting text, the events channel is from go.wde
@@ -400,8 +355,19 @@ func (fr *Frame) Select(idx, kind int, button mouse.Button, events <-chan interf
 			}
 
 		case <-autoscrollChan:
-			sd := fr.scrollDir(lastPos)
-			if sd != 0 {
+			if (lastPos.X >= fr.R.Min.X) && (lastPos.X <= fr.R.Max.X) {
+				mid := (fr.R.Min.Y + fr.R.Max.Y) / 2
+
+				var sd int
+
+				if lastPos.Y < mid {
+					sd = -1
+				}
+
+				if lastPos.Y >= mid {
+					sd = +1
+				}
+
 				fr.Scroll(sd, 1)
 				if sd < 0 {
 					fr.SetSelect(idx, kind, fr.Top, fix)
@@ -417,10 +383,6 @@ func (fr *Frame) Select(idx, kind int, button mouse.Button, events <-chan interf
 // Sets extremes of the selection, pass start == end if you want an empty selection
 // idx is the index of the selection
 func (fr *Frame) SetSelect(idx, kind, start, end int) {
-	fr.setSelectEx(idx, kind, start, end)
-}
-
-func (fr *Frame) setSelectEx(idx, kind, start, end int) {
 	if (idx < 0) || (idx >= len(fr.Colors)) {
 		idx = 0
 	}
@@ -628,22 +590,17 @@ func (fr *Frame) deleteTick() image.Rectangle {
 		fr.Sel = saved
 		return image.Rectangle{fr.R.Min, fr.R.Min}
 	}
-	var y int
 	if fr.Sel.S == fr.Sel.E {
 		if (fr.Sel.S-fr.Top >= 0) && (fr.Sel.S-fr.Top < len(fr.glyphs)) {
 			fr.drawSingleGlyph(&fr.glyphs[fr.Sel.S-fr.Top], 0)
 			if fr.Sel.S-fr.Top-1 >= 0 {
 				fr.drawSingleGlyph(&fr.glyphs[fr.Sel.S-fr.Top-1], 0)
 			}
-			y = util.FixedToInt(fr.glyphs[fr.Sel.S-fr.Top].p.Y)
 		} else if (fr.Sel.S-fr.Top-1 >= 0) && (fr.Sel.S-fr.Top-1 < len(fr.glyphs)) {
 			fr.drawSingleGlyph(&fr.glyphs[fr.Sel.S-fr.Top-1], 0)
-			y = util.FixedToInt(fr.glyphs[fr.Sel.S-fr.Top-1].p.Y + fr.glyphs[fr.Sel.S-fr.Top-1].widthy)
 		}
 	}
 	fr.Sel = saved
-
-	_ = y
 
 	return r
 }
@@ -658,7 +615,7 @@ func (fr *Frame) updateRedrawOpt() {
 	fr.redrawOpt.scrollEnd = -1
 }
 
-func (fr *Frame) redrawOptSelectionMoved() (bool, []image.Rectangle) {
+func (fr *Frame) redrawOptTickMoved() (bool, []image.Rectangle) {
 	if fr.redrawOpt.selColor != fr.SelColor {
 		return false, nil
 	}
@@ -750,7 +707,7 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	// - the frame wasn't reloaded (Clear, InsertColor weren't called) since last draw
 	// - at most the tick changed position
 	if !fr.redrawOpt.reloaded {
-		if success, invalid := fr.redrawOptSelectionMoved(); success {
+		if success, invalid := fr.redrawOptTickMoved(); success {
 			fr.updateRedrawOpt()
 			if flush && (fr.Flush != nil) {
 				fr.Flush(invalid...)
@@ -820,13 +777,6 @@ func (fr *Frame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	}
 }
 
-func (fr *Frame) getSsel(i int) (bool, int) {
-	if (i >= fr.Sel.S) && (i < fr.Sel.E) {
-		return true, fr.SelColor + 1
-	}
-	return false, -1
-}
-
 func (g *glyph) glyph(face font.Face) (dr image.Rectangle, mask image.Image, maskp image.Point, advance fixed.Int26_6, ok bool) {
 	r := g.r
 	if g.fakerune {
@@ -868,8 +818,9 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 				ssel = 0
 			}
 		} else {
-			if found, nssel := fr.getSsel(i + fr.Top + n); found {
-				ssel = nssel
+			reali := i + fr.Top + n
+			if reali >= fr.Sel.S && reali < fr.Sel.E {
+				ssel = fr.SelColor + 1
 			}
 		}
 
@@ -948,24 +899,6 @@ func (fr *Frame) drawSingleGlyph(g *glyph, ssel int) {
 	}
 }
 
-func (fr *Frame) scrollDir(recalcPos image.Point) int {
-	if (recalcPos.X < fr.R.Min.X) || (recalcPos.X > fr.R.Max.X) {
-		return 0
-	}
-
-	mid := (fr.R.Min.Y + fr.R.Max.Y) / 2
-
-	if recalcPos.Y < mid {
-		return -1
-	}
-
-	if recalcPos.Y > mid {
-		return +1
-	}
-
-	return 0
-}
-
 func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *mouse.Event {
 	if e.Which == mouse.ButtonWheelUp {
 		f.Scroll(-1, 1)
@@ -988,15 +921,15 @@ func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *mouse
 		if (sel == 0) && (e.Count == 1) && (e.Modifiers&key.ModShift != 0) {
 			// shift-click extends selection, but only for the first selection
 			if p < f.Sel.S {
-				f.setSelectEx(sel, e.Count, p, f.Sel.E)
+				f.SetSelect(sel, e.Count, p, f.Sel.E)
 			} else {
-				f.setSelectEx(sel, e.Count, f.Sel.S, p)
+				f.SetSelect(sel, e.Count, f.Sel.S, p)
 			}
 		} else {
 			if sel != 0 && f.Sel.S != f.Sel.E && (p >= f.Sel.S-1) && (p <= f.Sel.E+1) {
 				f.SelColor = sel
 			} else {
-				f.setSelectEx(sel, e.Count, p, p)
+				f.SetSelect(sel, e.Count, p, p)
 			}
 		}
 		f.Redraw(true, nil)
@@ -1026,7 +959,7 @@ func (fr *Frame) Inside(p int) bool {
 
 // Returns a slice of addresses of the starting characters of each phisical line
 // Phisical lines are distinct lines on the screen, ie a softwrap generates a new phisical line
-func (fr *Frame) PhisicalLines() []int {
+func (fr *Frame) phisicalLines() []int {
 	r := []int{}
 	y := fixed.I(0)
 	for i := range fr.glyphs {
@@ -1060,7 +993,7 @@ func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 		fr.glyphs = fr.glyphs[:len(fr.glyphs)-off-1]
 		fr.ins.X = g.p.X
 		fr.ins.Y = g.p.Y
-		fr.InsertColor([]ColorRune{ColorRune{uint16(g.color), g.r}})
+		fr.Insert([]ColorRune{ColorRune{uint16(g.color), g.r}})
 	} else {
 		fr.Top += len(fr.glyphs)
 		fr.glyphs = []glyph{}
@@ -1108,13 +1041,13 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) {
 		ng := len(fr.glyphs)
 
 		if len(a) > 0 {
-			fr.InsertColor(a)
+			fr.Insert(a)
 		}
 		if len(b) > 0 {
-			fr.InsertColor(b)
+			fr.Insert(b)
 		}
 
-		pl := fr.PhisicalLines()
+		pl := fr.phisicalLines()
 		if len(pl) <= ln {
 			break
 		}
@@ -1146,7 +1079,7 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) {
 		fr.redrawOpt.scrollStart = 0
 		fr.redrawOpt.scrollEnd = len(fr.glyphs)
 
-		h := len(fr.PhisicalLines()) * util.FixedToInt(lh)
+		h := len(fr.phisicalLines()) * util.FixedToInt(lh)
 		r := fr.R
 		r.Min.Y += h
 		draw.Draw(fr.B, r, fr.B, fr.R.Min, draw.Src)

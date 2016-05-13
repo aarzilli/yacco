@@ -2,8 +2,8 @@ package edutil
 
 import (
 	"yacco/buf"
-	"yacco/util"
 	"yacco/textframe"
+	"yacco/util"
 )
 
 type HighlightFn func(buf *buf.Buffer, end int)
@@ -41,15 +41,15 @@ func Scrollfn(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame, sd, sl
 
 		a, b := buf.Selection(util.Sel{top.E, sz})
 		sfr.Fr.Clear()
-		sfr.Fr.InsertColor(a)
-		sfr.Fr.InsertColor(b)
+		sfr.Fr.Insert(a)
+		sfr.Fr.Insert(b)
 
 	case sd > 0:
 		n := sfr.Fr.PushUp(sl, true)
 		top.E = sfr.Fr.Top
 		a, b := buf.Selection(util.Sel{top.E + n, sz})
-		sfr.Fr.InsertColor(a)
-		sfr.Fr.InsertColor(b)
+		sfr.Fr.Insert(a)
+		sfr.Fr.Insert(b)
 
 	case sd < 0:
 		nt := top.E
@@ -72,7 +72,7 @@ func Scrollfn(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame, sd, sl
 	sfr.Redraw(true, nil)
 }
 
-func MakeScrollfn(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame, hlf HighlightFn) func (sd, sl int) {
+func MakeScrollfn(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame, hlf HighlightFn) func(sd, sl int) {
 	return func(sd, sl int) {
 		Scrollfn(buf, top, sfr, sd, sl, hlf)
 	}
@@ -83,7 +83,7 @@ func DoHighlightingConsistency(buf *buf.Buffer, top *util.Sel, sfr *textframe.Sc
 	if end <= buf.HlGood {
 		return
 	}
-	
+
 	hlf(buf, end)
 	a, b := buf.Selection(util.Sel{top.E, buf.Size()})
 	sfr.Fr.RefreshColors(a, b)

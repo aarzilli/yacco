@@ -1276,8 +1276,8 @@ func expandSelToLine(buf *buf.Buffer, sel util.Sel) (s, e int) {
 func (w *Window) BufferRefresh() {
 	w.tagfr.Clear()
 	ta, tb := w.tagbuf.Selection(util.Sel{0, w.tagbuf.Size()})
-	w.tagfr.InsertColor(ta)
-	w.tagfr.InsertColor(tb)
+	w.tagfr.Insert(ta)
+	w.tagfr.Insert(tb)
 	w.tagfr.Redraw(true, nil)
 }
 

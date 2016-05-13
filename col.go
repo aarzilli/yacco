@@ -136,8 +136,8 @@ func (c *Col) RecalcRects(last bool) {
 	c.tagfr.B = screen
 	ta, tb := c.tagbuf.Selection(util.Sel{0, c.tagbuf.Size()})
 	c.tagfr.Clear()
-	c.tagfr.InsertColor(ta)
-	c.tagfr.InsertColor(tb)
+	c.tagfr.Insert(ta)
+	c.tagfr.Insert(tb)
 
 	h := c.contentArea()
 	oldh := c.sumEditorsHeight()
@@ -228,8 +228,8 @@ func (c *Col) Redraw() {
 func (c *Col) BufferRefresh() {
 	c.tagfr.Clear()
 	ta, tb := c.tagbuf.Selection(util.Sel{0, c.tagbuf.Size()})
-	c.tagfr.InsertColor(ta)
-	c.tagfr.InsertColor(tb)
+	c.tagfr.Insert(ta)
+	c.tagfr.Insert(tb)
 	c.tagfr.Redraw(true, nil)
 }
 

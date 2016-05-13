@@ -156,8 +156,8 @@ func (e *Editor) setTagRectsIntl() {
 	e.tagfr.R = e.r.Intersect(e.tagfr.R)
 	e.tagfr.Clear()
 	ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
-	e.tagfr.InsertColor(ta)
-	e.tagfr.InsertColor(tb)
+	e.tagfr.Insert(ta)
+	e.tagfr.Insert(tb)
 }
 
 func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool, simpleRecalc bool) {
@@ -343,8 +343,8 @@ func (e *Editor) refreshIntl(full bool) {
 	e.bodybuf.Rdlock()
 	defer e.bodybuf.Rdunlock()
 	ba, bb := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, e.bodybuf.Size()})
-	e.sfr.Fr.InsertColor(ba)
-	e.sfr.Fr.InsertColor(bb)
+	e.sfr.Fr.Insert(ba)
+	e.sfr.Fr.Insert(bb)
 
 	e.refreshOpt.revCount = e.bodybuf.RevCount
 
@@ -458,8 +458,8 @@ func (e *Editor) FixTop() {
 func (e *Editor) tagRefreshIntl() {
 	e.tagfr.Clear()
 	ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
-	e.tagfr.InsertColor(ta)
-	e.tagfr.InsertColor(tb)
+	e.tagfr.Insert(ta)
+	e.tagfr.Insert(tb)
 
 	e.refreshOpt.tagRevCount = e.tagbuf.RevCount
 }
@@ -629,7 +629,7 @@ func (ed *Editor) PropTrigger() {
 		ed.sfr.Fr.Font = config.MainFont
 	}
 	if oldFont != ed.sfr.Fr.Font {
-		ed.sfr.Fr.ReinitFont()
+		ed.sfr.Fr.Invalidate()
 	}
 
 	ed.refreshIntl(true)
@@ -693,12 +693,12 @@ func (e *Editor) readDir() {
 		r = append(r, n)
 	}
 
-	spaceWidth := e.sfr.Fr.Measure(" ")
+	spaceWidth := util.MeasureString(e.sfr.Fr.Font, " ")
 
 	maxsz := 0
 
 	for i := range r {
-		if sz := e.sfr.Fr.Measure(r[i]); sz > maxsz {
+		if sz := util.MeasureString(e.sfr.Fr.Font, r[i]); sz > maxsz {
 			maxsz = sz
 		}
 	}
