@@ -55,8 +55,9 @@ type Frame struct {
 	Top             int
 	Tabs            []int
 
-	margin fixed.Int26_6
-	Offset int
+	margin            fixed.Int26_6
+	minimumDragForSel int
+	Offset            int
 
 	Sel      util.Sel
 	SelColor int
@@ -126,6 +127,12 @@ func (fr *Frame) Init(margin int) error {
 		if len(fr.Colors[i]) < 2 {
 			return fmt.Errorf("Not enough colors in line %d (%d)", i, len(fr.Colors[i]))
 		}
+	}
+
+	_, _, _, xw, _ := fr.Font.Glyph(fixed.P(0, 0), 'x')
+	fr.minimumDragForSel = util.FixedToInt(xw)
+	if fr.minimumDragForSel <= 5 {
+		fr.minimumDragForSel = 5
 	}
 
 	fr.Clear()
@@ -295,9 +302,16 @@ func (fr *Frame) RefreshColors(a, b []ColorRune) {
 	}
 }
 
+func abs(n int) int {
+	if n < 0 {
+		return -n
+	}
+	return n
+}
+
 // Tracks the mouse position, selecting text, the events channel is from go.wde
 // kind is 1 for character by character selection, 2 for word by word selection, 3 for line by line selection
-func (fr *Frame) Select(idx, kind int, button mouse.Button, events <-chan interface{}) *mouse.Event {
+func (fr *Frame) Select(idx, kind int, button mouse.Button, startPos image.Point, events <-chan interface{}) *mouse.Event {
 	if (idx < 0) || (idx >= len(fr.Colors)-1) {
 		for ei := range events {
 			switch e := ei.(type) {
@@ -323,6 +337,7 @@ func (fr *Frame) Select(idx, kind int, button mouse.Button, events <-chan interf
 	}
 
 	var lastPos image.Point
+	started := false
 
 	r := fr.R
 	r.Max.Y -= 2
@@ -339,6 +354,13 @@ func (fr *Frame) Select(idx, kind int, button mouse.Button, events <-chan interf
 				}
 
 				where := image.Point{int(e.X), int(e.Y)}
+
+				if !started && abs(where.X-startPos.X) < fr.minimumDragForSel {
+					continue
+				}
+
+				started = true
+
 				lastPos = where
 				if where.In(r) {
 					stopAutoscroll()
@@ -933,7 +955,7 @@ func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *mouse
 			}
 		}
 		f.Redraw(true, nil)
-		ee := f.Select(sel, e.Count, e.Which, events)
+		ee := f.Select(sel, e.Count, e.Which, e.Where, events)
 		f.Redraw(true, nil)
 		return ee
 	}
