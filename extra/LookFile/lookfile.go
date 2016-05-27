@@ -8,7 +8,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"sort"
 	"strings"
 	"unicode/utf8"
 	"yacco/util"
@@ -130,12 +129,6 @@ func readEvents(buf *util.BufferConn, searchChan chan<- string, openChan chan<- 
 	}
 }
 
-type resultsByScore []*lookFileResult
-
-func (v resultsByScore) Len() int           { return len(v) }
-func (v resultsByScore) Less(i, j int) bool { return v[i].score > v[j].score }
-func (v resultsByScore) Swap(i, j int)      { temp := v[i]; v[i] = v[j]; v[j] = temp }
-
 func searcher(buf *util.BufferConn, cwd string, searchChan <-chan string, openChan <-chan struct{}) {
 	resultChan := make(chan *lookFileResult, 1)
 	var searchDone chan struct{}
@@ -171,14 +164,10 @@ func searcher(buf *util.BufferConn, cwd string, searchChan <-chan string, openCh
 				return
 			}
 			if len(resultList) > 0 {
-				str := resultList[0].show
-				if tabidx := strings.Index(str, "\t"); tabidx > 0 {
-					str = str[:tabidx]
-				}
 				_, err := fmt.Fprintf(buf.EventFd, "EL%d %d 0 %d %s\n",
-					0, utf8.RuneCountInString(str),
-					utf8.RuneCountInString(str),
-					str)
+					0, utf8.RuneCountInString(resultList[0].show),
+					utf8.RuneCountInString(resultList[0].show),
+					resultList[0].show)
 				util.Allergic(debug, err)
 				_, err = fmt.Fprintf(buf.EventFd, "EX0 0 0 3 Del\n")
 				util.Allergic(debug, err)
@@ -186,12 +175,23 @@ func searcher(buf *util.BufferConn, cwd string, searchChan <-chan string, openCh
 			}
 
 		case result := <-resultChan:
-			if result.needle != curNeedle {
+			if result.score < 0 || result.needle != curNeedle {
 				continue
 			}
 
-			resultList = append(resultList, result)
-			sort.Sort(resultsByScore(resultList))
+			found := false
+			for i := range resultList {
+				if resultList[i].score > result.score {
+					resultList = append(resultList, result)
+					copy(resultList[i+1:], resultList[i:])
+					resultList[i] = result
+					found = true
+					break
+				}
+			}
+			if !found {
+				resultList = append(resultList, result)
+			}
 			if len(resultList) > MAX_RESULTS {
 				resultList = resultList[:MAX_RESULTS]
 			}
@@ -233,15 +233,6 @@ func displayResults(buf *util.BufferConn, resultList []*lookFileResult) {
 
 func main() {
 	flag.Parse()
-
-	go func() {
-		if !tagsLoadMaybe() {
-			gtagsLoadMaybe()
-		}
-		tagsMu.Lock()
-		tagsLoadingDone = true
-		tagsMu.Unlock()
-	}()
 
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)

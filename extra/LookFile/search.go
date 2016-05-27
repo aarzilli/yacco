@@ -1,15 +1,16 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
 	"unicode"
+	"unicode/utf8"
+	"yacco/regexp"
 	"yacco/util"
 )
 
-const MAX_RESULTS = 50
+const MAX_RESULTS = 20
 const MAX_FS_RECUR_DEPTH = 11
 
 type lookFileResult struct {
@@ -31,6 +32,7 @@ func exactMatch(needle []rune) bool {
 func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool) {
 	x := util.ResolvePath(edDir, needle)
 	startDir := filepath.Dir(x)
+	needlerx := regexp.CompileFuzzySearch([]rune(filepath.Base(x)))
 
 	//println("Searching for", needle, "starting at", startDir)
 
@@ -87,53 +89,67 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 				continue
 			}
 
+			off := utf8.RuneCountInString(relPath) - utf8.RuneCountInString(fi[i].Name())
+
+			if !strings.HasSuffix(relPath, fi[i].Name()) {
+				off = -1
+			}
+
+			d := depth
 			if fi[i].IsDir() {
 				relPath += "/"
+				d++
 			}
 
-			match1, score1 := fuzzyMatch(needle, relPath)
-			match2, score2 := fuzzyMatch(needle, fi[i].Name())
-
-			if match2 && !fi[i].IsDir() {
-				score2 += 10
-			}
-
-			var score int
-			switch {
-			case match1 && match2:
-				score = score1
-				if score2 > score {
-					score = score2
-				}
-			case match1:
-				score = score1
-			case match2:
-				score = score2
-			default:
-				continue
-			}
-
-			if fi[i].IsDir() {
-				score -= 10
-			}
-
-			if depth > 1 {
-				score -= 10 * (depth - 1)
-			}
-
-			select {
-			case resultChan <- &lookFileResult{score + 100, relPath, nil, needle}:
-			case <-searchDone:
+			r := fileSystemSearchMatch(fi[i].Name(), off, exact, needlerx, relPath, needle, d, resultChan, searchDone)
+			if r < 0 {
 				return
 			}
 
-			sent++
+			sent += r
 
 			if sent > MAX_RESULTS {
 				return
 			}
 		}
 	}
+}
+
+func fileSystemSearchMatch(name string, off int, exact bool, needlerx regexp.Regex, relPath, needle string, depth int, resultChan chan<- *lookFileResult, searchDone chan struct{}) int {
+	if !exact {
+		name = strings.ToLower(name)
+	}
+	rname := []rune(name)
+	mg := needlerx.Match(regexp.RuneArrayMatchable(rname), 0, len(rname), 1)
+	if mg == nil {
+		return 0
+	}
+
+	//println("Match successful", name, "at", relPath)
+
+	mpos := make([]int, 0, len(mg)/4)
+	ngaps := 0
+	mstart := mg[2]
+
+	for i := 0; i < len(mg); i += 4 {
+		if mg[i] != mg[i+1] {
+			ngaps++
+		}
+
+		if off >= 0 {
+			mpos = append(mpos, mg[i+2]+off)
+		}
+	}
+
+	score := mstart*1000 + depth*100 + ngaps*10 + len(rname) + off
+
+	select {
+	case resultChan <- &lookFileResult{score, relPath, mpos, needle}:
+	case <-searchDone:
+		return -1
+	}
+
+	return 1
 }
 
 func countSlash(str string) int {
@@ -147,12 +163,10 @@ func countSlash(str string) int {
 }
 
 func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool) {
-	tagsMu.Lock()
-	if !tagsLoadingDone {
-		tagsMu.Unlock()
-		return
-	}
-	tagsMu.Unlock()
+	tagsLoadMaybe()
+
+	tagMu.Lock()
+	defer tagMu.Unlock()
 
 	if len(tags) == 0 {
 		return
@@ -160,9 +174,7 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 
 	sent := 0
 
-	if !exact {
-		needle = strings.ToLower(needle)
-	}
+	needle = strings.ToLower(needle)
 
 	for i := range tags {
 		stillGoing := true
@@ -182,20 +194,30 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 
 		haystack := tags[i].tag
 
-		match, score := fuzzyMatch(needle, haystack)
-		if !match {
+		if !exact {
+			haystack = strings.ToLower(haystack)
+		}
+		n := strings.Index(haystack, needle)
+		if n <= 0 {
 			continue
 		}
+
+		mpos := make([]int, len(needle))
+		for i := range mpos {
+			mpos[i] = n + i
+		}
+
+		match := mpos[0]
+
+		score := 1000 + match*10 + len(tags[i].tag)
 
 		x := tags[i].path
 		if tags[i].search != "" {
 			x += ":\t/^" + tags[i].search + "/"
-		} else if tags[i].lineno > 0 {
-			x += fmt.Sprintf(":%d\t%s", tags[i].lineno, tags[i].tag)
 		}
 
 		select {
-		case resultChan <- &lookFileResult{score, x, nil, needle}:
+		case resultChan <- &lookFileResult{score, x, []int{}, needle}:
 		case <-searchDone:
 			return
 		}
