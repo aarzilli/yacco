@@ -151,10 +151,6 @@ func (f *Multiface) Metrics() font.Metrics {
 	return m
 }
 
-func FixedToInt(x fixed.Int26_6) int {
-	return int(x >> 6)
-}
-
 func FloatToFixed(x float64) fixed.Int26_6 {
 	n := int(x)
 	frac := int(0x3f * (x - float64(n)))
@@ -164,5 +160,5 @@ func FloatToFixed(x float64) fixed.Int26_6 {
 // Mesures the length of the string
 func MeasureString(face font.Face, in string) int {
 	d := font.Drawer{Face: face}
-	return FixedToInt(d.MeasureString(in))
+	return d.MeasureString(in).Floor()
 }

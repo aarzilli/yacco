@@ -354,7 +354,7 @@ func (e *Editor) refreshIntl(full bool) {
 func (e *Editor) TagRefresh() {
 	e.tagRefreshIntl()
 
-	ly := e.tagfr.LimitY() + util.FixedToInt(e.tagfr.Font.Metrics().Descent)
+	ly := e.tagfr.LimitY() + e.tagfr.Font.Metrics().Descent.Floor()
 
 	recalcExpansion := e.expandedTag && (e.tagfr.R.Max.Y-ly) != 0
 	if !recalcExpansion {
@@ -540,7 +540,7 @@ func (ed *Editor) WarpToTag() {
 
 func (ed *Editor) WarpToHandle() {
 	p := ed.r.Min
-	p = p.Add(image.Point{config.ScrollWidth / 2, int(util.FixedToInt(ed.tagfr.Font.Metrics().Height) / 2)})
+	p = p.Add(image.Point{config.ScrollWidth / 2, ed.tagfr.Font.Metrics().Height.Floor() / 2})
 	Wnd.WarpMouse(p)
 }
 

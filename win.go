@@ -420,7 +420,7 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 
 func TagHeight(tagfr *textframe.Frame) int {
 	fm := tagfr.Font.Metrics()
-	return int(float64(util.FixedToInt(fm.Ascent + fm.Descent)))
+	return (fm.Ascent + fm.Descent).Floor()
 }
 
 func TagSetEditableStart(tagbuf *buf.Buffer) {
@@ -946,7 +946,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 			dir = -1
 		}
 		if lp.ed != nil {
-			n := int(float32(lp.ed.sfr.Fr.R.Max.Y-lp.ed.sfr.Fr.R.Min.Y)/(2*float32(util.FixedToInt(lp.ed.sfr.Fr.Font.Metrics().Height)))) + 1
+			n := int(float32(lp.ed.sfr.Fr.R.Max.Y-lp.ed.sfr.Fr.R.Min.Y)/(2*float32(lp.ed.sfr.Fr.Font.Metrics().Height.Floor()))) + 1
 			addr := edit.AddrList{
 				[]edit.Addr{&edit.AddrBase{"", strconv.Itoa(n), dir},
 					&edit.AddrBase{"#", "0", -1}}}

@@ -130,7 +130,7 @@ func (fr *Frame) Init(margin int) error {
 	}
 
 	_, _, _, xw, _ := fr.Font.Glyph(fixed.P(0, 0), 'x')
-	fr.minimumDragForSel = util.FixedToInt(xw)
+	fr.minimumDragForSel = xw.Floor()
 	if fr.minimumDragForSel <= 5 {
 		fr.minimumDragForSel = 5
 	}
@@ -150,7 +150,7 @@ func (fr *Frame) BytesSize() uintptr {
 }
 
 func (fr *Frame) initialInsPoint() fixed.Point26_6 {
-	p := fixed.P(fr.R.Min.X+fr.Offset, fr.R.Min.Y+util.FixedToInt(fr.Font.Metrics().Ascent))
+	p := fixed.P(fr.R.Min.X+fr.Offset, fr.R.Min.Y+fr.Font.Metrics().Ascent.Floor())
 	p.X += fr.margin
 	return p
 }
@@ -186,8 +186,8 @@ func (fr *Frame) Insert(runes []ColorRune) (limit image.Point) {
 	_, _, _, spaceWidth, _ := fr.Font.Glyph(fixed.P(0, 0), ' ')
 	tabWidth := spaceWidth * fixed.Int26_6(fr.TabWidth)
 
-	limit.X = util.FixedToInt(fr.ins.X)
-	limit.Y = util.FixedToInt(fr.ins.Y)
+	limit.X = fr.ins.X.Floor()
+	limit.Y = fr.ins.Y.Floor()
 
 	for _, crune := range runes {
 		if fr.ins.Y > bottom && (fr.Hackflags&HF_NOVERTSTOP == 0) {
@@ -275,12 +275,12 @@ func (fr *Frame) Insert(runes []ColorRune) (limit image.Point) {
 			prevRune, hasPrev = crune.R, true
 		}
 
-		if util.FixedToInt(fr.ins.X) > limit.X {
-			limit.X = util.FixedToInt(fr.ins.X)
+		if x := fr.ins.X.Floor(); x > limit.X {
+			limit.X = x
 		}
 
-		if util.FixedToInt(fr.ins.Y) > limit.Y {
-			limit.Y = util.FixedToInt(fr.ins.Y)
+		if y := fr.ins.Y.Floor(); y > limit.Y {
+			limit.Y = y
 		}
 	}
 	if fr.ins.Y < fixed.I(fr.R.Max.Y) {
@@ -464,13 +464,13 @@ func (fr *Frame) PointToCoord(p int) image.Point {
 		} else {
 			r = fr.glyphs[0].p
 		}
-		return image.Point{util.FixedToInt(r.X), util.FixedToInt(r.Y)}
+		return image.Point{r.X.Floor(), r.Y.Floor()}
 	} else if pp < len(fr.glyphs) {
 		r := fr.glyphs[pp].p
-		return image.Point{util.FixedToInt(r.X), util.FixedToInt(r.Y)}
+		return image.Point{r.X.Floor(), r.Y.Floor()}
 	} else if (pp == len(fr.glyphs)) && (len(fr.glyphs) > 0) {
 		r := fr.glyphs[pp-1].p
-		return image.Point{util.FixedToInt((r.X + fr.glyphs[pp-1].width)), util.FixedToInt(r.Y)}
+		return image.Point{(r.X + fr.glyphs[pp-1].width).Floor(), r.Y.Floor()}
 	} else {
 		return image.Point{fr.R.Min.X + 2, fr.R.Min.Y + 2}
 	}
@@ -485,22 +485,22 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform, invalid *[]imag
 	var sp, ep, sep image.Point
 
 	ss := fr.glyphs[s]
-	sp = image.Point{util.FixedToInt(ss.p.X), util.FixedToInt(ss.p.Y - fm.Ascent)}
+	sp = image.Point{ss.p.X.Floor(), (ss.p.Y - fm.Ascent).Floor()}
 
 	var se glyph
 
 	if e < len(fr.glyphs) {
 		se = fr.glyphs[e]
-		sep = image.Point{util.FixedToInt(fr.leftMargin), util.FixedToInt(se.p.Y - fm.Ascent)}
-		ep = image.Point{util.FixedToInt(se.p.X), util.FixedToInt(se.p.Y + fm.Descent)}
+		sep = image.Point{fr.leftMargin.Floor(), (se.p.Y - fm.Ascent).Floor()}
+		ep = image.Point{se.p.X.Floor(), (se.p.Y + fm.Descent).Floor()}
 	} else if e == len(fr.glyphs) {
 		se = fr.glyphs[len(fr.glyphs)-1]
-		sep = image.Point{util.FixedToInt(fr.leftMargin), util.FixedToInt(se.p.Y - fm.Ascent)}
-		ep = image.Point{util.FixedToInt(se.p.X + se.width), util.FixedToInt(se.p.Y + fm.Descent)}
+		sep = image.Point{fr.leftMargin.Floor(), (se.p.Y - fm.Ascent).Floor()}
+		ep = image.Point{(se.p.X + se.width).Floor(), (se.p.Y + fm.Descent).Floor()}
 	} else {
 		se = fr.glyphs[len(fr.glyphs)-1]
-		sep = image.Point{util.FixedToInt(fr.leftMargin), util.FixedToInt(se.p.Y - fm.Ascent)}
-		ep = image.Point{util.FixedToInt(fr.rightMargin), fr.R.Max.Y}
+		sep = image.Point{fr.leftMargin.Floor(), (se.p.Y - fm.Ascent).Floor()}
+		ep = image.Point{fr.rightMargin.Floor(), fr.R.Max.Y}
 	}
 
 	if ss.p.Y == se.p.Y {
@@ -511,11 +511,11 @@ func (fr *Frame) redrawSelection(s, e int, color *image.Uniform, invalid *[]imag
 		}
 		draw.Draw(fr.B, r, color, r.Min, draw.Src)
 	} else {
-		rs := fr.R.Intersect(image.Rectangle{sp, image.Point{util.FixedToInt(fr.rightMargin), util.FixedToInt(ss.p.Y + fm.Descent)}})
+		rs := fr.R.Intersect(image.Rectangle{sp, image.Point{fr.rightMargin.Floor(), (ss.p.Y + fm.Descent).Floor()}})
 		re := fr.R.Intersect(image.Rectangle{sep, ep})
 		rb := fr.R.Intersect(image.Rectangle{
-			image.Point{sep.X, util.FixedToInt(ss.p.Y + fm.Descent)},
-			image.Point{util.FixedToInt(fr.rightMargin), sep.Y},
+			image.Point{sep.X, (ss.p.Y + fm.Descent).Floor()},
+			image.Point{fr.rightMargin.Floor(), sep.Y},
 		})
 		if invalid != nil {
 			*invalid = append(*invalid, rs, re, rb)
@@ -545,27 +545,27 @@ func (fr *Frame) drawTick(idx int) image.Rectangle {
 	var x, y int
 	if len(fr.glyphs) == 0 {
 		p := fr.initialInsPoint()
-		x = util.FixedToInt(p.X)
-		y = util.FixedToInt(p.Y)
+		x = p.X.Floor()
+		y = p.Y.Floor()
 	} else if fr.Sel.S-fr.Top < len(fr.glyphs) {
 		p := fr.glyphs[fr.Sel.S-fr.Top].p
-		x = util.FixedToInt(p.X)
-		y = util.FixedToInt(p.Y)
+		x = p.X.Floor()
+		y = p.Y.Floor()
 	} else {
 		g := fr.glyphs[len(fr.glyphs)-1]
 
 		if g.widthy > 0 {
-			x = fr.R.Min.X + util.FixedToInt(fr.margin)
-			y = util.FixedToInt(g.p.Y + g.widthy)
+			x = fr.R.Min.X + fr.margin.Floor()
+			y = (g.p.Y + g.widthy).Floor()
 		} else {
-			x = util.FixedToInt(g.p.X+g.width) + 1
-			y = util.FixedToInt(g.p.Y)
+			x = (g.p.X + g.width).Floor() + 1
+			y = g.p.Y.Floor()
 		}
 	}
 
 	fm := fr.Font.Metrics()
 
-	basedx := int(math.Floor(float64(util.FixedToInt(fm.Height))/14 + .5))
+	basedx := int(math.Floor(float64(fm.Height.Floor())/14 + .5))
 	if basedx < 1 {
 		basedx = 1
 	}
@@ -577,8 +577,8 @@ func (fr *Frame) drawTick(idx int) image.Rectangle {
 	}
 
 	r := image.Rectangle{
-		Min: image.Point{x - basedxl, y - util.FixedToInt(fm.Ascent)},
-		Max: image.Point{x + basedxr, y + util.FixedToInt(fm.Descent) + 1}}
+		Min: image.Point{x - basedxl, y - fm.Ascent.Floor()},
+		Max: image.Point{x + basedxr, y + fm.Descent.Floor() + 1}}
 
 	draw.Draw(fr.B, fr.R.Intersect(r), &fr.Colors[0][idx], fr.R.Intersect(r).Min, draw.Src)
 
@@ -850,22 +850,22 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 
 		// Softwrap mark drawing
 		if (g.p.Y != cury) && ((fr.Hackflags & HF_MARKSOFTWRAP) != 0) {
-			midline := util.FixedToInt(cury) - util.FixedToInt(fr.Font.Metrics().Height)/2
+			midline := cury.Floor() - fr.Font.Metrics().Height.Floor()/2
 			if !newline {
 				r := image.Rectangle{
-					image.Point{util.FixedToInt(fr.rightMargin), midline},
-					image.Point{util.FixedToInt(fr.rightMargin + fr.margin), midline + 1}}
+					image.Point{fr.rightMargin.Floor(), midline},
+					image.Point{(fr.rightMargin + fr.margin).Floor(), midline + 1}}
 				draw.Draw(fr.B, fr.R.Intersect(r), &fr.Colors[0][1], fr.R.Intersect(r).Min, draw.Src)
 			}
 
 			cury = g.p.Y
 
-			midline = util.FixedToInt(cury) - util.FixedToInt(fr.Font.Metrics().Height)/2
+			midline = cury.Floor() - fr.Font.Metrics().Height.Floor()/2
 
 			if !newline {
 				r := image.Rectangle{
-					image.Point{util.FixedToInt(fr.leftMargin - fr.margin), midline},
-					image.Point{util.FixedToInt(fr.leftMargin), midline + 1}}
+					image.Point{(fr.leftMargin - fr.margin).Floor(), midline},
+					image.Point{fr.leftMargin.Floor(), midline + 1}}
 				draw.Draw(fr.B, fr.R.Intersect(r), &fr.Colors[0][1], fr.R.Intersect(r).Min, draw.Src)
 			}
 		}
@@ -964,7 +964,7 @@ func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *mouse
 }
 
 func (fr *Frame) LineNo() int {
-	return int(float32(fr.R.Max.Y-fr.R.Min.Y) / float32(util.FixedToInt(fr.Font.Metrics().Height)))
+	return int(float32(fr.R.Max.Y-fr.R.Min.Y) / float32(fr.Font.Metrics().Height.Floor()))
 }
 
 func (fr *Frame) Inside(p int) bool {
@@ -1024,11 +1024,11 @@ func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 	fr.lastFull = len(fr.glyphs)
 
 	if fr.allSelectionsEmpty() && drawOpt {
-		h := ln * util.FixedToInt(lh)
+		h := ln * lh.Floor()
 
 		for fr.redrawOpt.scrollStart = len(fr.glyphs) - 1; fr.redrawOpt.scrollStart > 0; fr.redrawOpt.scrollStart-- {
 			g := fr.glyphs[fr.redrawOpt.scrollStart]
-			if util.FixedToInt(g.p.Y+lh) < (fr.R.Max.Y - h) {
+			if (g.p.Y + lh).Floor() < (fr.R.Max.Y - h) {
 				break
 			}
 		}
@@ -1042,7 +1042,7 @@ func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 
 		r = fr.R
 		if (fr.redrawOpt.scrollStart >= 0) && (fr.redrawOpt.scrollStart < len(fr.glyphs)) {
-			r.Min.Y = util.FixedToInt(fr.glyphs[fr.redrawOpt.scrollStart].p.Y + fr.Font.Metrics().Descent)
+			r.Min.Y = (fr.glyphs[fr.redrawOpt.scrollStart].p.Y + fr.Font.Metrics().Descent).Floor()
 		} else {
 			r.Min.Y = fr.R.Max.Y - h
 		}
@@ -1101,7 +1101,7 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) {
 		fr.redrawOpt.scrollStart = 0
 		fr.redrawOpt.scrollEnd = len(fr.glyphs)
 
-		h := len(fr.phisicalLines()) * util.FixedToInt(lh)
+		h := len(fr.phisicalLines()) * lh.Floor()
 		r := fr.R
 		r.Min.Y += h
 		draw.Draw(fr.B, r, fr.B, fr.R.Min, draw.Src)
@@ -1158,5 +1158,5 @@ func (fr *Frame) Size() int {
 
 func (fr *Frame) LimitY() int {
 	p := fr.PointToCoord(fr.Top + len(fr.glyphs) - 1)
-	return p.Y + util.FixedToInt(fr.Font.Metrics().Descent)
+	return p.Y + fr.Font.Metrics().Descent.Floor()
 }
