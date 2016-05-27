@@ -245,8 +245,29 @@ func getComplWords(ec ExecContext) (fpwd, wdwd string) {
 	return
 }
 
+type fsComplCacheEntry struct {
+	expiration time.Time
+	names      []string
+}
+
+var fsComplCache map[string]fsComplCacheEntry
+var fsComplCacheLock sync.Mutex
+
 func getFsCompls(resDir, resName string) []string {
 	//println("\tFs:", resDir, resName)
+
+	now := time.Now()
+
+	fsComplCacheLock.Lock()
+	if cache, ok := fsComplCache[resDir]; ok && now.Before(cache.expiration) {
+		fsComplCacheLock.Unlock()
+		r := []string{}
+		complFilter(resName, cache.names, &r)
+		return r
+	} else {
+		delete(fsComplCache, resDir)
+		fsComplCacheLock.Unlock()
+	}
 
 	fh, err := os.Open(resDir)
 	if err != nil {
@@ -266,6 +287,16 @@ func getFsCompls(resDir, resName string) []string {
 		} else {
 			names[i] = fes[i].Name()
 		}
+	}
+
+	newnow := time.Now()
+	if d := now.Sub(newnow); d > 50*time.Millisecond {
+		fsComplCacheLock.Lock()
+		fsComplCache[resDir] = fsComplCacheEntry{
+			expiration: newnow.Add(d * 4),
+			names:      names,
+		}
+		fsComplCacheLock.Unlock()
 	}
 
 	r := []string{}
