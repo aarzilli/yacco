@@ -355,7 +355,7 @@ func (fr *Frame) Select(idx, kind int, button mouse.Button, startPos image.Point
 
 				where := image.Point{int(e.X), int(e.Y)}
 
-				if !started && abs(where.X-startPos.X) < fr.minimumDragForSel {
+				if !started && abs(where.X-startPos.X) < fr.minimumDragForSel && abs(where.Y-startPos.Y) < fr.minimumDragForSel {
 					continue
 				}
 
