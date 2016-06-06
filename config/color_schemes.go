@@ -46,17 +46,18 @@ func init() {
 	ColorSchemeMap["zb"] = &ZenburnColorScheme
 	ColorSchemeMap["atom"] = &AtomColorScheme
 	ColorSchemeMap["tan"] = &TanColorScheme
+	ColorSchemeMap["4"] = &C4ColorScheme
 }
 
-func c(r, g, b, a uint8) image.Uniform {
-	return *image.NewUniform(color.RGBA{r, g, b, a})
+func c(r, g, b uint8) image.Uniform {
+	return *image.NewUniform(color.RGBA{r, g, b, 0xff})
 }
 
-var col2sel = c(0xAA, 0x00, 0x00, 0xFF)
-var col3sel = c(0x00, 0x66, 0x00, 0xFF)
-var bluebg = c(234, 0xff, 0xff, 0xff)
-var yellowbg = c(0xff, 0xff, 234, 0xff)
-var darkergreen = c(0x24, 0x49, 0x24, 0xff)
+var col2sel = c(0xAA, 0x00, 0x00)
+var col3sel = c(0x00, 0x66, 0x00)
+var bluebg = c(234, 0xff, 0xff)
+var yellowbg = c(0xff, 0xff, 234)
+var darkergreen = c(0x24, 0x49, 0x24)
 
 func mix(color1 color.RGBA, color3 color.RGBA) image.Uniform {
 	var color2 color.RGBA
@@ -67,7 +68,7 @@ func mix(color1 color.RGBA, color3 color.RGBA) image.Uniform {
 	return *image.NewUniform(color2)
 }
 
-var blahcol = c(0x78, 0x00, 0x3e, 0xff)
+var blahcol = c(0x78, 0x00, 0x3e)
 
 var AcmeColorScheme = ColorScheme{
 	WindowBG: *image.White,
@@ -210,11 +211,11 @@ var AcmeBWColorScheme = ColorScheme{
 	HandleBG:         *image.Black,
 }
 
-var zbbord = c(18, 16, 15, 0xff)
-var zbtagbg = c(0x15, 0x12, 0x10, 0xFF)
-var zbtagfg = c(0x8a, 0x77, 0x6a, 0xFF)
-var zbedbg = c(0x18, 0x15, 0x12, 0xFF)
-var zbedfg = c(0xbe, 0xa4, 0x92, 0xFF)
+var zbbord = c(18, 16, 15)
+var zbtagbg = c(0x15, 0x12, 0x10)
+var zbtagfg = c(0x8a, 0x77, 0x6a)
+var zbedbg = c(0x18, 0x15, 0x12)
+var zbedfg = c(0xbe, 0xa4, 0x92)
 
 var ZenburnColorScheme = ColorScheme{
 	WindowBG: zbbord,
@@ -241,21 +242,21 @@ var ZenburnColorScheme = ColorScheme{
 	HandleBG:         zbbord,
 }
 
-var atombg = c(40, 44, 52, 0xff)
-var atomcmtfg = c(92, 99, 112, 0xff)
-var atomstrfg = c(152, 195, 121, 0xff)
-var atomnormfg = c(206, 209, 214, 0xff)
-var atomtagfg = c(219, 219, 219, 0xff)
-var atomtagbg = c(33, 37, 43, 0xff)
-var atomwinbg = c(45, 45, 45, 0xff)
-var atomselbg = c(62, 68, 81, 0xff)
-var atomtagselbg = c(135, 135, 135, 0xff)
+var atombg = c(40, 44, 52)
+var atomcmtfg = c(92, 99, 112)
+var atomstrfg = c(152, 195, 121)
+var atomnormfg = c(206, 209, 214)
+var atomtagfg = c(219, 219, 219)
+var atomtagbg = c(33, 37, 43)
+var atomwinbg = c(45, 45, 45)
+var atomselbg = c(62, 68, 81)
+var atomtagselbg = c(135, 135, 135)
 
 var AtomColorScheme = ColorScheme{
 	WindowBG: atomwinbg,
 
 	Border:    atomnormfg,
-	Scrollbar: c(53, 59, 69, 0xff),
+	Scrollbar: c(53, 59, 69),
 
 	EditorPlain:               []image.Uniform{atombg, atomnormfg, atomstrfg, atomcmtfg},
 	EditorSel1:                []image.Uniform{atomselbg, atomnormfg, atomstrfg, atomcmtfg},
@@ -271,16 +272,16 @@ var AtomColorScheme = ColorScheme{
 	TagMatchingParenthesis: []image.Uniform{atomtagselbg, atomtagfg},
 
 	HandleFG:         atomtagbg,
-	HandleModifiedFG: c(224, 108, 107, 0xff),
+	HandleModifiedFG: c(224, 108, 107),
 	HandleSpecialFG:  *DMedgreen,
 	HandleBG:         atomwinbg,
 }
 
-var tanbg = c(0xcb, 0x97, 0x62, 0xff)
-var tanscroll = c(0xe4, 0xc7, 0x78, 0xff)
-var tannormfg = c(0x29, 0x2a, 0x2d, 0xff)
-var tantagbg = c(0x38, 0x3b, 0x41, 0xff)
-var tantagfg = c(0xe4, 0xc7, 0x78, 0xff)
+var tanbg = c(0xcb, 0x97, 0x62)
+var tanscroll = c(0xe4, 0xc7, 0x78)
+var tannormfg = c(0x29, 0x2a, 0x2d)
+var tantagbg = c(0x38, 0x3b, 0x41)
+var tantagfg = c(0xe4, 0xc7, 0x78)
 
 var TanColorScheme = ColorScheme{
 	WindowBG: tanbg,
@@ -302,7 +303,43 @@ var TanColorScheme = ColorScheme{
 	TagMatchingParenthesis: []image.Uniform{tantagfg, tantagbg},
 
 	HandleFG:         tantagbg,
-	HandleModifiedFG: c(224, 108, 107, 0xff),
+	HandleModifiedFG: c(224, 108, 107),
 	HandleSpecialFG:  *DMedgreen,
-	HandleBG:         c(0x72, 0x78, 0x80, 0xff),
+	HandleBG:         c(0x72, 0x78, 0x80),
+}
+
+var c4bg = c(0x0a, 0x0d, 0x12)
+var c4scroll = c(0x32, 0x5b, 0x65)
+var c4normfg = c(0xb4, 0xb4, 0xb4)
+var c4tagbg = c(0x32, 0x5b, 0x65)
+var c4tagfg = c(0x0a, 0x0d, 0x12)
+var c4comment = c(0x40, 0x97, 0x97)
+var c4string = c(0x97, 0xa0, 0x6a)
+var c4sel1 = c(0x1c, 0x83, 0x74)
+var c4sel2 = c(0x83, 0x74, 0x1C)
+var c4sel3 = c(0x83, 0x1C, 0x5E)
+
+var C4ColorScheme = ColorScheme{
+	WindowBG: c4bg,
+
+	Border:    c4scroll,
+	Scrollbar: c4scroll,
+
+	EditorPlain:               []image.Uniform{c4bg, c4normfg, c4string, c4comment},
+	EditorSel1:                []image.Uniform{c4sel1, c4normfg, c4string, c4comment},
+	EditorSel2:                []image.Uniform{c4sel2, c4normfg, c4string, c4comment},
+	EditorSel3:                []image.Uniform{c4sel3, c4normfg, c4string, c4comment},
+	EditorMatchingParenthesis: []image.Uniform{c4normfg, c4bg, c4bg, c4bg},
+	Compl: []image.Uniform{c4normfg, c4bg},
+
+	TagPlain:               []image.Uniform{c4tagbg, c4tagfg},
+	TagSel1:                []image.Uniform{c4tagfg, c4tagbg},
+	TagSel2:                []image.Uniform{c4sel2, c4tagfg},
+	TagSel3:                []image.Uniform{c4sel3, c4tagfg},
+	TagMatchingParenthesis: []image.Uniform{c4tagfg, c4tagbg},
+
+	HandleFG:         c4bg,
+	HandleModifiedFG: c(0x42, 0x65, 0x32),
+	HandleSpecialFG:  c(0xF5, 0x2B, 0x00),
+	HandleBG:         c(0x72, 0x78, 0x80),
 }
