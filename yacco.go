@@ -46,26 +46,11 @@ var editorColors = [][]image.Uniform{
 }
 
 func setTheme(t string) {
-	switch t {
-	default:
-		fallthrough
-	case "standard":
-		config.TheColorScheme = config.AcmeColorScheme
-	case "e", "evening":
-		config.TheColorScheme = config.AcmeEveningColorScheme
-	case "e2", "evening2":
-		config.TheColorScheme = config.AcmeEvening2ColorScheme
-	case "m", "midnight":
-		config.TheColorScheme = config.AcmeMidnightColorScheme
-	case "bw":
-		config.TheColorScheme = config.AcmeBWColorScheme
-	case "zb":
-		config.TheColorScheme = config.ZenburnColorScheme
-	case "atom":
-		config.TheColorScheme = config.AtomColorScheme
-	case "tan":
-		config.TheColorScheme = config.TanColorScheme
+	cs, ok := config.ColorSchemeMap[t]
+	if !ok {
+		cs = &config.AcmeColorScheme
 	}
+	config.TheColorScheme = *cs
 
 	tagColors[0] = config.TheColorScheme.TagPlain
 	tagColors[1] = config.TheColorScheme.TagSel1

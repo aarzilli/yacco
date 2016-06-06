@@ -1182,15 +1182,22 @@ func RehashCmd(ec ExecContext, arg string) {
 
 func ThemeCmd(ec ExecContext, arg string) {
 	if arg == "" {
-		Warn(`
-Theme standard
-Theme evening
-Theme evening2
-Theme midnight
-Theme bw
-Theme zb
-Theme atom
-`)
+		var colorSchemes = map[*config.ColorScheme]string{}
+		for name, cs := range config.ColorSchemeMap {
+			oldname := colorSchemes[cs]
+			if len(name) > len(oldname) {
+				colorSchemes[cs] = name
+			}
+		}
+
+		cmds := make([]string, 0, len(colorSchemes))
+		for _, name := range colorSchemes {
+			cmds = append(cmds, "Theme "+name)
+		}
+
+		sort.Strings(cmds)
+
+		Warn(strings.Join(cmds, "\n") + "\n")
 		return
 	}
 	setTheme(arg)

@@ -32,6 +32,22 @@ type ColorScheme struct {
 	HandleBG         image.Uniform
 }
 
+var ColorSchemeMap = map[string]*ColorScheme{}
+
+func init() {
+	ColorSchemeMap["standard"] = &AcmeColorScheme
+	ColorSchemeMap["e"] = &AcmeEveningColorScheme
+	ColorSchemeMap["evening"] = &AcmeEveningColorScheme
+	ColorSchemeMap["e2"] = &AcmeEvening2ColorScheme
+	ColorSchemeMap["evening2"] = &AcmeEvening2ColorScheme
+	ColorSchemeMap["m"] = &AcmeMidnightColorScheme
+	ColorSchemeMap["midnight"] = &AcmeMidnightColorScheme
+	ColorSchemeMap["bw"] = &AcmeBWColorScheme
+	ColorSchemeMap["zb"] = &ZenburnColorScheme
+	ColorSchemeMap["atom"] = &AtomColorScheme
+	ColorSchemeMap["tan"] = &TanColorScheme
+}
+
 func c(r, g, b, a uint8) image.Uniform {
 	return *image.NewUniform(color.RGBA{r, g, b, a})
 }
