@@ -56,19 +56,19 @@ func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 
 	bd := complRect
 	bd.Max.X = bd.Min.X + 1
-	draw.Draw(complImg, bd, &config.TheColorScheme.Border, image.ZP, draw.Src)
+	draw.Draw(complImg, bd, &config.TheColorScheme.TopBorder, image.ZP, draw.Src)
 
 	bd = complRect
 	bd.Max.Y = bd.Min.Y + 1
-	draw.Draw(complImg, bd, &config.TheColorScheme.Border, image.ZP, draw.Src)
+	draw.Draw(complImg, bd, &config.TheColorScheme.TopBorder, image.ZP, draw.Src)
 
 	bd = complRect
 	bd.Min.X = bd.Max.X - 1
-	draw.Draw(complImg, bd, &config.TheColorScheme.Border, image.ZP, draw.Src)
+	draw.Draw(complImg, bd, &config.TheColorScheme.TopBorder, image.ZP, draw.Src)
 
 	bd = complRect
 	bd.Min.Y = bd.Max.Y - 1
-	draw.Draw(complImg, bd, &config.TheColorScheme.Border, image.ZP, draw.Src)
+	draw.Draw(complImg, bd, &config.TheColorScheme.TopBorder, image.ZP, draw.Src)
 
 	return complRect, complImg
 }

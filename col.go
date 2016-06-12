@@ -201,7 +201,7 @@ func (c *Col) Redraw() {
 
 	// border at the top of the column
 	br.Max.Y = br.Min.Y + 2
-	draw.Draw(c.tagfr.B, br, &config.TheColorScheme.Border, br.Min, draw.Src)
+	draw.Draw(c.tagfr.B, br, &config.TheColorScheme.TopBorder, br.Min, draw.Src)
 
 	// rectangle where the "button" would be
 	br = c.r
@@ -216,7 +216,7 @@ func (c *Col) Redraw() {
 	if len(c.editors) <= 0 && (Wnd.cols.IndexOf(c) < len(Wnd.cols.cols)-1) {
 		br.Max.Y = c.r.Max.Y
 	}
-	draw.Draw(c.tagfr.B, br, &config.TheColorScheme.Border, br.Min, draw.Src)
+	draw.Draw(c.tagfr.B, br, &config.TheColorScheme.VertBorder, br.Min, draw.Src)
 
 	c.tagfr.Redraw(false, nil)
 

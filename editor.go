@@ -258,12 +258,12 @@ func (e *Editor) Redraw() {
 	// draw two-pixel border at the top and at the right of the editor
 	border := e.r
 	border.Max.Y = border.Min.Y + 2
-	draw.Draw(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.Border, e.r.Intersect(border).Min, draw.Src)
+	draw.Draw(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.TopBorder, e.r.Intersect(border).Min, draw.Src)
 
 	if !e.last {
 		border = e.r
 		border.Min.X = border.Max.X - 2
-		draw.Draw(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.Border, e.r.Intersect(border).Min, draw.Src)
+		draw.Draw(e.sfr.Fr.B, e.r.Intersect(border), &config.TheColorScheme.VertBorder, e.r.Intersect(border).Min, draw.Src)
 	}
 
 	e.redrawTagBorder()

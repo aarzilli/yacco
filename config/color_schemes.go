@@ -9,8 +9,9 @@ type ColorScheme struct {
 	WindowBG  image.Uniform
 	TooltipBG image.Uniform
 
-	Border    image.Uniform
-	Scrollbar image.Uniform
+	TopBorder  image.Uniform
+	VertBorder image.Uniform
+	Scrollbar  image.Uniform
 
 	EditorPlain               []image.Uniform
 	EditorSel1                []image.Uniform
@@ -73,7 +74,7 @@ var blahcol = c(0x78, 0x00, 0x3e)
 var AcmeColorScheme = ColorScheme{
 	WindowBG: *image.White,
 
-	Border:    *image.Black,
+	TopBorder: *image.Black, VertBorder: *image.Black,
 	Scrollbar: *image.NewUniform(color.RGBA{153, 153, 76, 0xff}),
 
 	EditorPlain:               []image.Uniform{yellowbg, *image.Black, darkergreen, *DDarkblue},
@@ -104,7 +105,7 @@ var stratostundora2 = mix(stratostundora.At(0, 0).(color.RGBA), color.RGBA{0x00,
 var AcmeEveningColorScheme = ColorScheme{
 	WindowBG: *image.Black,
 
-	Border:    *image.Black,
+	TopBorder: *image.Black, VertBorder: *image.Black,
 	Scrollbar: *image.NewUniform(color.RGBA{153, 153, 76, 0xff}),
 
 	EditorPlain:               []image.Uniform{*image.Black, *image.White, *DGreygreen, *DPalegreyblue},
@@ -130,7 +131,7 @@ var AcmeEveningColorScheme = ColorScheme{
 var AcmeEvening2ColorScheme = ColorScheme{
 	WindowBG: stratostundora2,
 
-	Border:    *image.Black,
+	TopBorder: *image.Black, VertBorder: *image.Black,
 	Scrollbar: *image.NewUniform(color.RGBA{153, 153, 76, 0xff}),
 
 	EditorPlain:               []image.Uniform{stratostundora2, *image.White, *DGreygreen, *DPalegreyblue},
@@ -160,7 +161,7 @@ var darkbluegray = mix(color.RGBA{0x00, 0x00, 0x55, 0xff}, color.RGBA{0x22, 0x22
 var AcmeMidnightColorScheme = ColorScheme{
 	WindowBG: *image.Black,
 
-	Border:    *harlequin,
+	TopBorder: *harlequin, VertBorder: *harlequin,
 	Scrollbar: darkyellowgray,
 
 	EditorPlain:               []image.Uniform{*image.Black, *harlequin, *DGreygreen, *DPalegreyblue},
@@ -188,7 +189,7 @@ var dustygray = image.NewUniform(color.RGBA{0x99, 0x99, 0x99, 0xff})
 var AcmeBWColorScheme = ColorScheme{
 	WindowBG: *image.White,
 
-	Border:    *image.Black,
+	TopBorder: *image.Black, VertBorder: *image.Black,
 	Scrollbar: *image.NewUniform(color.RGBA{0xaa, 0xaa, 0xaa, 0xff}),
 
 	EditorPlain:               []image.Uniform{*image.White, *image.Black, *image.Black, *image.Black},
@@ -220,7 +221,7 @@ var zbedfg = c(0xbe, 0xa4, 0x92)
 var ZenburnColorScheme = ColorScheme{
 	WindowBG: zbbord,
 
-	Border:    zbbord,
+	TopBorder: zbbord, VertBorder: zbbord,
 	Scrollbar: zbbord,
 
 	EditorPlain:               []image.Uniform{zbedbg, zbedfg, darkergreen, bluebg},
@@ -255,7 +256,7 @@ var atomtagselbg = c(135, 135, 135)
 var AtomColorScheme = ColorScheme{
 	WindowBG: atomwinbg,
 
-	Border:    atomnormfg,
+	TopBorder: atomnormfg, VertBorder: atomnormfg,
 	Scrollbar: c(53, 59, 69),
 
 	EditorPlain:               []image.Uniform{atombg, atomnormfg, atomstrfg, atomcmtfg},
@@ -286,7 +287,7 @@ var tantagfg = c(0xe4, 0xc7, 0x78)
 var TanColorScheme = ColorScheme{
 	WindowBG: tanbg,
 
-	Border:    *image.Black,
+	TopBorder: *image.Black, VertBorder: *image.Black,
 	Scrollbar: tanscroll,
 
 	EditorPlain:               []image.Uniform{tanbg, tannormfg, darkergreen, *DDarkblue},
@@ -322,7 +323,7 @@ var c4sel3 = c(0x83, 0x1C, 0x5E)
 var C4ColorScheme = ColorScheme{
 	WindowBG: c4bg,
 
-	Border:    c4scroll,
+	TopBorder: *image.Black, VertBorder: c4scroll,
 	Scrollbar: c4scroll,
 
 	EditorPlain:               []image.Uniform{c4bg, c4normfg, c4string, c4comment},
