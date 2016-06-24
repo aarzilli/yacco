@@ -47,10 +47,6 @@ var RegionMatches = []util.RegionMatch{
 	// Python
 	util.RegionMatch{
 		NameRe:     `\.py$`,
-		StartDelim: []rune("\"\"\""), EndDelim: []rune("\"\"\""), Escape: '\\', Type: util.RMT_STRING,
-	},
-	util.RegionMatch{
-		NameRe:     `\.py$`,
 		StartDelim: []rune{'"'}, EndDelim: []rune{'"'}, Escape: '\\', Type: util.RMT_STRING,
 	},
 	util.RegionMatch{
