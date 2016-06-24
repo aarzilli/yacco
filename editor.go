@@ -404,9 +404,6 @@ func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 	if top > e.bodybuf.Size() {
 		top = e.bodybuf.Size()
 	}
-	for top > 0 && e.bodybuf.At(top-1).R != '\n' {
-		top--
-	}
 	e.otherSel[OS_TOP].E = top
 
 	// refresh, possibly scroll the editor to show cursor
