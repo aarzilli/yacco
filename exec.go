@@ -743,6 +743,8 @@ tgtIndentSearch:
 			} else {
 				pasteLines[i] = tgtIndent + pasteLines[i][len(srcIndent):]
 			}
+		} else if (i == len(pasteLines)-1) && (pasteLines[i] == "") {
+			pasteLines[i] = tgtIndent
 		} else {
 			pasteLines[i] = pasteLines[i]
 		}
