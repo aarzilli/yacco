@@ -1,0 +1,8 @@
+# Interactive search and replace
+
+Write in the tag:
+	Edit { g/.+/c/replacement/ /thingtosearch/k }
+
+# Execute an edit command on a different buffer
+	
+	Edit X/filename/ ...

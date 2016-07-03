@@ -36,9 +36,14 @@ type EditContext struct {
 	BufMan    BufferManaging
 }
 
+type BufferManagingEntry struct {
+	Buffer *buf.Buffer
+	Sel    *util.Sel
+}
+
 type BufferManaging interface {
 	Open(name string) *buf.Buffer
-	List() []*buf.Buffer
+	List() []BufferManagingEntry
 	Close(buf *buf.Buffer)
 	RefreshBuffer(buf *buf.Buffer)
 }

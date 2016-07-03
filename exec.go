@@ -1332,12 +1332,23 @@ func (bm *BufMan) Open(name string) *buf.Buffer {
 	}
 }
 
-func (bm *BufMan) List() []*buf.Buffer {
-	buffers := []*buf.Buffer{}
+func (bm *BufMan) List() []edit.BufferManagingEntry {
+	bufmap := map[string]edit.BufferManagingEntry{}
 	for i := range Wnd.cols.cols {
 		for j := range Wnd.cols.cols[i].editors {
-			buffers = append(buffers, Wnd.cols.cols[j].editors[i].bodybuf)
+			b := Wnd.cols.cols[i].editors[j].bodybuf
+			bme := edit.BufferManagingEntry{Buffer: b, Sel: &Wnd.cols.cols[i].editors[j].sfr.Fr.Sel}
+			p := b.Path()
+			if _, ok := bufmap[p]; ok {
+				bme.Sel = &util.Sel{}
+			}
+			bufmap[p] = bme
 		}
+	}
+
+	buffers := make([]edit.BufferManagingEntry, 0, len(bufmap))
+	for _, bme := range bufmap {
+		buffers = append(buffers, bme)
 	}
 	return buffers
 }
@@ -1363,7 +1374,7 @@ func (bm *BufMan) RefreshBuffer(buf *buf.Buffer) {
 	for _, col := range Wnd.cols.cols {
 		for _, ed := range col.editors {
 			if ed.bodybuf == buf {
-				ed.BufferRefreshEx(false, false)
+				ed.BufferRefreshEx(false, true)
 			}
 		}
 	}

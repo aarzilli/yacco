@@ -398,7 +398,7 @@ func bufferMap(ec *EditContext) map[string]*buf.Buffer {
 	open := map[string]*buf.Buffer{}
 	buffers := ec.BufMan.List()
 	for i := range buffers {
-		open[buffers[i].Path()] = buffers[i]
+		open[buffers[i].Buffer.Path()] = buffers[i].Buffer
 	}
 	return open
 }
@@ -445,20 +445,17 @@ func XYcmdfn(inv bool, c *Cmd, ec *EditContext) {
 	buffers := ec.BufMan.List()
 
 	for i := range buffers {
-		if buffers[i] == nil {
-			continue
-		}
-		p := []rune(buffers[i].Path())
+		p := []rune(buffers[i].Buffer.Path())
 		loc := c.sregexp.Match(regexp.RuneArrayMatchable(p), 0, len(p), +1)
 		match := loc != nil
 		if inv {
 			match = !match
 		}
 		if match {
-			subec := ec.subec(buffers[i], &util.Sel{0, 0})
+			subec := ec.subec(buffers[i].Buffer, buffers[i].Sel)
 			c.body.fn(c.body, &subec)
 		}
-		ec.BufMan.RefreshBuffer(buffers[i])
+		ec.BufMan.RefreshBuffer(buffers[i].Buffer)
 	}
 }
 
