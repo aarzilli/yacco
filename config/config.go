@@ -25,3 +25,79 @@ var EditErrorTrace = false
 var EnableHighlighting = true
 var ServeTCP = false
 var HideHidden = true
+
+var LoadRules = []util.LoadRule{
+	util.LoadRule{BufRe: `.`, Re: `https?://\S+`, Action: "Xxdg-open $0"},
+	util.LoadRule{BufRe: `.`, Re: `:([^ ]+)`, Action: "L:$1"},
+	util.LoadRule{BufRe: `.`, Re: `([^:\s\(\)]+):(\d+):(\d+)`, Action: "L$1:$2-+#$3-#1"},
+	util.LoadRule{BufRe: `.`, Re: `([^:\s\(\)]+):(\d+)`, Action: "L$1:$2"},
+	util.LoadRule{BufRe: `.`, Re: `File "(.+?)", line (\d+)`, Action: "L$1:$2"},
+	util.LoadRule{BufRe: `.`, Re: `at (\S+) line (\d+)`, Action: "L$1:$2"},
+	util.LoadRule{BufRe: `.`, Re: `in (\S+) on line (\d+)`, Action: "L$1:$2"},
+	util.LoadRule{BufRe: `.`, Re: `([^:\s\(\)]+):\[(\d+),(\d+)\]`, Action: "L$1:$2-+#$3"},
+	util.LoadRule{BufRe: `.`, Re: `([^:\s\(\)]+):\t?/(.*)/`, Action: "L$1:/$2/"},
+	util.LoadRule{BufRe: `.`, Re: `[^:\s\(\)]+`, Action: "L$0"},
+	util.LoadRule{BufRe: `.`, Re: `\S+`, Action: "L$0"},
+	util.LoadRule{BufRe: `.`, Re: `\w+`, Action: "XLook $l0"},
+	util.LoadRule{BufRe: `.`, Re: `.+`, Action: "XLook $l0"},
+}
+
+var RegionMatches = []util.RegionMatch{
+	util.RegionMatch{
+		NameRe:     `\.go$`,
+		StartDelim: []rune{'`'}, EndDelim: []rune{'`'}, Escape: 0, Type: util.RMT_STRING,
+	},
+	util.RegionMatch{
+		NameRe:     `\.go$`,
+		StartDelim: []rune{'"'}, EndDelim: []rune{'"'}, Escape: '\\', Type: util.RMT_STRING,
+	},
+	util.RegionMatch{
+		NameRe:     `\.go$`,
+		StartDelim: []rune{'\''}, EndDelim: []rune{'\''}, Escape: '\\', Type: util.RMT_STRING,
+	},
+	util.RegionMatch{
+		NameRe:     `\.go$`,
+		StartDelim: []rune("/*"), EndDelim: []rune("*/"), Escape: rune(0), Type: util.RMT_COMMENT,
+	},
+	util.RegionMatch{
+		NameRe:     `\.go$`,
+		StartDelim: []rune("//"), EndDelim: []rune{'\n'}, Escape: rune(0), Type: util.RMT_COMMENT,
+	},
+
+	// C / C++ / Java / js
+	util.RegionMatch{
+		NameRe:     `\.(?:c|java|cpp|h|js)$`,
+		StartDelim: []rune{'"'}, EndDelim: []rune{'"'}, Escape: '\\', Type: util.RMT_STRING,
+	},
+	util.RegionMatch{
+		NameRe:     `\.(?:c|java|cpp|h|js)$`,
+		StartDelim: []rune{'\''}, EndDelim: []rune{'\''}, Escape: '\\', Type: util.RMT_STRING,
+	},
+	util.RegionMatch{
+		NameRe:     `\.(?:c|java|cpp|h|js)$`,
+		StartDelim: []rune("/*"), EndDelim: []rune("*/"), Escape: rune(0), Type: util.RMT_COMMENT,
+	},
+	util.RegionMatch{
+		NameRe:     `\.(?:c|java|cpp|h|js)$`,
+		StartDelim: []rune("//"), EndDelim: []rune{'\n'}, Escape: rune(0), Type: util.RMT_COMMENT,
+	},
+
+	// Python
+	util.RegionMatch{
+		NameRe:     `\.py$`,
+		StartDelim: []rune{'"'}, EndDelim: []rune{'"'}, Escape: '\\', Type: util.RMT_STRING,
+	},
+	util.RegionMatch{
+		NameRe:     `\.py$`,
+		StartDelim: []rune{'\''}, EndDelim: []rune{'\''}, Escape: '\\', Type: util.RMT_STRING,
+	},
+	util.RegionMatch{
+		NameRe:     `\.py$`,
+		StartDelim: []rune{'`'}, EndDelim: []rune{'`'}, Escape: '\\', Type: util.RMT_STRING,
+	},
+	util.RegionMatch{
+		NameRe:     `\.py$`,
+		StartDelim: []rune{'#'}, EndDelim: []rune{'\n'}, Escape: rune(0), Type: util.RMT_COMMENT,
+	},
+}
+

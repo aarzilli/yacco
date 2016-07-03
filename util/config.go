@@ -2,9 +2,50 @@ package util
 
 import (
 	"fmt"
-	"golang.org/x/mobile/event/key"
 	"strings"
+	
+	"golang.org/x/mobile/event/key"
 )
+
+// LoadRule describes a rule executed when right clicking on text.
+// 
+// Concerning Action:
+// - If the first character is 'X' the rest of the string will be
+// interpreted as a command (possibly external) and executed
+// - if the first character is 'L' the rest of the string *up to
+// the first semicolon* will be interpreted as a file name to open,
+// the text after the semicolon will be interpreted as an address
+// expression (like those understood by Edit) and used to calculate
+// the initial position of the cursor
+// 
+// In either case expressions like $1, $2 etc... inside Action string
+// will be replaced with the corrisponding matching group of Re.
+// 
+// An 'L' type action will only succeed if the specified file exists,
+// is a UTF8 file and is less than 10MB. If any of this conditions
+// isn't met the rule will be considered failed and other rules will
+// be evaluated.
+type LoadRule struct {
+	BufRe  string // only apply to buffers matching this regular expression
+	Re     string // apply when this regular expression is matched
+	Action string // action to execute
+}
+
+type RegionMatchType int
+
+const (
+	RMT_STRING  = RegionMatchType(2)
+	RMT_COMMENT = RegionMatchType(3)
+)
+
+// RegionMatch describes a syntax highlighting rule
+type RegionMatch struct {
+	NameRe     string
+	StartDelim []rune
+	EndDelim   []rune
+	Escape     rune
+	Type       RegionMatchType
+}
 
 var keynames = map[key.Code]string{
 	key.CodeReturnEnter:     "return",
