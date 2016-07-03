@@ -499,9 +499,19 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 			if floating {
 				anchorDown()
 			}
+
+			// Ideally here we want to send the signal to the foreground process of
+			// the pty we created.
+			// To do that we use tcgetpgrp to find the controlling process group for
+			// the pty and then send the signal to the whole process group.
 			pid := TcGetPGrp(pty)
-			if pid < 0 {
+			if pid <= 0 {
+				// couldn't find controlling process of the pty, let's just send the
+				// signal to the process we forked
 				pid = cmd.Process.Pid
+			} else {
+				// signal whole process group
+				pid = -pid
 			}
 
 			proc, err := os.FindProcess(pid)

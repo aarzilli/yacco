@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 	"yacco/buf"
 	"yacco/util"
@@ -99,6 +100,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 	}
 
 	job.cmd.Dir = wd
+	job.cmd.SysProcAttr = &syscall.SysProcAttr{Pgid: 0, Setpgid: true}
 
 	stdout, err := job.cmd.StdoutPipe()
 	if err != nil {
@@ -257,6 +259,14 @@ func jobKill(i int) {
 		return
 	}
 
+	pgrp, err := syscall.Getpgid(jobs[i].cmd.Process.Pid)
+	if err == nil && pgrp == jobs[i].cmd.Process.Pid {
+		group, err := os.FindProcess(-pgrp)
+		if err == nil {
+			group.Kill()
+			return
+		}
+	}
 	jobs[i].cmd.Process.Kill()
 }
 
