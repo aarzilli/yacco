@@ -630,6 +630,7 @@ func GetCmd(ec ExecContext, arg string) {
 		ec.ed.readDir()
 	} else {
 		ec.ed.bodybuf.Reload(true)
+		ec.ed.FixTop()
 	}
 	if !ec.norefresh {
 		ec.ed.TagRefresh()
