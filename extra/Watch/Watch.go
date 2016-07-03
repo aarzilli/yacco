@@ -52,7 +52,7 @@ func startCommand(clean bool, buf *util.BufferConn) {
 
 			// signal the end of the process if anyone is listening
 			select {
-			case waitChan <- true:
+			case waitChan <- len(co) == 0:
 			default:
 			}
 		}()
@@ -61,8 +61,14 @@ func startCommand(clean bool, buf *util.BufferConn) {
 		done := false
 		for !done {
 			select {
-			case <-waitChan:
+			case success := <-waitChan:
 				buf.BodyFd.Write([]byte{'~', '\n'})
+				if success {
+					buf.CtlFd.Write([]byte("clean\n"))
+				} else {
+					buf.CtlFd.Write([]byte("dirty\n"))
+				}
+
 				done = true
 				break
 			case <-killChan:
@@ -163,6 +169,7 @@ func readEvents(buf *util.BufferConn) {
 		case util.ET_TAGEXEC, util.ET_BODYEXEC:
 			arg, _ := er.Text(nil, nil, nil)
 			if arg == "Rerun" {
+				buf.CtlFd.Write([]byte("show\n"))
 				if canExecute() {
 					startCommand(true, buf)
 				}
@@ -204,6 +211,8 @@ func main() {
 	_, err = buf.CtlFd.Write([]byte("dump " + strings.Join(os.Args, " ") + "\n"))
 	util.Allergic(debug, err)
 	_, err = buf.CtlFd.Write([]byte("dumpdir " + wd + "\n"))
+	util.Allergic(debug, err)
+	_, err = buf.CtlFd.Write([]byte("clean\n"))
 	util.Allergic(debug, err)
 
 	util.SetTag(p9clnt, buf.Id, "Kill Rerun ")
