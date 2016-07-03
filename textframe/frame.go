@@ -665,8 +665,6 @@ func (fr *Frame) redrawOptTickMoved() (bool, []image.Rectangle) {
 		invalid = append(invalid, fr.deleteTick())
 	}
 
-	invalid = append(invalid, fr.drawTick(1))
-
 	if len(fr.Colors) > 4 {
 		if debugRedraw && fr.debugRedraw {
 			fmt.Printf("\tRedrawing parenthesis match (1): %v -> %v\n", fr.redrawOpt.drawnPMatch, fr.PMatch)
@@ -674,6 +672,8 @@ func (fr *Frame) redrawOptTickMoved() (bool, []image.Rectangle) {
 		fr.redrawSelectionLogical(fr.redrawOpt.drawnPMatch, &invalid)
 		fr.redrawSelectionLogical(fr.PMatch, &invalid)
 	}
+
+	invalid = append(invalid, fr.drawTick(1))
 
 	return true, invalid
 }
