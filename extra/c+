@@ -2,4 +2,4 @@
 
 cc=$(comment_char.sh)
 
-sed "s:^:$cc:"
+sed "s:^:$cc :"
