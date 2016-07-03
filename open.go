@@ -83,6 +83,26 @@ func HeuristicPlaceEditor(ed *Editor, warp bool) {
 		}
 	}
 
+	alreadyThere := func(col *Col) bool {
+		if ed.bodybuf != nil {
+			for _, e := range col.editors {
+				if e.bodybuf == ed.bodybuf {
+					return true
+				}
+			}
+		}
+		return false
+	}
+
+	if alreadyThere(col) {
+		for _, c := range Wnd.cols.cols {
+			if col != c && !alreadyThere(c) {
+				col = c
+				break
+			}
+		}
+	}
+
 	if len(col.editors) <= 0 {
 		col.AddAfter(ed, -1, -1, true)
 	} else {
