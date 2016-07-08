@@ -48,10 +48,15 @@ func init() {
 	ColorSchemeMap["atom"] = &AtomColorScheme
 	ColorSchemeMap["tan"] = &TanColorScheme
 	ColorSchemeMap["4"] = &C4ColorScheme
+	ColorSchemeMap["4c"] = &C4CColorScheme
 }
 
 func c(r, g, b uint8) image.Uniform {
 	return *image.NewUniform(color.RGBA{r, g, b, 0xff})
+}
+
+func cc(x uint64) image.Uniform {
+	return *image.NewUniform(color.RGBA{ uint8((x >> 16)&0xff), uint8((x >> 8)&0xff), uint8(x&0xff), 0xff })
 }
 
 var col2sel = c(0xAA, 0x00, 0x00)
@@ -341,6 +346,42 @@ var C4ColorScheme = ColorScheme{
 
 	HandleFG:         c4bg,
 	HandleModifiedFG: c(0x42, 0x65, 0x32),
+	HandleSpecialFG:  c(0xF5, 0x2B, 0x00),
+	HandleBG:         c(0x72, 0x78, 0x80),
+}
+
+var c4cbg = cc(0xf0f0f0)
+var c4cscroll = cc(0x9f9f9f)
+var c4cnormfg = *image.Black
+var c4ctagbg = cc(0x5f5f5f)
+var c4ctagfg = cc(0xf0f0f0)
+var c4ccomment = c(0x40, 0x97, 0x97)
+var c4cstring = cc(0x6d583d)
+var c4csel1 = cc(0xb27606)
+var c4csel2 = c(0x83, 0x74, 0x1C)
+var c4csel3 = c(0x83, 0x1C, 0x5E)
+
+var C4CColorScheme = ColorScheme{
+	WindowBG: c4cbg,
+
+	TopBorder: *image.Black, VertBorder: c4cscroll,
+	Scrollbar: c4cscroll,
+
+	EditorPlain:               []image.Uniform{c4cbg, c4cnormfg, c4cstring, c4ccomment},
+	EditorSel1:                []image.Uniform{c4csel1, c4cnormfg, c4cbg, c4cbg},
+	EditorSel2:                []image.Uniform{c4csel2, c4cbg, c4cbg, c4cbg},
+	EditorSel3:                []image.Uniform{c4csel3, c4cbg, c4cbg, c4cbg},
+	EditorMatchingParenthesis: []image.Uniform{c4cnormfg, c4cbg, c4cbg, c4cbg},
+	Compl: []image.Uniform{c4cnormfg, c4cbg},
+
+	TagPlain:               []image.Uniform{c4ctagbg, c4ctagfg},
+	TagSel1:                []image.Uniform{c4ctagfg, c4ctagbg},
+	TagSel2:                []image.Uniform{c4csel2, c4ctagfg},
+	TagSel3:                []image.Uniform{c4csel3, c4ctagfg},
+	TagMatchingParenthesis: []image.Uniform{c4ctagfg, c4ctagbg},
+
+	HandleFG:         c4ctagbg,
+	HandleModifiedFG: c4cbg,
 	HandleSpecialFG:  c(0xF5, 0x2B, 0x00),
 	HandleBG:         c(0x72, 0x78, 0x80),
 }
