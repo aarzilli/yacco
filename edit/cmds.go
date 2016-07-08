@@ -444,6 +444,8 @@ func wcmdfn(c *Cmd, ec *EditContext) {
 func XYcmdfn(inv bool, c *Cmd, ec *EditContext) {
 	buffers := ec.BufMan.List()
 
+	matchbuffers := make([]BufferManagingEntry, 0, len(buffers))
+
 	for i := range buffers {
 		p := []rune(buffers[i].Buffer.Path())
 		loc := c.sregexp.Match(regexp.RuneArrayMatchable(p), 0, len(p), +1)
@@ -452,9 +454,23 @@ func XYcmdfn(inv bool, c *Cmd, ec *EditContext) {
 			match = !match
 		}
 		if match {
-			subec := ec.subec(buffers[i].Buffer, buffers[i].Sel)
-			c.body.fn(c.body, &subec)
+			matchbuffers = append(matchbuffers, buffers[i])
 		}
+	}
+
+	if len(matchbuffers) == 0 {
+		Warnfn("No match")
+		return
+	}
+
+	if c.txtargdelim == '"' && len(matchbuffers) != 1 {
+		Warnfn("Too many matches")
+		return
+	}
+
+	for i := range matchbuffers {
+		subec := ec.subec(buffers[i].Buffer, buffers[i].Sel)
+		c.body.fn(c.body, &subec)
 		ec.BufMan.RefreshBuffer(buffers[i].Buffer)
 	}
 }

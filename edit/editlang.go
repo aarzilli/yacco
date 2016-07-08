@@ -15,17 +15,18 @@ const (
 )
 
 type Cmd struct {
-	cmdch     rune
-	rangeaddr Addr
-	txtargs   []string
-	numarg    int
-	flags     commandFlag
-	argaddr   Addr
-	body      *Cmd
-	mbody     []*Cmd
-	bodytxt   string
-	fn        func(c *Cmd, ec *EditContext)
-	sregexp   regexp.Regex
+	cmdch       rune
+	rangeaddr   Addr
+	txtargdelim rune
+	txtargs     []string
+	numarg      int
+	flags       commandFlag
+	argaddr     Addr
+	body        *Cmd
+	mbody       []*Cmd
+	bodytxt     string
+	fn          func(c *Cmd, ec *EditContext)
+	sregexp     regexp.Regex
 }
 
 type EditContext struct {

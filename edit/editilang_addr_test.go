@@ -23,7 +23,7 @@ func testEdit(t *testing.T, input, pgm, target string) {
 	sel := util.Sel{s, e}
 	buf.AddSel(&sel)
 
-	ec := EditContext{Buf: buf, Sel: &sel, EventChan: nil, PushJump: func() {}}
+	ec := EditContext{Buf: buf, Sel: &sel, EventChan: nil}
 	Edit(pgm, ec)
 
 	output := string(buf.SelectionRunes(util.Sel{0, buf.Size()}))

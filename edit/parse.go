@@ -132,6 +132,7 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*Cmd, []run
 		if !unicode.IsLetter(rest[0]) && !unicode.IsDigit(rest[0]) {
 			endr := rest[0]
 			rest = rest[1:]
+			r.txtargdelim = endr
 			for i := 0; i < theCmdDef.txtargs; i++ {
 				var arg string
 				arg, rest = readDelim(rest, endr, theCmdDef.escarg && (i == theCmdDef.txtargs-1))
