@@ -160,7 +160,7 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 	}
 }
 
-func FilterEvents(queue screen.EventQueue, altingList []AltingEntry, keyConversion map[string]key.Event) chan interface{} {
+func FilterEvents(queue screen.EventDeque, altingList []AltingEntry, keyConversion map[string]key.Event) chan interface{} {
 	var em eventMachine
 
 	em.dblclickp = image.Point{0, 0}
