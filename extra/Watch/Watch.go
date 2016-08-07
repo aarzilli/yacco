@@ -6,10 +6,12 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"sync"
 	"syscall"
 	"time"
+
 	"yacco/util"
 )
 
@@ -32,7 +34,7 @@ func startCommand(clean bool, buf *util.BufferConn) {
 		buf.AddrFd.Write([]byte{','})
 		buf.XDataFd.Write([]byte{0})
 	}
-	buf.BodyFd.Write([]byte(fmt.Sprintf("# %s\n", strings.Join(args, " "))))
+	buf.BodyFd.Write([]byte(fmt.Sprintf("# %s\n", concatargs(args))))
 
 	go func() {
 		cmd := exec.Command(args[0], args[1:]...)
@@ -186,6 +188,21 @@ func readEvents(buf *util.BufferConn) {
 	}
 }
 
+func concatargs(args []string) string {
+	buf := make([]byte, 0, len(args))
+	for i, arg := range args {
+		if i != 0 {
+			buf = append(buf, ' ')
+		}
+		if strings.Index(arg, " ") >= 0 {
+			buf = strconv.AppendQuote(buf, arg)
+		} else {
+			buf = append(buf, arg...)
+		}
+	}
+	return string(buf)
+}
+
 func main() {
 	flag.Parse()
 	args = flag.Args()
@@ -208,7 +225,7 @@ func main() {
 	_, err = buf.CtlFd.Write([]byte(fmt.Sprintf("name %s/+Watch", wd)))
 	util.Allergic(debug, err)
 
-	_, err = buf.CtlFd.Write([]byte("dump " + strings.Join(os.Args, " ") + "\n"))
+	_, err = buf.CtlFd.Write([]byte("dump " + concatargs(os.Args) + "\n"))
 	util.Allergic(debug, err)
 	_, err = buf.CtlFd.Write([]byte("dumpdir " + wd + "\n"))
 	util.Allergic(debug, err)
