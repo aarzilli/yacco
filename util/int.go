@@ -106,6 +106,15 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 			} else {
 				em.appendMouseDraggedEvent(e)
 			}
+			
+		case mouse.DirStep:
+			where := image.Point{int(e.X), int(e.Y)}
+			switch e.Button {
+			case mouse.ButtonWheelUp:
+				em.appendWheelEvent(where, -1)
+			case mouse.ButtonWheelDown:
+				em.appendWheelEvent(where, +1)
+			}
 
 		case mouse.DirPress:
 			if e.Button == mouse.ButtonNone {
@@ -113,12 +122,6 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 			}
 
 			where := image.Point{int(e.X), int(e.Y)}
-			switch e.Button {
-			case mouse.ButtonWheelUp:
-				em.appendWheelEvent(where, -1)
-			case mouse.ButtonWheelDown:
-				em.appendWheelEvent(where, +1)
-			default:
 				now := time.Now()
 				dist := math.Sqrt(float64(em.dblclickp.X-where.X)*float64(em.dblclickp.X-where.X) + float64(em.dblclickp.Y-where.Y)*float64(em.dblclickp.Y-where.Y))
 
@@ -143,7 +146,6 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 					Count:     em.dblclickc,
 					Modifiers: e.Modifiers,
 				})
-			}
 
 		case mouse.DirRelease:
 			if e.Button == mouse.ButtonNone {
