@@ -104,6 +104,17 @@ func guru(arg string) {
 	cmd.Run()
 }
 
+func guruscope(arg string, scope string) {
+	p9clnt, err := util.YaccoConnect()
+	util.Allergic(debug, err)
+	idx := readlast(p9clnt)
+	pos := readaddr(p9clnt, idx)
+	cmd := exec.Command("guru", "-scope="+scope, arg, pos)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	cmd.Run()
+}
+
 func main() {
 	switch len(os.Args) {
 	case 1:
@@ -131,10 +142,14 @@ func main() {
 			} else {
 				gofmt()
 			}
-		case "callees", "callers", "callstack", "definition", "describe", "freevars", "implements":
-			fallthrough
-		case "peers", "pointsto", "referrers", "what", "whicherrs":
+		case "definition", "describe", "freevars", "implements", "referrers", "what":
 			guru(os.Args[1])
+		case "callers", "callees", "callstack", "peers", "pointsto", "whicherrs":
+			if len(os.Args) < 3 {
+				fmt.Fprintf(os.Stderr, "Must specify scope for command: %s\n", os.Args[1])
+				os.Exit(1)
+			}
+			guruscope(os.Args[1], os.Args[2])
 		case "d":
 			guru("describe")
 		case "r":
