@@ -2,14 +2,17 @@ package main
 
 import (
 	"fmt"
-	"github.com/lionkov/go9p/p"
-	"github.com/lionkov/go9p/p/clnt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/lionkov/go9p/p"
+	"github.com/lionkov/go9p/p/clnt"
+
 	"yacco/util"
 )
 
@@ -72,10 +75,11 @@ func readlast(p9clnt *clnt.Clnt) int {
 	return idx
 }
 
-func readaddr(p9clnt *clnt.Clnt, idx int) string {
+func readaddr(p9clnt *clnt.Clnt, idx int) (pos, filename, body string) {
 	ctlfd, err := p9clnt.FOpen(fmt.Sprintf("/%d/ctl", idx), p.ORDWR)
 	util.Allergic(debug, err)
 	ctlbs, err := ioutil.ReadAll(ctlfd)
+	filename = strings.TrimSpace(string(ctlbs[12*8:]))
 	ctlfd.Write([]byte("addr=dot"))
 	ctlfd.Close()
 
@@ -90,15 +94,22 @@ func readaddr(p9clnt *clnt.Clnt, idx int) string {
 	addrfields := strings.Split(string(bs), ",")
 	s, _ := strconv.Atoi(addrfields[0])
 	e, _ := strconv.Atoi(addrfields[1])
-	return fmt.Sprintf("%s:#%d,#%d", strings.TrimSpace(string(ctlbs[12*8:])), s, e)
+
+	bodyfd, err := p9clnt.FOpen(fmt.Sprintf("/%d/body", idx), p.OREAD)
+	util.Allergic(debug, err)
+	bodyb, _ := ioutil.ReadAll(bodyfd)
+	bodyfd.Close()
+
+	return fmt.Sprintf("%s:#%d,#%d", filename, s, e), filename, string(bodyb)
 }
 
 func guru(arg string) {
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)
 	idx := readlast(p9clnt)
-	pos := readaddr(p9clnt, idx)
-	cmd := exec.Command("guru", arg, pos)
+	pos, filename, body := readaddr(p9clnt, idx)
+	cmd := exec.Command("guru", "-modified", arg, pos)
+	cmd.Stdin = modified(filename, body)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Run()
@@ -108,11 +119,16 @@ func guruscope(arg string, scope string) {
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)
 	idx := readlast(p9clnt)
-	pos := readaddr(p9clnt, idx)
-	cmd := exec.Command("guru", "-scope="+scope, arg, pos)
+	pos, filename, body := readaddr(p9clnt, idx)
+	cmd := exec.Command("guru", "-modified", "-scope="+scope, arg, pos)
+	cmd.Stdin = modified(filename, body)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Run()
+}
+
+func modified(filename, body string) io.Reader {
+	return strings.NewReader(fmt.Sprintf("%s\n%d\n%s", filename, len(body), body))
 }
 
 func main() {
