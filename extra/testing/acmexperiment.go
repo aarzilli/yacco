@@ -8,8 +8,8 @@ import (
 	"strings"
 	"path/filepath"
 	"github.com/wendal/readline-go"
-	"code.google.com/p/go9p/p"
-	"code.google.com/p/go9p/p/clnt"
+	"github.com/lionkov/go9p/p"
+	"github.com/lionkov/go9p/p/clnt"
 )
 
 func makeP9Addr(name string) string {
