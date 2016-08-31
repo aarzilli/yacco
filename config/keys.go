@@ -69,6 +69,7 @@ var KeyBindings = map[string]string{
 
 	"control+`": "Mark",
 	"control+p": "Savepos",
+	"control+d": "Go describe",
 }
 
 var KeyConversion = map[string]key.Event{

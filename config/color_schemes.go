@@ -56,7 +56,7 @@ func c(r, g, b uint8) image.Uniform {
 }
 
 func cc(x uint64) image.Uniform {
-	return *image.NewUniform(color.RGBA{ uint8((x >> 16)&0xff), uint8((x >> 8)&0xff), uint8(x&0xff), 0xff })
+	return *image.NewUniform(color.RGBA{uint8((x >> 16) & 0xff), uint8((x >> 8) & 0xff), uint8(x & 0xff), 0xff})
 }
 
 var col2sel = c(0xAA, 0x00, 0x00)

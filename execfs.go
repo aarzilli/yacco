@@ -64,6 +64,13 @@ func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 			ec.ed.Warp()
 		}
 
+	case "show-nowarp":
+		sideChan <- func() {
+			if ec.ed.size < ec.ed.MinHeight()*3 {
+				Wnd.GrowEditor(ec.ed.Column(), ec.ed, nil)
+			}
+		}
+
 	case "show-tag":
 		sideChan <- func() {
 			if ec.ed.size < ec.ed.MinHeight()*3 {

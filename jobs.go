@@ -87,6 +87,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 		b = ec.ed.bodybuf
 	} else {
 		os.Setenv("bi", "")
+		os.Setenv("winid", "")
 		os.Setenv("p", "")
 		b = ec.buf
 	}

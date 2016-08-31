@@ -100,4 +100,3 @@ var RegionMatches = []util.RegionMatch{
 		StartDelim: []rune{'#'}, EndDelim: []rune{'\n'}, Escape: rune(0), Type: util.RMT_COMMENT,
 	},
 }
-

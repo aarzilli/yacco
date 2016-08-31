@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -58,6 +60,10 @@ func gofmt() {
 }
 
 func readlast(p9clnt *clnt.Clnt) int {
+	if bi := os.Getenv("bi"); bi != "" {
+		idx, _ := strconv.Atoi(bi)
+		return idx
+	}
 	fh, err := p9clnt.FOpen("/last", p.OREAD)
 	util.Allergic(debug, err)
 	bs, err := ioutil.ReadAll(fh)
@@ -110,9 +116,8 @@ func guru(arg string) {
 	pos, filename, body := readaddr(p9clnt, idx)
 	cmd := exec.Command("guru", "-modified", arg, pos)
 	cmd.Stdin = modified(filename, body)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run()
+	bs, err := cmd.CombinedOutput()
+	processout(bs, err, arg, idx, pos, false, p9clnt)
 }
 
 func guruscope(arg string, scope string) {
@@ -122,13 +127,315 @@ func guruscope(arg string, scope string) {
 	pos, filename, body := readaddr(p9clnt, idx)
 	cmd := exec.Command("guru", "-modified", "-scope="+scope, arg, pos)
 	cmd.Stdin = modified(filename, body)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Run()
+	bs, err := cmd.CombinedOutput()
+	processout(bs, err, arg, idx, pos, false, p9clnt)
+}
+
+func guruprepared(arg string, stridx, pos string) {
+	p9clnt, err := util.YaccoConnect()
+	util.Allergic(debug, err)
+	idx, _ := strconv.Atoi(stridx)
+	_, filename, body := readaddr(p9clnt, idx)
+	cmd := exec.Command("guru", arg, pos)
+	cmd.Stdin = modified(filename, body)
+	bs, err := cmd.CombinedOutput()
+	processout(bs, err, arg, idx, pos, true, p9clnt)
 }
 
 func modified(filename, body string) io.Reader {
 	return strings.NewReader(fmt.Sprintf("%s\n%d\n%s", filename, len(body), body))
+}
+
+func processout(bs []byte, err error, arg string, idx int, pos string, fullwrite bool, p9clnt *clnt.Clnt) {
+	const (
+		refToMethodFunc = "reference to method func "
+		refToFunc       = "reference to func"
+	)
+	buf, _, err := util.FindWin("Guru", p9clnt)
+	util.Allergic(debug, err)
+	buf.CtlFd.Write([]byte("name +Guru\n"))
+	buf.CtlFd.Write([]byte("show-nowarp\n"))
+	buf.AddrFd.Write([]byte(","))
+	buf.XDataFd.Write([]byte{0})
+	buf.EventFd.Close()
+	buf.AddrFd.Close()
+	buf.XDataFd.Close()
+	buf.TagFd.Close()
+	buf.ColorFd.Close()
+	defer buf.BodyFd.Close()
+
+	if err != nil {
+		fmt.Fprintf(buf.BodyFd, "Guru error: %v\n", err)
+		return
+	}
+
+	if arg != "describe" || fullwrite {
+		buf.BodyFd.Writen(bs, 0)
+		return
+	}
+
+	scan := bufio.NewScanner(bytes.NewReader(bs))
+	first := true
+	skipdetails := false
+	showonlydefined := false
+	for scan.Scan() {
+		const sep = ": "
+		line := scan.Text()
+		idx := strings.Index(line, sep)
+
+		pos := line[:idx]
+		rest := line[idx+len(sep):]
+
+		if pos == "guru" {
+			skipdetails = true
+			first = false
+		}
+
+		if first {
+			buf.BodyFd.Writen([]byte(pos), 0)
+			buf.BodyFd.Writen([]byte(":\n"), 0)
+
+			var funcname string
+			switch {
+			case strings.HasPrefix(rest, refToMethodFunc):
+				funcname = rest[len(refToMethodFunc):]
+			case strings.HasPrefix(rest, refToFunc):
+				funcname = rest[len(refToFunc):]
+			}
+			if funcname != "" {
+				ok := godoc(funcname, buf)
+				if ok {
+					showonlydefined = true
+					skipdetails = true
+				}
+			}
+			if !showonlydefined {
+				buf.BodyFd.Writen([]byte(rest), 0)
+			}
+			first = false
+		} else {
+			if rest == "defined here" {
+				buf.BodyFd.Writen([]byte(fmt.Sprintf("defined: %s", pos)), 0)
+			} else {
+				if !showonlydefined {
+					buf.BodyFd.Writen([]byte(rest), 0)
+				}
+			}
+		}
+		buf.BodyFd.Writen([]byte("\n"), 0)
+	}
+
+	if !skipdetails {
+		buf.BodyFd.Writen([]byte(fmt.Sprintf("\nDetails:\n\tGo dd %d %s\n", idx, pos)), 0)
+	}
+}
+
+func godoc(funcname string, buf *util.BufferConn) bool {
+	pkg, receiver, name, ok := parseGuruFuncname(funcname)
+	if !ok {
+		return false
+	}
+
+	cmd := exec.Command("godoc", pkg, name)
+	bs, err := cmd.CombinedOutput()
+	if err != nil {
+		return false
+	}
+
+	scan := bufio.NewScanner(bytes.NewReader(bs))
+
+	const funcPrefix = "func "
+
+	found := false
+
+	for scan.Scan() {
+		line := scan.Text()
+
+		if !strings.HasPrefix(line, funcPrefix) {
+			continue
+		}
+
+		curreceiver, curname, ok := parseGodocFuncdef(line[len(funcPrefix):])
+		if !ok {
+			continue
+		}
+		if curreceiver == receiver && curname == name {
+			buf.BodyFd.Writen([]byte(line), 0)
+			buf.BodyFd.Writen([]byte("\n"), 0)
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return false
+	}
+
+	for scan.Scan() {
+		line := scan.Text()
+		if len(line) <= 0 || line[0] != ' ' {
+			break
+		}
+		buf.BodyFd.Writen([]byte(line), 0)
+		buf.BodyFd.Writen([]byte("\n"), 0)
+	}
+
+	return true
+}
+
+func parseGuruFuncname(funcname string) (pkg, receiver, name string, ok bool) {
+	ok = false
+	if len(funcname) < 1 {
+		return
+	}
+
+	var rest string
+
+	if funcname[0] != '(' {
+		found := false
+		for i := 1; i < len(funcname); i++ {
+			if funcname[i] == '.' {
+				found = true
+				pkg = funcname[1:i]
+				if i+1 >= len(funcname) {
+					return
+				}
+				rest = funcname[i+1:]
+				break
+			}
+		}
+		if !found {
+			return
+		}
+	} else {
+		if len(funcname) < 2 {
+			return
+		}
+		start := 1
+		if funcname[1] == '*' {
+			start++
+		}
+		lastdot := 0
+	pkgloop:
+		for i := 2; i < len(funcname); i++ {
+			switch funcname[i] {
+			case '.':
+				lastdot = i
+			case ')':
+				if lastdot == 0 {
+					lastdot = i
+				}
+				pkg = funcname[start:lastdot]
+				if lastdot < i {
+					receiver = funcname[lastdot+1 : i]
+				}
+				if i+1 >= len(funcname) {
+					return
+				}
+				rest = funcname[i+1:]
+				break pkgloop
+			}
+		}
+	}
+
+	if pkg == "" || rest == "" {
+		return
+	}
+
+	if rest[0] == '.' {
+		if len(rest) < 2 {
+			return
+		}
+		rest = rest[1:]
+	}
+
+	for i := range rest {
+		if rest[i] == '(' {
+			name = rest[:i]
+			break
+		}
+	}
+
+	if name == "" {
+		return
+	}
+
+	ok = true
+	return
+}
+
+func parseGodocFuncdef(funcdef string) (receiver, name string, ok bool) {
+	i := 0
+	for i < len(funcdef) {
+		if funcdef[i] != ' ' {
+			break
+		}
+		i++
+	}
+
+	if i >= len(funcdef) {
+		return
+	}
+
+	if funcdef[i] == '(' {
+		for i < len(funcdef) {
+			if funcdef[i] == ' ' {
+				i++
+				break
+			}
+			i++
+		}
+
+		if i >= len(funcdef) {
+			return
+		}
+
+		if funcdef[i] == '*' {
+			i++
+			if i >= len(funcdef) {
+				return
+			}
+		}
+
+		start := i
+
+		for i < len(funcdef) {
+			if funcdef[i] == ')' {
+				receiver = funcdef[start:i]
+				i++
+				break
+			}
+			i++
+		}
+
+		if i >= len(funcdef) {
+			return
+		}
+
+		for i < len(funcdef) {
+			if funcdef[i] != ' ' {
+				break
+			}
+			i++
+		}
+
+		if i >= len(funcdef) {
+			return
+		}
+	}
+
+	start := i
+
+	for i < len(funcdef) {
+		if funcdef[i] == '(' {
+			name = funcdef[start:i]
+			ok = true
+			return
+		}
+		i++
+	}
+
+	return
 }
 
 func main() {
@@ -168,6 +475,12 @@ func main() {
 			guruscope(os.Args[1], os.Args[2])
 		case "d":
 			guru("describe")
+		case "dd":
+			if len(os.Args) < 4 {
+				fmt.Fprintf(os.Stderr, "Wrong prepared guru command syntax\n")
+				os.Exit(1)
+			}
+			guruprepared("describe", os.Args[2], os.Args[3])
 		case "r":
 			guru("referrers")
 		case "help":
