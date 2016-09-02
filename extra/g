@@ -6,11 +6,9 @@ if [ "x$yp9" != "x" ]; then
 	echo -ne '\0000' | y9p write buf/data
 	echo $ grep -in $1 | y9p write buf/body
 	echo show | y9p write buf/ctl
-	find ./ -name '*.c' -or -name '*.cc' -or -name '*.cpp' -or -name '*.h' -or -name '*.py' -or -name '*.txt' -or -name '*.pl' -or -name '*.tcl' -or -name '*.java' -or -name '*.js' -or -name '*.html' -or -name '*.go' -or -name '*.clj' -or -name '*.jsp' | xargs grep -in $1 2>&1 | y9p write buf/body
+	find ./  -path "*/vendor/*" -prune -name '*.c' -or -name '*.cc' -or -name '*.cpp' -or -name '*.h' -or -name '*.py' -or -name '*.txt' -or -name '*.pl' -or -name '*.tcl' -or -name '*.java' -or -name '*.js' -or -name '*.html' -or -name '*.go' -or -name '*.clj' -or -name '*.jsp' | xargs grep -in $1 2>&1 | y9p write buf/body
 	exit 0
 else
 	echo searching $1
-	find ./ -name '*.c' -or -name '*.cc' -or -name '*.cpp' -or -name '*.h' -or -name '*.py' -or -name '*.txt' -or -name '*.pl' -or -name '*.tcl' -or -name '*.java' -or -name '*.js' -or -name '*.html' -or -name '*.go' -or -name '*.clj' -or -name '*.jsp' | xargs grep -in $1
+	find ./ -path "*/vendor/*" -prune -name '*.c' -or -name '*.cc' -or -name '*.cpp' -or -name '*.h' -or -name '*.py' -or -name '*.txt' -or -name '*.pl' -or -name '*.tcl' -or -name '*.java' -or -name '*.js' -or -name '*.html' -or -name '*.go' -or -name '*.clj' -or -name '*.jsp' | xargs grep -in $1
 fi
-
-
