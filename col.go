@@ -147,10 +147,17 @@ func (c *Col) RecalcRects(last bool) {
 		recoverh := 0
 		for i := range c.editors {
 			mh := c.editors[i].MinHeight()
-			c.editors[i].size = int(float64(c.editors[i].size) * f)
-			if c.editors[i].size < mh {
-				recoverh += mh - c.editors[i].size
-				c.editors[i].size = mh
+			if c.editors[i].size != mh {
+				c.editors[i].size = int(float64(c.editors[i].size) * f)
+				if c.editors[i].size < mh {
+					recoverh += mh - c.editors[i].size
+					c.editors[i].size = mh
+				}
+			} else {
+				sz := int(float64(c.editors[i].size) * f)
+				if sz < mh {
+					recoverh += mh - sz
+				}
 			}
 		}
 
@@ -178,7 +185,17 @@ func (c *Col) RecalcRects(last bool) {
 		}
 
 		if toth < h && len(c.editors) > 0 {
-			c.editors[len(c.editors)-1].size += (h - toth)
+			found := false
+			for i := len(c.editors)-1; i >= 0; i-- {
+				if c.editors[i].size != c.editors[i].MinHeight() {
+					found = true
+					c.editors[i].size += (h - toth)
+					break
+				}
+			}
+			if !found {
+				c.editors[len(c.editors)-1].size += (h - toth)
+			}
 		}
 	}
 
