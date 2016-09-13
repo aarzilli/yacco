@@ -20,10 +20,6 @@ type Col struct {
 	frac    float64
 	last    bool
 
-	savedR           image.Rectangle
-	savedEditorSize  []int
-	savedEditorRects []image.Rectangle
-
 	tagfr  textframe.Frame
 	tagbuf *buf.Buffer
 }
@@ -58,22 +54,12 @@ func NewCol(wnd *Window, r image.Rectangle) *Col {
 	return c
 }
 
-func (c *Col) saveRects() {
-	c.savedR = c.r
-	c.savedEditorSize = make([]int, len(c.editors))
-	c.savedEditorRects = make([]image.Rectangle, len(c.editors))
-	for i := range c.editors {
-		c.savedEditorSize[i] = c.editors[i].size
-		c.savedEditorRects[i] = c.editors[i].r
-	}
-}
-
-func (c *Col) SetRects(wnd *Window, b draw.Image, r image.Rectangle, last, reset bool) {
+func (c *Col) SetRects(wnd *Window, b draw.Image, r image.Rectangle, last bool) {
 	c.tagfr.Flush = wnd.FlushImage
 	c.wnd = wnd
 	c.r = r
 	c.b = b
-	c.RecalcRects(last, reset)
+	c.RecalcRects(last)
 }
 
 func (c *Col) contentArea() int {
@@ -118,7 +104,7 @@ func (c *Col) AddAfter(ed *Editor, n int, y int, wobble bool) {
 		c.editors[n+1] = ed
 	}
 
-	c.RecalcRects(c.last, false)
+	c.RecalcRects(c.last)
 	c.Redraw()
 }
 
@@ -130,7 +116,7 @@ func (c *Col) sumEditorsHeight() int {
 	return sz
 }
 
-func (c *Col) RecalcRects(last, reset bool) {
+func (c *Col) RecalcRects(last bool) {
 	screen := c.b
 
 	c.last = last
@@ -153,13 +139,6 @@ func (c *Col) RecalcRects(last, reset bool) {
 	c.tagfr.Insert(ta)
 	c.tagfr.Insert(tb)
 
-	if reset {
-		for i := range c.editors {
-			c.editors[i].size = c.savedEditorSize[i]
-			c.editors[i].SetRects(screen, c.savedEditorRects[i], last, false)
-		}
-		return
-	}
 	h := c.contentArea()
 	oldh := c.sumEditorsHeight()
 
@@ -281,7 +260,7 @@ func (c *Col) Remove(i int) *Editor {
 	copy(c.editors[i:], c.editors[i+1:])
 	c.editors = c.editors[:len(c.editors)-1]
 
-	c.RecalcRects(c.last, false)
+	c.RecalcRects(c.last)
 	c.Redraw()
 	return ned
 }

@@ -41,10 +41,6 @@ type Window struct {
 	invalidRects    []image.Rectangle
 	uploadMutex     sync.Mutex
 	uploaderRunning bool
-
-	// to prevent gnome3 curtain garbage from fucking us up
-	prevBounds     image.Rectangle
-	lastResizeTime time.Time
 }
 
 type LogicalPos struct {
@@ -139,7 +135,7 @@ func (w *Window) Init(s screen.Screen, width, height int) (err error) {
 
 	w.GenTag()
 
-	w.calcRects(false)
+	w.calcRects()
 
 	w.padDraw()
 	w.tagfr.Redraw(false, nil)
@@ -224,13 +220,13 @@ func (w *Window) uploaderIsRunning() bool {
 	return w.uploaderRunning
 }
 
-func (w *Window) calcRects(reset bool) {
+func (w *Window) calcRects() {
 	r := w.bounds
 
 	colsr := r
 	colsr.Min.Y += TagHeight(&w.tagfr)
 
-	w.cols.SetRects(w, w.img, r.Intersect(colsr), reset)
+	w.cols.SetRects(w, w.img, r.Intersect(colsr))
 
 	w.tagfr.R = r
 	w.tagfr.R.Min.X += config.ScrollWidth
@@ -255,12 +251,11 @@ func (w *Window) Resized(sz image.Point) {
 		return
 	}
 	if sz.X <= w.wndb.Bounds().Dx() && sz.Y <= w.wndb.Bounds().Dy() {
-		oldbounds := w.bounds
 		w.bounds = w.wndb.Bounds()
 		w.bounds.Max.Y = w.bounds.Min.Y + sz.Y
 		w.bounds.Max.X = w.bounds.Min.X + sz.X
 		w.invalidRects = w.invalidRects[:0]
-		w.RedrawHard(oldbounds)
+		w.RedrawHard()
 		return
 	}
 	for w.uploaderIsRunning() {
@@ -270,9 +265,8 @@ func (w *Window) Resized(sz image.Point) {
 	if w.wndb != nil {
 		w.wndb.Release()
 	}
-	oldbounds := w.bounds
 	w.setupBuffer(sz)
-	w.RedrawHard(oldbounds)
+	w.RedrawHard()
 }
 
 func (w *Window) setupBuffer(sz image.Point) {
@@ -283,19 +277,8 @@ func (w *Window) setupBuffer(sz image.Point) {
 	w.bounds = w.wndb.Bounds()
 }
 
-func (w *Window) RedrawHard(oldbounds image.Rectangle) {
-	reset := false
-	if w.bounds == w.prevBounds && time.Since(w.lastResizeTime) < 1*time.Second {
-		reset = true
-	} else {
-		for _, col := range w.cols.cols {
-			col.saveRects()
-		}
-		w.lastResizeTime = time.Now()
-		w.prevBounds = oldbounds
-	}
-
-	w.calcRects(reset)
+func (w *Window) RedrawHard() {
+	w.calcRects()
 
 	w.padDraw()
 
@@ -689,7 +672,7 @@ loop:
 				oed.size = oed.MinHeight()
 				ed.size -= oed.size
 			}
-			col.RecalcRects(col.last, false)
+			col.RecalcRects(col.last)
 			p := ed.r.Min
 			w.WarpMouse(p.Add(d))
 			col.Redraw()
@@ -742,7 +725,7 @@ func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
 		}
 	}
 
-	col.RecalcRects(col.last, false)
+	col.RecalcRects(col.last)
 	col.Redraw()
 	w.FlushImage(col.r)
 	if d != nil {
@@ -788,7 +771,7 @@ loop:
 			}
 
 			w.cols.Remove(w.cols.IndexOf(col))
-			w.cols.RecalcRects(false)
+			w.cols.RecalcRects()
 
 			mlp := w.TranslatePosition(endPos, true)
 			dstcol := mlp.col
