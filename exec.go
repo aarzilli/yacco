@@ -878,7 +878,7 @@ func SortCmd(ec ExecContext, arg string) {
 	}
 
 	sort.Sort((*Editors)(&ec.col.editors))
-	ec.col.RecalcRects(ec.col.last)
+	ec.col.RecalcRects(ec.col.last, false)
 	ec.col.Redraw()
 	Wnd.FlushImage(ec.col.r)
 }
@@ -1204,7 +1204,7 @@ func ThemeCmd(ec ExecContext, arg string) {
 		return
 	}
 	setTheme(arg)
-	Wnd.RedrawHard()
+	Wnd.RedrawHard(Wnd.bounds)
 }
 
 func DirexecCmd(ec ExecContext, arg string) {

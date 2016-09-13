@@ -19,11 +19,11 @@ func NewCols(wnd *Window, r image.Rectangle) *Cols {
 	return &Cols{[]*Col{}, wnd, wnd.img, r}
 }
 
-func (cs *Cols) SetRects(wnd *Window, b draw.Image, r image.Rectangle) {
+func (cs *Cols) SetRects(wnd *Window, b draw.Image, r image.Rectangle, reset bool) {
 	cs.wnd = wnd
 	cs.r = r
 	cs.b = b
-	cs.RecalcRects()
+	cs.RecalcRects(reset)
 }
 
 // Create a new column after the specified one, specify -1 to create a new column at the end
@@ -44,13 +44,13 @@ func (cs *Cols) AddAfter(c *Col, n int, f float64) *Col {
 		cs.cols[n+1] = c
 	}
 
-	cs.RecalcRects()
+	cs.RecalcRects(false)
 	cs.Redraw()
 
 	return c
 }
 
-func (cs *Cols) RecalcRects() {
+func (cs *Cols) RecalcRects(reset bool) {
 	w := cs.r.Max.X - cs.r.Min.X
 
 	minimizedw := 0
@@ -88,7 +88,7 @@ func (cs *Cols) RecalcRects() {
 		r.Min.X = x
 		r.Max.X = x + curw
 		x += curw
-		cs.cols[i].SetRects(cs.wnd, cs.b, cs.r.Intersect(r), i == (len(cs.cols)-1))
+		cs.cols[i].SetRects(cs.wnd, cs.b, cs.r.Intersect(r), i == (len(cs.cols)-1), reset)
 	}
 }
 
@@ -122,6 +122,6 @@ func (cs *Cols) Remove(i int) {
 	}
 	copy(cs.cols[i:], cs.cols[i+1:])
 	cs.cols = cs.cols[:len(cs.cols)-1]
-	cs.RecalcRects()
+	cs.RecalcRects(false)
 	cs.Redraw()
 }

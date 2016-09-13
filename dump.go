@@ -136,7 +136,7 @@ func LoadFrom(dumpDest string) bool {
 	Wnd.tagbuf.Replace([]rune(dw.TagText), &util.Sel{Wnd.tagbuf.EditableStart, Wnd.tagbuf.Size()}, true, nil, util.EO_MOUSE)
 	Wnd.BufferRefresh()
 	Wnd.tagfr.Redraw(true, nil)
-	Wnd.RedrawHard()
+	Wnd.RedrawHard(Wnd.bounds)
 
 	for i, db := range dw.Buffers {
 		if db.DumpCmd != "" {

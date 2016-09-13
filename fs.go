@@ -520,7 +520,7 @@ func writeColumnsFn(data []byte, off int64) syscall.Errno {
 					Wnd.cols.cols[i].frac = f * 10
 				}
 			}
-			Wnd.RedrawHard()
+			Wnd.RedrawHard(Wnd.bounds)
 			return 0
 		}
 		return syscall.EIO
