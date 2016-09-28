@@ -263,8 +263,18 @@ func (a *face) Metrics() font.Metrics {
 
 // Kern satisfies the font.Face interface.
 func (a *face) Kern(r0, r1 rune) fixed.Int26_6 {
-	i0 := a.index(r0)
-	i1 := a.index(r1)
+	var i0, i1 Index
+	if r0 < 0 {
+		i0 = -r0
+	} else {
+		i0 = a.index(r0)
+	}
+	
+	if r1 < 0 {
+		i1 = -r1
+	} else {
+		i1 = a.index(r1)
+	}
 	kern := a.f.Kern(a.scale, i0, i1)
 	if a.hinting != font.HintingNone {
 		kern = (kern + 32) &^ 63
@@ -284,7 +294,12 @@ func (a *face) Glyph(dot fixed.Point26_6, r rune) (
 	ix, fx := int(dotX>>6), dotX&0x3f
 	iy, fy := int(dotY>>6), dotY&0x3f
 
-	index := a.index(r)
+	var index Index
+	if r < 0 {
+		index = -r
+	} else {
+		index = a.index(r)
+	}
 	cIndex := uint32(index)
 	cIndex = cIndex*a.subPixelX - uint32(fx/a.subPixelMaskX)
 	cIndex = cIndex*a.subPixelY - uint32(fy/a.subPixelMaskY)
@@ -319,6 +334,12 @@ func (a *face) Glyph(dot fixed.Point26_6, r rune) (
 }
 
 func (a *face) GlyphBounds(r rune) (bounds fixed.Rectangle26_6, advance fixed.Int26_6, ok bool) {
+	var index Index
+	if r < 0 {
+		index = -r
+	} else {
+		index = r
+	}
 	if err := a.glyphBuf.Load(a.f, a.scale, a.index(r), a.hinting); err != nil {
 		return fixed.Rectangle26_6{}, 0, false
 	}
@@ -342,7 +363,13 @@ func (a *face) GlyphBounds(r rune) (bounds fixed.Rectangle26_6, advance fixed.In
 }
 
 func (a *face) GlyphAdvance(r rune) (advance fixed.Int26_6, ok bool) {
-	if err := a.glyphBuf.Load(a.f, a.scale, a.index(r), a.hinting); err != nil {
+	var index Index
+	if r < 0 {
+		index = -r
+	} else {
+		index = a.index(r)
+	}
+	if err := a.glyphBuf.Load(a.f, a.scale, index, a.hinting); err != nil {
 		return 0, false
 	}
 	return a.glyphBuf.AdvanceWidth, true

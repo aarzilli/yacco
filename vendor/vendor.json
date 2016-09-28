@@ -3,6 +3,13 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "w01kP96jx5UAf+uWB8m0w8Xghas=",
+			"origin": "yacco/vendor/github.com/golang/freetype",
+			"path": "github.com/golang/freetype",
+			"revision": "a1009ab6e130dd82adc38b3ccdfc6dab0039daa2",
+			"revisionTime": "2016-09-28T06:24:30Z"
+		},
+		{
 			"checksumSHA1": "eIjJhEqZZmQwt++0jlQhbIhAcH4=",
 			"path": "github.com/kr/pty",
 			"revision": "ce7fa45920dc37a92de8377972e52bc55ffa8d57",
