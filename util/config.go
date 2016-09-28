@@ -3,12 +3,12 @@ package util
 import (
 	"fmt"
 	"strings"
-	
+
 	"golang.org/x/mobile/event/key"
 )
 
 // LoadRule describes a rule executed when right clicking on text.
-// 
+//
 // Concerning Action:
 // - If the first character is 'X' the rest of the string will be
 // interpreted as a command (possibly external) and executed
@@ -17,10 +17,10 @@ import (
 // the text after the semicolon will be interpreted as an address
 // expression (like those understood by Edit) and used to calculate
 // the initial position of the cursor
-// 
+//
 // In either case expressions like $1, $2 etc... inside Action string
 // will be replaced with the corrisponding matching group of Re.
-// 
+//
 // An 'L' type action will only succeed if the specified file exists,
 // is a UTF8 file and is less than 10MB. If any of this conditions
 // isn't met the rule will be considered failed and other rules will

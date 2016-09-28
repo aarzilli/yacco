@@ -106,7 +106,7 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 			} else {
 				em.appendMouseDraggedEvent(e)
 			}
-			
+
 		case mouse.DirStep:
 			where := image.Point{int(e.X), int(e.Y)}
 			switch e.Button {
@@ -122,30 +122,30 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []AltingEntry, k
 			}
 
 			where := image.Point{int(e.X), int(e.Y)}
-				now := time.Now()
-				dist := math.Sqrt(float64(em.dblclickp.X-where.X)*float64(em.dblclickp.X-where.X) + float64(em.dblclickp.Y-where.Y)*float64(em.dblclickp.Y-where.Y))
+			now := time.Now()
+			dist := math.Sqrt(float64(em.dblclickp.X-where.X)*float64(em.dblclickp.X-where.X) + float64(em.dblclickp.Y-where.Y)*float64(em.dblclickp.Y-where.Y))
 
-				if (e.Button == em.dblclickbtn) && (dist < 5) && (now.Sub(em.dblclickt) < time.Duration(200*time.Millisecond)) {
-					em.dblclickt = now
-					em.dblclickc++
-				} else {
-					em.dblclickbtn = e.Button
-					em.dblclickp = where
-					em.dblclickt = now
-					em.dblclickc = 1
-				}
+			if (e.Button == em.dblclickbtn) && (dist < 5) && (now.Sub(em.dblclickt) < time.Duration(200*time.Millisecond)) {
+				em.dblclickt = now
+				em.dblclickc++
+			} else {
+				em.dblclickbtn = e.Button
+				em.dblclickp = where
+				em.dblclickt = now
+				em.dblclickc = 1
+			}
 
-				if em.dblclickc > 3 {
-					em.dblclickc = 1
-				}
+			if em.dblclickc > 3 {
+				em.dblclickc = 1
+			}
 
-				em.appendEventOther(ET_OTHER, e)
-				em.appendEventOther(ET_OTHER, MouseDownEvent{
-					Where:     where,
-					Which:     e.Button,
-					Count:     em.dblclickc,
-					Modifiers: e.Modifiers,
-				})
+			em.appendEventOther(ET_OTHER, e)
+			em.appendEventOther(ET_OTHER, MouseDownEvent{
+				Where:     where,
+				Which:     e.Button,
+				Count:     em.dblclickc,
+				Modifiers: e.Modifiers,
+			})
 
 		case mouse.DirRelease:
 			if e.Button == mouse.ButtonNone {

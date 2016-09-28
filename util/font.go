@@ -9,6 +9,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strings"
+	"yacco/otat"
 )
 
 type Multiface struct {
@@ -18,6 +19,8 @@ type Multiface struct {
 	// cache for Kern
 	r0, r1       rune
 	idxr0, idxr1 int
+
+	Otatm *otat.Machine
 }
 
 // Reads a Font: fontPath is a ':' separated list of ttf or pcf font files (they will be used to search characters)
@@ -43,8 +46,8 @@ func MustNewFont(dpi, size, lineSpacing float64, fullHinting bool, fontPath stri
 }
 
 func NewFontFromBytes(dpi, size, lineSpacing float64, fullHinting bool, fontBytes [][]byte) (font.Face, error) {
-	rf := &Multiface{make([]font.Face, 0, len(fontBytes)), lineSpacing, 0, 0, -1, -1}
-	for _, aFontBytes := range fontBytes {
+	rf := &Multiface{make([]font.Face, 0, len(fontBytes)), lineSpacing, 0, 0, -1, -1, nil}
+	for i, aFontBytes := range fontBytes {
 		parsedfont, err := freetype.ParseFont(aFontBytes)
 		if err != nil {
 			return nil, err
@@ -54,6 +57,12 @@ func NewFontFromBytes(dpi, size, lineSpacing float64, fullHinting bool, fontByte
 			hinting = font.HintingFull
 		}
 		rf.faces = append(rf.faces, truetype.NewFace(parsedfont, &truetype.Options{Size: size, DPI: dpi, Hinting: hinting}))
+		if i == 0 {
+			rf.Otatm, _, err = otat.New(aFontBytes, "", "calt")
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
 	return rf, nil
 }

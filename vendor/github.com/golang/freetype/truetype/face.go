@@ -265,13 +265,13 @@ func (a *face) Metrics() font.Metrics {
 func (a *face) Kern(r0, r1 rune) fixed.Int26_6 {
 	var i0, i1 Index
 	if r0 < 0 {
-		i0 = -r0
+		i0 = Index(-r0)
 	} else {
 		i0 = a.index(r0)
 	}
 	
 	if r1 < 0 {
-		i1 = -r1
+		i1 = Index(-r1)
 	} else {
 		i1 = a.index(r1)
 	}
@@ -296,7 +296,7 @@ func (a *face) Glyph(dot fixed.Point26_6, r rune) (
 
 	var index Index
 	if r < 0 {
-		index = -r
+		index = Index(-r)
 	} else {
 		index = a.index(r)
 	}
@@ -336,11 +336,11 @@ func (a *face) Glyph(dot fixed.Point26_6, r rune) (
 func (a *face) GlyphBounds(r rune) (bounds fixed.Rectangle26_6, advance fixed.Int26_6, ok bool) {
 	var index Index
 	if r < 0 {
-		index = -r
+		index = Index(-r)
 	} else {
-		index = r
+		index = a.index(r)
 	}
-	if err := a.glyphBuf.Load(a.f, a.scale, a.index(r), a.hinting); err != nil {
+	if err := a.glyphBuf.Load(a.f, a.scale, index, a.hinting); err != nil {
 		return fixed.Rectangle26_6{}, 0, false
 	}
 	xmin := +a.glyphBuf.Bounds.Min.X
@@ -365,7 +365,7 @@ func (a *face) GlyphBounds(r rune) (bounds fixed.Rectangle26_6, advance fixed.In
 func (a *face) GlyphAdvance(r rune) (advance fixed.Int26_6, ok bool) {
 	var index Index
 	if r < 0 {
-		index = -r
+		index = Index(-r)
 	} else {
 		index = a.index(r)
 	}

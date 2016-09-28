@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"time"
 	"unicode/utf8"
+	"yacco/otat"
 	"yacco/util"
 )
 
@@ -43,6 +44,7 @@ const (
 
 type Frame struct {
 	Font            font.Face
+	otatm           *otat.Machine
 	Hackflags       uint32
 	B               draw.Image      // the image the text will be drawn upon
 	R               image.Rectangle // the rectangle occupied by the frame
@@ -137,11 +139,22 @@ func (fr *Frame) Init(margin int) error {
 
 	fr.Clear()
 
+	if mf, ok := fr.Font.(*util.Multiface); ok {
+		fr.otatm = mf.Otatm
+	} else {
+		fr.otatm = otat.Dummy()
+	}
+
 	return nil
 }
 
 func (fr *Frame) Invalidate() {
 	fr.redrawOpt.reloaded = true
+	if mf, ok := fr.Font.(*util.Multiface); ok {
+		fr.otatm = mf.Otatm
+	} else {
+		fr.otatm = otat.Dummy()
+	}
 }
 
 func (fr *Frame) BytesSize() uintptr {
@@ -189,7 +202,20 @@ func (fr *Frame) Insert(runes []ColorRune) (limit image.Point) {
 	limit.X = fr.ins.X.Floor()
 	limit.Y = fr.ins.Y.Floor()
 
+	runesIdx := 0
+	fr.otatm.ResetIterator(func() (rune, bool) {
+		if runesIdx >= len(runes) {
+			return 0, false
+		}
+		r := runes[runesIdx]
+		runesIdx++
+		return r.R, true
+	})
+
 	for _, crune := range runes {
+		fr.otatm.Next()
+		glyphidx := fr.otatm.Glyph()
+
 		if fr.ins.Y > bottom && (fr.Hackflags&HF_NOVERTSTOP == 0) {
 			return
 		}
@@ -262,7 +288,7 @@ func (fr *Frame) Insert(runes []ColorRune) (limit image.Point) {
 			}
 
 			g := glyph{
-				r:        crune.R,
+				r:        glyphidx,
 				fakerune: false,
 				p:        fr.ins,
 				color:    uint8(crune.C & COLORMASK),
@@ -297,7 +323,7 @@ func (fr *Frame) RefreshColors(a, b []ColorRune) {
 		} else {
 			crune = b[i-len(a)]
 		}
-		fr.glyphs[i].r = crune.R
+		//fr.glyphs[i].r = crune.R
 		fr.glyphs[i].color = uint8(crune.C & COLORMASK)
 	}
 }
