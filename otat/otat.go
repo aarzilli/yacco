@@ -14,12 +14,11 @@ type Index uint16
 
 type Machine struct {
 	dummy            bool
-	cmap, gdef, gsub []byte
+	cmap, gsub []byte
 	cmapIndexes      []byte
 	cm               []cm
 
 	// Values from GDEF, GPOS and GSUB sections
-	glyphClasses, markAttachClasses []classRange
 	allookups                       []lookup
 	allfeatures                     []feature
 	allscripts                      []script
@@ -46,16 +45,6 @@ const (
 	microsoftSymbolEncoding = 0x00030000 // PID = 3 (Microsoft), PSID = 0 (Symbol)
 	microsoftUCS2Encoding   = 0x00030001 // PID = 3 (Microsoft), PSID = 1 (UCS-2)
 	microsoftUCS4Encoding   = 0x0003000a // PID = 3 (Microsoft), PSID = 10 (UCS-4)
-)
-
-const (
-	topMarkAttachClass    = 1
-	bottomMarkAttachClass = 2
-
-	baseGlyphClass      = 1
-	ligatureGlyphClass  = 2
-	markGlyphClass      = 3
-	componentGlyphClass = 4
 )
 
 // A cm holds a parsed cmap entry.

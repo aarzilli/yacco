@@ -59,8 +59,6 @@ func parse(ttf []byte, offset int) (m *Machine, err error) {
 		switch string(ttf[x : x+4]) {
 		case "cmap":
 			m.cmap, err = readTable(ttf, ttf[x+8:x+16])
-		case "GDEF":
-			m.gdef, err = readTable(ttf, ttf[x+8:x+16])
 		case "GSUB":
 			m.gsub, err = readTable(ttf, ttf[x+8:x+16])
 		}
@@ -68,7 +66,7 @@ func parse(ttf []byte, offset int) (m *Machine, err error) {
 			return
 		}
 	}
-	if m.cmap == nil || m.gsub == nil || m.gdef == nil {
+	if m.cmap == nil || m.gsub == nil {
 		return nil, nil
 	}
 	// Parse and sanity-check the TTF data.
@@ -76,9 +74,6 @@ func parse(ttf []byte, offset int) (m *Machine, err error) {
 		return
 	}
 	if err = m.parseGsub(); err != nil {
-		return
-	}
-	if err = m.parseGdef(); err != nil {
 		return
 	}
 	return
@@ -203,29 +198,6 @@ func parseSubtables(table []byte, name string, offset, size int, pred func([]byt
 		return 0, 0, UnsupportedError(name + " encoding")
 	}
 	return bestOffset, bestPID, nil
-}
-
-func (m *Machine) parseGdef() error {
-	glyphClassDefOff := u16(m.gdef, 4)
-	markAttachClassDefOff := u16(m.gdef, 10)
-
-	if glyphClassDefOff != 0 {
-		var err error
-		m.glyphClasses, err = parseClassDef(m.gdef[glyphClassDefOff:])
-		if err != nil {
-			return nil
-		}
-	}
-
-	if markAttachClassDefOff != 0 {
-		var err error
-		m.markAttachClasses, err = parseClassDef(m.gdef[markAttachClassDefOff:])
-		if err != nil {
-			return nil
-		}
-	}
-
-	return nil
 }
 
 func (m *Machine) parseGsub() error {
