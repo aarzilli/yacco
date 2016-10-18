@@ -46,3 +46,8 @@ cd -
 cd extra/Eqcol
 go build
 cd -
+
+# building cmfmt
+cd extra/cmfmt
+go build
+cd -
