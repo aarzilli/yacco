@@ -561,8 +561,9 @@ func KillCmd(ec ExecContext, arg string) {
 	if arg == "" {
 		jobKillLast()
 	} else {
-		n, _ := strconv.Atoi(arg)
-		jobKill(n)
+		if n, err := strconv.Atoi(arg); err == nil {
+			jobKill(n)
+		}
 	}
 }
 

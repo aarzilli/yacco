@@ -186,7 +186,7 @@ func (c *Col) RecalcRects(last bool) {
 
 		if toth < h && len(c.editors) > 0 {
 			found := false
-			for i := len(c.editors)-1; i >= 0; i-- {
+			for i := len(c.editors) - 1; i >= 0; i-- {
 				if c.editors[i].size != c.editors[i].MinHeight() {
 					found = true
 					c.editors[i].size += (h - toth)
