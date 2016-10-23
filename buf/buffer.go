@@ -256,10 +256,10 @@ func (b *Buffer) Replace(text []rune, sel *util.Sel, solid bool, eventChan chan 
 		return
 	}
 
+	b.FixSel(sel)
 	if sel.S < 0 {
 		sel.S = sel.E
 	}
-
 	if sel.S < b.EditableStart {
 		sel.S = b.EditableStart
 		sel.E = b.EditableStart
@@ -558,7 +558,7 @@ func (b *Buffer) Selection(sel util.Sel) ([]textframe.ColorRune, []textframe.Col
 	b.FixSel(&sel)
 	ps := b.phisical(sel.S)
 	pe := b.phisical(sel.E)
-	
+
 	if ps < 0 {
 		ps = 0
 	}
