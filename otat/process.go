@@ -2,6 +2,7 @@ package otat
 
 import (
 	"fmt"
+	"time"
 )
 
 func (m *Machine) Reset(in func() (rune, bool)) {
@@ -75,15 +76,18 @@ func (m *Machine) rune0() (Index, bool) {
 }
 
 func (m *Machine) slideWindow() {
-	for i := 1; i < len(m.window); i++ {
-		m.window[i-1] = m.window[i]
-	}
+	copy(m.window, m.window[1:])
 	var ok bool
 	m.window[len(m.window)-1], ok = m.rune0()
 	if !ok {
 		m.load--
 	}
 }
+
+var cumul time.Duration
+var count int
+
+const statEvery = 0
 
 func (m *Machine) Next() bool {
 	m.curIdx++
@@ -94,6 +98,10 @@ func (m *Machine) Next() bool {
 	}
 	if m.load <= 0 {
 		return false
+	}
+	var t0 time.Time
+	if statEvery > 0 {
+		t0 = time.Now()
 	}
 	m.slideWindow()
 	if debugProcess {
@@ -110,7 +118,9 @@ func (m *Machine) Next() bool {
 		}
 	}
 	if m.prevlookup == nil {
-		for _, lp := range m.lookups {
+		coveringLookups := m.lookupsAccel.get(*m.input)
+		for _, j := range coveringLookups {
+			lp := m.lookups[j]
 			ok := lp.apply(m)
 			if ok {
 				m.prevlookup = lp
@@ -118,14 +128,25 @@ func (m *Machine) Next() bool {
 			}
 		}
 	}
+	if statEvery > 0 {
+		cumul += time.Since(t0)
+		count++
+		if count == statEvery {
+			fmt.Printf("time per character %v\n", cumul/(statEvery+1))
+			cumul = 0
+			count = 0
+		}
+	}
 	return true
 }
 
 func (lookup *lookup) apply(m *Machine) bool {
-	for _, lp := range lookup.tables {
+	coveringTables := lookup.tablesAccel.get(*m.input)
+	for _, j := range coveringTables {
+		lp := &lookup.tables[j]
 		covered := lp.cov.Covers(*m.input)
 		if covered < 0 {
-			continue
+			return false
 		}
 		switch lookup.typ {
 		case 1:

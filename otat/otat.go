@@ -3,6 +3,7 @@ package otat
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"sort"
 	"strings"
 )
@@ -26,6 +27,8 @@ type Machine struct {
 	// selected lookups
 	prevlookup *lookup
 	lookups    []*lookup
+
+	lookupsAccel accel
 
 	// input window
 	curIdx                       int
@@ -63,9 +66,10 @@ type feature struct {
 }
 
 type lookup struct {
-	id        int
-	typ, flag uint16
-	tables    []lookupTable
+	id          int
+	typ, flag   uint16
+	tablesAccel accel
+	tables      []lookupTable
 }
 
 type lookupTable struct {
@@ -244,9 +248,10 @@ scriptSearch:
 	m.input = &m.window[maxbacktrack]
 	m.lookahead = m.window[maxbacktrack+1:]
 
-	if debugLookupBuild {
-		for _, lookup := range m.lookups {
-			fmt.Println(lookup)
+	for i := range m.lookups {
+		for j := range m.lookups[i].tables {
+			m.lookups[i].tablesAccel.add(m.lookups[i].tables[j].cov, j)
+			m.lookupsAccel.add(m.lookups[i].tables[j].cov, i)
 		}
 	}
 
@@ -255,6 +260,17 @@ scriptSearch:
 
 func Dummy() *Machine {
 	return &Machine{dummy: true}
+}
+
+func (m *Machine) Describe(w io.Writer) {
+	for i := range m.lookups {
+		fmt.Fprintf(w, "Lookup ordinal %d:\n", i)
+		io.WriteString(w, m.lookups[i].String())
+	}
+	io.WriteString(w, "Accelerator table:\n")
+	for i := range m.lookupsAccel.table {
+		fmt.Fprintf(w, "\t%d lookups: %v\n", Index(i)+m.lookupsAccel.min, m.lookupsAccel.table[i])
+	}
 }
 
 func (lookup *lookup) String() string {
@@ -293,7 +309,7 @@ func (lp *lookupTable) StringIndented(id int, typ uint16, indent string) string 
 		}
 	case 6:
 		for i := len(lp.backtrackCov) - 1; i >= 0; i-- {
-			fmt.Fprintf(&buf, "%s\tbacktrack %d: ", indent, i)
+			fmt.Fprintf(&buf, "%s\tbacktrack %d (%s): ", indent, i, lp.backtrackCov[i].Type())
 			it := lp.backtrackCov[i].Iterator()
 			for it.Next() {
 				glyph := it.Glyph()
@@ -303,7 +319,7 @@ func (lp *lookupTable) StringIndented(id int, typ uint16, indent string) string 
 		}
 
 		for i := 0; i < len(lp.inputCov); i++ {
-			fmt.Fprintf(&buf, "%s\tinput %d: ", indent, i)
+			fmt.Fprintf(&buf, "%s\tinput %d (%s): ", indent, i, lp.inputCov[i].Type())
 			it := lp.inputCov[i].Iterator()
 			for it.Next() {
 				glyph := it.Glyph()
@@ -313,7 +329,7 @@ func (lp *lookupTable) StringIndented(id int, typ uint16, indent string) string 
 		}
 
 		for i := 0; i < len(lp.lookaheadCov); i++ {
-			fmt.Fprintf(&buf, "%s\tlookahead %d: ", indent, i)
+			fmt.Fprintf(&buf, "%s\tlookahead %d (%s): ", indent, i, lp.lookaheadCov[i].Type())
 			it := lp.lookaheadCov[i].Iterator()
 			for it.Next() {
 				glyph := it.Glyph()
@@ -372,6 +388,33 @@ func (cov *coverage) Covers(in Index) int {
 		}
 	}
 	return -1
+}
+
+func (cov *coverage) MinMax() (min Index, max Index) {
+	min = 0xffff
+	max = 0
+
+	if cov.sparse != nil {
+		for _, i := range cov.sparse {
+			if i < min {
+				min = i
+			}
+			if i > max {
+				max = i
+			}
+		}
+		return
+	}
+
+	for i := range cov.rangeStart {
+		if cov.rangeStart[i] < min {
+			min = cov.rangeStart[i]
+		}
+		if cov.rangeEnd[i] > max {
+			max = cov.rangeEnd[i]
+		}
+	}
+	return
 }
 
 func (it *coverageIterator) Next() bool {
