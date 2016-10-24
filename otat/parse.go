@@ -398,26 +398,6 @@ func parseClassDef(table []byte) ([]classRange, error) {
 	return r, nil
 }
 
-// Index returns a Font's index for the given rune.
-func (m *Machine) index(x rune) Index {
-	c := uint32(x)
-	for i, j := 0, len(m.cm); i < j; {
-		h := i + (j-i)/2
-		cm := &m.cm[h]
-		if c < cm.start {
-			j = h
-		} else if cm.end < c {
-			i = h + 1
-		} else if cm.offset == 0 {
-			return Index(c + cm.delta)
-		} else {
-			offset := int(cm.offset) + 2*(h-len(m.cm)+int(c-cm.start))
-			return Index(u16(m.cmapIndexes, offset))
-		}
-	}
-	return 0
-}
-
 // A FormatError reports that the input is not a valid TrueType font.
 type FormatError string
 

@@ -13,27 +13,27 @@ const debugProcess = false
 type Index uint16
 
 type Machine struct {
-	dummy            bool
-	cmap, gsub []byte
-	cmapIndexes      []byte
-	cm               []cm
+	dummy       bool
+	cmap, gsub  []byte
+	cmapIndexes []byte
+	cm          []cm
 
 	// Values from GDEF, GPOS and GSUB sections
-	allookups                       []lookup
-	allfeatures                     []feature
-	allscripts                      []script
+	allookups   []lookup
+	allfeatures []feature
+	allscripts  []script
 
 	// selected lookups
 	prevlookup *lookup
 	lookups    []*lookup
 
 	// input window
+	curIdx                       int
 	window, backtrack, lookahead []Index
 	input                        *Index
 	load                         int // number of true character in the input window, excluding backtrack characters
 
 	// full input
-	runes  []rune
 	runeit func() (rune, bool)
 }
 

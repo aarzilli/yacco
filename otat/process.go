@@ -4,14 +4,7 @@ import (
 	"fmt"
 )
 
-func (m *Machine) Reset(in []rune) {
-	m.runes = in
-	m.runeit = nil
-	m.resetCommon()
-}
-
-func (m *Machine) ResetIterator(in func() (rune, bool)) {
-	m.runes = nil
+func (m *Machine) Reset(in func() (rune, bool)) {
 	m.runeit = in
 	m.resetCommon()
 }
@@ -28,7 +21,7 @@ func (m *Machine) resetCommon() {
 	*m.input = 0
 	m.load = 0
 	if debugProcess {
-		fmt.Printf("= INIT %d %d %d =\n", len(m.runes), len(m.backtrack), len(m.lookahead))
+		fmt.Printf("= INIT %d %d =\n", len(m.backtrack), len(m.lookahead))
 	}
 	for i := len(m.backtrack) + 1; i < len(m.window); i++ {
 		var ok bool
@@ -37,23 +30,34 @@ func (m *Machine) resetCommon() {
 			m.load++
 		}
 	}
+	m.curIdx = -1
 	if debugProcess {
 		fmt.Printf("= END INIT =\n")
 	}
 }
 
-func (m *Machine) rune0() (Index, bool) {
-	var ch rune
-	var ok bool
-	if m.runes != nil {
-		ok = len(m.runes) > 0
-		if ok {
-			ch = m.runes[0]
-			m.runes = m.runes[1:]
+// Index returns a Font's index for the given rune.
+func (m *Machine) index(x rune) Index {
+	c := uint32(x)
+	for i, j := 0, len(m.cm); i < j; {
+		h := i + (j-i)/2
+		cm := &m.cm[h]
+		if c < cm.start {
+			j = h
+		} else if cm.end < c {
+			i = h + 1
+		} else if cm.offset == 0 {
+			return Index(c + cm.delta)
+		} else {
+			offset := int(cm.offset) + 2*(h-len(m.cm)+int(c-cm.start))
+			return Index(u16(m.cmapIndexes, offset))
 		}
-	} else {
-		ch, ok = m.runeit()
 	}
+	return 0
+}
+
+func (m *Machine) rune0() (Index, bool) {
+	ch, ok := m.runeit()
 
 	var r Index
 	if ok {
@@ -82,6 +86,7 @@ func (m *Machine) slideWindow() {
 }
 
 func (m *Machine) Next() bool {
+	m.curIdx++
 	if m.dummy {
 		var ok bool
 		*m.input, ok = m.rune0()
@@ -170,9 +175,9 @@ func (lp *lookupTable) cover6(backtrack, lookahead []Index) bool {
 	return true
 }
 
-func (m *Machine) Glyph() rune {
+func (m *Machine) Glyph() (int, rune) {
 	if m.dummy {
-		return rune(*m.input)
+		return m.curIdx, rune(*m.input)
 	}
-	return -rune(*m.input)
+	return m.curIdx, -rune(*m.input)
 }

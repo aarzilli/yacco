@@ -203,7 +203,7 @@ func (fr *Frame) Insert(runes []ColorRune) (limit image.Point) {
 	limit.Y = fr.ins.Y.Floor()
 
 	runesIdx := 0
-	fr.otatm.ResetIterator(func() (rune, bool) {
+	fr.otatm.Reset(func() (rune, bool) {
 		if runesIdx >= len(runes) {
 			return 0, false
 		}
@@ -212,9 +212,9 @@ func (fr *Frame) Insert(runes []ColorRune) (limit image.Point) {
 		return r.R, true
 	})
 
-	for _, crune := range runes {
-		fr.otatm.Next()
-		glyphidx := fr.otatm.Glyph()
+	for fr.otatm.Next() {
+		i, glyphidx := fr.otatm.Glyph()
+		crune := runes[i]
 
 		if fr.ins.Y > bottom && (fr.Hackflags&HF_NOVERTSTOP == 0) {
 			return
@@ -273,6 +273,9 @@ func (fr *Frame) Insert(runes []ColorRune) (limit image.Point) {
 			prevRune, hasPrev = ' ', true
 
 		default:
+			if glyphidx == 0 {
+				fmt.Printf("glyph 0 for rune %c %d (%d)\n", crune.R, crune.R, i)
+			}
 			width, _ := fr.Font.GlyphAdvance(crune.R)
 			kerning := fixed.I(0)
 			if hasPrev {
@@ -1038,10 +1041,27 @@ func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 		fr.Top += off
 		g := fr.glyphs[len(fr.glyphs)-1]
 		copy(fr.glyphs, fr.glyphs[off:])
-		fr.glyphs = fr.glyphs[:len(fr.glyphs)-off-1]
+		fr.glyphs = fr.glyphs[:len(fr.glyphs[off:])]
+
 		fr.ins.X = g.p.X
 		fr.ins.Y = g.p.Y
-		fr.Insert([]ColorRune{ColorRune{uint16(g.color), g.r}})
+		lh := fr.Font.Metrics().Height
+		fr.redrawOpt.reloaded = true
+		switch g.r {
+		case '\n':
+			fr.ins.X = fr.leftMargin
+			fr.ins.Y += lh
+		case '\t':
+			fr.ins.X += g.width
+		default:
+			if fr.Hackflags&HF_TRUNCATE == 0 {
+				if fr.ins.X+g.width > fr.rightMargin {
+					fr.ins.X = fr.leftMargin
+					fr.ins.Y += lh
+				}
+			}
+			fr.ins.X += g.width
+		}
 	} else {
 		fr.Top += len(fr.glyphs)
 		fr.glyphs = []glyph{}
