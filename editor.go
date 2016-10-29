@@ -155,9 +155,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 func (e *Editor) setTagRectsIntl() {
 	e.tagfr.R = e.r.Intersect(e.tagfr.R)
 	e.tagfr.Clear()
-	ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
-	e.tagfr.Insert(ta)
-	e.tagfr.Insert(tb)
+	e.tagfr.Insert(e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()}))
 }
 
 func (e *Editor) SetRects(b draw.Image, r image.Rectangle, last bool, simpleRecalc bool) {
@@ -342,9 +340,7 @@ func (e *Editor) refreshIntl(full bool) {
 	e.sfr.Set(e.otherSel[OS_TOP].E, e.bodybuf.Size())
 	e.bodybuf.Rdlock()
 	defer e.bodybuf.Rdunlock()
-	ba, bb := e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, e.bodybuf.Size()})
-	e.sfr.Fr.Insert(ba)
-	e.sfr.Fr.Insert(bb)
+	e.sfr.Fr.Insert(e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, e.bodybuf.Size()}))
 
 	e.refreshOpt.revCount = e.bodybuf.RevCount
 
@@ -454,10 +450,7 @@ func (e *Editor) FixTop() {
 
 func (e *Editor) tagRefreshIntl() {
 	e.tagfr.Clear()
-	ta, tb := e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()})
-	e.tagfr.Insert(ta)
-	e.tagfr.Insert(tb)
-
+	e.tagfr.Insert(e.tagbuf.Selection(util.Sel{0, e.tagbuf.Size()}))
 	e.refreshOpt.tagRevCount = e.tagbuf.RevCount
 }
 

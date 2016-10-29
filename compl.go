@@ -39,7 +39,7 @@ func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 		Top:      0,
 	}
 	fr.Init(5)
-	limit := fr.Insert(textframe.ColorRunes(str))
+	limit := fr.Insert(textframe.ColorRunes(str), nil)
 	fr.Redraw(false, nil)
 
 	limit.X += 10

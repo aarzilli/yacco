@@ -186,7 +186,7 @@ func ColorRunes(str string) []ColorRune {
 }
 
 // Inserts text into the frame, returns the maximum X and Y used
-func (fr *Frame) Insert(runes []ColorRune) (limit image.Point) {
+func (fr *Frame) Insert(r1, r2 []ColorRune) (limit image.Point) {
 	fr.redrawOpt.reloaded = true
 	lh := fr.Font.Metrics().Height
 
@@ -204,17 +204,26 @@ func (fr *Frame) Insert(runes []ColorRune) (limit image.Point) {
 
 	runesIdx := 0
 	fr.otatm.Reset(func() (rune, bool) {
-		if runesIdx >= len(runes) {
-			return 0, false
+		if runesIdx < len(r1) {
+			r := r1[runesIdx]
+			runesIdx++
+			return r.R, true
 		}
-		r := runes[runesIdx]
-		runesIdx++
-		return r.R, true
+		if i := runesIdx - len(r1); i < len(r2) {
+			runesIdx++
+			return r2[i].R, true
+		}
+		return 0, false
 	})
 
 	for fr.otatm.Next() {
 		i, glyphidx := fr.otatm.Glyph()
-		crune := runes[i]
+		var crune ColorRune
+		if i < len(r1) {
+			crune = r1[i]
+		} else {
+			crune = r2[i-len(r1)]
+		}
 
 		if fr.ins.Y > bottom && (fr.Hackflags&HF_NOVERTSTOP == 0) {
 			return
@@ -1108,12 +1117,7 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) {
 	for {
 		ng := len(fr.glyphs)
 
-		if len(a) > 0 {
-			fr.Insert(a)
-		}
-		if len(b) > 0 {
-			fr.Insert(b)
-		}
+		fr.Insert(a, b)
 
 		pl := fr.phisicalLines()
 		if len(pl) <= ln {

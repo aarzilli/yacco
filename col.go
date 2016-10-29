@@ -134,10 +134,8 @@ func (c *Col) RecalcRects(last bool) {
 	c.tagfr.R.Max.Y = c.tagfr.R.Min.Y + TagHeight(&c.tagfr)
 	c.tagfr.R = screen.Bounds().Intersect(c.tagfr.R)
 	c.tagfr.B = screen
-	ta, tb := c.tagbuf.Selection(util.Sel{0, c.tagbuf.Size()})
 	c.tagfr.Clear()
-	c.tagfr.Insert(ta)
-	c.tagfr.Insert(tb)
+	c.tagfr.Insert(c.tagbuf.Selection(util.Sel{0, c.tagbuf.Size()}))
 
 	h := c.contentArea()
 	oldh := c.sumEditorsHeight()
@@ -244,9 +242,7 @@ func (c *Col) Redraw() {
 
 func (c *Col) BufferRefresh() {
 	c.tagfr.Clear()
-	ta, tb := c.tagbuf.Selection(util.Sel{0, c.tagbuf.Size()})
-	c.tagfr.Insert(ta)
-	c.tagfr.Insert(tb)
+	c.tagfr.Insert(c.tagbuf.Selection(util.Sel{0, c.tagbuf.Size()}))
 	c.tagfr.Redraw(true, nil)
 }
 

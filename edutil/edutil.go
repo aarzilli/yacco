@@ -36,20 +36,14 @@ func Scrollfn(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame, sd, sl
 	switch {
 	case sd == 0:
 		top.E = buf.Tonl(sl, -1)
-
 		sz := buf.Size()
-
-		a, b := buf.Selection(util.Sel{top.E, sz})
 		sfr.Fr.Clear()
-		sfr.Fr.Insert(a)
-		sfr.Fr.Insert(b)
+		sfr.Fr.Insert(buf.Selection(util.Sel{top.E, sz}))
 
 	case sd > 0:
 		n := sfr.Fr.PushUp(sl, true)
 		top.E = sfr.Fr.Top
-		a, b := buf.Selection(util.Sel{top.E + n, sz})
-		sfr.Fr.Insert(a)
-		sfr.Fr.Insert(b)
+		sfr.Fr.Insert(buf.Selection(util.Sel{top.E + n, sz}))
 
 	case sd < 0:
 		nt := top.E
