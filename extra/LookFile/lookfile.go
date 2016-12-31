@@ -16,6 +16,7 @@ import (
 
 var debug = false
 var force = flag.Bool("f", false, "Force takeover")
+var list = flag.Bool("list", false, "Print all filesystem search paths")
 
 func getCwd(p9clnt *clnt.Clnt) string {
 	props, err := util.ReadProps(p9clnt)
@@ -154,8 +155,8 @@ func searcher(buf *util.BufferConn, cwd string, searchChan <-chan string, openCh
 			if needle != "" {
 				resultList = resultList[0:0]
 				searchDone = make(chan struct{})
-				go fileSystemSearch(cwd, resultChan, searchDone, needle, exact)
-				go tagsSearch(resultChan, searchDone, needle, exact)
+				go fileSystemSearch(cwd, resultChan, searchDone, needle, exact, MAX_RESULTS)
+				go tagsSearch(resultChan, searchDone, needle, exact, MAX_RESULTS)
 			} else {
 				displayResults(buf, resultList)
 			}
@@ -242,6 +243,17 @@ func main() {
 		MaxDepth, _ = strconv.Atoi(d)
 	} else {
 		MaxDepth = MAX_FS_RECUR_DEPTH
+	}
+
+	if *list {
+		cwd, _ := os.Getwd()
+		resultChan := make(chan *lookFileResult)
+		searchDone := make(chan struct{})
+		go fileSystemSearch(cwd, resultChan, searchDone, "", true, -1)
+		for result := range resultChan {
+			fmt.Println(result.show)
+		}
+		return
 	}
 
 	p9clnt, err := util.YaccoConnect()

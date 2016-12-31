@@ -48,10 +48,18 @@ func acceptedExtension(name string) bool {
 	return false
 }
 
-func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool) {
-	x := util.ResolvePath(edDir, needle)
-	startDir := filepath.Dir(x)
-	needlerx := regexp.CompileFuzzySearch([]rune(filepath.Base(x)))
+func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool, maxResults int) {
+	defer close(resultChan)
+	var startDir string
+	var needlerx regexp.Regex
+	if needle != "" {
+		x := util.ResolvePath(edDir, needle)
+		startDir = filepath.Dir(x)
+		needlerx = regexp.CompileFuzzySearch([]rune(filepath.Base(x)))
+	} else {
+		startDir = edDir
+		needlerx = regexp.CompileFuzzySearch([]rune{})
+	}
 
 	//println("Searching for", needle, "starting at", startDir)
 
@@ -130,7 +138,7 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 
 			sent += r
 
-			if sent > MAX_RESULTS {
+			if maxResults > 0 && sent > maxResults {
 				return
 			}
 		}
@@ -149,21 +157,26 @@ func fileSystemSearchMatch(name string, off int, exact bool, needlerx regexp.Reg
 
 	//println("Match successful", name, "at", relPath)
 
-	mpos := make([]int, 0, len(mg)/4)
-	ngaps := 0
-	mstart := mg[2]
+	var mpos []int
+	score := 0
 
-	for i := 0; i < len(mg); i += 4 {
-		if mg[i] != mg[i+1] {
-			ngaps++
+	if len(mg) > 2 {
+		mpos = make([]int, 0, len(mg)/4)
+		ngaps := 0
+		mstart := mg[2]
+
+		for i := 0; i < len(mg); i += 4 {
+			if mg[i] != mg[i+1] {
+				ngaps++
+			}
+
+			if off >= 0 {
+				mpos = append(mpos, mg[i+2]+off)
+			}
 		}
 
-		if off >= 0 {
-			mpos = append(mpos, mg[i+2]+off)
-		}
+		score = mstart*1000 + depth*100 + ngaps*10 + len(rname) + off
 	}
-
-	score := mstart*1000 + depth*100 + ngaps*10 + len(rname) + off
 
 	select {
 	case resultChan <- &lookFileResult{score, relPath, mpos, needle}:
@@ -184,7 +197,7 @@ func countSlash(str string) int {
 	return n
 }
 
-func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool) {
+func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool, maxResults int) {
 	tagsLoadMaybe()
 
 	tagMu.Lock()
@@ -210,7 +223,7 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 			return
 		}
 
-		if sent > MAX_RESULTS {
+		if maxResults > 0 && sent > maxResults {
 			return
 		}
 
@@ -245,7 +258,7 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 		}
 
 		sent++
-		if sent > MAX_RESULTS {
+		if maxResults > 0 && sent > maxResults {
 			return
 		}
 	}
