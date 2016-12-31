@@ -244,6 +244,7 @@ func main() {
 	} else {
 		MaxDepth = MAX_FS_RECUR_DEPTH
 	}
+	Skip = strings.Split(os.Getenv("LOOKFILE_SKIP"), ",")
 
 	if *list {
 		cwd, _ := os.Getwd()

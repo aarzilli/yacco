@@ -20,6 +20,7 @@ type configObj struct {
 		HideHidden         bool
 		QuoteHack          bool
 		LookFileExt        string
+		LookFileSkip       string
 		LookFileDepth      int
 	}
 	Fonts       map[string]*configFont
@@ -127,6 +128,7 @@ func LoadConfiguration(path string) {
 	HideHidden = co.Core.HideHidden
 
 	os.Setenv("LOOKFILE_EXT", co.Core.LookFileExt)
+	os.Setenv("LOOKFILE_SKIP", co.Core.LookFileSkip)
 	if co.Core.LookFileDepth >= 0 {
 		os.Setenv("LOOKFILE_DEPTH", strconv.Itoa(co.Core.LookFileDepth))
 	}

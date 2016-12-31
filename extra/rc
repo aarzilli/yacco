@@ -4,6 +4,8 @@ HideHidden=true
 ServeTCP=false
 QuoteHack=false
 LookFileExt=,c,cc,cpp,h,py,txt,pl,tcl,java,js,html,go,clj,jsp
+LookFileDepth=21
+LookFileSkip=
 
 [Fonts "Main"]
 Pixel=16

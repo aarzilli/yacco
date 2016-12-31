@@ -11,6 +11,7 @@ import (
 )
 
 var Extensions []string
+var Skip []string
 var MaxDepth int
 
 const MAX_RESULTS = 20
@@ -46,6 +47,15 @@ func acceptedExtension(name string) bool {
 		}
 	}
 	return false
+}
+
+func acceptedDir(name string) bool {
+	for _, skip := range Skip {
+		if skip == name {
+			return false
+		}
+	}
+	return true
 }
 
 func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool, maxResults int) {
@@ -108,7 +118,9 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 				continue
 			}
 			if fi[i].IsDir() {
-				queue = append(queue, filepath.Join(dir, fi[i].Name()))
+				if acceptedDir(fi[i].Name()) {
+					queue = append(queue, filepath.Join(dir, fi[i].Name()))
+				}
 			}
 			if !acceptedExtension(fi[i].Name()) {
 				continue
