@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"yacco/iniparse"
 	"yacco/util"
@@ -18,6 +19,8 @@ type configObj struct {
 		ServeTCP           bool
 		HideHidden         bool
 		QuoteHack          bool
+		LookFileExt        string
+		LookFileDepth      int
 	}
 	Fonts       map[string]*configFont
 	Load        *configLoadRules
@@ -71,6 +74,9 @@ func LoadConfiguration(path string) {
 		path = filepath.Join(os.Getenv("HOME"), ".config/yacco/rc")
 	}
 
+	co.Core.LookFileExt = DefaultLookFileExt
+	co.Core.LookFileDepth = -1
+
 	u := iniparse.NewUnmarshaller()
 	u.Path = path
 	u.AddSpecialUnmarshaller("load", LoadRulesParser)
@@ -119,6 +125,11 @@ func LoadConfiguration(path string) {
 	EnableHighlighting = co.Core.EnableHighlighting
 	ServeTCP = co.Core.ServeTCP
 	HideHidden = co.Core.HideHidden
+
+	os.Setenv("LOOKFILE_EXT", co.Core.LookFileExt)
+	if co.Core.LookFileDepth >= 0 {
+		os.Setenv("LOOKFILE_DEPTH", strconv.Itoa(co.Core.LookFileDepth))
+	}
 }
 
 func admissibleValues(m []string, a []string) (bool, string) {

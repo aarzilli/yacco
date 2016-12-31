@@ -26,6 +26,8 @@ var EnableHighlighting = true
 var ServeTCP = false
 var HideHidden = true
 
+const DefaultLookFileExt = ",c,cc,cpp,h,py,txt,pl,tcl,java,js,html,go,clj,jsp"
+
 var LoadRules = []util.LoadRule{
 	util.LoadRule{BufRe: `.`, Re: `https?://\S+`, Action: "Xxdg-open $0"},
 	util.LoadRule{BufRe: `.`, Re: `:([^ ]+)`, Action: "L:$1"},

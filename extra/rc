@@ -3,6 +3,7 @@ EnableHighlighting=true
 HideHidden=true
 ServeTCP=false
 QuoteHack=false
+LookFileExt=,c,cc,cpp,h,py,txt,pl,tcl,java,js,html,go,clj,jsp
 
 [Fonts "Main"]
 Pixel=16

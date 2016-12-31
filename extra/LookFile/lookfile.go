@@ -8,6 +8,7 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 	"yacco/util"
@@ -233,6 +234,15 @@ func displayResults(buf *util.BufferConn, resultList []*lookFileResult) {
 
 func main() {
 	flag.Parse()
+
+	if e := os.Getenv("LOOKFILE_EXT"); e != "" {
+		Extensions = strings.Split(e, ",")
+	}
+	if d := os.Getenv("LOOKFILE_DEPTH"); d != "" {
+		MaxDepth, _ = strconv.Atoi(d)
+	} else {
+		MaxDepth = MAX_FS_RECUR_DEPTH
+	}
 
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)

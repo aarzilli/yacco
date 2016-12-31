@@ -10,6 +10,9 @@ import (
 	"yacco/util"
 )
 
+var Extensions []string
+var MaxDepth int
+
 const MAX_RESULTS = 20
 const MAX_FS_RECUR_DEPTH = 11
 
@@ -23,6 +26,22 @@ type lookFileResult struct {
 func exactMatch(needle []rune) bool {
 	for _, r := range needle {
 		if unicode.IsUpper(r) {
+			return true
+		}
+	}
+	return false
+}
+
+func acceptedExtension(name string) bool {
+	if Extensions == nil {
+		return true
+	}
+	ext := filepath.Ext(name)
+	if len(ext) > 0 {
+		ext = ext[1:]
+	}
+	for _, x := range Extensions {
+		if ext == x {
 			return true
 		}
 	}
@@ -60,7 +79,7 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 
 		depth := countSlash(dir) - startDepth + 1
 
-		if depth > MAX_FS_RECUR_DEPTH {
+		if depth > MaxDepth {
 			//println("Too deep, skipping")
 			continue
 		}
@@ -82,6 +101,9 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 			}
 			if fi[i].IsDir() {
 				queue = append(queue, filepath.Join(dir, fi[i].Name()))
+			}
+			if !acceptedExtension(fi[i].Name()) {
+				continue
 			}
 
 			relPath, err := filepath.Rel(edDir, filepath.Join(dir, fi[i].Name()))

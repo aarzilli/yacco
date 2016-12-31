@@ -665,12 +665,18 @@ loop:
 
 		case mouse.ButtonRight: // Maximize
 			ed.size = col.contentArea()
-			for _, oed := range col.editors {
+			edidx := -1
+			for i, oed := range col.editors {
 				if oed == ed {
+					edidx = i
 					continue
 				}
 				oed.size = oed.MinHeight()
 				ed.size -= oed.size
+			}
+			if edidx > 0 {
+				copy(col.editors[1:edidx+1], col.editors[0:edidx])
+				col.editors[0] = ed
 			}
 			col.RecalcRects(col.last)
 			p := ed.r.Min
