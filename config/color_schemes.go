@@ -357,7 +357,10 @@ var c4ctagbg = cc(0x5f5f5f)
 var c4ctagfg = cc(0xf0f0f0)
 var c4ccomment = c(0x40, 0x97, 0x97)
 var c4cstring = cc(0x6d583d)
-var c4csel1 = cc(0xb27606)
+
+//var c4csel1 = cc(0xb27606)
+var c4csel1 = cc(0x0b44f9)
+var c4csel1fg = cc(0x8dc1ff)
 var c4csel2 = c(0x83, 0x74, 0x1C)
 var c4csel3 = c(0x83, 0x1C, 0x5E)
 
@@ -368,7 +371,7 @@ var C4CColorScheme = ColorScheme{
 	Scrollbar: c4cscroll,
 
 	EditorPlain:               []image.Uniform{c4cbg, c4cnormfg, c4cstring, c4ccomment},
-	EditorSel1:                []image.Uniform{c4csel1, c4cnormfg, c4cbg, c4cbg},
+	EditorSel1:                []image.Uniform{c4csel1, c4csel1fg, c4csel1fg, c4ccomment},
 	EditorSel2:                []image.Uniform{c4csel2, c4cbg, c4cbg, c4cbg},
 	EditorSel3:                []image.Uniform{c4csel3, c4cbg, c4cbg, c4cbg},
 	EditorMatchingParenthesis: []image.Uniform{c4cnormfg, c4cbg, c4cbg, c4cbg},
