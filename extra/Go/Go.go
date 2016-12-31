@@ -33,16 +33,42 @@ func usage() {
 	os.Exit(1)
 }
 
-func gofmt() {
+func runGofmt(argument string, paths map[string]bool) {
 	wd, err := os.Getwd()
 	util.Allergic(debug, err)
 	out, err := exec.Command("go", "fmt").CombinedOutput()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n%v\n", string(out), err)
 	}
-	paths := map[string]bool{}
 	for _, path := range strings.Split(string(out), "\n") {
 		paths[filepath.Join(wd, path)] = true
+	}
+}
+
+func gitModifiedPaths() []string {
+	out, err := exec.Command("git", "status", "--porcelain").CombinedOutput()
+	if err != nil {
+		return nil
+	}
+	r := []string{}
+	for _, entry := range strings.Split(string(out), "\n") {
+		if len(entry) < 3 {
+			continue
+		}
+		r = append(r, entry[3:])
+	}
+	return r
+}
+
+func gofmt() {
+	paths := map[string]bool{}
+	gitpaths := gitModifiedPaths()
+	if gitpaths == nil {
+		runGofmt("", paths)
+	} else {
+		for _, gitpath := range gitpaths {
+			runGofmt(gitpath, paths)
+		}
 	}
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)
