@@ -172,31 +172,47 @@ func modified(filename, body string) io.Reader {
 	return strings.NewReader(fmt.Sprintf("%s\n%d\n%s", filename, len(body), body))
 }
 
+type writenWrapper struct {
+	f *clnt.File
+}
+
+func (w writenWrapper) Write(p []byte) (int, error) {
+	return w.f.Writen(p, 0)
+}
+
 func processout(bs []byte, err error, arg string, idx int, pos string, fullwrite bool, p9clnt *clnt.Clnt) {
 	const (
 		refToMethodFunc = "reference to method func "
 		refToFunc       = "reference to func"
 	)
-	buf, _, err := util.FindWin("Guru", p9clnt)
-	util.Allergic(debug, err)
-	buf.CtlFd.Write([]byte("name +Guru\n"))
-	buf.CtlFd.Write([]byte("show-nowarp\n"))
-	buf.AddrFd.Write([]byte(","))
-	buf.XDataFd.Write([]byte{0})
-	buf.EventFd.Close()
-	buf.AddrFd.Close()
-	buf.XDataFd.Close()
-	buf.TagFd.Close()
-	buf.ColorFd.Close()
-	defer buf.BodyFd.Close()
+	
+	var out io.Writer
+	
+	if os.Getenv("YACCO_TOOLTIP") != "1" {
+		buf, _, err := util.FindWin("Guru", p9clnt)
+		util.Allergic(debug, err)
+		buf.CtlFd.Write([]byte("name +Guru\n"))
+		buf.CtlFd.Write([]byte("show-nowarp\n"))
+		buf.AddrFd.Write([]byte(","))
+		buf.XDataFd.Write([]byte{0})
+		buf.EventFd.Close()
+		buf.AddrFd.Close()
+		buf.XDataFd.Close()
+		buf.TagFd.Close()
+		buf.ColorFd.Close()
+		defer buf.BodyFd.Close()
+		out = writenWrapper{ buf.BodyFd }
+	} else {
+		out = os.Stdout
+	}
 
 	if err != nil {
-		fmt.Fprintf(buf.BodyFd, "Guru error: %v\n", err)
+		fmt.Fprintf(out, "Guru error: %v\n", err)
 		return
 	}
 
 	if arg != "describe" || fullwrite {
-		buf.BodyFd.Writen(bs, 0)
+		out.Write(bs)
 		return
 	}
 
@@ -218,8 +234,8 @@ func processout(bs []byte, err error, arg string, idx int, pos string, fullwrite
 		}
 
 		if first {
-			buf.BodyFd.Writen([]byte(pos), 0)
-			buf.BodyFd.Writen([]byte(":\n"), 0)
+			out.Write([]byte(pos))
+			out.Write([]byte(":\n"))
 
 			var funcname string
 			switch {
@@ -229,34 +245,34 @@ func processout(bs []byte, err error, arg string, idx int, pos string, fullwrite
 				funcname = rest[len(refToFunc):]
 			}
 			if funcname != "" {
-				ok := godoc(funcname, buf)
+				ok := godoc(funcname, out)
 				if ok {
 					showonlydefined = true
 					skipdetails = true
 				}
 			}
 			if !showonlydefined {
-				buf.BodyFd.Writen([]byte(rest), 0)
+				out.Write([]byte(rest))
 			}
 			first = false
 		} else {
 			if rest == "defined here" {
-				buf.BodyFd.Writen([]byte(fmt.Sprintf("defined: %s", pos)), 0)
+				fmt.Fprintf(out, "defined: %s", pos)
 			} else {
 				if !showonlydefined {
-					buf.BodyFd.Writen([]byte(rest), 0)
+					out.Write([]byte(rest))
 				}
 			}
 		}
-		buf.BodyFd.Writen([]byte("\n"), 0)
+		out.Write([]byte("\n"))
 	}
 
 	if !skipdetails {
-		buf.BodyFd.Writen([]byte(fmt.Sprintf("\nDetails:\n\tGo dd %d %s\n", idx, pos)), 0)
+		fmt.Fprintf(out, "\nDetails:\n\tGo dd %d %s\n", idx, pos)
 	}
 }
 
-func godoc(funcname string, buf *util.BufferConn) bool {
+func godoc(funcname string, out io.Writer) bool {
 	pkg, receiver, name, ok := parseGuruFuncname(funcname)
 	if !ok {
 		return false
@@ -286,8 +302,8 @@ func godoc(funcname string, buf *util.BufferConn) bool {
 			continue
 		}
 		if curreceiver == receiver && curname == name {
-			buf.BodyFd.Writen([]byte(line), 0)
-			buf.BodyFd.Writen([]byte("\n"), 0)
+			out.Write([]byte(line))
+			out.Write([]byte("\n"))
 			found = true
 			break
 		}
@@ -302,8 +318,8 @@ func godoc(funcname string, buf *util.BufferConn) bool {
 		if len(line) <= 0 || line[0] != ' ' {
 			break
 		}
-		buf.BodyFd.Writen([]byte(line), 0)
-		buf.BodyFd.Writen([]byte("\n"), 0)
+		out.Write([]byte(line))
+		out.Write([]byte("\n"))
 	}
 
 	return true
