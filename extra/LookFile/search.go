@@ -59,7 +59,9 @@ func acceptedDir(name string) bool {
 }
 
 func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string, exact bool, maxResults int) {
-	defer close(resultChan)
+	if maxResults < 0 {
+		defer close(resultChan)
+	}
 	var startDir string
 	var needlerx regexp.Regex
 	if needle != "" {
