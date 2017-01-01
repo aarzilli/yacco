@@ -1314,6 +1314,12 @@ func SaveposCmd(ec ExecContext, arg string) {
 }
 
 func TooltipCmd(ec ExecContext, arg string) {
+	if Tooltip.Visible {
+		HideCompl(true)
+		Warnfull("+Tooltip", tooltipContents, true, false)
+		return
+	}
+
 	wd := Wnd.tagbuf.Dir
 	if ec.dir != "" {
 		wd = ec.dir
@@ -1321,10 +1327,6 @@ func TooltipCmd(ec ExecContext, arg string) {
 	resultChan := make(chan string)
 	var out string
 	NewJob(wd, arg, "", &ec, false, true, resultChan)
-
-	if complVisible && complTooltip {
-		HideCompl(true)
-	}
 
 	go func() {
 		select {
@@ -1335,11 +1337,8 @@ func TooltipCmd(ec ExecContext, arg string) {
 		}
 
 		sideChan <- func() {
-			if complVisible && complTooltip {
-				Warnfull("+Tooltip", out, true, false)
-			} else {
-				ComplShowTooltip(ec, out, true)
-			}
+			tooltipContents = out
+			Tooltip.Start(ec)
 		}
 	}()
 }

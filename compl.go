@@ -13,20 +13,30 @@ import (
 	"yacco/util"
 )
 
-var complVisible bool
-var complTooltip bool
-var complRect image.Rectangle
-var complImg *image.RGBA
+type Popup struct {
+	Visible bool
+	R       image.Rectangle
+	B       *image.RGBA
+	start   func(*Popup, ExecContext) (bool, string)
+}
+
+var tooltipContents string
+var Compl, Tooltip Popup
 var complPrefixSuffix string
 
-func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
-	if complImg == nil {
-		complImg = image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{config.ComplMaxX, config.ComplMaxY}})
+func init() {
+	Compl.start = complStart
+	Tooltip.start = tooltipStart
+}
+
+func (p *Popup) prepare(str string) (image.Rectangle, *image.RGBA) {
+	if p.B == nil {
+		p.B = image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{config.ComplMaxX, config.ComplMaxY}})
 	}
 	fr := textframe.Frame{
 		Font:      config.ComplFont,
 		Hackflags: textframe.HF_TRUNCATE,
-		B:         complImg, R: complImg.Bounds(),
+		B:         p.B, R: p.B.Bounds(),
 		VisibleTick: false,
 		Colors: [][]image.Uniform{
 			config.TheColorScheme.Compl,
@@ -49,26 +59,26 @@ func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 	if limit.Y > config.ComplMaxY {
 		limit.Y = config.ComplMaxY
 	}
-	complRect.Min = image.ZP
-	complRect.Max = limit
+	p.R.Min = image.ZP
+	p.R.Max = limit
 
-	bd := complRect
+	bd := p.R
 	bd.Max.X = bd.Min.X + 1
-	draw.Draw(complImg, bd, &config.TheColorScheme.TopBorder, image.ZP, draw.Src)
+	draw.Draw(p.B, bd, &config.TheColorScheme.TopBorder, image.ZP, draw.Src)
 
-	bd = complRect
+	bd = p.R
 	bd.Max.Y = bd.Min.Y + 1
-	draw.Draw(complImg, bd, &config.TheColorScheme.TopBorder, image.ZP, draw.Src)
+	draw.Draw(p.B, bd, &config.TheColorScheme.TopBorder, image.ZP, draw.Src)
 
-	bd = complRect
+	bd = p.R
 	bd.Min.X = bd.Max.X - 1
-	draw.Draw(complImg, bd, &config.TheColorScheme.TopBorder, image.ZP, draw.Src)
+	draw.Draw(p.B, bd, &config.TheColorScheme.TopBorder, image.ZP, draw.Src)
 
-	bd = complRect
+	bd = p.R
 	bd.Min.Y = bd.Max.Y - 1
-	draw.Draw(complImg, bd, &config.TheColorScheme.TopBorder, image.ZP, draw.Src)
+	draw.Draw(p.B, bd, &config.TheColorScheme.TopBorder, image.ZP, draw.Src)
 
-	return complRect, complImg
+	return p.R, p.B
 }
 
 func shouldHideTooltip() bool {
@@ -78,7 +88,7 @@ func shouldHideTooltip() bool {
 				continue
 			}
 			p := editor.sfr.Fr.PointToCoord(editor.sfr.Fr.Sel.S)
-			if p.Y > complRect.Min.Y || p.Y < complRect.Min.Y-editor.MinHeight() {
+			if p.Y > Tooltip.R.Min.Y || p.Y < Tooltip.R.Min.Y-editor.MinHeight() {
 				return true
 			}
 		}
@@ -87,39 +97,54 @@ func shouldHideTooltip() bool {
 }
 
 func HideCompl(hideTooltip bool) bool {
-	if !complVisible {
-		return false
-	}
-	if complTooltip && !hideTooltip {
-		if !shouldHideTooltip() {
-			return true
+	didhide := false
+	if Tooltip.Visible && (hideTooltip || shouldHideTooltip()) {
+		Tooltip.Visible = false
+		select {
+		case sideChan <- func() { Wnd.FlushImage(Wnd.img.Bounds().Intersect(Tooltip.R)) }:
+		default:
 		}
+		didhide = true
 	}
-	complVisible = false
-	select {
-	case sideChan <- func() { Wnd.FlushImage(Wnd.img.Bounds().Intersect(complRect)) }:
-	default:
+	if Compl.Visible {
+		Compl.Visible = false
+		select {
+		case sideChan <- func() { Wnd.FlushImage(Wnd.img.Bounds().Intersect(Compl.R)) }:
+		default:
+		}
+		return true
 	}
-	return true
+	return didhide
 }
 
-func ComplStartHidden(ec ExecContext) (compls []string, hide bool) {
+func tooltipStart(p *Popup, ec ExecContext) (bool, string) {
 	if ec.buf == nil {
-		return nil, true
+		return false, ""
+	}
+	return true, tooltipContents
+}
+
+func complStart(p *Popup, ec ExecContext) (bool, string) {
+	if ec.buf == nil {
+		HideCompl(false)
+		return false, ""
 	}
 	if (ec.ed != nil) && ec.ed.noAutocompl {
-		return nil, true
+		HideCompl(false)
+		return false, ""
 	}
 	if (ec.buf.Name == "+Tag") && (ec.ed != nil) && ec.ed.eventChanSpecial {
-		return nil, true
+		HideCompl(false)
+		return false, ""
 	}
 	if ec.fr.Sel.S != ec.fr.Sel.E || ec.fr.Sel.S == 0 {
-		return nil, true
+		HideCompl(false)
+		return false, ""
 	}
 
 	fpwd, wdwd := getComplWords(ec)
 
-	compls = []string{}
+	compls := []string{}
 
 	//fmt.Printf("Completing <%s> <%s>\n", fpwd, wdwd)
 
@@ -163,7 +188,8 @@ func ComplStartHidden(ec ExecContext) (compls []string, hide bool) {
 	compls = util.Dedup(append(compls, wdCompls...))
 
 	if len(compls) <= 0 {
-		return nil, true
+		HideCompl(false)
+		return false, ""
 	}
 
 	if hasFp && hasWd {
@@ -172,21 +198,6 @@ func ComplStartHidden(ec ExecContext) (compls []string, hide bool) {
 		complPrefixSuffix = fpPrefixSuffix
 	} else if hasWd {
 		complPrefixSuffix = wdPrefixSuffix
-	}
-
-	return compls, false
-}
-
-func ComplStart(ec ExecContext) {
-	if complVisible && complTooltip {
-		return
-	}
-	compls, hide := ComplStartHidden(ec)
-	if hide {
-		HideCompl(false)
-	}
-	if compls == nil {
-		return
 	}
 
 	cmax := 10
@@ -199,25 +210,29 @@ func ComplStart(ec ExecContext) {
 		txt += "\n...\n"
 	}
 
-	ComplShowTooltip(ec, txt, false)
+	return true, txt
 }
 
-func ComplShowTooltip(ec ExecContext, txt string, istooltip bool) {
-	complTooltip = istooltip
-	complWasVisible := complVisible
-	oldComplRect := complRect
-	complRect, complImg = PrepareCompl(txt)
-	complRect = complRect.Add(ec.fr.PointToCoord(ec.fr.Sel.S).Add(image.Point{2, 4}))
-	complVisible = true
+func (p *Popup) Start(ec ExecContext) {
+	ok, txt := p.start(p, ec)
+	if !ok {
+		return
+	}
+
+	wasVisible := p.Visible
+	oldR := p.R
+	p.prepare(txt)
+	p.R = p.R.Add(ec.fr.PointToCoord(ec.fr.Sel.S).Add(image.Point{2, 4}))
+	p.Visible = true
 
 	var fn func()
 
-	if complWasVisible {
+	if wasVisible {
 		fn = func() {
-			Wnd.FlushImage(Wnd.img.Bounds().Intersect(oldComplRect), Wnd.img.Bounds().Intersect(complRect))
+			Wnd.FlushImage(Wnd.img.Bounds().Intersect(oldR), Wnd.img.Bounds().Intersect(p.R))
 		}
 	} else {
-		fn = func() { Wnd.FlushImage(Wnd.img.Bounds().Intersect(complRect)) }
+		fn = func() { Wnd.FlushImage(Wnd.img.Bounds().Intersect(p.R)) }
 	}
 
 	select {

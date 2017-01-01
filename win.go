@@ -184,11 +184,21 @@ func (w *Window) FlushImage(rects ...image.Rectangle) {
 	if len(rects) == 0 {
 		return
 	}
+	drawTooltip, drawCompl := false, false
 	for _, rect := range rects {
+		if !rect.Intersect(Tooltip.R).Empty() {
+			drawTooltip = Tooltip.Visible
+		}
+		if !rect.Intersect(Compl.R).Empty() {
+			drawCompl = Compl.Visible
+		}
 		draw.Draw(w.wndb.RGBA(), rect, w.img, rect.Min, draw.Src)
 	}
-	if complVisible {
-		draw.Draw(w.wndb.RGBA(), complRect, complImg, image.ZP, draw.Src)
+	if drawTooltip {
+		draw.Draw(w.wndb.RGBA(), Tooltip.R, Tooltip.B, image.ZP, draw.Src)
+	}
+	if drawCompl {
+		draw.Draw(w.wndb.RGBA(), Compl.R, Compl.B, image.ZP, draw.Src)
 	}
 	w.uploaderRunning = true
 	go w.upload(rects)
@@ -963,15 +973,10 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		ec := lp.asExecContext(true)
 		if ec.buf != nil {
 			switch {
-			case complVisible && !complTooltip:
+			case Compl.Visible:
 				ec.buf.Replace([]rune(complPrefixSuffix), &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
 				ec.br()
-				ComplStart(ec)
-			case complVisible && complTooltip:
-				if compls, _ := ComplStartHidden(ec); compls != nil {
-					ec.buf.Replace([]rune(complPrefixSuffix), &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
-					ec.br()
-				}
+				Compl.Start(ec)
 			default:
 				HideCompl(false)
 				tch := "\t"
@@ -987,9 +992,9 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		}
 
 	case key.CodeInsert:
-		if !complVisible {
+		if !Compl.Visible {
 			ec := lp.asExecContext(true)
-			ComplStart(ec)
+			Compl.Start(ec)
 		}
 
 	default:
@@ -999,7 +1004,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 			HideCompl(false)
 			//println("Execute command: <" + cmd + ">")
 			fcmd(ec)
-			if complTooltip {
+			if Tooltip.Visible {
 				// hide tooltip if we moved to a position where it shouldn't be visible
 				HideCompl(false)
 			}
@@ -1011,7 +1016,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 			if ec.buf != nil {
 				ec.buf.Replace([]rune{e.Rune}, &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
 				ec.br()
-				ComplStart(ec)
+				Compl.Start(ec)
 			}
 		}
 	}
