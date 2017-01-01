@@ -999,6 +999,10 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 			HideCompl(false)
 			//println("Execute command: <" + cmd + ">")
 			fcmd(ec)
+			if complTooltip {
+				// hide tooltip if we moved to a position where it shouldn't be visible
+				HideCompl(false)
+			}
 		} else if e.Rune > 0 {
 			if lp.tagfr == nil && ec.ed != nil {
 				activeEditor = ec.ed

@@ -71,12 +71,29 @@ func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 	return complRect, complImg
 }
 
+func shouldHideTooltip() bool {
+	for _, col := range Wnd.cols.cols {
+		for _, editor := range col.editors {
+			if !editor.sfr.Fr.VisibleTick {
+				continue
+			}
+			p := editor.sfr.Fr.PointToCoord(editor.sfr.Fr.Sel.S)
+			if p.Y > complRect.Min.Y || p.Y < complRect.Min.Y-editor.MinHeight() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 func HideCompl(hideTooltip bool) bool {
 	if !complVisible {
 		return false
 	}
 	if complTooltip && !hideTooltip {
-		return true
+		if !shouldHideTooltip() {
+			return true
+		}
 	}
 	complVisible = false
 	select {
