@@ -252,6 +252,9 @@ func main() {
 		searchDone := make(chan struct{})
 		go fileSystemSearch(cwd, resultChan, searchDone, "", true, -1)
 		for result := range resultChan {
+			if len(result.show) <= 0 || result.show[len(result.show)-1] == '/' {
+				continue
+			}
 			fmt.Println(result.show)
 		}
 		return
