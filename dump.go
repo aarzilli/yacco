@@ -140,7 +140,7 @@ func LoadFrom(dumpDest string) bool {
 
 	for i, db := range dw.Buffers {
 		if db.DumpCmd != "" {
-			NewJob(db.DumpDir, db.DumpCmd, "", &ExecContext{buf: buffers[i]}, false, nil)
+			NewJob(db.DumpDir, db.DumpCmd, "", &ExecContext{buf: buffers[i]}, false, false, nil)
 		}
 	}
 

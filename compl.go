@@ -14,16 +14,14 @@ import (
 )
 
 var complVisible bool
+var complTooltip bool
 var complRect image.Rectangle
 var complImg *image.RGBA
 var complPrefixSuffix string
 
-const COMPL_MAXX = 512
-const COMPL_MAXY = 200
-
 func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 	if complImg == nil {
-		complImg = image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{COMPL_MAXX, COMPL_MAXY}})
+		complImg = image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{config.ComplMaxX, config.ComplMaxY}})
 	}
 	fr := textframe.Frame{
 		Font:      config.ComplFont,
@@ -45,11 +43,11 @@ func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 	limit.X += 10
 	limit.Y += 10
 
-	if limit.X > COMPL_MAXX {
-		limit.X = COMPL_MAXX
+	if limit.X > config.ComplMaxX {
+		limit.X = config.ComplMaxX
 	}
-	if limit.Y > COMPL_MAXY {
-		limit.Y = COMPL_MAXY
+	if limit.Y > config.ComplMaxY {
+		limit.Y = config.ComplMaxY
 	}
 	complRect.Min = image.ZP
 	complRect.Max = limit
@@ -73,9 +71,12 @@ func PrepareCompl(str string) (image.Rectangle, *image.RGBA) {
 	return complRect, complImg
 }
 
-func HideCompl() bool {
+func HideCompl(hideTooltip bool) bool {
 	if !complVisible {
 		return false
+	}
+	if complTooltip && !hideTooltip {
+		return true
 	}
 	complVisible = false
 	select {
@@ -85,31 +86,23 @@ func HideCompl() bool {
 	return true
 }
 
-func ComplStart(ec ExecContext) {
+func ComplStartHidden(ec ExecContext) (compls []string, hide bool) {
 	if ec.buf == nil {
-		HideCompl()
-		return
+		return nil, true
 	}
 	if (ec.ed != nil) && ec.ed.noAutocompl {
-		HideCompl()
-		return
+		return nil, true
 	}
 	if (ec.buf.Name == "+Tag") && (ec.ed != nil) && ec.ed.eventChanSpecial {
-		HideCompl()
-		return
+		return nil, true
 	}
-	if ec.fr.Sel.S != ec.fr.Sel.E {
-		HideCompl()
-		return
-	}
-	if ec.fr.Sel.S == 0 {
-		HideCompl()
-		return
+	if ec.fr.Sel.S != ec.fr.Sel.E || ec.fr.Sel.S == 0 {
+		return nil, true
 	}
 
 	fpwd, wdwd := getComplWords(ec)
 
-	compls := []string{}
+	compls = []string{}
 
 	//fmt.Printf("Completing <%s> <%s>\n", fpwd, wdwd)
 
@@ -153,8 +146,7 @@ func ComplStart(ec ExecContext) {
 	compls = util.Dedup(append(compls, wdCompls...))
 
 	if len(compls) <= 0 {
-		HideCompl()
-		return
+		return nil, true
 	}
 
 	if hasFp && hasWd {
@@ -165,7 +157,20 @@ func ComplStart(ec ExecContext) {
 		complPrefixSuffix = wdPrefixSuffix
 	}
 
-	//println("hasFp", hasFp, "hasWd", hasWd, "wdPrefixSuffix", wdPrefixSuffix, "fpPrefixSuffix", fpPrefixSuffix, "complPrefixSuffix", complPrefixSuffix)
+	return compls, false
+}
+
+func ComplStart(ec ExecContext) {
+	if complVisible && complTooltip {
+		return
+	}
+	compls, hide := ComplStartHidden(ec)
+	if hide {
+		HideCompl(false)
+	}
+	if compls == nil {
+		return
+	}
 
 	cmax := 10
 	if cmax > len(compls) {
@@ -177,6 +182,11 @@ func ComplStart(ec ExecContext) {
 		txt += "\n...\n"
 	}
 
+	ComplShowTooltip(ec, txt, false)
+}
+
+func ComplShowTooltip(ec ExecContext, txt string, istooltip bool) {
+	complTooltip = istooltip
 	complWasVisible := complVisible
 	oldComplRect := complRect
 	complRect, complImg = PrepareCompl(txt)

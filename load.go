@@ -38,6 +38,8 @@ func LoadInit() {
 	config.StartupWidth = config.MainFontSize * 40
 	config.StartupHeight = config.MainFontSize * 30
 	config.ScrollWidth = int(float64(config.MainFontSize) * 0.625)
+	config.ComplMaxX = config.MainFontSize * 60
+	config.ComplMaxY = config.MainFontSize * 60
 }
 
 func printStackTrace() {

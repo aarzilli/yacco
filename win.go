@@ -312,7 +312,6 @@ func (w *Window) EventLoop() {
 			}
 		}
 	}
-	HideCompl()
 	FsQuit()
 }
 
@@ -327,23 +326,22 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 				time.Sleep(20 * time.Millisecond)
 			}
 			w.Close()
-			HideCompl()
 			FsQuit()
 		}
 
 	case size.Event:
-		HideCompl()
+		HideCompl(true)
 		Wnd.Resized(e.Size())
 
 	case mouse.Event:
 		if e.Direction == mouse.DirNone {
-			HideCompl()
+			HideCompl(false)
 			w.lastWhere = image.Point{int(e.X), int(e.Y)}
 			Wnd.SetTick(w.lastWhere)
 		}
 
 	case util.MouseDownEvent:
-		HideCompl()
+		HideCompl(true)
 		w.lastWhere = e.Where
 		lp := w.TranslatePosition(e.Where, true)
 
@@ -396,7 +394,7 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 		}
 
 	case util.WheelEvent:
-		HideCompl()
+		HideCompl(true)
 		lp := w.TranslatePosition(e.Where, false)
 		if lp.sfr != nil {
 			if e.Count > 0 {
@@ -869,7 +867,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 
 	switch e.Code {
 	case key.CodeEscape:
-		if !HideCompl() {
+		if !HideCompl(true) {
 			if lp.ed != nil && lp.ed.eventChanSpecial {
 				lp.ed.sfr.Fr.VisibleTick = true
 				util.Fmtevent2(ec.ed.eventChan, util.EO_KBD, true, false, false, 0, 0, 0, "Escape", nil)
@@ -889,7 +887,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		}
 
 	case key.CodeReturnEnter:
-		HideCompl()
+		HideCompl(true)
 		if (lp.ed != nil) && lp.ed.eventChanSpecial {
 			util.Fmtevent2(ec.ed.eventChan, util.EO_KBD, true, false, false, 0, 0, 0, "Return", nil)
 			return
@@ -946,7 +944,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		}
 
 	case key.CodePageDown, key.CodePageUp:
-		HideCompl()
+		HideCompl(true)
 		dir := +1
 		if e.Code == key.CodePageUp {
 			dir = -1
@@ -964,12 +962,18 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 	case key.CodeTab:
 		ec := lp.asExecContext(true)
 		if ec.buf != nil {
-			if complVisible {
+			switch {
+			case complVisible && !complTooltip:
 				ec.buf.Replace([]rune(complPrefixSuffix), &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
 				ec.br()
 				ComplStart(ec)
-			} else {
-				HideCompl()
+			case complVisible && complTooltip:
+				if compls, _ := ComplStartHidden(ec); compls != nil {
+					ec.buf.Replace([]rune(complPrefixSuffix), &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
+					ec.br()
+				}
+			default:
+				HideCompl(false)
 				tch := "\t"
 
 				if (ec.ed != nil) && (ec.ed.bodybuf == ec.buf) {
@@ -978,6 +982,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 
 				ec.buf.Replace([]rune(tch), &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
 				ec.br()
+
 			}
 		}
 
@@ -991,7 +996,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		ec := lp.asExecContext(true)
 		//fmt.Printf("keypress: <%s>\n", util.KeyEvent(e))
 		if fcmd, ok := KeyBindings[util.KeyEvent(e)]; ok {
-			HideCompl()
+			HideCompl(false)
 			//println("Execute command: <" + cmd + ">")
 			fcmd(ec)
 		} else if e.Rune > 0 {

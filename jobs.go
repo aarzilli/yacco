@@ -41,7 +41,7 @@ func removeEmpty(v []string) []string {
 	return v[:dst]
 }
 
-func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan chan<- string) {
+func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf, istooltip bool, resultChan chan<- string) {
 	job := &jobrec{}
 
 	if _, err := os.Stat(wd); err != nil {
@@ -90,6 +90,12 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf bool, resultChan 
 		os.Setenv("winid", "")
 		os.Setenv("p", "")
 		b = ec.buf
+	}
+
+	if istooltip {
+		os.Setenv("YACCO_TOOLTIP", "1")
+	} else {
+		os.Setenv("YACCO_TOOLTIP", "0")
 	}
 
 	if b != nil {

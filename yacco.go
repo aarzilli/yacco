@@ -175,7 +175,7 @@ func main() {
 
 	edit.Warnfn = Warn
 	edit.NewJob = func(wd, cmd, input string, buf *buf.Buffer, resultChan chan<- string) {
-		NewJob(wd, cmd, input, &ExecContext{buf: buf}, false, resultChan)
+		NewJob(wd, cmd, input, &ExecContext{buf: buf}, false, false, resultChan)
 	}
 
 	sideChan = make(chan func(), 5)

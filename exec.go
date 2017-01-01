@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 	"yacco/buf"
 	"yacco/clipboard"
 	"yacco/config"
@@ -92,6 +93,7 @@ func init() {
 	cmds["Direxec"] = DirexecCmd
 	cmds["Mark"] = MarkCmd
 	cmds["Savepos"] = SaveposCmd
+	cmds["Tooltip"] = TooltipCmd
 }
 
 func HelpCmd(ec ExecContext, arg string) {
@@ -201,43 +203,44 @@ Delcol
 Zerox			Duplicates current frame
 Sort			Sort frames in current column alphabetically
 Rename <name>
-LookFile			Opens special frame to search and open files interactively
+LookFile		Opens special frame to search and open files interactively
 
 == Clipboard ==
 Cut			Cuts current selection, or between mark and cursor if the selection is empty
 Copy			Copies current selection, or between mark and cursor if the selection is empty
 Snarf			Same as Copy
 Paste [primary|indent]
+Savepos			Copies current position of the cursor to clipboard
 
 All of Cut, Copy and Paste will reset the mark
 
 == Session ==
-Dump [<name>]	Starts saving session to <name>
-Load [<name>]	Loads session from <name> (omit for a list of sessions)
+Dump [<name>]		Starts saving session to <name>
+Load [<name>]		Loads session from <name> (omit for a list of sessions)
 
 == Jobs ==
-| <ext. cmd.>	Runs selection through <ext. cmd.> replaces with output
-> <ext. cmd.>	Runs selection through <ext. cmd.>
-< <ext. cmd.>	Replaces selection with output of <ext. cmd.>
+| <ext. cmd.>		Runs selection through <ext. cmd.> replaces with output
+> <ext. cmd.>		Runs selection through <ext. cmd.>
+< <ext. cmd.>		Replaces selection with output of <ext. cmd.>
 Jobs			Lists currently running jobs
-Kill [<jobnum>]	Kill all jobs (or the one specified)
+Kill [<jobnum>]		Kill all jobs (or the one specified)
 Setenv <var> <val>
 Cd <dir>
 
 == External Utilities ==
-E <file>			Edits file
-Watch <cmd>	Executes command every time a file changes in current directory
+E <file>		Edits file
+Watch <cmd>		Executes command every time a file changes in current directory
 win <cmd>		Runs cmd within pty
-y9p				Filesystem interface access
+y9p			Filesystem interface access
 Font			Toggles alternate font
-Fs				Removes redundant spaces in current file
+Fs			Removes redundant spaces in current file
 Indent			Controls automatic indent and tab key behaviour
-Tab				Controls tab character width
+Tab			Controls tab character width
 LookExact		Toggles smart case
 Mount			Invokes p9fuse
 a+, a-			indents/removes indent from selection
-g				recursive grep
-in <dir> <cmd>	execute <cmd> in <dir>
+g			recursive grep
+in <dir> <cmd>		execute <cmd> in <dir>
 
 == Misc ==
 Do <…>			Executes sequence of commands, one per line
@@ -247,6 +250,7 @@ Builtin <…>		Runs command as builtin (skip attached processes)
 Debug <…>		Run without arguments for informations
 Mark			Sets the mark
 Jump			Swap cursor and mark
+Direxec			Executes the specified command on the currently selected directory entry.
 `)
 	}
 }
@@ -323,7 +327,7 @@ func ExtExec(ec ExecContext, cmd string, dolog bool) {
 	if dolog {
 		LogExec(cmd, wd)
 	}
-	NewJob(wd, cmd, "", &ec, false, nil)
+	NewJob(wd, cmd, "", &ec, false, false, nil)
 }
 
 func BuiltinCmd(ec ExecContext, arg string) {
@@ -929,7 +933,7 @@ func PipeCmd(ec ExecContext, arg string) {
 	}
 
 	txt := string(ec.ed.bodybuf.SelectionRunes(ec.fr.Sel))
-	NewJob(wd, arg, txt, &ec, true, nil)
+	NewJob(wd, arg, txt, &ec, true, false, nil)
 }
 
 func PipeInCmd(ec ExecContext, arg string) {
@@ -946,7 +950,7 @@ func PipeInCmd(ec ExecContext, arg string) {
 		wd = ec.buf.Dir
 	}
 
-	NewJob(wd, arg, "", &ec, true, nil)
+	NewJob(wd, arg, "", &ec, true, false, nil)
 }
 
 func PipeOutCmd(ec ExecContext, arg string) {
@@ -964,7 +968,7 @@ func PipeOutCmd(ec ExecContext, arg string) {
 	}
 
 	txt := string(ec.ed.bodybuf.SelectionRunes(ec.fr.Sel))
-	NewJob(wd, arg, txt, &ec, false, nil)
+	NewJob(wd, arg, txt, &ec, false, false, nil)
 }
 
 func cdIntl(arg string) {
@@ -1307,6 +1311,37 @@ func SaveposCmd(ec ExecContext, arg string) {
 			clipboard.Set(fmt.Sprintf("%s:%d,%d", p, sln, eln))
 		}
 	}
+}
+
+func TooltipCmd(ec ExecContext, arg string) {
+	wd := Wnd.tagbuf.Dir
+	if ec.dir != "" {
+		wd = ec.dir
+	}
+	resultChan := make(chan string)
+	var out string
+	NewJob(wd, arg, "", &ec, false, true, resultChan)
+
+	if complVisible && complTooltip {
+		HideCompl(true)
+	}
+
+	go func() {
+		select {
+		case out = <-resultChan:
+		case <-time.After(5 * time.Second):
+			// aborting
+			return
+		}
+
+		sideChan <- func() {
+			if complVisible && complTooltip {
+				Warnfull("+Tooltip", out, true, false)
+			} else {
+				ComplShowTooltip(ec, out, true)
+			}
+		}
+	}()
 }
 
 func makeEditContext(buf *buf.Buffer, sel *util.Sel, eventChan chan string, ed *Editor) edit.EditContext {

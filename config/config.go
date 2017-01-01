@@ -13,6 +13,8 @@ var DefaultEditorTag = " Del"
 var StartupWidth = 640
 var ScrollWidth = 10
 var StartupHeight = 480
+var ComplMaxX = 1024
+var ComplMaxY = 1024
 
 var MainFontSize int
 var MainFont = util.MustNewFont(72, 16, 1.0, true, "$HOME/.config/yacco/luxisr.ttf:$HOME/.config/yacco/DejaVuSans.ttf")
