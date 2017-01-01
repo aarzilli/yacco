@@ -256,8 +256,8 @@ func processout(bs []byte, err error, arg string, idx int, pos string, fullwrite
 			}
 			first = false
 		} else {
-			if rest == "defined here" {
-				fmt.Fprintf(out, "defined: %s", pos)
+			if strings.Index(rest, "defined") >= 0 {
+				fmt.Fprintf(out, "%s: %s\n", pos, rest)
 			} else {
 				if !showonlydefined {
 					out.Write([]byte(rest))
