@@ -36,7 +36,11 @@ func usage() {
 func runGofmt(argument string, paths map[string]bool) {
 	wd, err := os.Getwd()
 	util.Allergic(debug, err)
-	out, err := exec.Command("go", "fmt").CombinedOutput()
+	args := []string{"fmt"}
+	if argument != "" {
+		args = append(args, argument)
+	}
+	out, err := exec.Command("go", args...).CombinedOutput()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "%s\n%v\n", string(out), err)
 	}
@@ -185,9 +189,9 @@ func processout(bs []byte, err error, arg string, idx int, pos string, fullwrite
 		refToMethodFunc = "reference to method func "
 		refToFunc       = "reference to func"
 	)
-	
+
 	var out io.Writer
-	
+
 	if os.Getenv("YACCO_TOOLTIP") != "1" {
 		buf, _, err := util.FindWin("Guru", p9clnt)
 		util.Allergic(debug, err)
@@ -201,7 +205,7 @@ func processout(bs []byte, err error, arg string, idx int, pos string, fullwrite
 		buf.TagFd.Close()
 		buf.ColorFd.Close()
 		defer buf.BodyFd.Close()
-		out = writenWrapper{ buf.BodyFd }
+		out = writenWrapper{buf.BodyFd}
 	} else {
 		out = os.Stdout
 	}
