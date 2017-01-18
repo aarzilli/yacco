@@ -3,8 +3,47 @@
 	"ignore": "test",
 	"package": [
 		{
+			"checksumSHA1": "ypImJpfkqqFMmtyTNYTV6a2VhpA=",
+			"origin": "yacco/vendor/github.com/BurntSushi/xgb",
+			"path": "github.com/BurntSushi/xgb",
+			"revision": "63060fb9bf6b3853eb22d1b82b6f7eaba5041f51",
+			"revisionTime": "2017-01-18T09:52:16Z"
+		},
+		{
+			"checksumSHA1": "JlhcoZUInLRUJZmZ8AMX1E5gr1A=",
+			"origin": "yacco/vendor/github.com/BurntSushi/xgb/render",
+			"path": "github.com/BurntSushi/xgb/render",
+			"revision": "63060fb9bf6b3853eb22d1b82b6f7eaba5041f51",
+			"revisionTime": "2017-01-18T09:52:16Z"
+		},
+		{
+			"checksumSHA1": "mK63DU8dTzBXLzqFBzcvL5SdbE4=",
+			"path": "github.com/BurntSushi/xgb/shape",
+			"revision": "63060fb9bf6b3853eb22d1b82b6f7eaba5041f51",
+			"revisionTime": "2017-01-18T09:52:16Z"
+		},
+		{
+			"checksumSHA1": "d3qnRHpBep4Xs+RPcj2346/d0qs=",
+			"origin": "yacco/vendor/github.com/BurntSushi/xgb/shm",
+			"path": "github.com/BurntSushi/xgb/shm",
+			"revision": "63060fb9bf6b3853eb22d1b82b6f7eaba5041f51",
+			"revisionTime": "2017-01-18T09:52:16Z"
+		},
+		{
+			"checksumSHA1": "sWm96ySPr8q8tbvkzbEDBJRdLXU=",
+			"path": "github.com/BurntSushi/xgb/xinerama",
+			"revision": "63060fb9bf6b3853eb22d1b82b6f7eaba5041f51",
+			"revisionTime": "2017-01-18T09:52:16Z"
+		},
+		{
+			"checksumSHA1": "Y3xdzKTxtSrbUIxHU+bFkO+bEdU=",
+			"origin": "yacco/vendor/github.com/BurntSushi/xgb/xproto",
+			"path": "github.com/BurntSushi/xgb/xproto",
+			"revision": "63060fb9bf6b3853eb22d1b82b6f7eaba5041f51",
+			"revisionTime": "2017-01-18T09:52:16Z"
+		},
+		{
 			"checksumSHA1": "w01kP96jx5UAf+uWB8m0w8Xghas=",
-			"origin": "yacco/vendor/github.com/golang/freetype",
 			"path": "github.com/golang/freetype",
 			"revision": "a1009ab6e130dd82adc38b3ccdfc6dab0039daa2",
 			"revisionTime": "2016-09-28T06:24:30Z"
