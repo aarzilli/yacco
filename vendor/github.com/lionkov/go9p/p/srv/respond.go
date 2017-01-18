@@ -11,7 +11,7 @@ import "github.com/lionkov/go9p/p"
 func (req *Req) RespondError(err interface{}) {
 	switch e := err.(type) {
 	case *p.Error:
-		p.PackRerror(req.Rc, e.Error(), uint32(e.Errornum), req.Conn.Dotu)
+		p.PackRerror(req.Rc, e.Err, uint32(e.Errornum), req.Conn.Dotu)
 	case error:
 		p.PackRerror(req.Rc, e.Error(), uint32(p.EIO), req.Conn.Dotu)
 	default:

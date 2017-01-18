@@ -10,8 +10,6 @@ import (
 	"sync"
 )
 
-var once sync.Once
-
 type osUser struct {
 	*user.User
 	uid int
@@ -26,6 +24,11 @@ type osUsers struct {
 // Simple Users implementation that defers to os/user and fakes
 // looking up groups by gid only.
 var OsUsers *osUsers
+
+func init() {
+	OsUsers = new(osUsers)
+	OsUsers.groups = make(map[int]*osGroup)
+}
 
 func (u *osUser) Name() string { return u.Username }
 
@@ -44,11 +47,6 @@ func (g *osGroup) Name() string { return "" }
 func (g *osGroup) Id() int { return g.gid }
 
 func (g *osGroup) Members() []User { return nil }
-
-func initOsusers() {
-	OsUsers = new(osUsers)
-	OsUsers.groups = make(map[int]*osGroup)
-}
 
 func newUser(u *user.User) *osUser {
 	uid, uerr := strconv.Atoi(u.Uid)
@@ -77,18 +75,17 @@ func (up *osUsers) Uname2User(uname string) User {
 }
 
 func (up *osUsers) Gid2Group(gid int) Group {
-	once.Do(initOsusers)
-	OsUsers.Lock()
-	group, present := OsUsers.groups[gid]
+	up.Lock()
+	group, present := up.groups[gid]
 	if present {
-		OsUsers.Unlock()
+		up.Unlock()
 		return group
 	}
 
 	group = new(osGroup)
 	group.gid = gid
-	OsUsers.groups[gid] = group
-	OsUsers.Unlock()
+	up.groups[gid] = group
+	up.Unlock()
 	return group
 }
 

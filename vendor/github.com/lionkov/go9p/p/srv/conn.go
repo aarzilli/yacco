@@ -5,8 +5,8 @@
 package srv
 
 import (
-	"github.com/lionkov/go9p/p"
 	"fmt"
+	"github.com/lionkov/go9p/p"
 	"log"
 	"net"
 )
@@ -59,6 +59,8 @@ func (conn *Conn) close() {
 
 	/* call FidDestroy for all remaining fids */
 	if op, ok := (conn.Srv.ops).(FidOps); ok {
+		conn.Lock()
+		defer conn.Unlock()
 		for _, fid := range conn.Fidpool {
 			op.FidDestroy(fid)
 		}

@@ -4,14 +4,12 @@
 	"package": [
 		{
 			"checksumSHA1": "ypImJpfkqqFMmtyTNYTV6a2VhpA=",
-			"origin": "yacco/vendor/github.com/BurntSushi/xgb",
 			"path": "github.com/BurntSushi/xgb",
 			"revision": "63060fb9bf6b3853eb22d1b82b6f7eaba5041f51",
 			"revisionTime": "2017-01-18T09:52:16Z"
 		},
 		{
 			"checksumSHA1": "JlhcoZUInLRUJZmZ8AMX1E5gr1A=",
-			"origin": "yacco/vendor/github.com/BurntSushi/xgb/render",
 			"path": "github.com/BurntSushi/xgb/render",
 			"revision": "63060fb9bf6b3853eb22d1b82b6f7eaba5041f51",
 			"revisionTime": "2017-01-18T09:52:16Z"
@@ -24,7 +22,6 @@
 		},
 		{
 			"checksumSHA1": "d3qnRHpBep4Xs+RPcj2346/d0qs=",
-			"origin": "yacco/vendor/github.com/BurntSushi/xgb/shm",
 			"path": "github.com/BurntSushi/xgb/shm",
 			"revision": "63060fb9bf6b3853eb22d1b82b6f7eaba5041f51",
 			"revisionTime": "2017-01-18T09:52:16Z"
@@ -37,7 +34,6 @@
 		},
 		{
 			"checksumSHA1": "Y3xdzKTxtSrbUIxHU+bFkO+bEdU=",
-			"origin": "yacco/vendor/github.com/BurntSushi/xgb/xproto",
 			"path": "github.com/BurntSushi/xgb/xproto",
 			"revision": "63060fb9bf6b3853eb22d1b82b6f7eaba5041f51",
 			"revisionTime": "2017-01-18T09:52:16Z"
@@ -53,6 +49,24 @@
 			"path": "github.com/kr/pty",
 			"revision": "ce7fa45920dc37a92de8377972e52bc55ffa8d57",
 			"revisionTime": "2016-07-16T20:46:20Z"
+		},
+		{
+			"checksumSHA1": "oHGsXPIyP7nN7QD43JN/steQ2kM=",
+			"path": "github.com/lionkov/go9p/p",
+			"revision": "3096ae039e6a50a37623268266d83b98e114c1b8",
+			"revisionTime": "2017-01-18T11:06:36Z"
+		},
+		{
+			"checksumSHA1": "PFOEmAFpqSboqaNSPGHyqiFGAW8=",
+			"path": "github.com/lionkov/go9p/p/clnt",
+			"revision": "3096ae039e6a50a37623268266d83b98e114c1b8",
+			"revisionTime": "2017-01-18T11:06:36Z"
+		},
+		{
+			"checksumSHA1": "QtLFyBbUncX/NquUfD7tJV2SuzQ=",
+			"path": "github.com/lionkov/go9p/p/srv",
+			"revision": "3096ae039e6a50a37623268266d83b98e114c1b8",
+			"revisionTime": "2017-01-18T11:06:36Z"
 		}
 	],
 	"rootPath": "yacco"

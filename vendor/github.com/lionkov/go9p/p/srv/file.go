@@ -552,6 +552,10 @@ func (*Fsrv) Wstat(req *Req) {
 	}
 }
 
+func (*Fsrv) Flush(req *Req) {
+	req.Flush()
+}
+
 func (*Fsrv) FidDestroy(ffid *Fid) {
 	if ffid.Aux == nil {
 		return
