@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"github.com/lionkov/go9p/p"
 	"github.com/lionkov/go9p/p/clnt"
@@ -24,11 +25,11 @@ func usage() {
 	fmt.Fprintf(os.Stderr, `Implements Go integration in yacco:
 	
 	Go gurucmd	calls guru on the selection of active editor gurucmd is one of:
-					callees callers callstack definition describe freevars implements
-					peers pointsto  referrers what whicherrs
-	Go d			equivalent of "Go describe"
-	Go r			equivalent of "Go referrers"
-	Go help			list of commands
+			callees callers callstack definition describe freevars implements
+			peers pointsto  referrers what whicherrs
+	Go d		equivalent of "Go describe"
+	Go r		equivalent of "Go referrers"
+	Go help		list of commands
 `)
 	os.Exit(1)
 }
@@ -306,7 +307,7 @@ func godoc(funcname string, out io.Writer) bool {
 			continue
 		}
 		if curreceiver == receiver && curname == name {
-			out.Write([]byte(line))
+			out.Write([]byte(clearPackagePaths(line)))
 			out.Write([]byte("\n"))
 			found = true
 			break
@@ -482,6 +483,57 @@ func parseGodocFuncdef(funcdef string) (receiver, name string, ok bool) {
 	}
 
 	return
+}
+
+func clearPackagePaths(in string) string {
+	type state uint8
+	const (
+		outofid state = iota
+		inid
+	)
+
+	s := outofid
+	r := make([]byte, 0, len(in))
+
+	start := -1
+
+	isid := func(ch rune) bool {
+		return unicode.IsDigit(ch) || unicode.IsLetter(ch)
+	}
+
+	flushid := func(i int) {
+		id := in[start:i]
+		if idx := strings.LastIndex(id, "/"); idx >= 0 {
+			r = append(r, []byte(id[idx+1:])...)
+		} else {
+			r = append(r, []byte(id)...)
+		}
+	}
+
+	for i, ch := range in {
+		switch s {
+		case outofid:
+			if isid(ch) {
+				start = i
+				s = inid
+			} else {
+				r = append(r, []byte(string(ch))...)
+			}
+		case inid:
+			if !isid(ch) {
+				flushid(i)
+				r = append(r, []byte(string(ch))...)
+				s = outofid
+			}
+		}
+	}
+
+	if s == inid {
+		flushid(len(in))
+	}
+
+	return string(r)
+	//TODO: print everything that isn't an identifier, for identifier remove everything except the last component of the slash path
 }
 
 func main() {
