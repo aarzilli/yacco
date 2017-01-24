@@ -14,6 +14,7 @@ func (m *Machine) resetCommon() {
 	if m.dummy {
 		m.window = make([]Index, 1)
 		m.input = &m.window[0]
+		m.curIdx = -1
 		return
 	}
 	for i := range m.backtrack {
