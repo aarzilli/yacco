@@ -187,8 +187,9 @@ func (w writenWrapper) Write(p []byte) (int, error) {
 
 func processout(bs []byte, err error, arg string, idx int, pos string, fullwrite bool, p9clnt *clnt.Clnt) {
 	const (
-		refToMethodFunc = "reference to method func "
-		refToFunc       = "reference to func"
+		refToMethodFunc      = "reference to method func "
+		refToIfaceMethodFunc = "reference to interface method func "
+		refToFunc            = "reference to func "
 	)
 
 	var out io.Writer
@@ -243,11 +244,14 @@ func processout(bs []byte, err error, arg string, idx int, pos string, fullwrite
 			out.Write([]byte(":\n"))
 
 			var funcname string
-			switch {
-			case strings.HasPrefix(rest, refToMethodFunc):
-				funcname = rest[len(refToMethodFunc):]
-			case strings.HasPrefix(rest, refToFunc):
-				funcname = rest[len(refToFunc):]
+			for _, prefix := range []string{
+				refToMethodFunc,
+				refToIfaceMethodFunc,
+				refToFunc} {
+				if strings.HasPrefix(rest, prefix) {
+					funcname = rest[len(prefix):]
+					break
+				}
 			}
 			if funcname != "" {
 				ok := godoc(funcname, out)
@@ -257,7 +261,16 @@ func processout(bs []byte, err error, arg string, idx int, pos string, fullwrite
 				}
 			}
 			if !showonlydefined {
-				out.Write([]byte(rest))
+				if funcname != "" {
+					funcnameClear := clearPackagePaths(funcname)
+					if len(funcnameClear) < linelen-len("reference to func ") {
+						fmt.Fprintf(out, "reference to func %s\n", funcnameClear)
+					} else {
+						fmt.Fprintf(out, "reference to\n\tfunc %s\n", funcnameClear)
+					}
+				} else {
+					out.Write([]byte(rest))
+				}
 			}
 			first = false
 		} else {
@@ -485,6 +498,8 @@ func parseGodocFuncdef(funcdef string) (receiver, name string, ok bool) {
 	return
 }
 
+const linelen = 70
+
 func clearPackagePaths(in string) string {
 	type state uint8
 	const (
@@ -498,7 +513,7 @@ func clearPackagePaths(in string) string {
 	start := -1
 
 	isid := func(ch rune) bool {
-		return unicode.IsDigit(ch) || unicode.IsLetter(ch)
+		return unicode.IsDigit(ch) || unicode.IsLetter(ch) || ch == '/' || ch == '.'
 	}
 
 	flushid := func(i int) {
@@ -532,8 +547,29 @@ func clearPackagePaths(in string) string {
 		flushid(len(in))
 	}
 
+	rs := string(r)
+	if len(rs) > linelen-8 {
+		rs = splitFuncDef(rs)
+	}
+	return rs
+}
+
+func splitFuncDef(in string) string {
+	r := make([]byte, 0, len(in))
+	lastnl := 0
+	for i, ch := range in {
+		switch {
+		case (ch == '(') && (i != 0):
+			r = append(r, []byte(string(ch))...)
+			r = append(r, []byte("\n\t\t")...)
+			lastnl = len(r)
+		case (ch == ' ') && len(r[lastnl:]) > linelen-16:
+			r = append(r, []byte("\n\t\t")...)
+		default:
+			r = append(r, []byte(string(ch))...)
+		}
+	}
 	return string(r)
-	//TODO: print everything that isn't an identifier, for identifier remove everything except the last component of the slash path
 }
 
 func main() {
