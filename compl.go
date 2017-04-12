@@ -8,6 +8,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"yacco/buf"
 	"yacco/config"
 	"yacco/textframe"
 	"yacco/util"
@@ -17,6 +18,7 @@ type Popup struct {
 	Visible bool
 	R       image.Rectangle
 	B       *image.RGBA
+	Dir     string
 	start   func(*Popup, ExecContext) (bool, string)
 }
 
@@ -29,14 +31,11 @@ func init() {
 	Tooltip.start = tooltipStart
 }
 
-func (p *Popup) prepare(str string) (image.Rectangle, *image.RGBA) {
-	if p.B == nil {
-		p.B = image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{config.ComplMaxX, config.ComplMaxY}})
-	}
+func popupFrame(b *image.RGBA, r image.Rectangle) textframe.Frame {
 	fr := textframe.Frame{
 		Font:      config.ComplFont,
 		Hackflags: textframe.HF_TRUNCATE,
-		B:         p.B, R: p.B.Bounds(),
+		B:         b, R: r,
 		VisibleTick: false,
 		Colors: [][]image.Uniform{
 			config.TheColorScheme.Compl,
@@ -47,6 +46,15 @@ func (p *Popup) prepare(str string) (image.Rectangle, *image.RGBA) {
 		Top:      0,
 	}
 	fr.Init(5)
+
+	return fr
+}
+
+func (p *Popup) prepare(str string) (image.Rectangle, *image.RGBA) {
+	if p.B == nil {
+		p.B = image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{config.ComplMaxX, config.ComplMaxY}})
+	}
+	fr := popupFrame(p.B, p.B.Bounds())
 	limit := fr.Insert(textframe.ColorRunes(str), nil)
 	fr.Redraw(false, nil)
 
@@ -219,10 +227,18 @@ func (p *Popup) Start(ec ExecContext) {
 		return
 	}
 
+	p.Dir = ""
+	if ec.buf != nil {
+		p.Dir = ec.buf.Dir
+	}
+
 	wasVisible := p.Visible
 	oldR := p.R
 	p.prepare(txt)
-	p.R = p.R.Add(ec.fr.PointToCoord(ec.fr.Sel.S).Add(image.Point{2, 4}))
+	p0 := ec.fr.PointToCoord(ec.fr.Sel.S)
+	p0.X = ec.fr.R.Min.X
+	p0 = p0.Add(image.Point{2, 4})
+	p.R = p.R.Add(p0)
 	p.Visible = true
 
 	var fn func()
@@ -391,4 +407,16 @@ func commonPrefix2(a, b string) string {
 		}
 	}
 	return a[:l]
+}
+
+func TooltipClick(e util.MouseDownEvent) LogicalPos {
+	fr := popupFrame(Tooltip.B, Tooltip.R)
+	fr.Insert(textframe.ColorRunes(tooltipContents), nil)
+	buf, _ := buf.NewBuffer(Tooltip.Dir, "+Tooltip", false, "\t")
+	buf.ReplaceFull([]rune(tooltipContents))
+	fr.OnClick(e, nil)
+	return LogicalPos{
+		tagfr:  &fr,
+		tagbuf: buf,
+	}
 }

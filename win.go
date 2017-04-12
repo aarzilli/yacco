@@ -344,13 +344,30 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 		Wnd.Resized(e.Size())
 
 	case mouse.Event:
-		if e.Direction == mouse.DirNone {
-			HideCompl(false)
-			w.lastWhere = image.Point{int(e.X), int(e.Y)}
-			Wnd.SetTick(w.lastWhere)
+		if e.Direction != mouse.DirNone {
+			return
 		}
+		p := image.Point{int(e.X), int(e.Y)}
+		if Tooltip.Visible && p.In(Tooltip.R) {
+			return
+		}
+		HideCompl(false)
+		w.lastWhere = p
+		Wnd.SetTick(w.lastWhere)
 
 	case util.MouseDownEvent:
+		if Tooltip.Visible && e.Where.In(Tooltip.R) && (e.Which == mouse.ButtonRight || e.Which == mouse.ButtonMiddle) {
+			lp := TooltipClick(e)
+			switch e.Which {
+			case mouse.ButtonRight:
+				clickExec3(lp)
+			case mouse.ButtonMiddle:
+				clickExec2(lp)
+			}
+			HideCompl(true)
+			return
+		}
+
 		HideCompl(true)
 		w.lastWhere = e.Where
 		lp := w.TranslatePosition(e.Where, true)
@@ -1043,37 +1060,37 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *mouse.Event, events <-c
 		switch ee.Button {
 		case mouse.ButtonLeft:
 			if completeClick(events, mouse.ButtonMiddle, mouse.ButtonRight) {
-				clickExec2extra(lp, e)
+				clickExec2extra(lp)
 			}
 		case mouse.ButtonRight:
 			// cancelled
 		default:
 			if ctrl {
-				clickExec2extra(lp, e)
+				clickExec2extra(lp)
 			} else {
-				clickExec2(lp, e)
+				clickExec2(lp)
 			}
 		}
 
 	case mouse.ButtonRight:
 		if ctrl {
-			clickExec2extra(lp, e)
+			clickExec2extra(lp)
 		} else {
 			if ee.Button != mouse.ButtonMiddle { // middle button cancels right button
-				clickExec3(lp, e)
+				clickExec3(lp)
 			}
 		}
 
 	case mouse.ButtonLeft:
 		switch {
 		case alt:
-			clickExec3(lp, e)
+			clickExec3(lp)
 			return
 		case ctrl:
-			clickExec2(lp, e)
+			clickExec2(lp)
 			return
 		case meta:
-			clickExec2extra(lp, e)
+			clickExec2extra(lp)
 			return
 		}
 
@@ -1134,7 +1151,7 @@ func clickExec1(lp LogicalPos, e util.MouseDownEvent) {
 }
 
 // Simple execute without extra arguments
-func clickExec2(lp LogicalPos, e util.MouseDownEvent) {
+func clickExec2(lp LogicalPos) {
 	cmd, original := expandedSelection(lp, 1)
 	ec := lp.asExecContext(false)
 	sendEventOrExec(ec, cmd, lp.tagfr != nil, original)
@@ -1154,7 +1171,7 @@ func sendEventOrExec(ec ExecContext, cmd string, tagorigin bool, original int) {
 }
 
 // Execute with extra argument
-func clickExec2extra(lp LogicalPos, e util.MouseDownEvent) {
+func clickExec2extra(lp LogicalPos) {
 	cmd, original := expandedSelection(lp, 1)
 	ec := lp.asExecContext(false)
 	cmd = strings.TrimSpace(cmd)
@@ -1172,7 +1189,7 @@ func clickExec2extra(lp LogicalPos, e util.MouseDownEvent) {
 }
 
 // Load click
-func clickExec3(lp LogicalPos, e util.MouseDownEvent) {
+func clickExec3(lp LogicalPos) {
 	ec := lp.asExecContext(true)
 	s, original := expandedSelection(lp, 2)
 

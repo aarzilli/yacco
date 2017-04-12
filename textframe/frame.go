@@ -350,6 +350,9 @@ func abs(n int) int {
 // Tracks the mouse position, selecting text, the events channel is from go.wde
 // kind is 1 for character by character selection, 2 for word by word selection, 3 for line by line selection
 func (fr *Frame) Select(idx, kind int, button mouse.Button, startPos image.Point, events <-chan interface{}) *mouse.Event {
+	if events == nil {
+		return nil
+	}
 	if (idx < 0) || (idx >= len(fr.Colors)-1) {
 		for ei := range events {
 			switch e := ei.(type) {
