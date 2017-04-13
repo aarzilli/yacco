@@ -55,7 +55,8 @@ type SignalMsg struct {
 }
 
 type UserAppendMsg struct {
-	s []byte
+	s            []byte
+	removePrompt bool
 }
 
 type ExecUserMsg struct {
@@ -260,9 +261,13 @@ func eventReader(controlChan chan<- interface{}, eventfd io.ReadWriter) {
 				}
 				util.Allergic3(debug, err, isDelSeen())
 			} else {
+				removePrompt := false
+				if er.Type() == util.ET_BODYEXEC && arg[len(arg)-1] == '\n' {
+					removePrompt = true
+				}
 				if !winInternalCommand(arg, controlChan) {
 					arg = strings.TrimRight(arg, "\n")
-					controlChan <- UserAppendMsg{[]byte(fmt.Sprintf("%s\n", arg))}
+					controlChan <- UserAppendMsg{[]byte(fmt.Sprintf("%s\n", arg)), removePrompt}
 					controlChan <- ExecUserMsg{-1}
 				}
 			}
@@ -461,6 +466,18 @@ func controlFunc(cmd *exec.Cmd, pty *os.File, buf *util.BufferConn, controlChan 
 		case UserAppendMsg:
 			if floating {
 				anchorDown()
+			}
+			if msg.removePrompt {
+				// Remove prompt from middle clicks
+				addr, err := buf.ReadAddr()
+				util.Allergic3(debug, err, isDelSeen())
+				fmt.Fprintf(buf.AddrFd, "#%d-+#0,$", addr[0])
+				curprefix, err := buf.ReadXData()
+				util.Allergic3(debug, err, isDelSeen())
+				if bytes.HasPrefix(msg.s, curprefix) {
+					msg.s = msg.s[len(curprefix):]
+				}
+				fmt.Fprintf(buf.AddrFd, "#%d,#%d", addr[0], addr[1])
 			}
 			_, err := buf.BodyFd.Write(msg.s)
 			util.Allergic3(debug, err, isDelSeen())
