@@ -1,43 +1,30 @@
 #!/bin/bash
 
-./all.sh
-mkdir -p $1/yaccodir/
-cp -f extra/win/win $1/yaccodir/win
-cp -f extra/E/E $1/yaccodir/E
-cp -f extra/Watch/Watch $1/yaccodir/Watch
-cp -f extra/y9p/y9p $1/yaccodir/y9p
-cp -f extra/Change/Change $1/yaccodir/Change
-cp -f extra/LookFile/LookFile $1/yaccodir/LookFile
-cp -f extra/Go/Go $1/yaccodir/Go
-cp -f extra/Eqcol/Eqcol $1/yaccodir/Eqcol
-cp -f extra/cmfmt/cmfmt $1/yaccodir/cmfmt
-ln -sf $1/yaccodir/Go $1/yaccodir/Gofmt
-ln -sf $1/yaccodir/Go $1/yaccodir/God
-ln -sf $1/yaccodir/Go $1/yaccodir/Gor
-cp -f bin/yacco $1/yaccodir/yacco
-for scpt in m g a+ a- Font Indent Tab Mount Fs in LookExact comment_char.sh c+ c- yclear gg DiskDiff; do
-	cp -f extra/$scpt $1/yaccodir/$scpt
-	chmod u+x $1/yaccodir/$scpt
-done
+set -e
 
+destdir=$1
 
-if [ ! -e $1/yacco ]; then
-	cat >$1/yacco <<EOF
+function make_launcher {
+	if [ ! -e $destdir/yacco ]; then
+		cat >$destdir/yacco <<EOF
 #!/bin/bash
 source ~/.bash_profile
-export PATH=$1/yaccodir:\$PATH
+export PATH=$destdir/yaccodir:\$PATH
 export yaccoshell=/bin/bash
 unset PROMPT_COMMAND
 export PS1='\e];\w\a% '
 export EDITOR=E
-exec $1/yaccodir/yacco -s=1168x900 -t=e2 $*
+exec $destdir/yaccodir/yacco -s=1168x900 -t=e2 $*
 EOF
-chmod u+x $1/yacco
-fi
-mkdir -p $HOME/.config/yacco/
+		chmod u+x $destdir/yacco
+	fi
+}
 
-if [ ! -e $HOME/.config/yacco/rc ]; then
-	cat >$HOME/.config/yacco/rc <<EOF
+function make_config {
+	mkdir -p $HOME/.config/yacco/
+	
+	if [ ! -e $HOME/.config/yacco/rc ]; then
+		cat >$HOME/.config/yacco/rc <<EOF
 [Core]
 EnableHighlighting=true
 HideHidden=true
@@ -61,9 +48,120 @@ CopyFrom=Main
 CopyFrom=Main
 
 EOF
-fi
+	fi
+	
+	cp config/DejaVuSans.ttf $HOME/.config/yacco/
+	cp config/luxisr.ttf $HOME/.config/yacco/
+	cp config/luximr.ttf $HOME/.config/yacco/
+}
 
-cp config/DejaVuSans.ttf $HOME/.config/yacco/
-cp config/luxisr.ttf $HOME/.config/yacco/
-cp config/luximr.ttf $HOME/.config/yacco/
-echo Done
+function install_yacco {
+	echo install yacco
+	mkdir -p bin
+	go build
+	mv yacco bin
+	cp -f bin/yacco $destdir/yaccodir/yacco
+	make_launcher
+	make_config
+}
+
+function install_win {
+	echo install win
+	cd extra/win
+	go build
+	cd - >/dev/null
+	cp -f extra/win/win $destdir/yaccodir/win
+}
+
+function install_E {	
+	echo install E
+	cd extra/E
+	go build
+	cd - >/dev/null
+	cp -f extra/E/E $destdir/yaccodir/E
+}
+
+function install_Watch {
+	echo install Watch
+	cd extra/Watch
+	go build
+	cd - >/dev/null
+	cp -f extra/Watch/Watch $destdir/yaccodir/Watch
+}
+
+function install_y9p {
+	echo install y9p
+	cd extra/y9p
+	go build
+	cd - >/dev/null
+	cp -f extra/y9p/y9p $destdir/yaccodir/y9p
+}
+
+function install_Change {
+	echo install Change
+	cd extra/Change
+	go build
+	cd - >/dev/null
+	cp -f extra/Change/Change $destdir/yaccodir/Change
+}
+
+function install_LookFile {
+	echo install LookFile
+	cd extra/LookFile/
+	go build
+	cd - >/dev/null
+	cp -f extra/LookFile/LookFile $destdir/yaccodir/LookFile
+}
+
+function install_Go {
+	echo install Go
+	cd extra/Go/
+	go build
+	cd - >/dev/null
+	cp -f extra/Go/Go $destdir/yaccodir/Go
+	ln -sf $destdir/yaccodir/Go $destdir/yaccodir/Gofmt
+	ln -sf $destdir/yaccodir/Go $destdir/yaccodir/God
+	ln -sf $destdir/yaccodir/Go $destdir/yaccodir/Gor
+}
+
+function install_Eqcol {
+	echo install Eqcol
+	cd extra/Eqcol
+	go build
+	cd - >/dev/null
+	cp -f extra/Eqcol/Eqcol $destdir/yaccodir/Eqcol
+}
+
+function install_cmfmt {
+	echo install cmfmt
+	cd extra/cmfmt
+	go build
+	cd - >/dev/null
+	cp -f extra/cmfmt/cmfmt $destdir/yaccodir/cmfmt
+}
+
+function install_scripts {
+	echo install scripts
+	for scpt in m g a+ a- Font Indent Tab Mount Fs in LookExact comment_char.sh c+ c- yclear gg DiskDiff; do
+		cp -f extra/$scpt $destdir/yaccodir/$scpt
+		chmod u+x $destdir/yaccodir/$scpt
+	done
+}
+
+if [[ -z $2 ]]; then
+	mkdir -p $destdir/yaccodir/
+	install_yacco
+	install_win
+	install_E
+	install_Watch
+	install_y9p
+	install_Change
+	install_LookFile
+	install_Go
+	install_Eqcol
+	install_cmfmt
+	echo Done
+else
+	eval "install_$2"
+	echo Done
+fi
