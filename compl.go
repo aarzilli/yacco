@@ -15,11 +15,12 @@ import (
 )
 
 type Popup struct {
-	Visible bool
-	R       image.Rectangle
-	B       *image.RGBA
-	Dir     string
-	start   func(*Popup, ExecContext) (bool, string)
+	Visible    bool
+	R          image.Rectangle
+	B          *image.RGBA
+	Dir        string
+	alignRight bool
+	start      func(*Popup, ExecContext) (bool, string)
 }
 
 var tooltipContents string
@@ -29,6 +30,7 @@ var complPrefixSuffix string
 func init() {
 	Compl.start = complStart
 	Tooltip.start = tooltipStart
+	Tooltip.alignRight = true
 }
 
 func popupFrame(b *image.RGBA, r image.Rectangle) textframe.Frame {
@@ -236,7 +238,9 @@ func (p *Popup) Start(ec ExecContext) {
 	oldR := p.R
 	p.prepare(txt)
 	p0 := ec.fr.PointToCoord(ec.fr.Sel.S)
-	p0.X = ec.fr.R.Min.X
+	if p.alignRight {
+		p0.X = ec.fr.R.Min.X
+	}
 	p0 = p0.Add(image.Point{2, 4})
 	p.R = p.R.Add(p0)
 	p.Visible = true
