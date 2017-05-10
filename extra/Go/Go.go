@@ -565,6 +565,7 @@ func splitFuncDef(in string) string {
 			lastnl = len(r)
 		case (ch == ' ') && len(r[lastnl:]) > linelen-16:
 			r = append(r, []byte("\n\t\t")...)
+			lastnl = len(r)
 		default:
 			r = append(r, []byte(string(ch))...)
 		}
