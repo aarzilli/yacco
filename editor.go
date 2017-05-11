@@ -13,6 +13,7 @@ import (
 	"yacco/buf"
 	"yacco/config"
 	"yacco/edutil"
+	"yacco/hl"
 	"yacco/textframe"
 	"yacco/util"
 )
@@ -82,7 +83,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 	FsAddEditor(e.edid)
 
 	e.bodybuf = bodybuf
-	e.tagbuf, _ = buf.NewBuffer(bodybuf.Dir, "+Tag", true, Wnd.Prop["indentchar"])
+	e.tagbuf, _ = buf.NewBuffer(bodybuf.Dir, "+Tag", true, Wnd.Prop["indentchar"], hl.NilHighlighter)
 	e.expandedTag = true
 
 	e.sfr = textframe.ScrollFrame{
@@ -98,7 +99,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 		},
 	}
 	e.otherSel = make([]util.Sel, NUM_OTHER_SEL)
-	e.sfr.Fr.Scroll = edutil.MakeScrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, Highlight)
+	e.sfr.Fr.Scroll = edutil.MakeScrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr)
 
 	e.tagfr = textframe.Frame{
 		Font:            config.TagFont,
@@ -344,7 +345,7 @@ func (e *Editor) refreshIntl(full bool) {
 
 	e.refreshOpt.revCount = e.bodybuf.RevCount
 
-	edutil.DoHighlightingConsistency(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, Highlight)
+	edutil.DoHighlightingConsistency(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr)
 }
 
 func (e *Editor) TagRefresh() {
@@ -377,7 +378,7 @@ func (e *Editor) badTop() bool {
 	if e.sfr.Fr.Top == 0 || e.sfr.Fr.Sel.S != e.sfr.Fr.Top {
 		return false
 	}
-	return e.bodybuf.At(e.sfr.Fr.Top-1).R != '\n'
+	return e.bodybuf.At(e.sfr.Fr.Top-1) != '\n'
 }
 
 func (e *Editor) BufferRefreshEx(recur, scroll bool) {
@@ -409,7 +410,7 @@ func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 		e.otherSel[OS_TOP].E = x
 		e.refreshIntl(false)
 		e.sfr.Redraw(true, nil) // NEEDED, otherwise every other redraw is optimized and is not performed correctly
-		edutil.Scrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, -1, e.sfr.Fr.LineNo()/4-1, Highlight)
+		edutil.Scrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, -1, e.sfr.Fr.LineNo()/4-1)
 	}
 
 	// redraw
@@ -442,7 +443,7 @@ func (e *Editor) FixTop() {
 		e.otherSel[OS_TOP].E = e.bodybuf.Size()
 	}
 	for ; e.otherSel[OS_TOP].E > 0; e.otherSel[OS_TOP].E-- {
-		if e.bodybuf.At(e.otherSel[OS_TOP].E-1).R == '\n' {
+		if e.bodybuf.At(e.otherSel[OS_TOP].E-1) == '\n' {
 			break
 		}
 	}

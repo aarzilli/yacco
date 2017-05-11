@@ -3,8 +3,6 @@ package main
 import (
 	"bytes"
 	"fmt"
-	"github.com/lionkov/go9p/p"
-	"github.com/lionkov/go9p/p/srv"
 	"log"
 	"net"
 	"os"
@@ -14,9 +12,14 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
 	"yacco/config"
 	"yacco/edit"
+	"yacco/hl"
 	"yacco/util"
+
+	"github.com/lionkov/go9p/p"
+	"github.com/lionkov/go9p/p/srv"
 )
 
 const debugP9 = false
@@ -627,18 +630,10 @@ func readColorFn(i int, off int64) ([]byte, syscall.Errno) {
 		//XXX - inefficient
 		ba, bb := ec.buf.Selection(util.Sel{0, ec.buf.Size()})
 
-		text := make([]rune, len(ba)+len(bb))
-		color := make([]uint8, len(ba)+len(bb))
-
-		for i := range ba {
-			text[i] = ba[i].R
-			color[i] = uint8(ba[i].C)
-		}
-
-		for i := range bb {
-			text[i+len(ba)] = bb[i].R
-			color[i+len(ba)] = uint8(bb[i].C)
-		}
+		text := make([]rune, 0, len(ba)+len(bb))
+		text = append(text, ba...)
+		text = append(text, bb...)
+		color := ec.buf.Highlight(0, ec.buf.Size())
 
 		body := util.MixColorHack(text, color)
 		if off < int64(len(body)) {
@@ -670,9 +665,12 @@ func writeColorFn(i int, data []byte, off int64) syscall.Errno {
 	sideChan <- func() {
 		start := ec.buf.Size()
 		ec.buf.Replace(body, &util.Sel{start, start}, true, ec.eventChan, util.EO_BODYTAG)
-		for i := range color {
-			ec.buf.At(start + i).C = uint16(color[i])
+		fhl, isfixed := ec.buf.Hl.(*hl.Fixed)
+		if !isfixed {
+			fhl = hl.NewFixed(start)
+			ec.buf.Hl = fhl
 		}
+		fhl.Append(color)
 	}
 
 	return 0

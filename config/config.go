@@ -1,6 +1,7 @@
 package config
 
 import (
+	"yacco/hl"
 	"yacco/util"
 )
 
@@ -46,61 +47,39 @@ var LoadRules = []util.LoadRule{
 	util.LoadRule{BufRe: `.`, Re: `.+`, Action: "XLook $l0"},
 }
 
-var RegionMatches = []util.RegionMatch{
-	util.RegionMatch{
-		NameRe:     `\.go$`,
-		StartDelim: []rune{'`'}, EndDelim: []rune{'`'}, Escape: 0, Type: util.RMT_STRING,
-	},
-	util.RegionMatch{
-		NameRe:     `\.go$`,
-		StartDelim: []rune{'"'}, EndDelim: []rune{'"'}, Escape: '\\', Type: util.RMT_STRING,
-	},
-	util.RegionMatch{
-		NameRe:     `\.go$`,
-		StartDelim: []rune{'\''}, EndDelim: []rune{'\''}, Escape: '\\', Type: util.RMT_STRING,
-	},
-	util.RegionMatch{
-		NameRe:     `\.go$`,
-		StartDelim: []rune("/*"), EndDelim: []rune("*/"), Escape: rune(0), Type: util.RMT_COMMENT,
-	},
-	util.RegionMatch{
-		NameRe:     `\.go$`,
-		StartDelim: []rune("//"), EndDelim: []rune{'\n'}, Escape: rune(0), Type: util.RMT_COMMENT,
+var LanguageRules = []hl.LanguageRules{
+	// Go
+	hl.LanguageRules{
+		NameRe: `\.go$`,
+		RegionMatches: []hl.RegionMatch{
+			hl.StringRegion("`", "`", 0),
+			hl.StringRegion("\"", "\"", '\\'),
+			hl.StringRegion("'", "'", '\\'),
+			hl.CommentRegion("/*", "*/", 0),
+			hl.CommentRegion("//", "\n", 0),
+			hl.RegexpRegion(`^(func|type)\s+(\([^\)]+\)\s+)?`, `\W`, 0, hl.RMT_HEADER),
+		},
 	},
 
 	// C / C++ / Java / js
-	util.RegionMatch{
-		NameRe:     `\.(?:c|java|cpp|h|js)$`,
-		StartDelim: []rune{'"'}, EndDelim: []rune{'"'}, Escape: '\\', Type: util.RMT_STRING,
-	},
-	util.RegionMatch{
-		NameRe:     `\.(?:c|java|cpp|h|js)$`,
-		StartDelim: []rune{'\''}, EndDelim: []rune{'\''}, Escape: '\\', Type: util.RMT_STRING,
-	},
-	util.RegionMatch{
-		NameRe:     `\.(?:c|java|cpp|h|js)$`,
-		StartDelim: []rune("/*"), EndDelim: []rune("*/"), Escape: rune(0), Type: util.RMT_COMMENT,
-	},
-	util.RegionMatch{
-		NameRe:     `\.(?:c|java|cpp|h|js)$`,
-		StartDelim: []rune("//"), EndDelim: []rune{'\n'}, Escape: rune(0), Type: util.RMT_COMMENT,
+	hl.LanguageRules{
+		NameRe: `\.(?:c|java|cpp|h|js)$`,
+		RegionMatches: []hl.RegionMatch{
+			hl.StringRegion("\"", "\"", '\\'),
+			hl.StringRegion("'", "'", '\\'),
+			hl.CommentRegion("/*", "*/", 0),
+			hl.CommentRegion("//", "\n", 0),
+		},
 	},
 
 	// Python
-	util.RegionMatch{
-		NameRe:     `\.py$`,
-		StartDelim: []rune{'"'}, EndDelim: []rune{'"'}, Escape: '\\', Type: util.RMT_STRING,
-	},
-	util.RegionMatch{
-		NameRe:     `\.py$`,
-		StartDelim: []rune{'\''}, EndDelim: []rune{'\''}, Escape: '\\', Type: util.RMT_STRING,
-	},
-	util.RegionMatch{
-		NameRe:     `\.py$`,
-		StartDelim: []rune{'`'}, EndDelim: []rune{'`'}, Escape: '\\', Type: util.RMT_STRING,
-	},
-	util.RegionMatch{
-		NameRe:     `\.py$`,
-		StartDelim: []rune{'#'}, EndDelim: []rune{'\n'}, Escape: rune(0), Type: util.RMT_COMMENT,
+	hl.LanguageRules{
+		NameRe: `\.py$`,
+		RegionMatches: []hl.RegionMatch{
+			hl.StringRegion(`"""`, `"""`, 0),
+			hl.StringRegion("\"", "\"", '\\'),
+			hl.StringRegion("'", "'", '\\'),
+			hl.CommentRegion("#", "\n", 0),
+		},
 	},
 }

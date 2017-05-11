@@ -3,7 +3,10 @@ package main
 import (
 	"fmt"
 	"path/filepath"
+
 	"yacco/buf"
+	"yacco/config"
+	"yacco/hl"
 	"yacco/util"
 )
 
@@ -12,7 +15,7 @@ func editOpen(path string, create bool) (*Editor, error) {
 	dir := filepath.Dir(path)
 	name := filepath.Base(path)
 
-	b, err := buf.NewBuffer(dir, name, create, Wnd.Prop["indentchar"])
+	b, err := buf.NewBuffer(dir, name, create, Wnd.Prop["indentchar"], hl.New(config.LanguageRules, name))
 	if err != nil {
 		return nil, err
 	}

@@ -31,9 +31,9 @@ func lookfwdEx(ed *Editor, needle []rune, start int, exact bool) bool {
 		}
 		match := false
 		if exact {
-			match = (ed.bodybuf.At(i).R == needle[j])
+			match = (ed.bodybuf.At(i) == needle[j])
 		} else {
-			match = (unicode.ToLower(ed.bodybuf.At(i).R) == needle[j])
+			match = (unicode.ToLower(ed.bodybuf.At(i)) == needle[j])
 		}
 		if match {
 			j++

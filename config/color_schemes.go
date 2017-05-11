@@ -394,7 +394,7 @@ var C4CColorScheme = ColorScheme{
 	TopBorder: *image.Black, VertBorder: c4cscroll,
 	Scrollbar: c4cscroll,
 
-	EditorPlain: []image.Uniform{c4cbg, c4cnormfg, c4cstring, c4ccomment},
+	EditorPlain: []image.Uniform{c4cbg, c4cnormfg, c4cstring, c4ccomment, c4csel1},
 	EditorSel1:  []image.Uniform{c4csel1, c4csel1fg, c4csel1fg, c4ccomment},
 	EditorSel2:  []image.Uniform{c4csel2, c4cbg, c4cbg, c4cbg},
 	EditorSel3:  []image.Uniform{c4csel3, c4cbg, c4cbg, c4cbg},

@@ -20,13 +20,13 @@ func notAssertFn(assertFn func(b Matchable, start, end, i int) bool) func(b Matc
 // word boundary
 func bAssertFn(b Matchable, start, end, i int) bool {
 	if i == 0 {
-		return isw(b.At(i).R)
+		return isw(b.At(i))
 	}
 	if i >= b.Size() {
-		return isw(b.At(b.Size() - 1).R)
+		return isw(b.At(b.Size() - 1))
 	}
-	wb := isw(b.At(i - 1).R)
-	wa := isw(b.At(i).R)
+	wb := isw(b.At(i - 1))
+	wa := isw(b.At(i))
 
 	return wa != wb
 }
@@ -54,7 +54,7 @@ var bolAssert = nodeAssert{
 		if i == end {
 			return false
 		}
-		return (i == 0) || (b.At(i-1).R == '\n')
+		return (i == 0) || (b.At(i-1) == '\n')
 	},
 }
 
@@ -64,7 +64,7 @@ var eolAssert = nodeAssert{
 		if (start != 0) && (i == start) {
 			return false
 		}
-		return (i >= b.Size()) || (b.At(i).R == '\n')
+		return (i >= b.Size()) || (b.At(i) == '\n')
 	},
 }
 

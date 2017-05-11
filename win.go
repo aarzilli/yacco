@@ -1,12 +1,6 @@
 package main
 
 import (
-	"golang.org/x/exp/shiny/screen"
-	"golang.org/x/mobile/event/key"
-	"golang.org/x/mobile/event/lifecycle"
-	"golang.org/x/mobile/event/mouse"
-	"golang.org/x/mobile/event/paint"
-	"golang.org/x/mobile/event/size"
 	"image"
 	"image/draw"
 	"math"
@@ -21,8 +15,16 @@ import (
 	"yacco/config"
 	"yacco/edit"
 	"yacco/edutil"
+	"yacco/hl"
 	"yacco/textframe"
 	"yacco/util"
+
+	"golang.org/x/exp/shiny/screen"
+	"golang.org/x/mobile/event/key"
+	"golang.org/x/mobile/event/lifecycle"
+	"golang.org/x/mobile/event/mouse"
+	"golang.org/x/mobile/event/paint"
+	"golang.org/x/mobile/event/size"
 )
 
 type Window struct {
@@ -113,7 +115,7 @@ func (w *Window) Init(s screen.Screen, width, height int) (err error) {
 	//w.wnd.SetClass("yacco", "Yacco")
 	w.cols = NewCols(w, w.bounds)
 	cwd, _ := os.Getwd()
-	w.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true, Wnd.Prop["indentchar"])
+	w.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true, Wnd.Prop["indentchar"], hl.NilHighlighter)
 	if err != nil {
 		return err
 	}
@@ -947,10 +949,10 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 				ie := is
 				for {
 					cr := ec.buf.At(ie)
-					if cr == nil {
+					if cr == 0 {
 						break
 					}
-					if (cr.R != ' ') && (cr.R != '\t') {
+					if (cr != ' ') && (cr != '\t') {
 						break
 					}
 					ie++

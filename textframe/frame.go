@@ -12,18 +12,12 @@ import (
 	"math"
 	"runtime"
 	"time"
-	"unicode/utf8"
 	"yacco/otat"
 	"yacco/util"
 )
 
 type Redrawable interface {
 	Redraw(flush bool)
-}
-
-type ColorRune struct {
-	C uint16
-	R rune
 }
 
 const debugRedraw = false
@@ -85,8 +79,6 @@ type Frame struct {
 
 	leftMargin, rightMargin fixed.Int26_6
 }
-
-const COLORMASK = 0x0f
 
 /*
 ABOUT SELECTIONS AND COLORS
@@ -177,16 +169,8 @@ func (fr *Frame) Clear() {
 	fr.redrawOpt.scrollEnd = -1
 }
 
-func ColorRunes(str string) []ColorRune {
-	cr := make([]ColorRune, 0, utf8.RuneCountInString(str))
-	for _, ch := range str {
-		cr = append(cr, ColorRune{1, ch})
-	}
-	return cr
-}
-
 // Inserts text into the frame, returns the maximum X and Y used
-func (fr *Frame) Insert(r1, r2 []ColorRune) (limit image.Point) {
+func (fr *Frame) Insert(r1, r2 []rune) (limit image.Point) {
 	fr.redrawOpt.reloaded = true
 	lh := fr.Font.Metrics().Height
 
@@ -207,18 +191,18 @@ func (fr *Frame) Insert(r1, r2 []ColorRune) (limit image.Point) {
 		if runesIdx < len(r1) {
 			r := r1[runesIdx]
 			runesIdx++
-			return r.R, true
+			return r, true
 		}
 		if i := runesIdx - len(r1); i < len(r2) {
 			runesIdx++
-			return r2[i].R, true
+			return r2[i], true
 		}
 		return 0, false
 	})
 
 	for fr.otatm.Next() {
 		i, glyphidx := fr.otatm.Glyph()
-		var crune ColorRune
+		var crune rune
 		if i < len(r1) {
 			crune = r1[i]
 		} else {
@@ -233,13 +217,13 @@ func (fr *Frame) Insert(r1, r2 []ColorRune) (limit image.Point) {
 			fr.lastFull = len(fr.glyphs)
 		}
 
-		switch crune.R {
+		switch crune {
 		case '\n':
 			g := glyph{
-				r:        crune.R,
+				r:        crune,
 				fakerune: true,
 				p:        fr.ins,
-				color:    uint8(crune.C & COLORMASK),
+				color:    1,
 				width:    fixed.I(fr.R.Max.X) - fr.ins.X - fr.margin,
 				widthy:   lh,
 			}
@@ -269,10 +253,10 @@ func (fr *Frame) Insert(r1, r2 []ColorRune) (limit image.Point) {
 			}
 
 			g := glyph{
-				r:        crune.R,
+				r:        crune,
 				fakerune: true,
 				p:        fr.ins,
-				color:    uint8(crune.C & COLORMASK),
+				color:    1,
 				width:    toNextCell,
 			}
 
@@ -283,12 +267,12 @@ func (fr *Frame) Insert(r1, r2 []ColorRune) (limit image.Point) {
 
 		default:
 			if glyphidx == 0 {
-				fmt.Printf("glyph 0 for rune %c %d (%d)\n", crune.R, crune.R, i)
+				fmt.Printf("glyph 0 for rune %c %d (%d)\n", crune, crune, i)
 			}
-			width, _ := fr.Font.GlyphAdvance(crune.R)
+			width, _ := fr.Font.GlyphAdvance(crune)
 			kerning := fixed.I(0)
 			if hasPrev {
-				kerning = fr.Font.Kern(prevRune, crune.R)
+				kerning = fr.Font.Kern(prevRune, crune)
 				fr.ins.X += kerning
 			}
 
@@ -303,14 +287,14 @@ func (fr *Frame) Insert(r1, r2 []ColorRune) (limit image.Point) {
 				r:        glyphidx,
 				fakerune: false,
 				p:        fr.ins,
-				color:    uint8(crune.C & COLORMASK),
+				color:    1,
 				width:    width,
 			}
 
 			fr.glyphs = append(fr.glyphs, g)
 
 			fr.ins.X += g.width
-			prevRune, hasPrev = crune.R, true
+			prevRune, hasPrev = crune, true
 		}
 
 		if x := fr.ins.X.Floor(); x > limit.X {
@@ -327,16 +311,9 @@ func (fr *Frame) Insert(r1, r2 []ColorRune) (limit image.Point) {
 	return
 }
 
-func (fr *Frame) RefreshColors(a, b []ColorRune) {
+func (fr *Frame) RefreshColors(colors []uint8) {
 	for i := range fr.glyphs {
-		var crune ColorRune
-		if i < len(a) {
-			crune = a[i]
-		} else {
-			crune = b[i-len(a)]
-		}
-		//fr.glyphs[i].r = crune.R
-		fr.glyphs[i].color = uint8(crune.C & COLORMASK)
+		fr.glyphs[i].color = colors[i]
 	}
 }
 
@@ -1114,7 +1091,7 @@ func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
 	return len(fr.glyphs)
 }
 
-func (fr *Frame) PushDown(ln int, a, b []ColorRune) {
+func (fr *Frame) PushDown(ln int, a, b []rune) {
 	oldglyphs := make([]glyph, len(fr.glyphs))
 	copy(oldglyphs, fr.glyphs)
 
@@ -1143,11 +1120,11 @@ func (fr *Frame) PushDown(ln int, a, b []ColorRune) {
 			a = a[added:]
 		} else {
 			added -= len(a)
-			a = []ColorRune{}
+			a = []rune{}
 			if len(b) > added {
 				b = b[added:]
 			} else {
-				b = []ColorRune{}
+				b = []rune{}
 			}
 		}
 	}

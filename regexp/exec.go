@@ -142,7 +142,7 @@ func (rx *Regex) Match(b Matchable, start, end int, dir int) []int {
 		} else if i < 0 {
 			ch = 0
 		} else {
-			ch = b.At(i).R
+			ch = b.At(i)
 		}
 
 		if dir >= 0 {

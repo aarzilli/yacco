@@ -7,6 +7,7 @@ import (
 	"yacco/buf"
 	"yacco/config"
 	"yacco/edutil"
+	"yacco/hl"
 	"yacco/textframe"
 	"yacco/util"
 )
@@ -32,7 +33,7 @@ func NewCol(wnd *Window, r image.Rectangle) *Col {
 	c.frac = 10.0
 	cwd, _ := os.Getwd()
 	var err error
-	c.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true, Wnd.Prop["indentchar"])
+	c.tagbuf, err = buf.NewBuffer(cwd, "+Tag", true, Wnd.Prop["indentchar"], hl.NilHighlighter)
 	if err != nil {
 		Warn("Error opening new column: " + err.Error())
 		return c

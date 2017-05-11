@@ -6,8 +6,6 @@ import (
 	"yacco/util"
 )
 
-type HighlightFn func(buf *buf.Buffer, end int)
-
 func MakeExpandSelectionFn(buf *buf.Buffer) func(kind, start, end int) (int, int) {
 	return func(kind, start, end int) (int, int) {
 		return expandSelectionBuf(buf, kind, start, end)
@@ -27,7 +25,7 @@ func expandSelectionBuf(buf *buf.Buffer, kind, start, end int) (rstart, rend int
 	}
 }
 
-func Scrollfn(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame, sd, sl int, hlf HighlightFn) {
+func Scrollfn(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame, sd, sl int) {
 	buf.Rdlock()
 	defer buf.Rdunlock()
 
@@ -61,24 +59,17 @@ func Scrollfn(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame, sd, sl
 		top.E = sfr.Fr.Top
 	}
 
-	DoHighlightingConsistency(buf, top, sfr, hlf)
+	DoHighlightingConsistency(buf, top, sfr)
 	sfr.Set(top.E, sz)
 	sfr.Redraw(true, nil)
 }
 
-func MakeScrollfn(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame, hlf HighlightFn) func(sd, sl int) {
+func MakeScrollfn(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame) func(sd, sl int) {
 	return func(sd, sl int) {
-		Scrollfn(buf, top, sfr, sd, sl, hlf)
+		Scrollfn(buf, top, sfr, sd, sl)
 	}
 }
 
-func DoHighlightingConsistency(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame, hlf HighlightFn) {
-	end := top.E + sfr.Fr.Size()
-	if end <= buf.HlGood {
-		return
-	}
-
-	hlf(buf, end)
-	a, b := buf.Selection(util.Sel{top.E, buf.Size()})
-	sfr.Fr.RefreshColors(a, b)
+func DoHighlightingConsistency(buf *buf.Buffer, top *util.Sel, sfr *textframe.ScrollFrame) {
+	sfr.Fr.RefreshColors(buf.Highlight(top.E, top.E+sfr.Fr.Size()))
 }

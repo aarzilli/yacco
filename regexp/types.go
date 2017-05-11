@@ -5,12 +5,11 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-	"yacco/textframe"
 )
 
 type Matchable interface {
 	Size() int
-	At(int) *textframe.ColorRune
+	At(int) rune
 }
 
 type node interface {
@@ -152,8 +151,8 @@ func (rx *Regex) String() string {
 
 type RuneArrayMatchable []rune
 
-func (ram RuneArrayMatchable) At(i int) *textframe.ColorRune {
-	return &textframe.ColorRune{R: ram[i], C: 0x00}
+func (ram RuneArrayMatchable) At(i int) rune {
+	return ram[i]
 }
 
 func (ram RuneArrayMatchable) Size() int {

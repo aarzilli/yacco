@@ -712,7 +712,7 @@ func PasteIndentCmd(ec ExecContext, arg string) {
 	tgtIndent := ""
 tgtIndentSearch:
 	for i := ec.fr.Sel.S - 1; i > 0; i-- {
-		r := ec.buf.At(i).R
+		r := ec.buf.At(i)
 		switch r {
 		case '\n':
 			tgtIndent = string(ec.buf.SelectionRunes(util.Sel{i + 1, ec.fr.Sel.S}))

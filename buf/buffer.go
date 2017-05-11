@@ -14,7 +14,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 	"yacco/config"
-	"yacco/textframe"
+	"yacco/hl"
 	"yacco/util"
 )
 
@@ -33,7 +33,7 @@ type Buffer struct {
 	Props map[string]string
 
 	// gap buffer implementation
-	buf        []textframe.ColorRune
+	buf        []rune
 	sels       []*util.Sel
 	gap, gapsz int
 
@@ -41,7 +41,8 @@ type Buffer struct {
 
 	lock sync.RWMutex
 
-	HlGood int
+	Hl    hl.Highlighter
+	hlbuf []uint8
 
 	RevCount int
 
@@ -64,7 +65,7 @@ type BufferSize struct {
 	Undo            uintptr
 }
 
-func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err error) {
+func NewBuffer(dir, name string, create bool, indentchar string, hl hl.Highlighter) (b *Buffer, err error) {
 	//println("NewBuffer call:", dir, name)
 	b = &Buffer{
 		Dir:           dir,
@@ -73,11 +74,11 @@ func NewBuffer(dir, name string, create bool, indentchar string) (b *Buffer, err
 		EditableStart: -1,
 		Modified:      false,
 
-		HlGood: -1,
-
 		RevCount: 0,
 
-		buf:   make([]textframe.ColorRune, SLOP),
+		Hl: hl,
+
+		buf:   make([]rune, SLOP),
 		gap:   0,
 		gapsz: SLOP,
 
@@ -428,14 +429,11 @@ func (b *Buffer) replaceIntl(text []rune, sel *util.Sel) {
 
 	b.IncGap(len(text))
 	for i, r := range text {
-		b.buf[b.gap+i].C = 1
-		b.buf[b.gap+i].R = r
+		b.buf[b.gap+i] = r
 	}
 	b.gap += len(text)
 	b.gapsz -= len(text)
-	if sel.S-1 < b.HlGood {
-		b.HlGood = sel.S - 1
-	}
+	b.Hl.Alter(sel.S - 1)
 
 	b.RevCount++
 }
@@ -504,7 +502,7 @@ func (b *Buffer) IncGap(delta int) {
 
 	ngapsz := (delta/SLOP + 1) * SLOP
 
-	nbuf := make([]textframe.ColorRune, len(b.buf)-b.gapsz+ngapsz)
+	nbuf := make([]rune, len(b.buf)-b.gapsz+ngapsz)
 
 	copy(nbuf, b.buf[:b.gap])
 	copy(nbuf[b.gap+ngapsz:], b.buf[b.gap+b.gapsz:])
@@ -545,16 +543,16 @@ func (b *Buffer) phisical(p int) int {
 	}
 }
 
-func (b *Buffer) At(p int) *textframe.ColorRune {
+func (b *Buffer) At(p int) rune {
 	pp := b.phisical(p)
 	if (pp < 0) || (pp >= len(b.buf)) {
-		return nil
+		return 0
 	}
-	return &b.buf[pp]
+	return b.buf[pp]
 }
 
 // Returns the specified selection as two slices. The slices are to be treated as contiguous and may be empty
-func (b *Buffer) Selection(sel util.Sel) ([]textframe.ColorRune, []textframe.ColorRune) {
+func (b *Buffer) Selection(sel util.Sel) ([]rune, []rune) {
 	b.FixSel(&sel)
 	ps := b.phisical(sel.S)
 	pe := b.phisical(sel.E)
@@ -571,9 +569,9 @@ func (b *Buffer) Selection(sel util.Sel) ([]textframe.ColorRune, []textframe.Col
 		return b.buf[ps:b.gap], b.buf[b.gap+b.gapsz : pe]
 	} else {
 		if pe <= ps {
-			return []textframe.ColorRune{}, []textframe.ColorRune{}
+			return []rune{}, []rune{}
 		} else {
-			return b.buf[ps:pe], []textframe.ColorRune{}
+			return b.buf[ps:pe], []rune{}
 		}
 	}
 }
@@ -581,13 +579,9 @@ func (b *Buffer) Selection(sel util.Sel) ([]textframe.ColorRune, []textframe.Col
 // Returns the specified selection as single slice of ColorRunes (will allocate)
 func (b *Buffer) SelectionRunes(sel util.Sel) []rune {
 	ba, bb := b.Selection(sel)
-	r := make([]rune, len(ba)+len(bb))
-	for i := range ba {
-		r[i] = ba[i].R
-	}
-	for i := range bb {
-		r[i+len(ba)] = bb[i].R
-	}
+	r := make([]rune, 0, len(ba)+len(bb))
+	r = append(r, ba...)
+	r = append(r, bb...)
 	return r
 }
 
@@ -611,9 +605,9 @@ func (b *Buffer) Tonl(start int, dir int) int {
 		var c rune
 
 		if i < len(ba) {
-			c = ba[i].R
+			c = ba[i]
 		} else {
-			c = bb[i-len(ba)].R
+			c = bb[i-len(ba)]
 		}
 
 		if c == '\n' {
@@ -633,7 +627,7 @@ func (b *Buffer) Towd(start int, dir int, dontForceAdvance bool) int {
 	notfirst := !first
 	var i int
 	for i = start; (i >= 0) && (i < b.Size()); i += dir {
-		c := b.At(i).R
+		c := b.At(i)
 		if !(unicode.IsLetter(c) || unicode.IsDigit(c) || (c == '_')) {
 			if !first && !dontForceAdvance {
 				i++
@@ -659,7 +653,7 @@ func (b *Buffer) Tof(start int, dir int, f func(rune) bool) int {
 	notfirst := !first
 	var i int
 	for i = start; (i >= 0) && (i < b.Size()); i += dir {
-		c := b.At(i).R
+		c := b.At(i)
 		if f(c) {
 			if !first {
 				i++
@@ -680,7 +674,7 @@ func (b *Buffer) Tofp(start int, dir int) int {
 	notfirst := !first
 	var i int
 	for i = start; (i >= 0) && (i < b.Size()); i += dir {
-		c := b.At(i).R
+		c := b.At(i)
 		if !(unicode.IsLetter(c) || unicode.IsDigit(c) || (c == '_') || (c == '-') || (c == '+') || (c == '/') || (c == '=') || (c == '~') || (c == '!') || (c == ':') || (c == ',') || (c == '.')) {
 			if !first {
 				i++
@@ -702,7 +696,7 @@ const CLOSED_PARENTHESIS = ")]}>"
 // Moves to the matching parenthesis of the one at 'start' in the specified direction
 func (b *Buffer) Topmatch(start int, dir int) int {
 	g := b.At(start)
-	if g == nil {
+	if g == 0 {
 		return -1
 	}
 
@@ -710,7 +704,7 @@ func (b *Buffer) Topmatch(start int, dir int) int {
 	var close rune = 0
 	if dir > 0 {
 		for i := range OPEN_PARENTHESIS {
-			if g.R == rune(OPEN_PARENTHESIS[i]) {
+			if g == rune(OPEN_PARENTHESIS[i]) {
 				open = rune(OPEN_PARENTHESIS[i])
 				close = rune(CLOSED_PARENTHESIS[i])
 				break
@@ -719,7 +713,7 @@ func (b *Buffer) Topmatch(start int, dir int) int {
 
 	} else {
 		for i := range CLOSED_PARENTHESIS {
-			if g.R == rune(CLOSED_PARENTHESIS[i]) {
+			if g == rune(CLOSED_PARENTHESIS[i]) {
 				open = rune(CLOSED_PARENTHESIS[i])
 				close = rune(OPEN_PARENTHESIS[i])
 				break
@@ -734,13 +728,13 @@ func (b *Buffer) Topmatch(start int, dir int) int {
 	depth := 0
 	for i := start; i < b.Size(); i += dir {
 		g := b.At(i)
-		if g == nil {
+		if g == 0 {
 			return -1
 		}
-		if g.R == open {
+		if g == open {
 			depth++
 		}
-		if g.R == close {
+		if g == close {
 			depth--
 		}
 		if depth == 0 {
@@ -748,30 +742,6 @@ func (b *Buffer) Topmatch(start int, dir int) int {
 		}
 	}
 	return -1
-}
-
-func (b *Buffer) Toregend(start int) int {
-	if start >= b.Size() {
-		return -1
-	}
-
-	c := b.At(start).C & 0x0f
-	if c <= 1 {
-		return -1
-	}
-
-	if (start != 0) && (b.At(start-1).C&0x0f) > 1 {
-		return -1
-	}
-
-	var i int
-	for i = start + 1; i < b.Size(); i++ {
-		if (b.At(i).C & 0x0f) != c {
-			break
-		}
-	}
-
-	return i - 1
 }
 
 func (b *Buffer) ShortName() string {
@@ -797,8 +767,8 @@ func (b *Buffer) FixSel(sel *util.Sel) {
 
 func (b *Buffer) UpdateWords() {
 	ba, bb := b.Selection(util.Sel{0, b.Size()})
-	sa := string(ToRunes(ba))
-	sb := string(ToRunes(bb))
+	sa := string(ba)
+	sb := string(bb)
 
 	newWordsA := nonwdRe.Split(sa, -1)
 	newWordsB := nonwdRe.Split(sb, -1)
@@ -814,8 +784,8 @@ func (b *Buffer) Put() error {
 	defer out.Close()
 
 	ba, bb := b.Selection(util.Sel{0, b.Size()})
-	sa := string(ToRunes(ba))
-	sb := string(ToRunes(bb))
+	sa := string(ba)
+	sb := string(bb)
 
 	b.UpdateWords()
 
@@ -871,8 +841,8 @@ func (rr *runeReader) ReadRune() (r rune, size int, err error) {
 	}
 	cr := rr.b.At(rr.s)
 	rr.s++
-	if cr != nil {
-		return cr.R, sizeOfRune(cr.R), nil
+	if cr != 0 {
+		return cr, sizeOfRune(cr), nil
 	} else {
 		return 0, 0, io.EOF
 	}
@@ -912,11 +882,11 @@ func (b *Buffer) CanSave() bool {
 	}
 }
 
-func countNl(rs []textframe.ColorRune) (int, int) {
+func countNl(rs []rune) (int, int) {
 	count := 0
 	off := 0
 	for _, r := range rs {
-		if r.R == '\n' {
+		if r == '\n' {
 			count++
 			off = 0
 		} else {
@@ -944,14 +914,6 @@ func sizeOfRune(r rune) int {
 		return 5
 	}
 	return 6
-}
-
-func ToRunes(v []textframe.ColorRune) []rune {
-	r := make([]rune, len(v))
-	for i := range v {
-		r[i] = v[i].R
-	}
-	return r
 }
 
 func (b *Buffer) UndoWhere() int {
@@ -1044,4 +1006,13 @@ func (buf *Buffer) BytesSize() (r BufferSize) {
 		r.Undo += uintptr(len(buf.ul.lst[i].before.text) + len(buf.ul.lst[i].after.text))
 	}
 	return
+}
+
+func (buf *Buffer) Highlight(start, end int) []uint8 {
+	buf.hlbuf = buf.Hl.Highlight(start, end, buf, buf.hlbuf[:0])
+	return buf.hlbuf
+}
+
+func (buf *Buffer) Toregend(start int) int {
+	return buf.Hl.Toregend(start, buf)
 }

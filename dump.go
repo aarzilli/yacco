@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+
 	"yacco/buf"
 	"yacco/config"
+	"yacco/hl"
 	"yacco/util"
 )
 
@@ -90,9 +92,9 @@ func LoadFrom(dumpDest string) bool {
 
 	buffers := make([]*buf.Buffer, len(dw.Buffers))
 	for i, db := range dw.Buffers {
-		b, err := buf.NewBuffer(db.Dir, db.Name, true, Wnd.Prop["indentchar"])
+		b, err := buf.NewBuffer(db.Dir, db.Name, true, Wnd.Prop["indentchar"], hl.New(config.LanguageRules, db.Name))
 		if err != nil {
-			b, _ = buf.NewBuffer(dw.Wd, "+CouldntLoad", true, Wnd.Prop["indentchar"])
+			b, _ = buf.NewBuffer(dw.Wd, "+CouldntLoad", true, Wnd.Prop["indentchar"], hl.NilHighlighter)
 		}
 		b.Props = db.Props
 		if db.Text != "" {

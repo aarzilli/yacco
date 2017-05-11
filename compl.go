@@ -10,6 +10,7 @@ import (
 	"time"
 	"yacco/buf"
 	"yacco/config"
+	"yacco/hl"
 	"yacco/textframe"
 	"yacco/util"
 )
@@ -57,7 +58,7 @@ func (p *Popup) prepare(str string) (image.Rectangle, *image.RGBA) {
 		p.B = image.NewRGBA(image.Rectangle{image.Point{0, 0}, image.Point{config.ComplMaxX, config.ComplMaxY}})
 	}
 	fr := popupFrame(p.B, p.B.Bounds())
-	limit := fr.Insert(textframe.ColorRunes(str), nil)
+	limit := fr.Insert([]rune(str), nil)
 	fr.Redraw(false, nil)
 
 	limit.X += 10
@@ -415,8 +416,8 @@ func commonPrefix2(a, b string) string {
 
 func TooltipClick(e util.MouseDownEvent) LogicalPos {
 	fr := popupFrame(Tooltip.B, Tooltip.R)
-	fr.Insert(textframe.ColorRunes(tooltipContents), nil)
-	buf, _ := buf.NewBuffer(Tooltip.Dir, "+Tooltip", false, "\t")
+	fr.Insert([]rune(tooltipContents), nil)
+	buf, _ := buf.NewBuffer(Tooltip.Dir, "+Tooltip", false, "\t", hl.NilHighlighter)
 	buf.ReplaceFull([]rune(tooltipContents))
 	fr.OnClick(e, nil)
 	return LogicalPos{

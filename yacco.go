@@ -2,8 +2,6 @@ package main
 
 import (
 	"flag"
-	"golang.org/x/exp/shiny/driver"
-	"golang.org/x/exp/shiny/screen"
 	"image"
 	"log"
 	"os"
@@ -11,11 +9,15 @@ import (
 	"runtime/pprof"
 	"strconv"
 	"strings"
+
 	"yacco/buf"
 	"yacco/clipboard"
 	"yacco/config"
 	"yacco/edit"
 	"yacco/util"
+
+	"golang.org/x/exp/shiny/driver"
+	"golang.org/x/exp/shiny/screen"
 )
 
 var Wnd Window

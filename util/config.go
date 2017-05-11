@@ -31,22 +31,6 @@ type LoadRule struct {
 	Action string // action to execute
 }
 
-type RegionMatchType int
-
-const (
-	RMT_STRING  = RegionMatchType(2)
-	RMT_COMMENT = RegionMatchType(3)
-)
-
-// RegionMatch describes a syntax highlighting rule
-type RegionMatch struct {
-	NameRe     string
-	StartDelim []rune
-	EndDelim   []rune
-	Escape     rune
-	Type       RegionMatchType
-}
-
 var keynames = map[key.Code]string{
 	key.CodeReturnEnter:     "return",
 	key.CodeEscape:          "escape",
