@@ -13,18 +13,20 @@ type ColorScheme struct {
 	VertBorder image.Uniform
 	Scrollbar  image.Uniform
 
-	EditorPlain               []image.Uniform
-	EditorSel1                []image.Uniform
-	EditorSel2                []image.Uniform
-	EditorSel3                []image.Uniform
+	EditorPlain []image.Uniform
+	EditorSel1  []image.Uniform
+	EditorSel2  []image.Uniform
+	EditorSel3  []image.Uniform
+
 	EditorMatchingParenthesis []image.Uniform
 
 	Compl []image.Uniform
 
-	TagPlain               []image.Uniform
-	TagSel1                []image.Uniform
-	TagSel2                []image.Uniform
-	TagSel3                []image.Uniform
+	TagPlain []image.Uniform
+	TagSel1  []image.Uniform
+	TagSel2  []image.Uniform
+	TagSel3  []image.Uniform
+
 	TagMatchingParenthesis []image.Uniform
 
 	HandleFG         image.Uniform
@@ -82,11 +84,13 @@ var AcmeColorScheme = ColorScheme{
 	TopBorder: *image.Black, VertBorder: *image.Black,
 	Scrollbar: *image.NewUniform(color.RGBA{153, 153, 76, 0xff}),
 
-	EditorPlain:               []image.Uniform{yellowbg, *image.Black, darkergreen, *DDarkblue},
-	EditorSel1:                []image.Uniform{*DDarkyellow, *image.Black, darkergreen, *DDarkblue},
-	EditorSel2:                []image.Uniform{col2sel, yellowbg, yellowbg, yellowbg},
-	EditorSel3:                []image.Uniform{col3sel, yellowbg, yellowbg, yellowbg},
-	EditorMatchingParenthesis: []image.Uniform{*image.Black, yellowbg, yellowbg, yellowbg},
+	EditorPlain: []image.Uniform{yellowbg, *image.Black, darkergreen, *DDarkblue},
+	EditorSel1:  []image.Uniform{*DDarkyellow, *image.Black, darkergreen, *DDarkblue},
+	EditorSel2:  []image.Uniform{col2sel, yellowbg},
+	EditorSel3:  []image.Uniform{col3sel, yellowbg},
+
+	EditorMatchingParenthesis: []image.Uniform{*image.Black, yellowbg},
+
 	Compl: []image.Uniform{bluebg, *image.Black},
 
 	TagPlain:               []image.Uniform{bluebg, *image.Black},
@@ -113,16 +117,18 @@ var AcmeEveningColorScheme = ColorScheme{
 	TopBorder: *image.Black, VertBorder: *image.Black,
 	Scrollbar: *image.NewUniform(color.RGBA{153, 153, 76, 0xff}),
 
-	EditorPlain:               []image.Uniform{*image.Black, *image.White, *DGreygreen, *DPalegreyblue},
-	EditorSel1:                []image.Uniform{yellowsilver, *image.Black, *image.Black, *image.Black},
-	EditorSel2:                []image.Uniform{redsilver, *image.Black, *image.Black, *image.Black},
-	EditorSel3:                []image.Uniform{greensilver, *image.Black, *image.Black, *image.Black},
-	EditorMatchingParenthesis: []image.Uniform{*image.White, *image.Black, *image.Black, *image.Black},
+	EditorPlain: []image.Uniform{*image.Black, *image.White, *DGreygreen, *DPalegreyblue},
+	EditorSel1:  []image.Uniform{yellowsilver, *image.Black},
+	EditorSel2:  []image.Uniform{redsilver, *image.Black},
+	EditorSel3:  []image.Uniform{greensilver, *image.Black},
 
-	TagPlain:               []image.Uniform{stratostundora, *image.White},
-	TagSel1:                []image.Uniform{*DPurpleblue, *image.Black},
-	TagSel2:                []image.Uniform{*DPurpleblue, *image.Black},
-	TagSel3:                []image.Uniform{*DPurpleblue, *image.Black},
+	EditorMatchingParenthesis: []image.Uniform{*image.White, *image.Black},
+
+	TagPlain: []image.Uniform{stratostundora, *image.White},
+	TagSel1:  []image.Uniform{*DPurpleblue, *image.Black},
+	TagSel2:  []image.Uniform{*DPurpleblue, *image.Black},
+	TagSel3:  []image.Uniform{*DPurpleblue, *image.Black},
+
 	TagMatchingParenthesis: []image.Uniform{*image.White, stratostundora},
 
 	Compl: []image.Uniform{stratostundora, *image.White},
@@ -139,16 +145,18 @@ var AcmeEvening2ColorScheme = ColorScheme{
 	TopBorder: *image.Black, VertBorder: *image.Black,
 	Scrollbar: *image.NewUniform(color.RGBA{153, 153, 76, 0xff}),
 
-	EditorPlain:               []image.Uniform{stratostundora2, *image.White, *DGreygreen, *DPalegreyblue},
-	EditorSel1:                []image.Uniform{yellowsilver, *image.Black, *image.Black, *image.Black},
-	EditorSel2:                []image.Uniform{redsilver, *image.Black, *image.Black, *image.Black},
-	EditorSel3:                []image.Uniform{greensilver, *image.Black, *image.Black, *image.Black},
-	EditorMatchingParenthesis: []image.Uniform{*image.White, *image.Black, *image.Black, *image.Black},
+	EditorPlain: []image.Uniform{stratostundora2, *image.White, *DGreygreen, *DPalegreyblue},
+	EditorSel1:  []image.Uniform{yellowsilver, *image.Black, *image.Black, *image.Black},
+	EditorSel2:  []image.Uniform{redsilver, *image.Black},
+	EditorSel3:  []image.Uniform{greensilver, *image.Black},
 
-	TagPlain:               []image.Uniform{stratostundora, *image.White},
-	TagSel1:                []image.Uniform{*DPurpleblue, *image.Black},
-	TagSel2:                []image.Uniform{*DPurpleblue, *image.Black},
-	TagSel3:                []image.Uniform{*DPurpleblue, *image.Black},
+	EditorMatchingParenthesis: []image.Uniform{*image.White, *image.Black},
+
+	TagPlain: []image.Uniform{stratostundora, *image.White},
+	TagSel1:  []image.Uniform{*DPurpleblue, *image.Black},
+	TagSel2:  []image.Uniform{*DPurpleblue, *image.Black},
+	TagSel3:  []image.Uniform{*DPurpleblue, *image.Black},
+
 	TagMatchingParenthesis: []image.Uniform{*image.White, stratostundora},
 
 	Compl: []image.Uniform{stratostundora, *image.White},
@@ -169,16 +177,18 @@ var AcmeMidnightColorScheme = ColorScheme{
 	TopBorder: *harlequin, VertBorder: *harlequin,
 	Scrollbar: darkyellowgray,
 
-	EditorPlain:               []image.Uniform{*image.Black, *harlequin, *DGreygreen, *DPalegreyblue},
-	EditorSel1:                []image.Uniform{*DDarkyellow, *image.Black, *image.Black, *image.Black},
-	EditorSel2:                []image.Uniform{*DRed, *image.White, *image.White, *image.White},
-	EditorSel3:                []image.Uniform{*DGreen, *image.White, *image.White, *image.White},
-	EditorMatchingParenthesis: []image.Uniform{*harlequin, *image.Black, *image.Black, *image.Black},
+	EditorPlain: []image.Uniform{*image.Black, *harlequin, *DGreygreen, *DPalegreyblue},
+	EditorSel1:  []image.Uniform{*DDarkyellow, *image.Black},
+	EditorSel2:  []image.Uniform{*DRed, *image.White},
+	EditorSel3:  []image.Uniform{*DGreen, *image.White},
 
-	TagPlain:               []image.Uniform{darkbluegray, *harlequin},
-	TagSel1:                []image.Uniform{*DPurpleblue, *image.Black},
-	TagSel2:                []image.Uniform{*DPurpleblue, *image.Black},
-	TagSel3:                []image.Uniform{*DPurpleblue, *image.Black},
+	EditorMatchingParenthesis: []image.Uniform{*harlequin, *image.Black},
+
+	TagPlain: []image.Uniform{darkbluegray, *harlequin},
+	TagSel1:  []image.Uniform{*DPurpleblue, *image.Black},
+	TagSel2:  []image.Uniform{*DPurpleblue, *image.Black},
+	TagSel3:  []image.Uniform{*DPurpleblue, *image.Black},
+
 	TagMatchingParenthesis: []image.Uniform{*harlequin, *DDarkblue},
 
 	Compl: []image.Uniform{darkbluegray, *harlequin},
@@ -197,16 +207,18 @@ var AcmeBWColorScheme = ColorScheme{
 	TopBorder: *image.Black, VertBorder: *image.Black,
 	Scrollbar: *image.NewUniform(color.RGBA{0xaa, 0xaa, 0xaa, 0xff}),
 
-	EditorPlain:               []image.Uniform{*image.White, *image.Black, *image.Black, *image.Black},
-	EditorSel1:                []image.Uniform{*image.Black, *image.White, *image.White, *image.White},
-	EditorSel2:                []image.Uniform{*DRed, *image.White, *image.White, *image.White},
-	EditorSel3:                []image.Uniform{*dustygray, *image.White, *image.White, *image.White},
-	EditorMatchingParenthesis: []image.Uniform{*image.Black, *image.White, *image.White, *image.White},
+	EditorPlain: []image.Uniform{*image.White, *image.Black},
+	EditorSel1:  []image.Uniform{*image.Black, *image.White},
+	EditorSel2:  []image.Uniform{*DRed, *image.White},
+	EditorSel3:  []image.Uniform{*dustygray, *image.White},
 
-	TagPlain:               []image.Uniform{*image.White, *image.Black},
-	TagSel1:                []image.Uniform{*image.Black, *image.White},
-	TagSel2:                []image.Uniform{*DRed, *image.White},
-	TagSel3:                []image.Uniform{*dustygray, *image.White},
+	EditorMatchingParenthesis: []image.Uniform{*image.Black, *image.White},
+
+	TagPlain: []image.Uniform{*image.White, *image.Black},
+	TagSel1:  []image.Uniform{*image.Black, *image.White},
+	TagSel2:  []image.Uniform{*DRed, *image.White},
+	TagSel3:  []image.Uniform{*dustygray, *image.White},
+
 	TagMatchingParenthesis: []image.Uniform{*image.Black, *image.White},
 
 	Compl: []image.Uniform{*image.White, *image.Black},
@@ -229,17 +241,20 @@ var ZenburnColorScheme = ColorScheme{
 	TopBorder: zbbord, VertBorder: zbbord,
 	Scrollbar: zbbord,
 
-	EditorPlain:               []image.Uniform{zbedbg, zbedfg, darkergreen, bluebg},
-	EditorSel1:                []image.Uniform{*image.NewUniform(color.RGBA{0x8a, 0x77, 0x6a, 0xFF}), *image.NewUniform(color.RGBA{0x22, 0x22, 0x22, 0xFF}), darkergreen, *DDarkblue},
-	EditorSel2:                []image.Uniform{redsilver, zbedbg, zbedbg, zbedbg},
-	EditorSel3:                []image.Uniform{greensilver, zbedbg, zbedbg, zbedbg},
-	EditorMatchingParenthesis: []image.Uniform{zbedfg, zbedbg, zbedbg, zbedbg},
+	EditorPlain: []image.Uniform{zbedbg, zbedfg, darkergreen, bluebg},
+	EditorSel1:  []image.Uniform{*image.NewUniform(color.RGBA{0x8a, 0x77, 0x6a, 0xFF}), *image.NewUniform(color.RGBA{0x22, 0x22, 0x22, 0xFF}), darkergreen, *DDarkblue},
+	EditorSel2:  []image.Uniform{redsilver, zbedbg},
+	EditorSel3:  []image.Uniform{greensilver, zbedbg},
+
+	EditorMatchingParenthesis: []image.Uniform{zbedfg, zbedbg},
+
 	Compl: []image.Uniform{zbtagbg, zbtagfg},
 
-	TagPlain:               []image.Uniform{zbtagbg, zbtagfg},
-	TagSel1:                []image.Uniform{*image.NewUniform(color.RGBA{0x8a, 0x77, 0x6a, 0xFF}), *image.NewUniform(color.RGBA{0x22, 0x22, 0x22, 0xFF})},
-	TagSel2:                []image.Uniform{col2sel, bluebg},
-	TagSel3:                []image.Uniform{col3sel, bluebg},
+	TagPlain: []image.Uniform{zbtagbg, zbtagfg},
+	TagSel1:  []image.Uniform{*image.NewUniform(color.RGBA{0x8a, 0x77, 0x6a, 0xFF}), *image.NewUniform(color.RGBA{0x22, 0x22, 0x22, 0xFF})},
+	TagSel2:  []image.Uniform{col2sel, bluebg},
+	TagSel3:  []image.Uniform{col3sel, bluebg},
+
 	TagMatchingParenthesis: []image.Uniform{zbtagfg, zbtagbg},
 
 	HandleFG:         zbtagbg,
@@ -264,17 +279,20 @@ var AtomColorScheme = ColorScheme{
 	TopBorder: atomnormfg, VertBorder: atomnormfg,
 	Scrollbar: c(53, 59, 69),
 
-	EditorPlain:               []image.Uniform{atombg, atomnormfg, atomstrfg, atomcmtfg},
-	EditorSel1:                []image.Uniform{atomselbg, atomnormfg, atomstrfg, atomcmtfg},
-	EditorSel2:                []image.Uniform{atomselbg, atomnormfg, atomnormfg, atomnormfg},
-	EditorSel3:                []image.Uniform{atomselbg, atomnormfg, atomnormfg, atomnormfg},
+	EditorPlain: []image.Uniform{atombg, atomnormfg, atomstrfg, atomcmtfg},
+	EditorSel1:  []image.Uniform{atomselbg, atomnormfg, atomstrfg, atomcmtfg},
+	EditorSel2:  []image.Uniform{atomselbg, atomnormfg},
+	EditorSel3:  []image.Uniform{atomselbg, atomnormfg},
+
 	EditorMatchingParenthesis: []image.Uniform{atomnormfg, atombg, atombg, atombg},
+
 	Compl: []image.Uniform{atomtagbg, atomtagfg},
 
-	TagPlain:               []image.Uniform{atomtagbg, atomtagfg},
-	TagSel1:                []image.Uniform{atomtagselbg, atomtagfg},
-	TagSel2:                []image.Uniform{atomtagselbg, atomtagfg},
-	TagSel3:                []image.Uniform{atomtagselbg, atomtagfg},
+	TagPlain: []image.Uniform{atomtagbg, atomtagfg},
+	TagSel1:  []image.Uniform{atomtagselbg, atomtagfg},
+	TagSel2:  []image.Uniform{atomtagselbg, atomtagfg},
+	TagSel3:  []image.Uniform{atomtagselbg, atomtagfg},
+
 	TagMatchingParenthesis: []image.Uniform{atomtagselbg, atomtagfg},
 
 	HandleFG:         atomtagbg,
@@ -295,17 +313,20 @@ var TanColorScheme = ColorScheme{
 	TopBorder: *image.Black, VertBorder: *image.Black,
 	Scrollbar: tanscroll,
 
-	EditorPlain:               []image.Uniform{tanbg, tannormfg, darkergreen, *DDarkblue},
-	EditorSel1:                []image.Uniform{tanscroll, tannormfg, tannormfg, tannormfg},
-	EditorSel2:                []image.Uniform{tanscroll, tannormfg, tannormfg, tannormfg},
-	EditorSel3:                []image.Uniform{tanscroll, tannormfg, tannormfg, tannormfg},
-	EditorMatchingParenthesis: []image.Uniform{tanscroll, tannormfg, tannormfg, tannormfg},
+	EditorPlain: []image.Uniform{tanbg, tannormfg, darkergreen, *DDarkblue},
+	EditorSel1:  []image.Uniform{tanscroll, tannormfg},
+	EditorSel2:  []image.Uniform{tanscroll, tannormfg},
+	EditorSel3:  []image.Uniform{tanscroll, tannormfg},
+
+	EditorMatchingParenthesis: []image.Uniform{tanscroll, tannormfg},
+
 	Compl: []image.Uniform{*image.White, *image.Black},
 
-	TagPlain:               []image.Uniform{tantagbg, tantagfg},
-	TagSel1:                []image.Uniform{tantagfg, tantagbg},
-	TagSel2:                []image.Uniform{tantagfg, tantagbg},
-	TagSel3:                []image.Uniform{tantagfg, tantagbg},
+	TagPlain: []image.Uniform{tantagbg, tantagfg},
+	TagSel1:  []image.Uniform{tantagfg, tantagbg},
+	TagSel2:  []image.Uniform{tantagfg, tantagbg},
+	TagSel3:  []image.Uniform{tantagfg, tantagbg},
+
 	TagMatchingParenthesis: []image.Uniform{tantagfg, tantagbg},
 
 	HandleFG:         tantagbg,
@@ -331,17 +352,20 @@ var C4ColorScheme = ColorScheme{
 	TopBorder: *image.Black, VertBorder: c4scroll,
 	Scrollbar: c4scroll,
 
-	EditorPlain:               []image.Uniform{c4bg, c4normfg, c4string, c4comment},
-	EditorSel1:                []image.Uniform{c4sel1, c4normfg, c4string, c4comment},
-	EditorSel2:                []image.Uniform{c4sel2, c4normfg, c4string, c4comment},
-	EditorSel3:                []image.Uniform{c4sel3, c4normfg, c4string, c4comment},
+	EditorPlain: []image.Uniform{c4bg, c4normfg, c4string, c4comment},
+	EditorSel1:  []image.Uniform{c4sel1, c4normfg, c4string, c4comment},
+	EditorSel2:  []image.Uniform{c4sel2, c4normfg, c4string, c4comment},
+	EditorSel3:  []image.Uniform{c4sel3, c4normfg, c4string, c4comment},
+
 	EditorMatchingParenthesis: []image.Uniform{c4normfg, c4bg, c4bg, c4bg},
+
 	Compl: []image.Uniform{c4normfg, c4bg},
 
-	TagPlain:               []image.Uniform{c4tagbg, c4tagfg},
-	TagSel1:                []image.Uniform{c4tagfg, c4tagbg},
-	TagSel2:                []image.Uniform{c4sel2, c4tagfg},
-	TagSel3:                []image.Uniform{c4sel3, c4tagfg},
+	TagPlain: []image.Uniform{c4tagbg, c4tagfg},
+	TagSel1:  []image.Uniform{c4tagfg, c4tagbg},
+	TagSel2:  []image.Uniform{c4sel2, c4tagfg},
+	TagSel3:  []image.Uniform{c4sel3, c4tagfg},
+
 	TagMatchingParenthesis: []image.Uniform{c4tagfg, c4tagbg},
 
 	HandleFG:         c4bg,
@@ -370,17 +394,20 @@ var C4CColorScheme = ColorScheme{
 	TopBorder: *image.Black, VertBorder: c4cscroll,
 	Scrollbar: c4cscroll,
 
-	EditorPlain:               []image.Uniform{c4cbg, c4cnormfg, c4cstring, c4ccomment},
-	EditorSel1:                []image.Uniform{c4csel1, c4csel1fg, c4csel1fg, c4ccomment},
-	EditorSel2:                []image.Uniform{c4csel2, c4cbg, c4cbg, c4cbg},
-	EditorSel3:                []image.Uniform{c4csel3, c4cbg, c4cbg, c4cbg},
+	EditorPlain: []image.Uniform{c4cbg, c4cnormfg, c4cstring, c4ccomment},
+	EditorSel1:  []image.Uniform{c4csel1, c4csel1fg, c4csel1fg, c4ccomment},
+	EditorSel2:  []image.Uniform{c4csel2, c4cbg, c4cbg, c4cbg},
+	EditorSel3:  []image.Uniform{c4csel3, c4cbg, c4cbg, c4cbg},
+
 	EditorMatchingParenthesis: []image.Uniform{c4cnormfg, c4cbg, c4cbg, c4cbg},
+
 	Compl: []image.Uniform{c4cnormfg, c4cbg},
 
-	TagPlain:               []image.Uniform{c4ctagbg, c4ctagfg},
-	TagSel1:                []image.Uniform{c4ctagfg, c4ctagbg},
-	TagSel2:                []image.Uniform{c4csel2, c4ctagfg},
-	TagSel3:                []image.Uniform{c4csel3, c4ctagfg},
+	TagPlain: []image.Uniform{c4ctagbg, c4ctagfg},
+	TagSel1:  []image.Uniform{c4ctagfg, c4ctagbg},
+	TagSel2:  []image.Uniform{c4csel2, c4ctagfg},
+	TagSel3:  []image.Uniform{c4csel3, c4ctagfg},
+
 	TagMatchingParenthesis: []image.Uniform{c4ctagfg, c4ctagbg},
 
 	HandleFG:         c4ctagbg,

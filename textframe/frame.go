@@ -916,13 +916,17 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 		gr, mask, mp, _, _ := g.glyph(fr.Font)
 		dr := fr.R.Intersect(gr)
 		if !dr.Empty() {
-			//mp := image.Point{dr.Min.X - gr.Min.X, dr.Min.Y - gr.Min.Y}
-			color := &fr.Colors[1][1]
-			if (ssel >= 0) && (ssel < len(fr.Colors)) && (g.color >= 0) && (int(g.color) < len(fr.Colors[ssel])) {
-				color = &fr.Colors[ssel][g.color]
-			}
+			var color *image.Uniform
 			if onpmatch && len(fr.Colors) > 4 {
 				color = &fr.Colors[4][g.color]
+			} else if ssel >= 0 && ssel < len(fr.Colors) {
+				if g.color >= 0 && int(g.color) < len(fr.Colors[ssel]) {
+					color = &fr.Colors[ssel][g.color]
+				} else {
+					color = &fr.Colors[ssel][1]
+				}
+			} else {
+				color = &fr.Colors[1][1]
 			}
 			draw.DrawMask(fr.B, dr, color, dr.Min, mask, mp, draw.Over)
 		}
