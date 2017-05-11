@@ -1,9 +1,13 @@
 package main
 
 import (
+	"encoding/json"
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
+
 	"yacco/buf"
 )
 
@@ -33,6 +37,8 @@ var pgmPy = []rune(`
 	# comment comment
 `)
 
+const COLORMASK = 0x0f
+
 var pgmPyC = []uint16{
 	0x0001, 0x0001, 0x0022, 0x0032, 0x0012, 0x0012, 0x0012, 0x0012, 0x0012, 0x0012,
 	0x0012, 0x0012, 0x0012, 0x0012, 0x0012, 0x0012, 0x0012, 0x0042, 0x0012, 0x0012,
@@ -59,12 +65,63 @@ func printColors(b *buf.Buffer) {
 	}
 }
 
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+type SavedTest struct {
+	Name  string
+	In    string
+	Color []uint8
+}
+
+func saveTest(name string) {
+	in, err := os.Open(name)
+	must(err)
+	defer in.Close()
+	bs, err := ioutil.ReadAll(in)
+	must(err)
+	runes := []rune(string(bs))
+	b := loadBuf(name, runes)
+	b.HlGood = -1
+	Highlight(b, b.Size())
+
+	color := make([]uint8, b.Size())
+	for i := 0; i < b.Size(); i++ {
+		color[i] = uint8(b.At(i).C & COLORMASK)
+	}
+
+	r := SavedTest{
+		Name:  name,
+		In:    string(runes),
+		Color: color,
+	}
+
+	out, err := os.Create("_testdata/win.hltest")
+	must(err)
+	defer out.Close()
+	must(json.NewEncoder(out).Encode(r))
+}
+
+func TestMain(m *testing.M) {
+	var gendata bool
+	flag.BoolVar(&gendata, "gendata", false, "generates test data")
+	flag.Parse()
+	if gendata {
+		saveTest("win.go")
+		return
+	}
+	os.Exit(m.Run())
+}
+
 func testHighlightingEx(t *testing.T, b *buf.Buffer, cs []uint16, start int) {
 	b.HlGood = start
 	Highlight(b, b.Size())
 	for i := 0; i < b.Size(); i++ {
-		if b.At(i).C != cs[i] {
-			t.Fatalf("Error at character %d (start %d) [%04x %04x]", i, start, b.At(i).C, cs[i])
+		if b.At(i).C&COLORMASK != cs[i]&COLORMASK {
+			t.Errorf("Error at character %d (start %d) [%04x %04x]", i, start, b.At(i).C&COLORMASK, cs[i]&COLORMASK)
 		}
 	}
 }
