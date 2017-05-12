@@ -26,7 +26,7 @@ type Cmd struct {
 	mbody       []*Cmd
 	bodytxt     string
 	fn          func(c *Cmd, ec *EditContext)
-	sregexp     regexp.Regex
+	sregexp     *regexp.Regex
 }
 
 type EditContext struct {

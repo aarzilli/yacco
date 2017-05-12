@@ -12,7 +12,7 @@ type threadlet struct {
 }
 
 type threadlist struct {
-	rx      *Regex
+	rx      []instr
 	set     []bool
 	threads []threadlet
 }
@@ -25,9 +25,9 @@ func (t *threadlet) spawn(pc int) threadlet {
 
 func (rx *Regex) newThreadlist() *threadlist {
 	return &threadlist{
-		rx:      rx,
-		set:     make([]bool, len(*rx)),
-		threads: make([]threadlet, 0, len(*rx)),
+		rx:      rx.pgm,
+		set:     make([]bool, len(rx.pgm)),
+		threads: make([]threadlet, 0, len(rx.pgm)),
 	}
 }
 
@@ -41,7 +41,7 @@ func (tl *threadlist) addthread(t threadlet, b Matchable, start, end, i int) {
 		fmt.Printf("\taddthread %d\n", t.pc)
 	}
 
-	switch ix := (*tl.rx)[t.pc]; ix.op {
+	switch ix := tl.rx[t.pc]; ix.op {
 	case RX_ASSERT:
 		ok := ix.check(b, start, end, i)
 		if ok {
@@ -95,8 +95,18 @@ func (tl *threadlist) reset() {
 	tl.threads = tl.threads[:0]
 }
 
+func resultSize(pgm []instr) int {
+	ssz := 2
+	for _, ix := range pgm {
+		if (ix.op == RX_SAVE) && (ix.no >= ssz) {
+			ssz = ix.no + 1
+		}
+	}
+	return ssz
+}
+
 func (rx *Regex) Match(b Matchable, start, end int, dir int) []int {
-	if len(*rx) <= 0 {
+	if len(rx.pgm) <= 0 {
 		return []int{start, start}
 	}
 
@@ -108,14 +118,7 @@ func (rx *Regex) Match(b Matchable, start, end int, dir int) []int {
 		fmt.Printf("CODE:\n%s\n", rx.String())
 	}
 
-	ssz := 2
-	for _, ix := range *rx {
-		if (ix.op == RX_SAVE) && (ix.no >= ssz) {
-			ssz = ix.no + 1
-		}
-	}
-
-	save := make([]int, ssz)
+	save := make([]int, rx.ssz)
 	for i := range save {
 		save[i] = -1
 	}
@@ -124,7 +127,7 @@ func (rx *Regex) Match(b Matchable, start, end int, dir int) []int {
 	clist := rx.newThreadlist()
 	nlist := rx.newThreadlist()
 
-	fsave := make([]int, ssz)
+	fsave := make([]int, rx.ssz)
 	for i := range fsave {
 		fsave[i] = -1
 	}
@@ -171,7 +174,7 @@ func (rx *Regex) Match(b Matchable, start, end int, dir int) []int {
 
 	threadletLoop:
 		for j := 0; j < len(clist.threads); j++ {
-			switch ix := (*rx)[clist.threads[j].pc]; ix.op {
+			switch ix := rx.pgm[clist.threads[j].pc]; ix.op {
 			case RX_CHAR:
 				if rxDebug {
 					fmt.Printf("\t%d -> compare %d %d\n", clist.threads[j].pc, ix.c, ch)

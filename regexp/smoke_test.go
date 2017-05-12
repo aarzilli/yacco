@@ -1,14 +1,16 @@
-package regexp
+package regexp_test
 
 import (
 	"testing"
 	"yacco/buf"
+	"yacco/hl"
+	"yacco/regexp"
 	"yacco/util"
 )
 
 func testRegex(t *testing.T, rxSrc, in string, start int, tgt []int) []int {
-	rx := Compile(rxSrc, true, false)
-	buf, _ := buf.NewBuffer("/", "+Tag", true, " ")
+	rx := regexp.Compile(rxSrc, true, false)
+	buf, _ := buf.NewBuffer("/", "+Tag", true, " ", hl.NilHighlighter)
 	buf.Replace([]rune(in), &util.Sel{0, 0}, true, nil, util.EO_MOUSE)
 
 	out := rx.Match(buf, start, -1, +1)

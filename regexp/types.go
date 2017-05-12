@@ -14,7 +14,7 @@ type Matchable interface {
 
 type node interface {
 	String() string
-	Compile(pgm Regex, bw bool) Regex
+	Compile(pgm []instr, bw bool) []instr
 }
 
 type nodeChar struct {
@@ -110,7 +110,10 @@ type instr struct {
 	check   func(buf Matchable, start, end, i int) bool // for RX_ASSERT
 }
 
-type Regex []instr
+type Regex struct {
+	pgm []instr
+	ssz int
+}
 
 func (ix *instr) String() string {
 	switch ix.op {
@@ -143,8 +146,8 @@ func (ix *instr) String() string {
 
 func (rx *Regex) String() string {
 	r := []byte("")
-	for i := range *rx {
-		r = append(r, []byte(fmt.Sprintf("%04d\t%s\n", i, (*rx)[i].String()))...)
+	for i := range rx.pgm {
+		r = append(r, []byte(fmt.Sprintf("%04d\t%s\n", i, rx.pgm[i].String()))...)
 	}
 	return string(r)
 }

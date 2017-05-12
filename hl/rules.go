@@ -22,7 +22,7 @@ type LanguageRules struct {
 // RegionMatch describes a syntax highlighting rule
 type RegionMatch struct {
 	StartDelim, EndDelim   []rune
-	StartRegexp, EndRegexp yregexp.Regex
+	StartRegexp, EndRegexp *yregexp.Regex
 	Escape                 rune
 	Type, DelimType        RegionMatchType
 }

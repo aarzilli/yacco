@@ -15,7 +15,7 @@ import (
 type LoadRule struct {
 	ForDir bool
 	BufRe  *sysre.Regexp
-	Re     regexp.Regex
+	Re     *regexp.Regex
 	Action string
 }
 

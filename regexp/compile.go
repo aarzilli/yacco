@@ -10,7 +10,7 @@ Compiles a regex
 - find: true if we want to do a find operation, false if we want to do a match operation
 - bw: compile the regular expression backwards
 */
-func Compile(rx string, find, bw bool) Regex {
+func Compile(rx string, find, bw bool) *Regex {
 	defer func() {
 		if ierr := recover(); ierr != nil {
 			err := ierr.(error)
@@ -28,13 +28,16 @@ func Compile(rx string, find, bw bool) Regex {
 	ast := p.parseToplevel([]rune(rx))
 	pgm = ast.Compile(pgm, bw)
 	pgm = append(pgm, instr{op: RX_MATCH})
-	return pgm
+	return &Regex{
+		pgm: pgm,
+		ssz: resultSize(pgm),
+	}
 }
 
 /*
 Compiles a regex to do a non-contiguous search of string s
 */
-func CompileFuzzySearch(s []rune) Regex {
+func CompileFuzzySearch(s []rune) *Regex {
 	defer func() {
 		if ierr := recover(); ierr != nil {
 			err := ierr.(error)
@@ -63,22 +66,25 @@ func CompileFuzzySearch(s []rune) Regex {
 	pgm := []instr{}
 	pgm = ast.Compile(pgm, false)
 	pgm = append(pgm, instr{op: RX_MATCH})
-	return pgm
+	return &Regex{
+		pgm: pgm,
+		ssz: resultSize(pgm),
+	}
 }
 
-func (n *nodeChar) Compile(pgm Regex, bw bool) Regex {
+func (n *nodeChar) Compile(pgm []instr, bw bool) []instr {
 	return append(pgm, instr{op: RX_CHAR, c: n.c})
 }
 
-func (n *nodeClass) Compile(pgm Regex, bw bool) Regex {
+func (n *nodeClass) Compile(pgm []instr, bw bool) []instr {
 	return append(pgm, instr{op: RX_CLASS, cname: n.name, inv: n.inv, set: n.set, special: n.special})
 }
 
-func (n *nodeAssert) Compile(pgm Regex, bw bool) Regex {
+func (n *nodeAssert) Compile(pgm []instr, bw bool) []instr {
 	return append(pgm, instr{op: RX_ASSERT, cname: n.name, check: n.check})
 }
 
-func (n *nodeGroup) Compile(pgm Regex, bw bool) Regex {
+func (n *nodeGroup) Compile(pgm []instr, bw bool) []instr {
 	if !bw {
 		for i := range n.nodes {
 			pgm = n.nodes[i].Compile(pgm, bw)
@@ -91,7 +97,7 @@ func (n *nodeGroup) Compile(pgm Regex, bw bool) Regex {
 	return pgm
 }
 
-func (n *nodeRep) Compile(pgm Regex, bw bool) Regex {
+func (n *nodeRep) Compile(pgm []instr, bw bool) []instr {
 	if (n.min == 1) && (n.max <= 0) { // +
 		topl := len(pgm)
 		pgm = n.child.Compile(pgm, bw)
@@ -135,7 +141,7 @@ func (n *nodeRep) Compile(pgm Regex, bw bool) Regex {
 	panic(fmt.Errorf("Unknown min/max combination for repeat node %d %d", n.min, n.max))
 }
 
-func (n *nodeAlt) Compile(pgm Regex, bw bool) Regex {
+func (n *nodeAlt) Compile(pgm []instr, bw bool) []instr {
 	if n.no >= 0 {
 		pgm = append(pgm, instr{op: RX_SAVE, no: n.no * 2})
 	}

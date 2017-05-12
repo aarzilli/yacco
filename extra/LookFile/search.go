@@ -63,7 +63,7 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 		defer close(resultChan)
 	}
 	var startDir string
-	var needlerx regexp.Regex
+	var needlerx *regexp.Regex
 	if needle != "" {
 		x := util.ResolvePath(edDir, needle)
 		startDir = filepath.Dir(x)
@@ -159,7 +159,7 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 	}
 }
 
-func fileSystemSearchMatch(name string, off int, exact bool, needlerx regexp.Regex, relPath, needle string, depth int, resultChan chan<- *lookFileResult, searchDone chan struct{}) int {
+func fileSystemSearchMatch(name string, off int, exact bool, needlerx *regexp.Regex, relPath, needle string, depth int, resultChan chan<- *lookFileResult, searchDone chan struct{}) int {
 	if !exact {
 		name = strings.ToLower(name)
 	}
