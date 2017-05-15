@@ -40,7 +40,7 @@ func (hl *nilHighlighter) Alter(int) {
 }
 
 func (hl *nilHighlighter) Toregend(start int, buf yregexp.Matchable) int {
-	return start
+	return -1
 }
 
 // Implementation of Highlighter based on synchronization points
@@ -252,7 +252,7 @@ func (fhl *Fixed) Highlight(start int, end int, buf yregexp.Matchable, outbuf []
 }
 
 func (fhl *Fixed) Toregend(start int, buf yregexp.Matchable) int {
-	return start
+	return -1
 }
 
 func (fhl *Fixed) Alter(idx int) {
