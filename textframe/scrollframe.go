@@ -74,28 +74,11 @@ func (sfr *ScrollFrame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	posr.Max.Y = posz + posr.Min.Y
 	draw.Draw(sfr.b, sfr.r.Intersect(posr), &sfr.Fr.Colors[0][0], sfr.r.Intersect(posr).Min, draw.Src)
 
-	var caretr image.Rectangle
-	var caretcolor *image.Uniform
-	if sfr.Fr.Sel.S == sfr.Fr.Sel.E {
-		// caret indicator in scrollbar
-		caretr = bgr
-		caretr.Min.Y = sfr.scale(sfr.Fr.Sel.S) + sfr.r.Min.Y
-		caretr.Max.Y = caretr.Min.Y + 1
-		caretcolor = &sfr.Fr.Colors[0][1]
-	} else {
-		// selection indicator in scrollbar
-		caretr = bgr
-		caretr.Min.X = (caretr.Max.X + caretr.Min.X) / 2
-		caretr.Max.X = caretr.Max.X - 1
-		caretr.Min.Y = sfr.scale(sfr.Fr.Sel.S) + sfr.r.Min.Y
-		selsz := sfr.scale(sfr.Fr.Sel.E - sfr.Fr.Sel.S)
-		if selsz <= 0 {
-			selsz = 1
-		}
-		caretr.Max.Y = caretr.Min.Y + selsz
-		caretcolor = &sfr.Fr.Colors[1][0]
-	}
-	draw.Draw(sfr.b, sfr.r.Intersect(caretr), caretcolor, sfr.r.Intersect(posr).Min, draw.Src)
+	// caret indicator in scrollbar
+	caretr := bgr
+	caretr.Min.Y = sfr.scale(sfr.Fr.Sel.S) + sfr.r.Min.Y
+	caretr.Max.Y = caretr.Min.Y + 1
+	draw.Draw(sfr.b, sfr.r.Intersect(caretr), &sfr.Fr.Colors[0][1], sfr.r.Intersect(posr).Min, draw.Src)
 
 	sfr.Fr.Redraw(false, predrawRects)
 
