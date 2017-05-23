@@ -327,6 +327,22 @@ func UpdateJobs(create bool) {
 	ed.BufferRefresh()
 }
 
+func FindJobByName(name string) int {
+	jobsMutex.Lock()
+	defer jobsMutex.Unlock()
+
+	for i := range jobs {
+		if jobs[i] == nil {
+			continue
+		}
+		if strings.HasPrefix(jobs[i].descr, name) {
+			return i
+		}
+	}
+
+	return -1
+}
+
 func JobsNum() int {
 	jobsMutex.Lock()
 	n := 0
