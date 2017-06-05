@@ -67,6 +67,7 @@ var activeSel activeSelStruct
 var activeEditor *Editor = nil
 var activeCol *Col = nil
 var HasFocus = true
+var LastTypeTime time.Time
 
 func (as *activeSelStruct) Set(lp LogicalPos) {
 	if (lp.bodybuf == nil) || (lp.sfr == nil) {
@@ -347,6 +348,9 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 
 	case mouse.Event:
 		if e.Direction != mouse.DirNone {
+			return
+		}
+		if time.Since(LastTypeTime) < 500*time.Millisecond {
 			return
 		}
 		p := image.Point{int(e.X), int(e.Y)}
@@ -918,11 +922,13 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 	case key.CodeReturnEnter:
 		HideCompl(true)
 		if (lp.ed != nil) && lp.ed.eventChanSpecial {
+			LastTypeTime = time.Time{}
 			util.Fmtevent2(ec.ed.eventChan, util.EO_KBD, true, false, false, 0, 0, 0, "Return", nil)
 			return
 		}
 
 		if lp.tagfr != nil {
+			LastTypeTime = time.Time{}
 			if lp.tagbuf.EditableStart >= 0 {
 				ec := lp.asExecContext(false)
 				if lp.tagfr.Sel.S == lp.tagfr.Sel.E {
@@ -941,6 +947,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 				sendEventOrExec(ec, cmd, true, -1)
 			}
 		} else {
+			LastTypeTime = time.Now()
 			nl := "\n"
 			indent := ""
 
@@ -989,6 +996,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		}
 
 	case key.CodeTab:
+		LastTypeTime = time.Now()
 		ec := lp.asExecContext(true)
 		if ec.buf != nil {
 			switch {
@@ -1011,6 +1019,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		}
 
 	case key.CodeInsert:
+		LastTypeTime = time.Now()
 		if !Compl.Visible {
 			ec := lp.asExecContext(true)
 			Compl.Start(ec)
@@ -1020,6 +1029,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		ec := lp.asExecContext(true)
 		//fmt.Printf("keypress: <%s>\n", util.KeyEvent(e))
 		if fcmd, ok := KeyBindings[util.KeyEvent(e)]; ok {
+			LastTypeTime = time.Time{}
 			HideCompl(false)
 			//println("Execute command: <" + cmd + ">")
 			fcmd(ec)
@@ -1028,6 +1038,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 				HideCompl(false)
 			}
 		} else if e.Rune > 0 {
+			LastTypeTime = time.Now()
 			if lp.tagfr == nil && ec.ed != nil {
 				activeEditor = ec.ed
 				activeCol = nil
