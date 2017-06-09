@@ -189,7 +189,11 @@ func fileSystemSearchMatch(name string, off int, exact bool, needlerx *regexp.Re
 			}
 		}
 
-		score = mstart*1000 + depth*100 + ngaps*10 + len(rname) + off
+		if needle == name {
+			score = 0
+		} else {
+			score = mstart*1000 + depth*100 + ngaps*10 + len(rname) + off
+		}
 	}
 
 	select {
