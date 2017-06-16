@@ -74,12 +74,6 @@ func (sfr *ScrollFrame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	posr.Max.Y = posz + posr.Min.Y
 	draw.Draw(sfr.b, sfr.r.Intersect(posr), &sfr.Fr.Colors[0][0], sfr.r.Intersect(posr).Min, draw.Src)
 
-	// caret indicator in scrollbar
-	caretr := bgr
-	caretr.Min.Y = sfr.scale(sfr.Fr.Sel.S) + sfr.r.Min.Y
-	caretr.Max.Y = caretr.Min.Y + 1
-	draw.Draw(sfr.b, sfr.r.Intersect(caretr), &sfr.Fr.Colors[0][1], sfr.r.Intersect(posr).Min, draw.Src)
-
 	sfr.Fr.Redraw(false, predrawRects)
 
 	if flush && (sfr.Flush != nil) {
