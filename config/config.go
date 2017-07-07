@@ -3,6 +3,8 @@ package config
 import (
 	"yacco/hl"
 	"yacco/util"
+
+	"golang.org/x/image/font"
 )
 
 var TheColorScheme = AcmeColorScheme
@@ -18,10 +20,7 @@ var ComplMaxX = 1024
 var ComplMaxY = 1024
 
 var MainFontSize int
-var MainFont = util.MustNewFont(72, 16, 1.0, true, "$HOME/.config/yacco/luxisr.ttf:$HOME/.config/yacco/DejaVuSans.ttf")
-var TagFont = util.MustNewFont(72, 16, 0.9, true, "$HOME/.config/yacco/luxisr.ttf:$HOME/.config/yacco/DejaVuSans.ttf")
-var AltFont = util.MustNewFont(72, 16, 1.0, true, "$HOME/.config/yacco/luximr.ttf")
-var ComplFont = util.MustNewFont(72, 16, 1.0, true, "$HOME/.config/yacco/luxisr.ttf:$HOME/.config/yacco/DejaVuSans.ttf") // do not ever use fractional line spacing for multiline textframes
+var MainFont, TagFont, AltFont, ComplFont font.Face
 
 var EditErrorTrace = false
 
@@ -31,21 +30,7 @@ var HideHidden = true
 
 const DefaultLookFileExt = ",c,cc,cpp,h,py,txt,pl,tcl,java,js,html,go,clj,jsp"
 
-var LoadRules = []util.LoadRule{
-	util.LoadRule{BufRe: `.`, Re: `https?://\S+`, Action: "Xxdg-open $0"},
-	util.LoadRule{BufRe: `.`, Re: `:([^ ]+)`, Action: "L:$1"},
-	util.LoadRule{BufRe: `.`, Re: `([^:\s\(\)]+):(\d+):(\d+)`, Action: "L$1:$2-+#$3-#1"},
-	util.LoadRule{BufRe: `.`, Re: `([^:\s\(\)]+):(\d+)`, Action: "L$1:$2"},
-	util.LoadRule{BufRe: `.`, Re: `File "(.+?)", line (\d+)`, Action: "L$1:$2"},
-	util.LoadRule{BufRe: `.`, Re: `at (\S+) line (\d+)`, Action: "L$1:$2"},
-	util.LoadRule{BufRe: `.`, Re: `in (\S+) on line (\d+)`, Action: "L$1:$2"},
-	util.LoadRule{BufRe: `.`, Re: `([^:\s\(\)]+):\[(\d+),(\d+)\]`, Action: "L$1:$2-+#$3"},
-	util.LoadRule{BufRe: `.`, Re: `([^:\s\(\)]+):\t?/(.*)/`, Action: "L$1:/$2/"},
-	util.LoadRule{BufRe: `.`, Re: `[^:\s\(\)]+`, Action: "L$0"},
-	util.LoadRule{BufRe: `.`, Re: `\S+`, Action: "L$0"},
-	util.LoadRule{BufRe: `.`, Re: `\w+`, Action: "XLook $l0"},
-	util.LoadRule{BufRe: `.`, Re: `.+`, Action: "XLook $l0"},
-}
+var LoadRules = []util.LoadRule{}
 
 var LanguageRules = []hl.LanguageRules{
 	// Go

@@ -85,7 +85,7 @@ func LoadConfiguration(path string) {
 
 	fh, err := os.Open(path)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Could not open configuration file: %s\n", err.Error())
+		fmt.Fprintf(os.Stderr, "Could not open configuration file: %s (run install.sh?)\n", err.Error())
 		return
 	}
 	defer fh.Close()
@@ -115,7 +115,9 @@ func LoadConfiguration(path string) {
 	}
 
 	if co.KeyBindings != nil {
-		KeyBindings = co.KeyBindings.keys
+		for k, v := range co.KeyBindings.keys {
+			KeyBindings[k] = v
+		}
 	}
 
 	MainFontSize = co.Fonts["Main"].Pixel
@@ -178,6 +180,7 @@ func LoadRulesParser(path string, lineno int, lines []string) (interface{}, erro
 
 func LoadKeysParser(path string, lineno int, lines []string) (interface{}, error) {
 	r := &configKeys{map[string]string{}}
+	lastkey := ""
 	for i := range lines {
 		line := strings.TrimSpace(lines[i])
 		if line == "" {
@@ -190,7 +193,12 @@ func LoadKeysParser(path string, lineno int, lines []string) (interface{}, error
 		if len(v) != 2 {
 			return nil, fmt.Errorf("%s:%d: Malformed line (wrong number of fileds)", path, lineno+i)
 		}
-		r.keys[v[0]] = v[1]
+		if v[0] == "" {
+			r.keys[lastkey] += "\n" + v[1]
+		} else {
+			r.keys[v[0]] = v[1]
+			lastkey = v[0]
+		}
 	}
 	return r, nil
 }

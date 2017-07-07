@@ -47,6 +47,39 @@ CopyFrom=Main
 [Fonts "Tag"]
 CopyFrom=Main
 
+[Load]
+### Directory
+/	['"]?[^\t]*?\.(pdf|ps|cbr|cbz|djvu)['"]?	Xevince $0 >/dev/null 2>&1
+/	['"]?[^\t]*?\.epub['"]?	Xevince $0 >/dev/null 2>&1
+/	['"]?[^\t]*?\.ods['"]?	Xsoffice '$0'
+/	['"]?[^\t]*?\.(jpg|png|gif|JPG|GIF)['"]?	Xeog $0
+/	['"]?[^\t]*?\.(mp4|avi|flv|m4v|mkv|mpg|webm|wmv|ts|wma)['"]?	Xmpv $0 >/dev/null 2>&1
+/	['"]?[^\t]*?\.mp3["']?	Xmpv $0 >/dev/null 2>&1
+/	.+	L$0
+
+### Other rules
+.	https?://\S+	Xxdg-open $0 >/dev/null 2>&1
+.	([^:\s\(\)]+):(\d+):(\d+)	L$1:$2-+#$3-#1
+.	([^:\s\(\)]+):(\d+)	L$1:$2
+.	:([^ ]+)	L:$1
+.	File "(.+?)", line (\d+)	L$1:$2
+.	at (\S+) line (\d+)	L$1:$2
+.	in (\S+) on line (\d+)	L$1:$2
+.	([^:\s\(\)]+):\[(\d+),(\d+)\]	L$1:$2-+#$3-#1
+.	([^:\s\(\)]+):\t?/(.*)/	L$1:/$2/
+.	[^:\s\(\)]+	L$0
+.	\S+	L$0
+.	\w+	XLook $l0
+.	.+	XLook $l0
+
+[Keybindings]
+control+`	Mark
+control+p	Savepos
+control+d	Tooltip Go describe
+control+b	Jump
+control+.	|a+
+control+,	|a-
+
 EOF
 	fi
 	

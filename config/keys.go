@@ -57,19 +57,11 @@ var KeyBindings = map[string]string{
 	"control+g":       "Look!Again",
 	"control+shift+g": "Look!Prev",
 
-	"control+.": "|a+",
-	"control+,": "|a-",
-
 	"control+q": "LookFile",
-	"control+b": "Jump",
 
 	"backspace": "Do\nEdit g// -#1,.\nEdit c//",
 	"control+w": "Do\nEdit g// -#1,.\nEdit c//",
 	"delete":    "Do\nEdit g// .,+#1\nEdit c//",
-
-	"control+`": "Mark",
-	"control+p": "Savepos",
-	"control+d": "Tooltip Go describe",
 }
 
 var KeyConversion = map[string]key.Event{
