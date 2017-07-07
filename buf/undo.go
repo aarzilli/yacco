@@ -1,7 +1,10 @@
 package buf
 
 import (
+	"bytes"
+	"fmt"
 	"time"
+
 	"yacco/util"
 )
 
@@ -119,4 +122,46 @@ func (ul *undoList) IsSaved() bool {
 func (ul *undoList) Reset() {
 	ul.lst = []undoInfo{}
 	ul.cur = 0
+}
+
+func (buf *Buffer) DescribeUndo() string {
+	var w bytes.Buffer
+
+	if buf.ul.nilIsSaved {
+		fmt.Fprintf(&w, "nil is saved\n")
+	}
+	fmt.Fprintf(&w, "cur %d\n", buf.ul.cur)
+
+	for i := range buf.ul.lst {
+		ui := &buf.ul.lst[i]
+
+		if i == buf.ul.cur {
+			fmt.Fprintf(&w, "* ")
+		} else {
+			fmt.Fprintf(&w, "  ")
+		}
+
+		fmt.Fprintf(&w, "%d rev:%d %v ", i, ui.rev, ui.ts)
+
+		if ui.saved {
+			fmt.Fprintf(&w, "saved ")
+		}
+		if ui.solid {
+			fmt.Fprintf(&w, "solid ")
+		}
+
+		before := &ui.before
+		after := &ui.after
+
+		switch {
+		case before.S == before.E:
+			fmt.Fprintf(&w, "ins(%d) %q\n", before.S, after.text)
+		case after.S == after.E:
+			fmt.Fprintf(&w, "del(%d-%d) %q\n", before.S, before.E, before.text)
+		default:
+			fmt.Fprintf(&w, "replace(%d-%d) %q -> %q\n", before.S, before.E, before.text, after.text)
+		}
+	}
+
+	return w.String()
 }

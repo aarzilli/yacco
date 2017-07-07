@@ -1241,6 +1241,9 @@ Debug compile <command>
 	
 Debug memory
 	Prints a summary of memory usage
+	
+Debug undo
+	Prints undo list for the current buffer
 `)
 	}
 
@@ -1275,6 +1278,11 @@ Debug memory
 		var buf bytes.Buffer
 		memdebug(&buf)
 		Warn(buf.String())
+	case "undo":
+		if ec.ed == nil {
+			return
+		}
+		Warn(ec.ed.bodybuf.DescribeUndo())
 	default:
 		usage()
 		return

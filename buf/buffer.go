@@ -359,9 +359,9 @@ func (b *Buffer) Undo(sel *util.Sel, redo bool) {
 		}
 
 		if mui == nil {
-			b.Modified = b.ul.nilIsSaved
+			b.Modified = !b.ul.nilIsSaved
 		} else {
-			b.Modified = mui.saved
+			b.Modified = !mui.saved
 		}
 
 		if !redo {
