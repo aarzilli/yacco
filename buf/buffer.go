@@ -947,6 +947,7 @@ func (b *Buffer) restoreSels(ssels []util.Sel) {
 	k := 0
 	for i := range b.sels {
 		if b.sels[i] != nil {
+			b.FixSel(&ssels[k])
 			b.sels[i].S = ssels[k].S
 			b.sels[i].E = ssels[k].E
 			k++
