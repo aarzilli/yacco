@@ -32,7 +32,7 @@ func getprefix(text string) (prefix, rest string) {
 		i++
 	}
 
-	if text[i] == ' ' {
+	if i < len(text) && text[i] == ' ' {
 		i++
 	}
 
