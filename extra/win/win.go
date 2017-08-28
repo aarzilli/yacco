@@ -78,7 +78,7 @@ type FuncMsg struct {
 }
 
 func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReaderDone chan struct{}) {
-	bufout := bufio.NewReader(stdout)
+	bufout := bufio.NewReaderSize(stdout, 32*1024)
 	escseq := []byte{}
 	state := ANSI_NORMAL
 	s := []byte{}
@@ -88,7 +88,7 @@ func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReader
 				log.Printf("flushing1 <%s>\n", s)
 			}
 			controlChan <- AppendMsg{s}
-			s = []byte{}
+			s = make([]byte, 0, len(s))
 		}
 		ch, err := bufout.ReadByte()
 		if err != nil {
@@ -118,8 +118,9 @@ func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReader
 					if debug {
 						log.Printf("flushing2 <%s>\n", s)
 					}
+					/* this makes us very slow is it really needed?
 					controlChan <- AppendMsg{s}
-					s = []byte{}
+					s = []byte{}*/
 				}
 			}
 

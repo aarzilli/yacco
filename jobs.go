@@ -160,7 +160,7 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf, istooltip bool, 
 			bs := string(bsr)
 			job.outstr = bs
 		} else {
-			bsr := make([]byte, 4086)
+			bsr := make([]byte, 32*1024)
 			for {
 				n, err := stdout.Read(bsr)
 				if n > 0 {
