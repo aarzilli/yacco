@@ -331,13 +331,23 @@ func FindJobByName(name string) int {
 	jobsMutex.Lock()
 	defer jobsMutex.Unlock()
 
+	results := make([]int, 0, 3)
+
 	for i := range jobs {
 		if jobs[i] == nil {
 			continue
 		}
-		if strings.HasPrefix(jobs[i].descr, name) {
-			return i
+		fw := jobs[i].descr
+		if space := strings.Index(fw, " "); space > 0 {
+			fw = fw[:space]
 		}
+		if strings.HasSuffix(fw, name) || strings.HasPrefix(fw, name) {
+			results = append(results, i)
+		}
+	}
+
+	if len(results) == 1 {
+		return results[0]
 	}
 
 	return -1
