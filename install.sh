@@ -193,6 +193,7 @@ if [[ -z $2 ]]; then
 	install_Go
 	install_Eqcol
 	install_cmfmt
+	install_scripts
 	echo Done
 else
 	eval "install_$2"
