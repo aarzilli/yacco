@@ -1,6 +1,11 @@
 #!/bin/bash
 
 f=$(mktemp)
-y9p read /$1/body > $f
-diff $f $p
+if [["x$1" != "x"]]; then
+	y9p read /$1/body > $f
+	diff $f $(y9p read /$1/tag | cut -d' ' -f1)
+else
+	y9p read /$bi/body > $f
+	diff $f $p
+fi
 rm $f
