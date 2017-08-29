@@ -409,6 +409,10 @@ func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 		x := e.bodybuf.Tonl(e.sfr.Fr.Sel.E-2, -1)
 		e.otherSel[OS_TOP].E = x
 		e.refreshIntl(false)
+		if !(e.sfr.Fr.Inside(e.sfr.Fr.Sel.E) || e.sfr.Fr.Inside(e.sfr.Fr.Sel.S)) {
+			e.otherSel[OS_TOP].E = e.sfr.Fr.LastPhisicalLineStart(e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, e.sfr.Fr.Sel.E}))
+			e.refreshIntl(false)
+		}
 		e.sfr.Redraw(true, nil) // NEEDED, otherwise every other redraw is optimized and is not performed correctly
 		edutil.Scrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr, -1, e.sfr.Fr.LineNo()/4-1)
 	}

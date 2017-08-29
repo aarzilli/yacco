@@ -1015,6 +1015,16 @@ func (fr *Frame) phisicalLines() []int {
 	return r
 }
 
+func (fr *Frame) LastPhisicalLineStart(a, b []rune) int {
+	hf := fr.Hackflags
+	fr.Hackflags = fr.Hackflags | HF_NOVERTSTOP
+	fr.Clear()
+	fr.Insert(a, b)
+	fr.Hackflags = hf
+	lines := fr.phisicalLines()
+	return lines[len(lines)-1] + fr.Top
+}
+
 // Pushes text graphically up by "ln" phisical lines
 // Returns the number of glyphs left in the frame
 func (fr *Frame) PushUp(ln int, drawOpt bool) (newsize int) {
