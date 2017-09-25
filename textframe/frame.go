@@ -1022,6 +1022,9 @@ func (fr *Frame) LastPhisicalLineStart(a, b []rune) int {
 	fr.Insert(a, b)
 	fr.Hackflags = hf
 	lines := fr.phisicalLines()
+	if len(lines) == 0 {
+		return fr.Top
+	}
 	return lines[len(lines)-1] + fr.Top
 }
 
