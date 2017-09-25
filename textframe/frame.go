@@ -894,7 +894,7 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 		dr := fr.R.Intersect(gr)
 		if !dr.Empty() {
 			var color *image.Uniform
-			if onpmatch && len(fr.Colors) > 4 {
+			if onpmatch && len(fr.Colors) > 4 && int(g.color) < len(fr.Colors[4]) {
 				color = &fr.Colors[4][g.color]
 			} else if ssel >= 0 && ssel < len(fr.Colors) {
 				if g.color >= 0 && int(g.color) < len(fr.Colors[ssel]) {
