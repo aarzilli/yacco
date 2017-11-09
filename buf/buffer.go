@@ -2,6 +2,7 @@ package buf
 
 import (
 	"bufio"
+	"crypto/sha1"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -28,7 +29,9 @@ type Buffer struct {
 	Editable      bool
 	EditableStart int
 	Modified      bool
-	ModTime       time.Time // time the file was modified on disk
+
+	modTime        time.Time // time the file was modified on disk
+	onDiskChecksum *[sha1.Size]byte
 
 	Props map[string]string
 
@@ -167,7 +170,9 @@ func (b *Buffer) Reload(create bool) error {
 		}
 		b.ReplaceFull([]rune(string(bytes)))
 
-		b.ModTime = fi.ModTime()
+		b.modTime = fi.ModTime()
+		s1 := sha1.Sum(bytes)
+		b.onDiskChecksum = &s1
 		b.Modified = false
 		b.ul.Reset()
 
@@ -181,7 +186,7 @@ func (b *Buffer) Reload(create bool) error {
 			// doesn't exist, mark as modified
 			b.Modified = true
 			b.ul.nilIsSaved = false
-			b.ModTime = time.Now()
+			b.modTime = time.Now()
 		} else {
 			return fmt.Errorf("File doesn't exist: %s", path)
 		}
@@ -784,21 +789,19 @@ func (b *Buffer) Put() error {
 	defer out.Close()
 
 	ba, bb := b.Selection(util.Sel{0, b.Size()})
-	sa := string(ba)
-	sb := string(bb)
 
 	b.UpdateWords()
 
 	bout := bufio.NewWriter(out)
+	h := sha1.New()
 
-	_, err = bout.Write([]byte(sa))
-	if err != nil {
-		return err
-	}
-
-	_, err = bout.Write([]byte(sb))
-	if err != nil {
-		return err
+	for _, runes := range [][]rune{ba, bb} {
+		x := []byte(string(runes))
+		_, err = bout.Write(x)
+		if err != nil {
+			return err
+		}
+		h.Write(x)
 	}
 
 	err = bout.Flush()
@@ -812,7 +815,10 @@ func (b *Buffer) Put() error {
 		return err
 	}
 
-	b.ModTime = fi.ModTime()
+	b.modTime = fi.ModTime()
+	var hbytes [sha1.Size]byte
+	h.Sum(hbytes[:0])
+	b.onDiskChecksum = &hbytes
 	b.ul.SetSaved()
 
 	return nil
@@ -870,12 +876,22 @@ func (b *Buffer) GetLine(i int) (int, int) {
 }
 
 func (b *Buffer) CanSave() bool {
-	fi, err := os.Stat(filepath.Join(b.Dir, b.Name))
+	path := filepath.Join(b.Dir, b.Name)
+	fi, err := os.Stat(path)
 	if err != nil {
 		return true
 	}
 
-	if fi.ModTime().Sub(b.ModTime) > 0 {
+	if fi.ModTime().Sub(b.modTime) > 0 {
+		if b.onDiskChecksum != nil {
+			bytes, err := ioutil.ReadFile(path)
+			if err == nil {
+				hbytes := sha1.Sum(bytes)
+				if *b.onDiskChecksum == hbytes {
+					return true
+				}
+			}
+		}
 		return false
 	} else {
 		return true
