@@ -51,6 +51,7 @@ func init() {
 	ColorSchemeMap["tan"] = &TanColorScheme
 	ColorSchemeMap["4"] = &C4ColorScheme
 	ColorSchemeMap["4c"] = &C4CColorScheme
+	ColorSchemeMap["4cr"] = &C4CRColorScheme
 }
 
 func c(r, g, b uint8) image.Uniform {
@@ -412,6 +413,37 @@ var C4CColorScheme = ColorScheme{
 
 	HandleFG:         c4ctagbg,
 	HandleModifiedFG: c4cbg,
+	HandleSpecialFG:  c(0xF5, 0x2B, 0x00),
+	HandleBG:         c(0x72, 0x78, 0x80),
+}
+
+var c4crgb = cc(0xd6d6d6)
+var c4crdarkbg = cc(0x606060)
+
+var C4CRColorScheme = ColorScheme{
+	WindowBG: cc(0xd6d6d6),
+
+	TopBorder: *image.Black, VertBorder: c4crdarkbg,
+	Scrollbar: c4crdarkbg,
+
+	EditorPlain: []image.Uniform{cc(0xd6d6d6), *image.Black, cc(0x9a0000), cc(0x005800), c4csel1},
+	EditorSel1:  []image.Uniform{cc(0x0044ff), c4crgb, c4crgb, c4crgb},
+	EditorSel2:  []image.Uniform{cc(0x525252), c4crgb, c4crgb, c4crgb},
+	EditorSel3:  []image.Uniform{cc(0x00b8b8), c4crgb, c4crgb, c4crgb},
+
+	EditorMatchingParenthesis: []image.Uniform{*image.Black, c4crgb, c4crgb, c4crgb},
+
+	Compl: []image.Uniform{c4cnormfg, c4crgb},
+
+	TagPlain: []image.Uniform{c4crdarkbg, c4ctagfg},
+	TagSel1:  []image.Uniform{c4ctagfg, c4crdarkbg},
+	TagSel2:  []image.Uniform{cc(0x525252), c4ctagfg},
+	TagSel3:  []image.Uniform{cc(0x00b8b8), c4ctagfg},
+
+	TagMatchingParenthesis: []image.Uniform{c4ctagfg, c4crdarkbg},
+
+	HandleFG:         c4crdarkbg,
+	HandleModifiedFG: cc(0x0044ff),
 	HandleSpecialFG:  c(0xF5, 0x2B, 0x00),
 	HandleBG:         c(0x72, 0x78, 0x80),
 }
