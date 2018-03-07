@@ -966,6 +966,7 @@ func (b *Buffer) restoreSels(ssels []util.Sel) {
 			b.FixSel(&ssels[k])
 			b.sels[i].S = ssels[k].S
 			b.sels[i].E = ssels[k].E
+			b.FixSel(b.sels[i])
 			k++
 		}
 	}
