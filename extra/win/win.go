@@ -208,7 +208,7 @@ var signalCommands = map[string]syscall.Signal{
 
 const BUFSIZE = 2 * util.MAX_EVENT_TEXT_LENGTH
 
-func eventReader(controlChan chan<- interface{}, eventfd io.ReadWriter) {
+func eventReader(controlChan chan<- interface{}, eventfd io.ReadWriter, addrfd io.ReadWriteSeeker, xdatafd io.ReadSeeker) {
 	buf := make([]byte, BUFSIZE)
 	var er util.EventReader
 
@@ -248,7 +248,7 @@ func eventReader(controlChan chan<- interface{}, eventfd io.ReadWriter) {
 
 		switch er.Type() {
 		case util.ET_TAGEXEC, util.ET_BODYEXEC:
-			arg, _ := er.Text(nil, nil, nil)
+			arg, _ := er.Text(addrfd, addrfd, xdatafd)
 			if er.BuiltIn() {
 				if arg == "Del" {
 					atomic.StoreInt32(delSeen, 1)
@@ -261,7 +261,7 @@ func eventReader(controlChan chan<- interface{}, eventfd io.ReadWriter) {
 					log.Printf("Sent back")
 				}
 				util.Allergic3(debug, err, isDelSeen())
-			} else {
+			} else if len(arg) > 0 {
 				removePrompt := false
 				if er.Type() == util.ET_BODYEXEC && arg[len(arg)-1] == '\n' {
 					removePrompt = true
@@ -688,7 +688,7 @@ func main() {
 	outputReaderDone := make(chan struct{})
 	controlFuncDone := make(chan struct{})
 	controlChan := make(chan interface{})
-	go eventReader(controlChan, buf.EventFd)
+	go eventReader(controlChan, buf.EventFd, buf.AddrFd, buf.XDataFd)
 	go outputReader(controlChan, pty, outputReaderDone)
 	go controlFunc(cmd, pty, buf, controlChan, controlFuncDone)
 
