@@ -495,6 +495,9 @@ func (fr *Frame) PointToCoord(p int) image.Point {
 }
 
 func (fr *Frame) redrawSelection(s, e int, color *image.Uniform, invalid *[]image.Rectangle) {
+	if s == len(fr.glyphs) {
+		return
+	}
 	if s < 0 {
 		s = 0
 	}
