@@ -266,9 +266,10 @@ func (fr *Frame) Insert(r1, r2 []rune) (limit image.Point) {
 			prevRune, hasPrev = ' ', true
 
 		default:
-			if glyphidx == 0 {
-				fmt.Printf("glyph 0 for rune %c %d (%d)\n", crune, crune, i)
-			}
+			/*
+				if glyphidx == 0 {
+					fmt.Printf("glyph 0 for rune %c %d (%d)\n", crune, crune, i)
+				}*/
 			width, _ := fr.Font.GlyphAdvance(crune)
 			kerning := fixed.I(0)
 			if hasPrev {
