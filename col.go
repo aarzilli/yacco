@@ -4,6 +4,7 @@ import (
 	"image"
 	"image/draw"
 	"os"
+	"time"
 	"yacco/buf"
 	"yacco/config"
 	"yacco/edutil"
@@ -23,6 +24,8 @@ type Col struct {
 
 	tagfr  textframe.Frame
 	tagbuf *buf.Buffer
+
+	closeRequested time.Time
 }
 
 func NewCol(wnd *Window, r image.Rectangle) *Col {

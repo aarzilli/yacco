@@ -415,6 +415,9 @@ func DelcolCmd(ec ExecContext, arg string) {
 	if ec.col == nil {
 		return
 	}
+	if len(Wnd.cols.cols) <= 1 {
+		return
+	}
 
 	t := "The following files have unsaved changes:\n"
 	n := 0
@@ -427,6 +430,10 @@ func DelcolCmd(ec ExecContext, arg string) {
 	}
 
 	if n == 0 {
+		if time.Since(ec.col.closeRequested) > (3*time.Second) && len(ec.col.editors) > 0 {
+			ec.col.closeRequested = time.Now()
+			return
+		}
 		for _, ed := range ec.col.editors {
 			removeBuffer(ed.bodybuf)
 		}
