@@ -97,7 +97,11 @@ func (w *windowImpl) Publish() screen.PublishResult {
 
 func (w *windowImpl) SetTitle(title string) error {
 	buf := []byte(title)
-	return xproto.ChangePropertyChecked(w.s.xc, xproto.PropModeReplace, w.xw, w.s.atomNetWMName, w.s.atomUTF8String, 8, uint32(len(buf)), buf).Check()
+	err := xproto.ChangePropertyChecked(w.s.xc, xproto.PropModeReplace, w.xw, w.s.atomNetWMName, w.s.atomUTF8String, 8, uint32(len(buf)), buf).Check()
+	if err != nil {
+		return err
+	}
+	return xproto.ChangePropertyChecked(w.s.xc, xproto.PropModeReplace, w.xw, w.s.atomWMClass, w.s.atomUTF8String, 8, uint32(len(buf)), buf).Check()
 }
 
 func (w *windowImpl) SetCursor(cursor screen.Cursor) error {

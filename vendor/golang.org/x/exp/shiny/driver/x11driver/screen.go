@@ -37,6 +37,7 @@ type screenImpl struct {
 	atomWMProtocols    xproto.Atom
 	atomWMTakeFocus    xproto.Atom
 	atomNetWMName      xproto.Atom
+	atomWMClass        xproto.Atom
 	atomUTF8String     xproto.Atom
 	cursorCache        map[screen.Cursor]xproto.Cursor
 
@@ -452,6 +453,10 @@ func (s *screenImpl) initAtoms() (err error) {
 		return err
 	}
 	s.atomUTF8String, err = s.internAtom("UTF8_STRING")
+	if err != nil {
+		return err
+	}
+	s.atomWMClass, err = s.internAtom("WM_CLASS")
 	if err != nil {
 		return err
 	}
