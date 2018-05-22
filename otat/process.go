@@ -104,6 +104,7 @@ func (m *Machine) Next() bool {
 	if statEvery > 0 {
 		t0 = time.Now()
 	}
+	m.replrune = 0
 	m.slideWindow()
 	if debugProcess {
 		pid := -1
@@ -111,6 +112,13 @@ func (m *Machine) Next() bool {
 			pid = m.prevlookup.id
 		}
 		fmt.Printf("\tback: %v input %d lookahead: %v (load: %d) prevlookup: %d\n", m.backtrack, *m.input, m.lookahead, m.load, pid)
+	}
+	if m.skip > 0 {
+		m.skip--
+		m.prevlookup = nil
+		*m.input = m.index(rune(0x200b))
+		m.replrune = rune(0x200b)
+		return true
 	}
 	if m.prevlookup != nil {
 		ok := m.prevlookup.apply(m)
@@ -178,6 +186,13 @@ func (lookup *lookup) apply(m *Machine) bool {
 				}
 				return true
 			}
+		case 1000:
+			if lp.cover6(m.backtrack, m.lookahead) {
+				*m.input = lp.substitute[0]
+				m.skip = len(lp.lookaheadCov)
+				m.replrune = lp.substrune
+				return true
+			}
 		}
 	}
 	return false
@@ -197,9 +212,9 @@ func (lp *lookupTable) cover6(backtrack, lookahead []Index) bool {
 	return true
 }
 
-func (m *Machine) Glyph() (int, rune) {
+func (m *Machine) Glyph() (int, rune, rune) {
 	if m.dummy {
-		return m.curIdx, rune(*m.input)
+		return m.curIdx, rune(*m.input), 0
 	}
-	return m.curIdx, -rune(*m.input)
+	return m.curIdx, -rune(*m.input), m.replrune
 }

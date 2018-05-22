@@ -24,7 +24,7 @@ type Multiface struct {
 }
 
 // Reads a Font: fontPath is a ':' separated list of ttf or pcf font files (they will be used to search characters)
-func NewFont(dpi, size, lineSpacing float64, fullHinting bool, fontPath string) (font.Face, error) {
+func NewFont(dpi, size, lineSpacing float64, fullHinting, autoligatures bool, fontPath string) (font.Face, error) {
 	fontPathV := strings.Split(fontPath, ":")
 	fbs := make([][]byte, len(fontPathV))
 	for i, fontfile := range fontPathV {
@@ -34,18 +34,18 @@ func NewFont(dpi, size, lineSpacing float64, fullHinting bool, fontPath string) 
 		}
 		fbs[i] = fontBytes
 	}
-	return NewFontFromBytes(dpi, size, lineSpacing, fullHinting, fbs)
+	return NewFontFromBytes(dpi, size, lineSpacing, fullHinting, autoligatures, fbs)
 }
 
-func MustNewFont(dpi, size, lineSpacing float64, fullHinting bool, fontPath string) font.Face {
-	r, err := NewFont(dpi, size, lineSpacing, fullHinting, fontPath)
+func MustNewFont(dpi, size, lineSpacing float64, fullHinting, autoligatures bool, fontPath string) font.Face {
+	r, err := NewFont(dpi, size, lineSpacing, fullHinting, autoligatures, fontPath)
 	if err != nil {
 		panic(err)
 	}
 	return r
 }
 
-func NewFontFromBytes(dpi, size, lineSpacing float64, fullHinting bool, fontBytes [][]byte) (font.Face, error) {
+func NewFontFromBytes(dpi, size, lineSpacing float64, fullHinting, autoligatures bool, fontBytes [][]byte) (font.Face, error) {
 	rf := &Multiface{make([]font.Face, 0, len(fontBytes)), lineSpacing, 0, 0, -1, -1, nil}
 	for i, aFontBytes := range fontBytes {
 		parsedfont, err := freetype.ParseFont(aFontBytes)
@@ -58,7 +58,7 @@ func NewFontFromBytes(dpi, size, lineSpacing float64, fullHinting bool, fontByte
 		}
 		rf.faces = append(rf.faces, truetype.NewFace(parsedfont, &truetype.Options{Size: size, DPI: dpi, Hinting: hinting}))
 		if i == 0 {
-			rf.Otatm, _, err = otat.New(aFontBytes, "", "calt")
+			rf.Otatm, _, err = otat.New(aFontBytes, "", "calt", autoligatures)
 			if err != nil {
 				return nil, err
 			}
@@ -67,8 +67,8 @@ func NewFontFromBytes(dpi, size, lineSpacing float64, fullHinting bool, fontByte
 	return rf, nil
 }
 
-func MustNewFontFromBytes(dpi, size, lineSpacing float64, fullHinting bool, fontBytes [][]byte) font.Face {
-	f, err := NewFontFromBytes(dpi, size, lineSpacing, fullHinting, fontBytes)
+func MustNewFontFromBytes(dpi, size, lineSpacing float64, fullHinting, autoligatures bool, fontBytes [][]byte) font.Face {
+	f, err := NewFontFromBytes(dpi, size, lineSpacing, fullHinting, autoligatures, fontBytes)
 	if err != nil {
 		panic(err)
 	}

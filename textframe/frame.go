@@ -201,12 +201,13 @@ func (fr *Frame) Insert(r1, r2 []rune) (limit image.Point) {
 	})
 
 	for fr.otatm.Next() {
-		i, glyphidx := fr.otatm.Glyph()
-		var crune rune
-		if i < len(r1) {
-			crune = r1[i]
-		} else {
-			crune = r2[i-len(r1)]
+		i, glyphidx, crune := fr.otatm.Glyph()
+		if crune == 0 {
+			if i < len(r1) {
+				crune = r1[i]
+			} else {
+				crune = r2[i-len(r1)]
+			}
 		}
 
 		if fr.ins.Y > bottom && (fr.Hackflags&HF_NOVERTSTOP == 0) {

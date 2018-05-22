@@ -31,11 +31,12 @@ type configObj struct {
 var admissibleFonts = []string{"Main", "Tag", "Alt", "Compl"}
 
 type configFont struct {
-	Pixel       int
-	LineSpacing int
-	Path        string
-	CopyFrom    string
-	FullHinting bool
+	Pixel        int
+	LineSpacing  int
+	Path         string
+	CopyFrom     string
+	FullHinting  bool
+	Autoligature bool
 }
 
 type configLoadRules struct {
@@ -65,7 +66,7 @@ func fontFromConf(font configFont, Fonts map[string]*configFont) font.Face {
 			font.Path = otherFont.Path
 		}
 	}
-	return util.MustNewFont(72, float64(font.Pixel), float64(font.LineSpacing), font.FullHinting, font.Path)
+	return util.MustNewFont(72, float64(font.Pixel), float64(font.LineSpacing), font.FullHinting, font.Autoligature, font.Path)
 }
 
 func LoadConfiguration(path string) {

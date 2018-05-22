@@ -38,6 +38,10 @@ type Machine struct {
 
 	// full input
 	runeit func() (rune, bool)
+
+	skip int
+
+	replrune rune
 }
 
 const (
@@ -81,6 +85,8 @@ type lookupTable struct {
 	delta      int16
 	substitute []Index
 
+	substrune rune
+
 	// contextual substitution (type 6)
 	backtrackCov, inputCov, lookaheadCov []coverage
 	substSeqIdx                          []uint16
@@ -115,7 +121,7 @@ const DefaultFeatures = "calt,case,zero"
 // If features is the empty string the features specified in
 // DefaultFeatures will be used, if no features should be enabled use
 // "none"
-func New(ttf []byte, script string, features string) (*Machine, []string, error) {
+func New(ttf []byte, script string, features string, autoligatures bool) (*Machine, []string, error) {
 	m, err := parse(ttf, 0)
 	if err != nil {
 		return nil, nil, err
@@ -242,6 +248,14 @@ scriptSearch:
 	m.allookups = nil
 	m.allfeatures = nil
 	m.allscripts = nil
+
+	if len(m.lookups) == 0 {
+		if autoligatures {
+			maxbacktrack, maxlookahead = m.setupAuto()
+		} else {
+			return Dummy(), availableFeaturesStr, err
+		}
+	}
 
 	m.window = make([]Index, maxbacktrack+maxlookahead+1)
 	m.backtrack = m.window[:maxbacktrack]
