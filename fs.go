@@ -11,6 +11,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 
 	"yacco/config"
@@ -106,6 +107,11 @@ func FsInit() {
 
 	go func() {
 		err = p9Srv.StartListener(p9il)
+		QuitMu.Lock()
+		if Quitting {
+			err = nil
+		}
+		QuitMu.Unlock()
 		if err != nil {
 			fmt.Printf("Could not start 9p server: %v\n", err)
 			os.Exit(1)
@@ -113,7 +119,13 @@ func FsInit() {
 	}()
 }
 
+var QuitMu sync.Mutex
+var Quitting bool
+
 func FsQuit() {
+	QuitMu.Lock()
+	Quitting = true
+	QuitMu.Unlock()
 	HistoryWrite()
 	for i := range jobs {
 		jobKill(i)
