@@ -26,6 +26,8 @@ type Col struct {
 	tagbuf *buf.Buffer
 
 	closeRequested time.Time
+
+	maximized bool
 }
 
 func NewCol(wnd *Window, r image.Rectangle) *Col {
@@ -55,6 +57,7 @@ func NewCol(wnd *Window, r image.Rectangle) *Col {
 	c.tagbuf.AddSel(&c.tagfr.Sel)
 	c.tagbuf.Replace(config.DefaultColumnTag, &c.tagfr.Sel, true, nil, 0)
 	c.tagbuf.FlushUndo()
+
 	return c
 }
 
@@ -121,6 +124,7 @@ func (c *Col) sumEditorsHeight() int {
 }
 
 func (c *Col) RecalcRects(last bool) {
+	c.maximized = false
 	screen := c.b
 
 	c.last = last
@@ -209,6 +213,19 @@ func (c *Col) RecalcRects(last bool) {
 		r.Max.Y = y + c.editors[i].size
 		y += c.editors[i].size
 		c.editors[i].SetRects(screen, c.r.Intersect(r), last, false)
+	}
+}
+
+func (c *Col) MaximizeEditor(idx int) {
+	c.maximized = true
+	r := c.r
+	r.Min.Y = c.r.Min.Y + TagHeight(&c.tagfr) + 2
+	for i := range c.editors {
+		if i == idx {
+			c.editors[i].SetRects(c.b, c.r.Intersect(r), c.last, false)
+		} else {
+			c.editors[i].SetRects(c.b, image.Rect(0, 0, 0, 0), c.last, false)
+		}
 	}
 }
 
