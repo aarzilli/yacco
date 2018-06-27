@@ -124,11 +124,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 	util.Must(e.tagfr.Init(5), "Editor initialization failed")
 
 	e.GenTag()
-	if bodybuf.IsDir() {
-		e.tagbuf.Replace([]rune("Direxec "), &util.Sel{e.tagbuf.Size(), e.tagbuf.Size()}, true, nil, util.EO_FILES)
-	} else {
-		e.tagbuf.Replace([]rune("Look Edit "), &util.Sel{e.tagbuf.Size(), e.tagbuf.Size()}, true, nil, util.EO_FILES)
-	}
+	e.tagbuf.Replace(e.defaultTag(), &util.Sel{e.tagbuf.Size(), e.tagbuf.Size()}, true, nil, util.EO_FILES)
 	e.tagfr.Sel.S = e.tagbuf.Size()
 	e.tagfr.Sel.E = e.tagbuf.Size()
 
@@ -151,6 +147,17 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 	e.redrawRects = make([]image.Rectangle, 0, 8)
 
 	return e
+}
+
+func (e *Editor) defaultTag() []rune {
+	s := "Look Edit "
+	switch {
+	case e.bodybuf.IsDir():
+		s = "Direxec "
+	case e.bodybuf.Name == "+Error":
+		s = "yclear "
+	}
+	return []rune(s)
 }
 
 func (e *Editor) setTagRectsIntl() {
