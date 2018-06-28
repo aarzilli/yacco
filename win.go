@@ -400,6 +400,10 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 		}
 
 		if lp.sfr != nil {
+			if lp.ed != nil && lp.ed.minimap {
+				lp.ed.MinimapClick(e)
+				break
+			}
 			if e.Where.In(lp.sfr.Fr.R) {
 				ee, could := specialDblClick(lp.bodybuf, &lp.sfr.Fr, e, events)
 				if !could {
@@ -550,7 +554,9 @@ func (w *Window) SetTick(p image.Point) {
 		}
 	}
 	if lp.sfr != nil {
-		if !lp.sfr.Fr.VisibleTick {
+		if lp.ed != nil && lp.ed.minimap {
+			// do nothing
+		} else if !lp.sfr.Fr.VisibleTick {
 			lp.sfr.Fr.VisibleTick = true
 			lp.sfr.Redraw(true, nil)
 		}
@@ -893,6 +899,11 @@ func (lp *LogicalPos) bufferRefreshable(ontag bool) func() {
 
 func (w *Window) Type(lp LogicalPos, e key.Event) {
 	ec := lp.asExecContext(true)
+
+	if lp.sfr != nil && lp.ed != nil && lp.ed.minimap {
+		lp.ed.MinimapExit()
+		return
+	}
 
 	switch e.Code {
 	case key.CodeEscape:
