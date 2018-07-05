@@ -524,6 +524,11 @@ func (ed *Editor) Warp() {
 	if !HasFocus {
 		return
 	}
+	if col := ed.Column(); col != nil && col.maximized {
+		col.RecalcRects(col.last)
+		col.Redraw()
+		Wnd.FlushImage(col.r)
+	}
 	p := ed.sfr.Fr.PointToCoord(ed.sfr.Fr.Sel.S)
 	if !ed.sfr.Fr.VisibleTick {
 		ed.sfr.Fr.VisibleTick = true
@@ -537,6 +542,11 @@ func (ed *Editor) WarpToTag() {
 	if !HasFocus {
 		return
 	}
+	if col := ed.Column(); col != nil && col.maximized {
+		col.RecalcRects(col.last)
+		col.Redraw()
+		Wnd.FlushImage(col.r)
+	}
 	p := ed.tagfr.PointToCoord(0)
 	p.Y -= 3
 	Wnd.WarpMouse(p)
@@ -547,6 +557,11 @@ func (ed *Editor) WarpToTag() {
 }
 
 func (ed *Editor) WarpToHandle() {
+	if col := ed.Column(); col != nil && col.maximized {
+		col.RecalcRects(col.last)
+		col.Redraw()
+		Wnd.FlushImage(col.r)
+	}
 	p := ed.r.Min
 	p = p.Add(image.Point{config.ScrollWidth / 2, ed.tagfr.Font.Metrics().Height.Floor() / 2})
 	Wnd.WarpMouse(p)
