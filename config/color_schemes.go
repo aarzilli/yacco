@@ -52,6 +52,7 @@ func init() {
 	ColorSchemeMap["4"] = &C4ColorScheme
 	ColorSchemeMap["4c"] = &C4CColorScheme
 	ColorSchemeMap["4cr"] = &C4CRColorScheme
+	ColorSchemeMap["g"] = &GruvboxColorScheme
 }
 
 func c(r, g, b uint8) image.Uniform {
@@ -446,4 +447,32 @@ var C4CRColorScheme = ColorScheme{
 	HandleModifiedFG: cc(0x0044ff),
 	HandleSpecialFG:  c(0xF5, 0x2B, 0x00),
 	HandleBG:         c(0x72, 0x78, 0x80),
+}
+
+var GruvboxColorScheme = ColorScheme{
+	WindowBG: cc(0xfbf1c7),
+
+	TopBorder: *image.Black, VertBorder: cc(0xa89984),
+	Scrollbar: cc(0x928374),
+
+	EditorPlain: []image.Uniform{cc(0xfbf1c7), cc(0x282828), cc(0xcc241d), cc(0x458588), cc(0xd654d0e)},
+	EditorSel1:  []image.Uniform{cc(0x076678), cc(0xfbf1c7), cc(0xfbf1c7), cc(0xfbf1c7)},
+	EditorSel2:  []image.Uniform{cc(0x79740e), cc(0xfbf1c7), cc(0xfbf1c7), cc(0xfbf1c7)},
+	EditorSel3:  []image.Uniform{cc(0x9d0006), cc(0xfbf1c7), cc(0xfbf1c7), cc(0xfbf1c7)},
+
+	EditorMatchingParenthesis: []image.Uniform{cc(0x282828), cc(0xfbf1c7), cc(0xfbf1c7), cc(0xfbf1c7)},
+
+	Compl: []image.Uniform{cc(0x282828), cc(0xfbf1c7)},
+
+	TagPlain: []image.Uniform{cc(0x427b58), cc(0xfbf1c7)},
+	TagSel1:  []image.Uniform{cc(0x076678), cc(0xfbf1c7)},
+	TagSel2:  []image.Uniform{cc(0x076678), cc(0xfbf1c7)},
+	TagSel3:  []image.Uniform{cc(0x076678), cc(0xfbf1c7)},
+
+	TagMatchingParenthesis: []image.Uniform{cc(0x076678), cc(0xfbf1c7)},
+
+	HandleFG:         cc(0x427b58),
+	HandleModifiedFG: cc(0xd79921),
+	HandleSpecialFG:  cc(0xfabd2f),
+	HandleBG:         cc(0xfbf1c7),
 }
