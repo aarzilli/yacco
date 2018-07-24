@@ -2,15 +2,19 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build linux,!android
+// +build linux,!android openbsd
 
 package gldriver
 
 /*
-#cgo LDFLAGS: -lEGL -lGLESv2 -lX11
+#cgo linux      LDFLAGS: -lEGL -lGLESv2 -lX11
+#cgo openbsd    LDFLAGS: -L/usr/X11R6/lib/ -lEGL -lGLESv2 -lX11
+
+#cgo openbsd    CFLAGS: -I/usr/X11R6/include/
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 char *eglGetErrorStr();
 void startDriver();
@@ -18,7 +22,7 @@ void processEvents();
 void makeCurrent(uintptr_t ctx);
 void swapBuffers(uintptr_t ctx);
 void doCloseWindow(uintptr_t id);
-uintptr_t doNewWindow(int width, int height);
+uintptr_t doNewWindow(int width, int height, char* title, int title_len);
 uintptr_t doShowWindow(uintptr_t id);
 uintptr_t surfaceCreate();
 */
@@ -27,6 +31,7 @@ import (
 	"errors"
 	"runtime"
 	"time"
+	"unsafe"
 
 	"golang.org/x/exp/shiny/driver/internal/x11key"
 	"golang.org/x/exp/shiny/screen"
@@ -40,6 +45,8 @@ import (
 
 const useLifecycler = true
 
+const handleSizeEventsAtChannelReceive = true
+
 var theKeysyms x11key.KeysymTable
 
 func init() {
@@ -50,14 +57,23 @@ func init() {
 
 func newWindow(opts *screen.NewWindowOptions) (uintptr, error) {
 	width, height := optsSize(opts)
+
+	title := opts.GetTitle()
+	ctitle := C.CString(title)
+	defer C.free(unsafe.Pointer(ctitle))
+
 	retc := make(chan uintptr)
 	uic <- uiClosure{
 		f: func() uintptr {
-			return uintptr(C.doNewWindow(C.int(width), C.int(height)))
+			return uintptr(C.doNewWindow(C.int(width), C.int(height), ctitle, C.int(len(title))))
 		},
 		retc: retc,
 	}
 	return <-retc, nil
+}
+
+func initWindow(w *windowImpl) {
+	w.glctx, w.worker = glctx, worker
 }
 
 func showWindow(w *windowImpl) {
@@ -69,9 +85,6 @@ func showWindow(w *windowImpl) {
 		retc: retc,
 	}
 	w.ctx = <-retc
-	w.glctxMu.Lock()
-	w.glctx, w.worker = glctx, worker
-	w.glctxMu.Unlock()
 	go drawLoop(w)
 }
 
@@ -253,11 +266,11 @@ func onFocus(id uintptr, focused bool) {
 	}
 
 	w.lifecycler.SetFocused(focused)
-	w.lifecycler.SendEvent(w)
+	w.lifecycler.SendEvent(w, w.glctx)
 }
 
 //export onConfigure
-func onConfigure(id uintptr, x, y, width, height int32) {
+func onConfigure(id uintptr, x, y, width, height, displayWidth, displayWidthMM int32) {
 	theScreen.mu.Lock()
 	w := theScreen.windows[id]
 	theScreen.mu.Unlock()
@@ -266,33 +279,21 @@ func onConfigure(id uintptr, x, y, width, height int32) {
 		return
 	}
 
-	// TODO: should this really be done on the receiving end of the w.Events()
-	// channel, in the same goroutine as other GL calls in the app's 'business
-	// logic'?
-	go func() {
-		w.glctxMu.Lock()
-		w.glctx.Viewport(0, 0, int(width), int(height))
-		w.glctxMu.Unlock()
-	}()
-
 	w.lifecycler.SetVisible(x+width > 0 && y+height > 0)
-	w.lifecycler.SendEvent(w)
+	w.lifecycler.SendEvent(w, w.glctx)
 
-	sz := size.Event{
-		WidthPx:  int(width),
-		HeightPx: int(height),
-		WidthPt:  geom.Pt(width),
-		HeightPt: geom.Pt(height),
-		// TODO: don't assume 72 DPI. DisplayWidth and DisplayWidthMM is
-		// probably the best place to start looking.
-		PixelsPerPt: 1,
-	}
-
-	w.szMu.Lock()
-	w.sz = sz
-	w.szMu.Unlock()
-
-	w.Send(sz)
+	const (
+		mmPerInch = 25.4
+		ptPerInch = 72
+	)
+	pixelsPerMM := float32(displayWidth) / float32(displayWidthMM)
+	w.Send(size.Event{
+		WidthPx:     int(width),
+		HeightPx:    int(height),
+		WidthPt:     geom.Pt(width),
+		HeightPt:    geom.Pt(height),
+		PixelsPerPt: pixelsPerMM * mmPerInch / ptPerInch,
+	})
 }
 
 //export onDeleteWindow
@@ -306,7 +307,7 @@ func onDeleteWindow(id uintptr) {
 	}
 
 	w.lifecycler.SetDead(true)
-	w.lifecycler.SendEvent(w)
+	w.lifecycler.SendEvent(w, w.glctx)
 }
 
 func surfaceCreate() error {

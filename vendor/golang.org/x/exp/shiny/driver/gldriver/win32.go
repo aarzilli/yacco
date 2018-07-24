@@ -23,7 +23,11 @@ import (
 	"golang.org/x/mobile/gl"
 )
 
+// TODO: change this to true, after manual testing on Win32.
 const useLifecycler = false
+
+// TODO: change this to true, after manual testing on Win32.
+const handleSizeEventsAtChannelReceive = false
 
 func main(f func(screen.Screen)) error {
 	return win32.Main(func() { f(theScreen) })
@@ -72,11 +76,11 @@ func newWindow(opts *screen.NewWindowOptions) (uintptr, error) {
 	return uintptr(w), nil
 }
 
-func showWindow(w *windowImpl) {
-	w.glctxMu.Lock()
+func initWindow(w *windowImpl) {
 	w.glctx, w.worker = gl.NewContext()
-	w.glctxMu.Unlock()
+}
 
+func showWindow(w *windowImpl) {
 	// Show makes an initial call to sizeEvent (via win32.SizeEvent), where
 	// we setup the EGL surface and GL context.
 	win32.Show(syscall.Handle(w.id))
@@ -170,6 +174,7 @@ func paintEvent(hwnd syscall.Handle, e paint.Event) {
 		return
 	}
 
+	// TODO: the paint.Event should have External: true.
 	w.Send(paint.Event{})
 }
 
@@ -187,11 +192,17 @@ func sizeEvent(hwnd syscall.Handle, e size.Event) {
 		go drawLoop(w)
 	}
 
-	w.szMu.Lock()
-	w.sz = e
-	w.szMu.Unlock()
+	if !handleSizeEventsAtChannelReceive {
+		w.szMu.Lock()
+		w.sz = e
+		w.szMu.Unlock()
+	}
 
 	w.Send(e)
+
+	if handleSizeEventsAtChannelReceive {
+		return
+	}
 
 	// Screen is dirty, generate a paint event.
 	//
@@ -222,28 +233,72 @@ func eglErr() error {
 }
 
 func createEGLSurface(hwnd syscall.Handle, w *windowImpl) error {
-	displayAttrib := [...]eglInt{
-		_EGL_PLATFORM_ANGLE_TYPE_ANGLE,
-		_EGL_PLATFORM_ANGLE_TYPE_DEFAULT_ANGLE,
-		_EGL_PLATFORM_ANGLE_MAX_VERSION_MAJOR_ANGLE, _EGL_DONT_CARE,
-		_EGL_PLATFORM_ANGLE_MAX_VERSION_MINOR_ANGLE, _EGL_DONT_CARE,
-		_EGL_NONE,
+	var displayAttribPlatforms = [][]eglInt{
+		// Default
+		[]eglInt{
+			_EGL_PLATFORM_ANGLE_TYPE_ANGLE,
+			_EGL_PLATFORM_ANGLE_TYPE_DEFAULT_ANGLE,
+			_EGL_PLATFORM_ANGLE_MAX_VERSION_MAJOR_ANGLE, _EGL_DONT_CARE,
+			_EGL_PLATFORM_ANGLE_MAX_VERSION_MINOR_ANGLE, _EGL_DONT_CARE,
+			_EGL_NONE,
+		},
+		// Direct3D 11
+		[]eglInt{
+			_EGL_PLATFORM_ANGLE_TYPE_ANGLE,
+			_EGL_PLATFORM_ANGLE_TYPE_D3D11_ANGLE,
+			_EGL_PLATFORM_ANGLE_MAX_VERSION_MAJOR_ANGLE, _EGL_DONT_CARE,
+			_EGL_PLATFORM_ANGLE_MAX_VERSION_MINOR_ANGLE, _EGL_DONT_CARE,
+			_EGL_NONE,
+		},
+		// Direct3D 9
+		[]eglInt{
+			_EGL_PLATFORM_ANGLE_TYPE_ANGLE,
+			_EGL_PLATFORM_ANGLE_TYPE_D3D9_ANGLE,
+			_EGL_PLATFORM_ANGLE_MAX_VERSION_MAJOR_ANGLE, _EGL_DONT_CARE,
+			_EGL_PLATFORM_ANGLE_MAX_VERSION_MINOR_ANGLE, _EGL_DONT_CARE,
+			_EGL_NONE,
+		},
+		// Direct3D 11 with WARP
+		//   https://msdn.microsoft.com/en-us/library/windows/desktop/gg615082.aspx
+		[]eglInt{
+			_EGL_PLATFORM_ANGLE_TYPE_ANGLE,
+			_EGL_PLATFORM_ANGLE_TYPE_D3D11_ANGLE,
+			_EGL_PLATFORM_ANGLE_DEVICE_TYPE_ANGLE,
+			_EGL_PLATFORM_ANGLE_DEVICE_TYPE_WARP_ANGLE,
+			_EGL_PLATFORM_ANGLE_MAX_VERSION_MAJOR_ANGLE, _EGL_DONT_CARE,
+			_EGL_PLATFORM_ANGLE_MAX_VERSION_MINOR_ANGLE, _EGL_DONT_CARE,
+			_EGL_NONE,
+		},
 	}
 
 	dc, err := win32.GetDC(hwnd)
 	if err != nil {
 		return fmt.Errorf("win32.GetDC failed: %v", err)
 	}
-	display, _, _ := eglGetPlatformDisplayEXT.Call(
-		_EGL_PLATFORM_ANGLE_ANGLE,
-		uintptr(dc),
-		uintptr(unsafe.Pointer(&displayAttrib)),
-	)
-	if display == _EGL_NO_DISPLAY {
-		return fmt.Errorf("eglGetPlatformDisplayEXT failed: %v", eglErr())
-	}
-	if ret, _, _ := eglInitialize.Call(display, 0, 0); ret == 0 {
-		return fmt.Errorf("eglInitialize failed: %v", eglErr())
+
+	var display uintptr = _EGL_NO_DISPLAY
+	for i, displayAttrib := range displayAttribPlatforms {
+		lastTry := i == len(displayAttribPlatforms)-1
+
+		display, _, _ = eglGetPlatformDisplayEXT.Call(
+			_EGL_PLATFORM_ANGLE_ANGLE,
+			uintptr(dc),
+			uintptr(unsafe.Pointer(&displayAttrib[0])),
+		)
+
+		if display == _EGL_NO_DISPLAY {
+			if !lastTry {
+				continue
+			}
+			return fmt.Errorf("eglGetPlatformDisplayEXT failed: %v", eglErr())
+		}
+
+		if ret, _, _ := eglInitialize.Call(display, 0, 0); ret == 0 {
+			if !lastTry {
+				continue
+			}
+			return fmt.Errorf("eglInitialize failed: %v", eglErr())
+		}
 	}
 
 	eglBindAPI.Call(_EGL_OPENGL_ES_API)

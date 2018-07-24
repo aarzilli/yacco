@@ -2,6 +2,8 @@
 
 set -e
 
+export GO111MODULE=on
+
 destdir=$1
 
 function make_launcher {

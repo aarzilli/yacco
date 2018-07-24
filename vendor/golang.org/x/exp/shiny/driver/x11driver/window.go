@@ -91,17 +91,24 @@ func (w *windowImpl) Scale(dr image.Rectangle, src screen.Texture, sr image.Rect
 }
 
 func (w *windowImpl) Publish() screen.PublishResult {
-	// TODO.
+	// TODO: implement a back buffer, and copy or flip that here to the front
+	// buffer.
+
+	// This sync isn't needed to flush the outgoing X11 requests. Instead, it
+	// acts as a form of flow control. Outgoing requests can be quite small on
+	// the wire, e.g. draw this texture ID (an integer) to this rectangle (four
+	// more integers), but much more expensive on the server (blending a
+	// million source and destination pixels). Without this sync, the Go X11
+	// client could easily end up sending work at a faster rate than the X11
+	// server can serve.
+	w.s.xc.Sync()
+
 	return screen.PublishResult{}
 }
 
 func (w *windowImpl) SetTitle(title string) error {
 	buf := []byte(title)
-	err := xproto.ChangePropertyChecked(w.s.xc, xproto.PropModeReplace, w.xw, w.s.atomNetWMName, w.s.atomUTF8String, 8, uint32(len(buf)), buf).Check()
-	if err != nil {
-		return err
-	}
-	return xproto.ChangePropertyChecked(w.s.xc, xproto.PropModeReplace, w.xw, w.s.atomWMClass, w.s.atomUTF8String, 8, uint32(len(buf)), buf).Check()
+	return xproto.ChangePropertyChecked(w.s.xc, xproto.PropModeReplace, w.xw, w.s.atomNetWMName, w.s.atomUTF8String, 8, uint32(len(buf)), buf).Check()
 }
 
 func (w *windowImpl) SetCursor(cursor screen.Cursor) error {
@@ -145,7 +152,7 @@ func (w *windowImpl) handleConfigureNotify(ev xproto.ConfigureNotifyEvent) {
 	// TODO: does the order of these lifecycle and size events matter? Should
 	// they really be a single, atomic event?
 	w.lifecycler.SetVisible((int(ev.X)+int(ev.Width)) > 0 && (int(ev.Y)+int(ev.Height)) > 0)
-	w.lifecycler.SendEvent(w)
+	w.lifecycler.SendEvent(w, nil)
 
 	newWidth, newHeight := int(ev.Width), int(ev.Height)
 	if w.width == newWidth && w.height == newHeight {

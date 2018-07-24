@@ -78,10 +78,20 @@ func (w *windowImpl) Draw(src2dst f64.Aff3, src screen.Texture, sr image.Rectang
 }
 
 func (w *windowImpl) DrawUniform(src2dst f64.Aff3, src color.Color, sr image.Rectangle, op draw.Op, opts *screen.DrawOptions) {
-	panic("TODO: implement")
+	if op != draw.Src && op != draw.Over {
+		// TODO:
+		return
+	}
+	w.execCmd(&cmd{
+		id:      cmdDrawUniform,
+		src2dst: src2dst,
+		color:   src,
+		sr:      sr,
+		op:      op,
+	})
 }
 
-func drawWindow(dc syscall.Handle, src2dst f64.Aff3, src syscall.Handle, sr image.Rectangle, op draw.Op) (retErr error) {
+func drawWindow(dc syscall.Handle, src2dst f64.Aff3, src interface{}, sr image.Rectangle, op draw.Op) (retErr error) {
 	var dr image.Rectangle
 	if src2dst[1] != 0 || src2dst[3] != 0 {
 		// general drawing
@@ -118,8 +128,7 @@ func drawWindow(dc syscall.Handle, src2dst f64.Aff3, src syscall.Handle, sr imag
 		}()
 	} else if src2dst[0] == 1 && src2dst[4] == 1 {
 		// copy bitmap
-		dp := image.Point{int(src2dst[2]), int(src2dst[5])}
-		dr = sr.Add(dp.Sub(sr.Min))
+		dr = sr.Add(image.Point{int(src2dst[2]), int(src2dst[5])})
 	} else {
 		// scale bitmap
 		dstXMin := float64(sr.Min.X)*src2dst[0] + src2dst[2]
@@ -139,7 +148,13 @@ func drawWindow(dc syscall.Handle, src2dst f64.Aff3, src syscall.Handle, sr imag
 			image.Point{int(math.Ceil(dstXMax)), int(math.Ceil(dstYMax))},
 		}
 	}
-	return copyBitmapToDC(dc, dr, src, sr, op)
+	switch s := src.(type) {
+	case syscall.Handle:
+		return copyBitmapToDC(dc, dr, s, sr, op)
+	case color.Color:
+		return fill(dc, dr, s, op)
+	}
+	return fmt.Errorf("unsupported type %T", src)
 }
 
 func (w *windowImpl) Copy(dp image.Point, src screen.Texture, sr image.Rectangle, op draw.Op, opts *screen.DrawOptions) {
@@ -218,6 +233,7 @@ const (
 	cmdDraw = iota
 	cmdFill
 	cmdUpload
+	cmdDrawUniform
 )
 
 var msgCmd = win32.AddWindowMsg(handleCmd)
@@ -242,6 +258,8 @@ func handleCmd(hwnd syscall.Handle, uMsg uint32, wParam, lParam uintptr) {
 	switch c.id {
 	case cmdDraw:
 		c.err = drawWindow(dc, c.src2dst, c.texture, c.sr, c.op)
+	case cmdDrawUniform:
+		c.err = drawWindow(dc, c.src2dst, c.color, c.sr, c.op)
 	case cmdFill:
 		c.err = fill(dc, c.dr, c.color, c.op)
 	case cmdUpload:

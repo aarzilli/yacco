@@ -33,12 +33,12 @@ type screenImpl struct {
 	xsi     *xproto.ScreenInfo
 	keysyms x11key.KeysymTable
 
+	atomNETWMName      xproto.Atom
+	atomUTF8String     xproto.Atom
 	atomWMDeleteWindow xproto.Atom
 	atomWMProtocols    xproto.Atom
 	atomWMTakeFocus    xproto.Atom
 	atomNetWMName      xproto.Atom
-	atomWMClass        xproto.Atom
-	atomUTF8String     xproto.Atom
 	cursorCache        map[screen.Cursor]xproto.Cursor
 
 	pixelsPerPt  float32
@@ -146,7 +146,7 @@ func (s *screenImpl) run() {
 			case s.atomWMDeleteWindow:
 				if w := s.findWindow(ev.Window); w != nil {
 					w.lifecycler.SetDead(true)
-					w.lifecycler.SendEvent(w)
+					w.lifecycler.SendEvent(w, nil)
 				} else {
 					noWindowFound = true
 				}
@@ -179,7 +179,7 @@ func (s *screenImpl) run() {
 		case xproto.FocusInEvent:
 			if w := s.findWindow(ev.Event); w != nil {
 				w.lifecycler.SetFocused(true)
-				w.lifecycler.SendEvent(w)
+				w.lifecycler.SendEvent(w, nil)
 			} else {
 				noWindowFound = true
 			}
@@ -187,7 +187,7 @@ func (s *screenImpl) run() {
 		case xproto.FocusOutEvent:
 			if w := s.findWindow(ev.Event); w != nil {
 				w.lifecycler.SetFocused(false)
-				w.lifecycler.SendEvent(w)
+				w.lifecycler.SendEvent(w, nil)
 			} else {
 				noWindowFound = true
 			}
@@ -410,7 +410,7 @@ func (s *screenImpl) NewWindow(opts *screen.NewWindowOptions) (screen.Window, er
 	s.windows[xw] = w
 	s.mu.Unlock()
 
-	w.lifecycler.SendEvent(w)
+	w.lifecycler.SendEvent(w, nil)
 
 	xproto.CreateWindow(s.xc, s.xsi.RootDepth, xw, s.xsi.Root,
 		0, 0, uint16(width), uint16(height), 0,
@@ -428,6 +428,10 @@ func (s *screenImpl) NewWindow(opts *screen.NewWindowOptions) (screen.Window, er
 		},
 	)
 	s.setProperty(xw, s.atomWMProtocols, s.atomWMDeleteWindow, s.atomWMTakeFocus)
+
+	title := []byte(opts.GetTitle())
+	xproto.ChangeProperty(s.xc, xproto.PropModeReplace, xw, s.atomNETWMName, s.atomUTF8String, 8, uint32(len(title)), title)
+
 	xproto.CreateGC(s.xc, xg, xproto.Drawable(xw), 0, nil)
 	render.CreatePicture(s.xc, xp, xproto.Drawable(xw), pictformat, 0, nil)
 	xproto.MapWindow(s.xc, xw)
@@ -436,6 +440,14 @@ func (s *screenImpl) NewWindow(opts *screen.NewWindowOptions) (screen.Window, er
 }
 
 func (s *screenImpl) initAtoms() (err error) {
+	s.atomNETWMName, err = s.internAtom("_NET_WM_NAME")
+	if err != nil {
+		return err
+	}
+	s.atomUTF8String, err = s.internAtom("UTF8_STRING")
+	if err != nil {
+		return err
+	}
 	s.atomWMDeleteWindow, err = s.internAtom("WM_DELETE_WINDOW")
 	if err != nil {
 		return err
@@ -449,14 +461,6 @@ func (s *screenImpl) initAtoms() (err error) {
 		return err
 	}
 	s.atomNetWMName, err = s.internAtom("_NET_WM_NAME")
-	if err != nil {
-		return err
-	}
-	s.atomUTF8String, err = s.internAtom("UTF8_STRING")
-	if err != nil {
-		return err
-	}
-	s.atomWMClass, err = s.internAtom("WM_CLASS")
 	if err != nil {
 		return err
 	}

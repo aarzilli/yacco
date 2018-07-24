@@ -5,6 +5,7 @@
 // +build !darwin !386,!amd64 ios
 // +build !linux android
 // +build !windows
+// +build !openbsd
 
 package gldriver
 
@@ -17,6 +18,7 @@ import (
 
 func newWindow(opts *screen.NewWindowOptions) (uintptr, error) { return 0, nil }
 
+func initWindow(id *windowImpl) {}
 func showWindow(id *windowImpl) {}
 func closeWindow(id uintptr)    {}
 func drawLoop(w *windowImpl)    {}

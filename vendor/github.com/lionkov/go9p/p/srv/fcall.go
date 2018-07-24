@@ -165,8 +165,12 @@ func (srv *Srv) flush(req *Req) {
 	conn.Lock()
 	r := conn.Reqs[tag]
 	if r != nil {
-		req.flushreq = r.flushreq
-		r.flushreq = req
+		rp := &r.flushreq
+		for *rp != nil {
+			rp = &((*rp).flushreq)
+		}
+
+		*rp = req
 	}
 	conn.Unlock()
 

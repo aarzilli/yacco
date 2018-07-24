@@ -14,6 +14,23 @@
 #import <Foundation/Foundation.h>
 #import <OpenGL/gl3.h>
 
+// The variables did not exist on older OS X releases,
+// we use the old variables deprecated on macOS to define them.
+#if __MAC_OS_X_VERSION_MAX_ALLOWED < 101200
+enum
+{
+    NSEventTypeScrollWheel = NSScrollWheel,
+    NSEventTypeKeyDown = NSKeyDown
+};
+enum
+{
+    NSWindowStyleMaskTitled = NSTitledWindowMask,
+    NSWindowStyleMaskResizable = NSResizableWindowMask,
+    NSWindowStyleMaskMiniaturizable = NSMiniaturizableWindowMask,
+    NSWindowStyleMaskClosable = NSClosableWindowMask
+};
+#endif
+
 void makeCurrentContext(uintptr_t context) {
 	NSOpenGLContext* ctx = (NSOpenGLContext*)context;
 	[ctx makeCurrentContext];
@@ -107,7 +124,7 @@ uint64 threadID() {
 	double y = (h - p.y) * scale - 1; // flip origin from bottom-left to top-left.
 
 	double dx, dy;
-	if (theEvent.type == NSScrollWheel) {
+	if (theEvent.type == NSEventTypeScrollWheel) {
 		dx = theEvent.scrollingDeltaX;
 		dy = theEvent.scrollingDeltaY;
 	}
@@ -161,7 +178,7 @@ uint64 threadID() {
 	uint8_t direction;
 	if ([theEvent isARepeat]) {
 		direction = 0;
-	} else if (theEvent.type == NSKeyDown) {
+	} else if (theEvent.type == NSEventTypeKeyDown) {
 		direction = 1;
 	} else {
 		direction = 2;
@@ -173,24 +190,30 @@ uint64 threadID() {
 	[self callSetGeom];
 }
 
+// TODO: catch windowDidMiniaturize?
+
 - (void)windowDidExpose:(NSNotification *)notification {
-	lifecycleVisible((GoUintptr)self);
+	lifecycleVisible((GoUintptr)self, true);
 }
 
 - (void)windowDidBecomeKey:(NSNotification *)notification {
-	lifecycleFocused((GoUintptr)self);
+	lifecycleFocused((GoUintptr)self, true);
 }
 
 - (void)windowDidResignKey:(NSNotification *)notification {
-	if (![NSApp isHidden]) {
-		lifecycleVisible((GoUintptr)self);
+	lifecycleFocused((GoUintptr)self, false);
+	if ([NSApp isHidden]) {
+		lifecycleVisible((GoUintptr)self, false);
 	}
 }
 
 - (void)windowWillClose:(NSNotification *)notification {
+	// TODO: is this right? Closing a window via the top-left red button
+	// seems to return early without ever calling windowClosing.
 	if (self.window.nextResponder == NULL) {
 		return; // already called close
 	}
+
 	windowClosing((GoUintptr)self);
 	[self.window.nextResponder release];
 	self.window.nextResponder = NULL;
@@ -213,11 +236,11 @@ uint64 threadID() {
 }
 
 - (void)applicationWillHide:(NSNotification *)aNotification {
-	lifecycleAliveAll();
+	lifecycleHideAll();
 }
 @end
 
-uintptr_t doNewWindow(int width, int height) {
+uintptr_t doNewWindow(int width, int height, char* title) {
 	NSScreen *screen = [NSScreen mainScreen];
 	double w = (double)width / [screen backingScaleFactor];
 	double h = (double)height / [screen backingScaleFactor];
@@ -230,7 +253,7 @@ uintptr_t doNewWindow(int width, int height) {
 		[NSApp setMainMenu:menuBar];
 
 		id menu = [NSMenu new];
-		NSString* name = [[NSProcessInfo processInfo] processName];
+		NSString* name = [[NSString alloc] initWithUTF8String:title];
 
 		id hideMenuItem = [[NSMenuItem alloc] initWithTitle:@"Hide"
 			action:@selector(hide:) keyEquivalent:@"h"];
@@ -244,12 +267,12 @@ uintptr_t doNewWindow(int width, int height) {
 		NSRect rect = NSMakeRect(0, 0, w, h);
 
 		NSWindow* window = [[NSWindow alloc] initWithContentRect:rect
-				styleMask:NSTitledWindowMask
+				styleMask:NSWindowStyleMaskTitled
 				backing:NSBackingStoreBuffered
 				defer:NO];
-		window.styleMask |= NSResizableWindowMask;
-		window.styleMask |= NSMiniaturizableWindowMask ;
-		window.styleMask |= NSClosableWindowMask;
+		window.styleMask |= NSWindowStyleMaskResizable;
+		window.styleMask |= NSWindowStyleMaskMiniaturizable;
+		window.styleMask |= NSWindowStyleMaskClosable;
 		window.title = name;
 		window.displaysWhenScreenProfileChanges = YES;
 		[window cascadeTopLeftFromPoint:NSMakePoint(20,20)];
@@ -260,7 +283,6 @@ uintptr_t doNewWindow(int width, int height) {
 			NSOpenGLPFAColorSize,     24,
 			NSOpenGLPFAAlphaSize,     8,
 			NSOpenGLPFADepthSize,     16,
-			NSOpenGLPFAAccelerated,
 			NSOpenGLPFADoubleBuffer,
 			NSOpenGLPFAAllowOfflineRenderers,
 			0

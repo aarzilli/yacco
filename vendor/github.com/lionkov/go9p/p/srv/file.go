@@ -553,7 +553,7 @@ func (*Fsrv) Wstat(req *Req) {
 }
 
 func (*Fsrv) Flush(req *Req) {
-	req.Flush()
+        req.Flush()
 }
 
 func (*Fsrv) FidDestroy(ffid *Fid) {

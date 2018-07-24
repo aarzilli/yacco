@@ -7,7 +7,7 @@
 // Package win32 implements a partial shiny screen driver using the Win32 API.
 // It provides window, lifecycle, key, and mouse management, but no drawing.
 // That is left to windriver (using GDI) or gldriver (using DirectX via ANGLE).
-package win32
+package win32 // import "golang.org/x/exp/shiny/driver/internal/win32"
 
 import (
 	"fmt"
@@ -66,24 +66,15 @@ func newWindow(opts *screen.NewWindowOptions) (syscall.Handle, error) {
 	if err != nil {
 		return 0, err
 	}
-	title, err := syscall.UTF16PtrFromString("Shiny Window")
+	title, err := syscall.UTF16PtrFromString(opts.GetTitle())
 	if err != nil {
 		return 0, err
-	}
-	w, h := _CW_USEDEFAULT, _CW_USEDEFAULT
-	if opts != nil {
-		if opts.Width > 0 {
-			w = opts.Width
-		}
-		if opts.Height > 0 {
-			h = opts.Height
-		}
 	}
 	hwnd, err := _CreateWindowEx(0,
 		wcname, title,
 		_WS_OVERLAPPEDWINDOW,
 		_CW_USEDEFAULT, _CW_USEDEFAULT,
-		int32(w), int32(h),
+		_CW_USEDEFAULT, _CW_USEDEFAULT,
 		0, 0, hThisInstance, 0)
 	if err != nil {
 		return 0, err
@@ -92,6 +83,25 @@ func newWindow(opts *screen.NewWindowOptions) (syscall.Handle, error) {
 	// TODO(andlabs): call UpdateWindow()
 
 	return hwnd, nil
+}
+
+// ResizeClientRect makes hwnd client rectangle opts.Width by opts.Height in size.
+func ResizeClientRect(hwnd syscall.Handle, opts *screen.NewWindowOptions) error {
+	if opts == nil || opts.Width <= 0 || opts.Height <= 0 {
+		return nil
+	}
+	var cr, wr _RECT
+	err := _GetClientRect(hwnd, &cr)
+	if err != nil {
+		return err
+	}
+	err = _GetWindowRect(hwnd, &wr)
+	if err != nil {
+		return err
+	}
+	w := (wr.Right - wr.Left) - (cr.Right - int32(opts.Width))
+	h := (wr.Bottom - wr.Top) - (cr.Bottom - int32(opts.Height))
+	return _MoveWindow(hwnd, wr.Left, wr.Top, w, h, false)
 }
 
 // Show shows a newly created window.
@@ -106,10 +116,7 @@ func Show(hwnd syscall.Handle) {
 }
 
 func Release(hwnd syscall.Handle) {
-	// TODO(andlabs): check for errors from this?
-	// TODO(andlabs): remove unsafe
-	_DestroyWindow(hwnd)
-	// TODO(andlabs): what happens if we're still painting?
+	SendMessage(hwnd, _WM_CLOSE, 0, 0)
 }
 
 func sendFocus(hwnd syscall.Handle, uMsg uint32, wParam, lParam uintptr) (lResult uintptr) {
@@ -160,8 +167,11 @@ func sendSize(hwnd syscall.Handle) {
 }
 
 func sendClose(hwnd syscall.Handle, uMsg uint32, wParam, lParam uintptr) (lResult uintptr) {
+	// TODO(ktye): DefWindowProc calls DestroyWindow by default.
+	// To intercept destruction of the window, return 0 and call
+	// DestroyWindow when appropriate.
 	LifecycleEvent(hwnd, lifecycle.StageDead)
-	return 0
+	return _DefWindowProc(hwnd, uMsg, wParam, lParam)
 }
 
 func sendMouseEvent(hwnd syscall.Handle, uMsg uint32, wParam, lParam uintptr) (lResult uintptr) {
@@ -183,6 +193,15 @@ func sendMouseEvent(hwnd syscall.Handle, uMsg uint32, wParam, lParam uintptr) (l
 		// distinct beginning and end. Should the intermediate events be
 		// DirNone?
 		e.Direction = mouse.DirStep
+
+		// Convert from screen to window coordinates.
+		p := _POINT{
+			int32(e.X),
+			int32(e.Y),
+		}
+		_ScreenToClient(hwnd, &p)
+		e.X = float32(p.X)
+		e.Y = float32(p.Y)
 	default:
 		panic("sendMouseEvent() called on non-mouse message")
 	}
@@ -288,6 +307,8 @@ func screenWindowWndProc(hwnd syscall.Handle, uMsg uint32, wParam uintptr, lPara
 	}
 	return _DefWindowProc(hwnd, uMsg, wParam, lParam)
 }
+
+//go:uintptrescapes
 
 func SendScreenMessage(uMsg uint32, wParam uintptr, lParam uintptr) (lResult uintptr) {
 	return SendMessage(screenHWND, uMsg, wParam, lParam)
@@ -415,6 +436,12 @@ func initCommon() (err error) {
 	}
 	// TODO(andlabs) hThisInstance
 	return nil
+}
+
+//go:uintptrescapes
+
+func SendMessage(hwnd syscall.Handle, uMsg uint32, wParam uintptr, lParam uintptr) (lResult uintptr) {
+	return sendMessage(hwnd, uMsg, wParam, lParam)
 }
 
 var mainCallback func()

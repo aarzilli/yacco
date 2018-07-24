@@ -52,12 +52,13 @@
 // implementation will generally work only with that driver's Buffer
 // implementation, and will not work with an arbitrary type that happens to
 // implement the Buffer methods.
-package screen
+package screen // import "golang.org/x/exp/shiny/screen"
 
 import (
 	"image"
 	"image/color"
 	"image/draw"
+	"unicode/utf8"
 
 	"golang.org/x/image/math/f64"
 )
@@ -236,7 +237,37 @@ type NewWindowOptions struct {
 	// zero value dimension.
 	Width, Height int
 
-	// TODO: fullscreen, title, icon, cursorHidden?
+	// Title specifies the window title.
+	Title string
+
+	// TODO: fullscreen, icon, cursorHidden?
+}
+
+// GetTitle returns a sanitized form of o.Title. In particular, its length will
+// not exceed 4096, and it may be further truncated so that it is valid UTF-8
+// and will not contain the NUL byte.
+//
+// o may be nil, in which case "" is returned.
+func (o *NewWindowOptions) GetTitle() string {
+	if o == nil {
+		return ""
+	}
+	return sanitizeUTF8(o.Title, 4096)
+}
+
+func sanitizeUTF8(s string, n int) string {
+	if n < len(s) {
+		s = s[:n]
+	}
+	i := 0
+	for i < len(s) {
+		r, n := utf8.DecodeRuneInString(s[i:])
+		if r == 0 || (r == utf8.RuneError && n == 1) {
+			break
+		}
+		i += n
+	}
+	return s[:i]
 }
 
 // Uploader is something you can upload a Buffer to.
@@ -251,6 +282,10 @@ type Uploader interface {
 	// accessed while it is uploading. A Buffer is re-usable, in that its pixel
 	// contents can be further modified, once all outstanding calls to Upload
 	// have returned.
+	//
+	// TODO: make it optional that a Buffer's contents is preserved after
+	// Upload? Undoing a swizzle is a non-trivial amount of work, and can be
+	// redundant if the next paint cycle starts by clearing the buffer.
 	//
 	// When uploading to a Window, there will not be any visible effect until
 	// Publish is called.

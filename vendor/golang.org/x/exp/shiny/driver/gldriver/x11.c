@@ -2,16 +2,20 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build linux,!android
+// +build linux,!android openbsd
 
 #include "_cgo_export.h"
 #include <EGL/egl.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
+Atom net_wm_name;
+Atom utf8_string;
 Atom wm_delete_window;
 Atom wm_protocols;
 Atom wm_take_focus;
+
 EGLConfig e_config;
 EGLContext e_ctx;
 EGLDisplay e_dpy;
@@ -127,9 +131,11 @@ startDriver() {
 		exit(1);
 	}
 
+	net_wm_name = XInternAtom(x_dpy, "_NET_WM_NAME", False);
+	utf8_string = XInternAtom(x_dpy, "UTF8_STRING", False);
 	wm_delete_window = XInternAtom(x_dpy, "WM_DELETE_WINDOW", False);
 	wm_protocols = XInternAtom(x_dpy, "WM_PROTOCOLS", False);
-	wm_take_focus= XInternAtom(x_dpy, "WM_TAKE_FOCUS", False);
+	wm_take_focus = XInternAtom(x_dpy, "WM_TAKE_FOCUS", False);
 
 	const int key_lo = 8;
 	const int key_hi = 255;
@@ -180,7 +186,10 @@ processEvents() {
 			}
 			break;
 		case ConfigureNotify:
-			onConfigure(ev.xconfigure.window, ev.xconfigure.x, ev.xconfigure.y, ev.xconfigure.width, ev.xconfigure.height);
+			onConfigure(ev.xconfigure.window, ev.xconfigure.x, ev.xconfigure.y,
+				ev.xconfigure.width, ev.xconfigure.height,
+				DisplayWidth(x_dpy, DefaultScreen(x_dpy)),
+				DisplayWidthMM(x_dpy, DefaultScreen(x_dpy)));
 			break;
 		case ClientMessage:
 			if ((ev.xclient.message_type != wm_protocols) || (ev.xclient.format != 32)) {
@@ -222,7 +231,7 @@ doCloseWindow(uintptr_t id) {
 }
 
 uintptr_t
-doNewWindow(int width, int height) {
+doNewWindow(int width, int height, char* title, int title_len) {
 	XSetWindowAttributes attr;
 	attr.colormap = x_colormap;
 	attr.event_mask =
@@ -250,7 +259,9 @@ doNewWindow(int width, int height) {
 	atoms[1] = wm_take_focus;
 	XSetWMProtocols(x_dpy, win, atoms, 2);
 
-	XSetStandardProperties(x_dpy, win, "App", "App", None, (char **)NULL, 0, &sizehints);
+	XSetStandardProperties(x_dpy, win, "", "App", None, (char **)NULL, 0, &sizehints);
+	XChangeProperty(x_dpy, win, net_wm_name, utf8_string, 8, PropModeReplace, title, title_len);
+
 	return win;
 }
 

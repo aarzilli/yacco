@@ -9,7 +9,7 @@
 // to another should not send multiple events from StageVisible to
 // StageVisible, even though the underlying window system's message might only
 // hold the new position, and not whether the window was previously visible.
-package lifecycler
+package lifecycler // import "golang.org/x/exp/shiny/driver/internal/lifecycler"
 
 import (
 	"sync"
@@ -44,7 +44,7 @@ func (s *State) SetVisible(b bool) {
 	s.mu.Unlock()
 }
 
-func (s *State) SendEvent(r Sender) {
+func (s *State) SendEvent(r Sender, drawContext interface{}) {
 	s.mu.Lock()
 	from, to := s.stage, lifecycle.StageAlive
 	// The order of these if's is important. For example, once a window becomes
@@ -67,6 +67,9 @@ func (s *State) SendEvent(r Sender) {
 		r.Send(lifecycle.Event{
 			From: from,
 			To:   to,
+
+			// TODO: does shiny use this at all?
+			DrawContext: drawContext,
 		})
 	}
 }
