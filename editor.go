@@ -651,6 +651,7 @@ func (ed *Editor) PropTrigger() {
 	} else {
 		ed.sfr.Fr.Font = config.MainFont
 	}
+	ed.tagfr.Font = config.MainFont
 	if oldFont != ed.sfr.Fr.Font {
 		ed.sfr.Fr.Invalidate()
 	}

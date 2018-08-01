@@ -66,7 +66,7 @@ func fontFromConf(font configFont, Fonts map[string]*configFont) font.Face {
 			font.Path = otherFont.Path
 		}
 	}
-	return util.MustNewFont(72, float64(font.Pixel), float64(font.LineSpacing), font.FullHinting, font.Autoligature, font.Path)
+	return util.MustNewFont(72, float64(font.Pixel+FontSizeChange), float64(font.LineSpacing), font.FullHinting, font.Autoligature, font.Path)
 }
 
 func LoadConfiguration(path string) {
@@ -135,6 +135,42 @@ func LoadConfiguration(path string) {
 	if co.Core.LookFileDepth >= 0 {
 		os.Setenv("LOOKFILE_DEPTH", strconv.Itoa(co.Core.LookFileDepth))
 	}
+}
+
+func ReloadFonts(path string) {
+	var co configObj
+
+	if path == "" {
+		path = filepath.Join(os.Getenv("HOME"), ".config/yacco/rc")
+	}
+
+	u := iniparse.NewUnmarshaller()
+	u.Path = path
+	u.AddSpecialUnmarshaller("load", LoadRulesParser)
+	u.AddSpecialUnmarshaller("keybindings", LoadKeysParser)
+
+	fh, err := os.Open(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not open configuration file: %s (run install.sh?)\n", err.Error())
+		return
+	}
+	defer fh.Close()
+
+	bs, err := ioutil.ReadAll(fh)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not read configuration file: %s\n", err.Error())
+	}
+
+	err = u.Unmarshal(bs, &co)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Could not parse configuration file: %s\n", err.Error())
+		return
+	}
+
+	MainFont = fontFromConf(*co.Fonts["Main"], co.Fonts)
+	TagFont = fontFromConf(*co.Fonts["Tag"], co.Fonts)
+	AltFont = fontFromConf(*co.Fonts["Alt"], co.Fonts)
+	ComplFont = fontFromConf(*co.Fonts["Compl"], co.Fonts)
 }
 
 func admissibleValues(m []string, a []string) (bool, string) {

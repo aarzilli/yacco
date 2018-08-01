@@ -319,3 +319,7 @@ func (c *Col) Dump(buffers map[string]int) DumpColumn {
 func (c *Col) Width() int {
 	return c.r.Max.X - c.r.Min.X
 }
+
+func (c *Col) PropTrigger() {
+	c.tagfr.Font = config.MainFont
+}

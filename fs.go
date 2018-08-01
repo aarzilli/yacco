@@ -906,6 +906,8 @@ func writePropFn(i int, data []byte, off int64) syscall.Errno {
 			} else {
 				ec.buf.Props["font"] = "main"
 			}
+		} else if (v[0] == "font") && ((v[1] == "+") || (v[1] == "-")) {
+			return writeMainPropFn(data, off)
 		} else {
 			ec.buf.Props[v[0]] = v[1]
 		}
@@ -933,6 +935,18 @@ func readMainPropFn(off int64) ([]byte, syscall.Errno) {
 }
 
 func writeMainPropFn(data []byte, off int64) syscall.Errno {
+	fontszchange := func() {
+		config.ReloadFonts(*configFlag)
+		for _, col := range Wnd.cols.cols {
+			for _, ed := range col.editors {
+				ed.PropTrigger()
+			}
+			col.PropTrigger()
+		}
+		Wnd.tagfr.Font = config.MainFont
+		Wnd.RedrawHard()
+	}
+
 	v := strings.SplitN(string(data), "=", 2)
 	if len(v) >= 2 {
 		if (v[0] == "font") && (v[1] == "switch") {
@@ -941,6 +955,12 @@ func writeMainPropFn(data []byte, off int64) syscall.Errno {
 			} else {
 				Wnd.Prop["font"] = "main"
 			}
+		} else if (v[0] == "font") && (v[1] == "+") {
+			config.FontSizeChange++
+			fontszchange()
+		} else if (v[0] == "font") && (v[1] == "-") {
+			config.FontSizeChange--
+			fontszchange()
 		} else if v[0] == "cwd" {
 			CdCmd(ExecContext{buf: nil}, v[1])
 		} else {

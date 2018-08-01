@@ -28,6 +28,8 @@ var EnableHighlighting = true
 var ServeTCP = false
 var HideHidden = true
 
+var FontSizeChange = 0
+
 const DefaultLookFileExt = ",c,cc,cpp,h,py,txt,pl,tcl,java,js,html,go,clj,jsp"
 
 var LoadRules = []util.LoadRule{}

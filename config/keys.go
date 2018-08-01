@@ -63,6 +63,9 @@ var KeyBindings = map[string]string{
 	"backspace": "Do\nEdit g// -#1,.\nEdit c//",
 	"control+w": "Do\nEdit g// -#1,.\nEdit c//",
 	"delete":    "Do\nEdit g// .,+#1\nEdit c//",
+
+	"control+=": "Font +",
+	"control+-": "Font -",
 }
 
 var KeyConversion = map[string]key.Event{

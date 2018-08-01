@@ -15,5 +15,7 @@ if arg == "help" or arg == "-h":
 	print "\tswitch\t\tToggles between main and alt font"
 	print "\tmain\t\tSwitches to main (usually proportional) font"
 	print "\talt\t\t\tSwitches to alt (usually monospaced) font"
+	print "\t+\t\t\tIncreses font size"
+	print "\t-\t\t\tDecreases font size"
 else:
 	send("font=" + arg)
