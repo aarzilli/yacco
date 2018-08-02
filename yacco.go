@@ -162,6 +162,7 @@ func realmain(s screen.Screen) {
 func main() {
 	flag.Parse()
 	config.LoadConfiguration(*configFlag)
+	config.LoadTemplates()
 	LoadInit()
 	KeysInit()
 	clipboard.Start()

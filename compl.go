@@ -135,6 +135,15 @@ func tooltipStart(p *Popup, ec ExecContext) (bool, string) {
 	return true, tooltipContents
 }
 
+func getPrefixSuffix(compls []string, word string) (has bool, prefixSuffix string) {
+	has = len(compls) > 0
+	prefix := commonPrefix(compls)
+	if len(prefix) > len(word) {
+		prefixSuffix = prefix[len(word):]
+	}
+	return
+}
+
 func complStart(p *Popup, ec ExecContext) (bool, string) {
 	if ec.buf == nil {
 		HideCompl(false)
@@ -153,13 +162,12 @@ func complStart(p *Popup, ec ExecContext) (bool, string) {
 		return false, ""
 	}
 
-	fpwd, wdwd := getComplWords(ec)
+	fpwd, wdwd, templwd, templind := getComplWords(ec)
 
 	compls := []string{}
 
 	//fmt.Printf("Completing <%s> <%s>\n", fpwd, wdwd)
 
-	hasFp := false
 	var resDir, resName string
 	if fpwd != "" {
 		resPath := util.ResolvePath(ec.dir, fpwd)
@@ -172,48 +180,65 @@ func complStart(p *Popup, ec ExecContext) (bool, string) {
 		}
 
 		compls = append(compls, getFsComplsMaybe(resDir, resName)...)
-		hasFp = len(compls) > 0
 		//println("after dir:", len(compls))
 	}
 
-	fpPrefix := commonPrefix(compls)
-	fpPrefixSuffix := ""
-	if len(fpPrefix) > len(resName) {
-		fpPrefixSuffix = fpPrefix[len(resName):]
-	}
+	hasFp, fpPrefixSuffix := getPrefixSuffix(compls, resName)
 
 	wdCompls := []string{}
 	if (wdwd != "") && ((fpwd == wdwd) || (len(compls) <= 0)) {
 		wdCompls = append(wdCompls, getWordCompls(wdwd)...)
 		wdCompls = util.Dedup(wdCompls)
 	}
-
-	hasWd := len(wdCompls) > 0
-
-	wdPrefix := commonPrefix(wdCompls)
-	wdPrefixSuffix := ""
-	if len(wdPrefix) > len(wdwd) {
-		wdPrefixSuffix = wdPrefix[len(wdwd):]
-	}
-
+	hasWd, wdPrefixSuffix := getPrefixSuffix(wdCompls, wdwd)
 	compls = util.Dedup(append(compls, wdCompls...))
+
+	templCompl := []string{}
+	if templwd != "" {
+		complFilter(templwd, config.Templates, &templCompl)
+	}
+	for i := range templCompl {
+		templCompl[i] = strings.Replace(templCompl[i], "\n", "\n"+templind, -1)
+	}
+	hasTempl, templPrefixSuffix := getPrefixSuffix(templCompl, templwd)
+	compls = append(compls, templCompl...)
 
 	if len(compls) <= 0 {
 		HideCompl(false)
 		return false, ""
 	}
 
-	if hasFp && hasWd {
-		complPrefixSuffix = commonPrefix2(fpPrefixSuffix, wdPrefixSuffix)
-	} else if hasFp {
+	initialized := false
+	if hasFp {
+		initialized = true
 		complPrefixSuffix = fpPrefixSuffix
-	} else if hasWd {
-		complPrefixSuffix = wdPrefixSuffix
+	}
+	if hasWd {
+		if !initialized {
+			initialized = true
+			complPrefixSuffix = wdPrefixSuffix
+		} else {
+			complPrefixSuffix = commonPrefix2(complPrefixSuffix, wdPrefixSuffix)
+		}
+	}
+	if hasTempl {
+		if !initialized {
+			initialized = true
+			complPrefixSuffix = templPrefixSuffix
+		} else {
+			complPrefixSuffix = commonPrefix2(complPrefixSuffix, templPrefixSuffix)
+		}
 	}
 
 	cmax := 10
 	if cmax > len(compls) {
 		cmax = len(compls)
+	}
+
+	for i := range compls {
+		if nl := strings.Index(compls[i], "\n"); nl >= 0 {
+			compls[i] = compls[i][:nl] + "..."
+		}
 	}
 
 	txt := strings.Join(compls[:cmax], "\n")
@@ -294,7 +319,7 @@ func getFsComplsMaybe(resDir, resName string) []string {
 	}
 }
 
-func getComplWords(ec ExecContext) (fpwd, wdwd string) {
+func getComplWords(ec ExecContext) (fpwd, wdwd, templwd, templind string) {
 	fs := ec.buf.Tofp(ec.fr.Sel.S-1, -1)
 	if ec.fr.Sel.S-fs >= 2 {
 		fpwd = string(ec.buf.SelectionRunes(util.Sel{fs, ec.fr.Sel.S}))
@@ -303,6 +328,18 @@ func getComplWords(ec ExecContext) (fpwd, wdwd string) {
 	ws := ec.buf.Towd(ec.fr.Sel.S-1, -1, false)
 	if ec.fr.Sel.S-ws >= 2 {
 		wdwd = string(ec.buf.SelectionRunes(util.Sel{ws, ec.fr.Sel.S}))
+	}
+
+	ts := ec.buf.Tonl(ec.fr.Sel.S-1, -1)
+	if ec.fr.Sel.S-ts >= 2 {
+		templwd = string(ec.buf.SelectionRunes(util.Sel{ts, ec.fr.Sel.S}))
+		for i, ch := range templwd {
+			if ch != ' ' && ch != '\t' {
+				templind = templwd[:i]
+				templwd = templwd[i:]
+				break
+			}
+		}
 	}
 
 	return

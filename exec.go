@@ -803,6 +803,9 @@ func PutCmd(ec ExecContext, arg string) {
 	if AutoDumpPath != "" {
 		DumpTo(AutoDumpPath)
 	}
+	if config.IsTemplatesFile(filepath.Join(ec.ed.bodybuf.Dir, ec.ed.bodybuf.Name)) {
+		config.LoadTemplates()
+	}
 }
 
 func PutallCmd(ec ExecContext, arg string) {

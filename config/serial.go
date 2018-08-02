@@ -1,6 +1,7 @@
 package config
 
 import (
+	"bufio"
 	"fmt"
 	"golang.org/x/image/font"
 	"io/ioutil"
@@ -238,4 +239,52 @@ func LoadKeysParser(path string, lineno int, lines []string) (interface{}, error
 		}
 	}
 	return r, nil
+}
+
+func templatesFile() string {
+	return filepath.Join(os.Getenv("HOME"), ".config/yacco/templates")
+}
+
+func IsTemplatesFile(path string) bool {
+	return path == templatesFile()
+}
+
+func LoadTemplates() {
+	Templates = Templates[:0]
+
+	path := templatesFile()
+
+	fh, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer fh.Close()
+
+	cur := []string{}
+
+	flush := func() {
+		if len(cur) == 0 {
+			return
+		}
+		txt := strings.Join(cur, "\n") + "\n"
+		cur = cur[:0]
+		if strings.TrimSpace(txt) == "" {
+			return
+		}
+		Templates = append(Templates, txt)
+	}
+
+	scan := bufio.NewScanner(fh)
+	for scan.Scan() {
+		line := scan.Text()
+		if line == "---" {
+			flush()
+		} else {
+			cur = append(cur, line)
+		}
+	}
+	if err := scan.Err(); err != nil {
+		fmt.Fprintf(os.Stderr, "error reading template file: %v\n", err)
+	}
+	flush()
 }
