@@ -524,7 +524,7 @@ func (ed *Editor) Warp() {
 	if !HasFocus {
 		return
 	}
-	if col := ed.Column(); col != nil && col.maximized {
+	if col := ed.Column(); col != nil && col.maximized && ed.r == image.Rect(0, 0, 0, 0) {
 		col.RecalcRects(col.last)
 		col.Redraw()
 		Wnd.FlushImage(col.r)
