@@ -296,7 +296,7 @@ func godoc(funcname string, out io.Writer) bool {
 		return false
 	}
 
-	cmd := exec.Command("godoc", pkg, name)
+	cmd := exec.Command("go", "doc", pkg, name)
 	bs, err := cmd.CombinedOutput()
 	if err != nil {
 		return false
