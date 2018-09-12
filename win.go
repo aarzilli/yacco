@@ -424,7 +424,11 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 
 		if lp.col != nil {
 			if lp.onButton { // clicked on column's resize handle
-				w.ColResize(lp.col, e, events)
+				if e.Count == 2 {
+					eqcol()
+				} else {
+					w.ColResize(lp.col, e, events)
+				}
 			}
 			activeEditor = nil
 			activeCol = lp.col
@@ -1491,4 +1495,19 @@ func escapeSel(sel *util.Sel, start int) {
 	} else {
 		sel.E = start
 	}
+}
+
+func eqcol() {
+	if len(Wnd.cols.cols) != 2 {
+		return
+	}
+
+	if math.Abs(Wnd.cols.cols[0].frac-Wnd.cols.cols[1].frac) < 0.01 {
+		Wnd.cols.cols[0].frac = 6.0
+		Wnd.cols.cols[1].frac = 4.0
+	} else {
+		Wnd.cols.cols[0].frac = 5.0
+		Wnd.cols.cols[1].frac = 5.0
+	}
+	Wnd.RedrawHard()
 }

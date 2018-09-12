@@ -159,14 +159,6 @@ function install_Go {
 	ln -sf $destdir/yaccodir/Go $destdir/yaccodir/Gor
 }
 
-function install_Eqcol {
-	echo install Eqcol
-	cd extra/Eqcol
-	go build
-	cd - >/dev/null
-	cp -f extra/Eqcol/Eqcol $destdir/yaccodir/Eqcol
-}
-
 function install_cmfmt {
 	echo install cmfmt
 	cd extra/cmfmt
@@ -193,7 +185,6 @@ if [[ -z $2 ]]; then
 	install_Change
 	install_LookFile
 	install_Go
-	install_Eqcol
 	install_cmfmt
 	install_scripts
 	echo Done
