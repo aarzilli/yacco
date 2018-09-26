@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"yacco/util"
+	"github.com/aarzilli/yacco/util"
 )
 
 var debug = false

@@ -10,11 +10,11 @@ import (
 	"strconv"
 	"strings"
 
-	"yacco/buf"
-	"yacco/clipboard"
-	"yacco/config"
-	"yacco/edit"
-	"yacco/util"
+	"github.com/aarzilli/yacco/buf"
+	"github.com/aarzilli/yacco/clipboard"
+	"github.com/aarzilli/yacco/config"
+	"github.com/aarzilli/yacco/edit"
+	"github.com/aarzilli/yacco/util"
 
 	"golang.org/x/exp/shiny/driver"
 	"golang.org/x/exp/shiny/screen"

@@ -2,10 +2,11 @@ package regexp_test
 
 import (
 	"testing"
-	"yacco/buf"
-	"yacco/hl"
-	"yacco/regexp"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/buf"
+	"github.com/aarzilli/yacco/hl"
+	"github.com/aarzilli/yacco/regexp"
+	"github.com/aarzilli/yacco/util"
 )
 
 func testRegex(t *testing.T, rxSrc, in string, start int, tgt []int) []int {

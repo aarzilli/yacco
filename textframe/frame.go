@@ -2,18 +2,19 @@ package textframe
 
 import (
 	"fmt"
-	"github.com/golang/freetype"
-	"golang.org/x/image/font"
-	"golang.org/x/image/math/fixed"
-	"golang.org/x/mobile/event/key"
-	"golang.org/x/mobile/event/mouse"
 	"image"
 	"image/draw"
 	"math"
 	"runtime"
 	"time"
-	"yacco/otat"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/otat"
+	"github.com/aarzilli/yacco/util"
+	"github.com/golang/freetype"
+	"golang.org/x/image/font"
+	"golang.org/x/image/math/fixed"
+	"golang.org/x/mobile/event/key"
+	"golang.org/x/mobile/event/mouse"
 )
 
 type Redrawable interface {

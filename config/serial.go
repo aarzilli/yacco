@@ -3,15 +3,16 @@ package config
 import (
 	"bufio"
 	"fmt"
-	"golang.org/x/image/font"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
 	"strings"
-	"yacco/iniparse"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/iniparse"
+	"github.com/aarzilli/yacco/util"
+	"golang.org/x/image/font"
 )
 
 type configObj struct {

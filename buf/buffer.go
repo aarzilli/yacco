@@ -14,9 +14,10 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf8"
-	"yacco/config"
-	"yacco/hl"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/config"
+	"github.com/aarzilli/yacco/hl"
+	"github.com/aarzilli/yacco/util"
 )
 
 const SLOP = 128

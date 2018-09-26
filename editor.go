@@ -10,14 +10,15 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"yacco/buf"
-	"yacco/config"
-	"yacco/edutil"
-	"yacco/hl"
-	"yacco/textframe"
-	"yacco/util"
 
 	"github.com/nfnt/resize"
+
+	"github.com/aarzilli/yacco/buf"
+	"github.com/aarzilli/yacco/config"
+	"github.com/aarzilli/yacco/edutil"
+	"github.com/aarzilli/yacco/hl"
+	"github.com/aarzilli/yacco/textframe"
+	"github.com/aarzilli/yacco/util"
 )
 
 var editorCount = 0

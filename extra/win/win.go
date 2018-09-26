@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/kr/pty"
 	"io"
 	"log"
 	"os"
@@ -15,7 +14,9 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/util"
+	"github.com/kr/pty"
 )
 
 const FLOAT_START_WINDOW_MS = 100

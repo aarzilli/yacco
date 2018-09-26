@@ -3,15 +3,16 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/lionkov/go9p/p"
-	"github.com/lionkov/go9p/p/clnt"
 	"io"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 	"unicode/utf8"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/util"
+	"github.com/lionkov/go9p/p"
+	"github.com/lionkov/go9p/p/clnt"
 )
 
 var debug = false

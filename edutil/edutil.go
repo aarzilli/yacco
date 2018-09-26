@@ -1,9 +1,9 @@
 package edutil
 
 import (
-	"yacco/buf"
-	"yacco/textframe"
-	"yacco/util"
+	"github.com/aarzilli/yacco/buf"
+	"github.com/aarzilli/yacco/textframe"
+	"github.com/aarzilli/yacco/util"
 )
 
 func MakeExpandSelectionFn(buf *buf.Buffer) func(kind, start, end int) (int, int) {

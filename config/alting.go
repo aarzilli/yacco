@@ -1,7 +1,7 @@
 package config
 
 import (
-	"yacco/util"
+	"github.com/aarzilli/yacco/util"
 )
 
 var AltingList = []util.AltingEntry{

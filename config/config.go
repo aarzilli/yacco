@@ -1,8 +1,8 @@
 package config
 
 import (
-	"yacco/hl"
-	"yacco/util"
+	"github.com/aarzilli/yacco/hl"
+	"github.com/aarzilli/yacco/util"
 
 	"golang.org/x/image/font"
 )

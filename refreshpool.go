@@ -2,7 +2,8 @@ package main
 
 import (
 	"time"
-	"yacco/buf"
+
+	"github.com/aarzilli/yacco/buf"
 )
 
 type refreshRequest struct {

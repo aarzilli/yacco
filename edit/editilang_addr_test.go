@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"testing"
-	"yacco/buf"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/buf"
+	"github.com/aarzilli/yacco/util"
 )
 
 func testEdit(t *testing.T, input, pgm, target string) {

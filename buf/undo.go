@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"yacco/util"
+	"github.com/aarzilli/yacco/util"
 )
 
 type undoSel struct {

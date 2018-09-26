@@ -12,12 +12,13 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"yacco/buf"
-	"yacco/clipboard"
-	"yacco/config"
-	"yacco/edit"
-	"yacco/textframe"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/buf"
+	"github.com/aarzilli/yacco/clipboard"
+	"github.com/aarzilli/yacco/config"
+	"github.com/aarzilli/yacco/edit"
+	"github.com/aarzilli/yacco/textframe"
+	"github.com/aarzilli/yacco/util"
 )
 
 type ExecContext struct {

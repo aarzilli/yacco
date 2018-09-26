@@ -3,9 +3,10 @@ package edit
 import (
 	"fmt"
 	"strings"
-	"yacco/buf"
-	"yacco/regexp"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/buf"
+	"github.com/aarzilli/yacco/regexp"
+	"github.com/aarzilli/yacco/util"
 )
 
 type commandFlag uint16

@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/lionkov/go9p/p"
-	"github.com/lionkov/go9p/p/clnt"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,7 +9,10 @@ import (
 	"strings"
 	"syscall"
 	"unicode/utf8"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/util"
+	"github.com/lionkov/go9p/p"
+	"github.com/lionkov/go9p/p/clnt"
 )
 
 var debug = false

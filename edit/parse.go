@@ -5,8 +5,9 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
-	"yacco/regexp"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/regexp"
+	"github.com/aarzilli/yacco/util"
 )
 
 type cmdDef struct {

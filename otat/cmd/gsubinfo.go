@@ -7,7 +7,8 @@ import (
 	_ "image/png"
 	"io/ioutil"
 	"os"
-	"yacco/otat"
+
+	"github.com/aarzilli/yacco/otat"
 
 	_ "github.com/golang/freetype/truetype"
 

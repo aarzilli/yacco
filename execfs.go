@@ -5,7 +5,8 @@ import (
 	"os"
 	"strings"
 	"syscall"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/util"
 )
 
 func ExecFs(ec *ExecContext, cmd string) syscall.Errno {

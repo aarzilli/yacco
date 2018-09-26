@@ -2,7 +2,8 @@ package main
 
 import (
 	"unicode"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/util"
 )
 
 func exactMatch(needle []rune) bool {

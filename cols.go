@@ -3,7 +3,8 @@ package main
 import (
 	"image"
 	"image/draw"
-	"yacco/config"
+
+	"github.com/aarzilli/yacco/config"
 )
 
 type Cols struct {

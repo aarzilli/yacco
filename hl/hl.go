@@ -4,7 +4,7 @@ import (
 	"regexp"
 	"sort"
 
-	yregexp "yacco/regexp"
+	yregexp "github.com/aarzilli/yacco/regexp"
 )
 
 type Highlighter interface {

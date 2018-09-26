@@ -5,7 +5,8 @@ import (
 	"io"
 	"os"
 	"runtime/pprof"
-	"yacco/buf"
+
+	"github.com/aarzilli/yacco/buf"
 )
 
 type memdebugsup struct {

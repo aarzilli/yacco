@@ -11,8 +11,9 @@ import (
 	"sync"
 	"syscall"
 	"time"
-	"yacco/buf"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/buf"
+	"github.com/aarzilli/yacco/util"
 )
 
 type jobrec struct {

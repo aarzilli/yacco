@@ -5,9 +5,10 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"strings"
-	"yacco/buf"
-	"yacco/regexp"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/buf"
+	"github.com/aarzilli/yacco/regexp"
+	"github.com/aarzilli/yacco/util"
 )
 
 var Warnfn func(msg string)

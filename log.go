@@ -5,7 +5,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-	"yacco/buf"
+
+	"github.com/aarzilli/yacco/buf"
 )
 
 /*

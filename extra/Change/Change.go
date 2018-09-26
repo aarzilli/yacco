@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/lionkov/go9p/p"
-	"github.com/lionkov/go9p/p/clnt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/util"
+	"github.com/lionkov/go9p/p"
+	"github.com/lionkov/go9p/p/clnt"
 )
 
 var debug = true

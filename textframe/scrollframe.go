@@ -2,11 +2,12 @@ package textframe
 
 import (
 	"fmt"
-	"golang.org/x/mobile/event/mouse"
 	"image"
 	"image/draw"
 	"time"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/util"
+	"golang.org/x/mobile/event/mouse"
 )
 
 type ScrollFrame struct {

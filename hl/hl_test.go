@@ -8,9 +8,9 @@ import (
 	"os"
 	"testing"
 
-	"yacco/buf"
-	"yacco/config"
-	"yacco/hl"
+	"github.com/aarzilli/yacco/buf"
+	"github.com/aarzilli/yacco/config"
+	"github.com/aarzilli/yacco/hl"
 )
 
 var pgmGo = []rune(`

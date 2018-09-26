@@ -3,9 +3,10 @@ package edit
 import (
 	"fmt"
 	"strconv"
-	"yacco/buf"
-	"yacco/regexp"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/buf"
+	"github.com/aarzilli/yacco/regexp"
+	"github.com/aarzilli/yacco/util"
 )
 
 type Addr interface {

@@ -17,7 +17,7 @@ import (
 	"github.com/lionkov/go9p/p"
 	"github.com/lionkov/go9p/p/clnt"
 
-	"yacco/util"
+	"github.com/aarzilli/yacco/util"
 )
 
 const debug = false

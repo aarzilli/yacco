@@ -6,8 +6,9 @@ import (
 	"strings"
 	"unicode"
 	"unicode/utf8"
-	"yacco/regexp"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/regexp"
+	"github.com/aarzilli/yacco/util"
 )
 
 var Extensions []string

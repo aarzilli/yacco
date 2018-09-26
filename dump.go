@@ -5,10 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"yacco/buf"
-	"yacco/config"
-	"yacco/hl"
-	"yacco/util"
+	"github.com/aarzilli/yacco/buf"
+	"github.com/aarzilli/yacco/config"
+	"github.com/aarzilli/yacco/hl"
+	"github.com/aarzilli/yacco/util"
 )
 
 type DumpWindow struct {

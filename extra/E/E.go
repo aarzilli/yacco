@@ -2,14 +2,15 @@ package main
 
 import (
 	"fmt"
-	"github.com/lionkov/go9p/p"
-	"github.com/lionkov/go9p/p/clnt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 	"time"
-	"yacco/util"
-	"strconv"
+
+	"github.com/aarzilli/yacco/util"
+	"github.com/lionkov/go9p/p"
+	"github.com/lionkov/go9p/p/clnt"
 )
 
 var debug = false
@@ -44,9 +45,9 @@ func main() {
 		path = os.Args[2]
 	}
 	abspath := util.ResolvePath(wd, path)
-	
+
 	outbufid := ""
-	
+
 	indexEntries, err := util.ReadIndex(p9clnt)
 	for i := range indexEntries {
 		if indexEntries[i].Path == abspath {
@@ -54,9 +55,9 @@ func main() {
 			break
 		}
 	}
-	
+
 	var ctlfd *clnt.File
-	
+
 	if outbufid == "" {
 		ctlfd, err = p9clnt.FOpen("/new/ctl", p.ORDWR)
 		util.Allergic(debug, err)

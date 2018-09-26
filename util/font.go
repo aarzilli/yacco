@@ -1,15 +1,16 @@
 package util
 
 import (
-	"github.com/golang/freetype"
-	"github.com/golang/freetype/truetype"
-	"golang.org/x/image/font"
-	"golang.org/x/image/math/fixed"
 	"image"
 	"io/ioutil"
 	"os"
 	"strings"
-	"yacco/otat"
+
+	"github.com/aarzilli/yacco/otat"
+	"github.com/golang/freetype"
+	"github.com/golang/freetype/truetype"
+	"golang.org/x/image/font"
+	"golang.org/x/image/math/fixed"
 )
 
 type Multiface struct {

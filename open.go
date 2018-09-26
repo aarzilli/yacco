@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"yacco/buf"
-	"yacco/config"
-	"yacco/hl"
-	"yacco/util"
+	"github.com/aarzilli/yacco/buf"
+	"github.com/aarzilli/yacco/config"
+	"github.com/aarzilli/yacco/hl"
+	"github.com/aarzilli/yacco/util"
 )
 
 func editOpen(path string, create bool) (*Editor, error) {

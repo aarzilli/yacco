@@ -2,7 +2,8 @@ package hl
 
 import (
 	"regexp"
-	yregexp "yacco/regexp"
+
+	yregexp "github.com/aarzilli/yacco/regexp"
 )
 
 type RegionMatchType uint8

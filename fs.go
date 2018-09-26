@@ -14,10 +14,10 @@ import (
 	"sync"
 	"syscall"
 
-	"yacco/config"
-	"yacco/edit"
-	"yacco/hl"
-	"yacco/util"
+	"github.com/aarzilli/yacco/config"
+	"github.com/aarzilli/yacco/edit"
+	"github.com/aarzilli/yacco/hl"
+	"github.com/aarzilli/yacco/util"
 
 	"github.com/lionkov/go9p/p"
 	"github.com/lionkov/go9p/p/srv"

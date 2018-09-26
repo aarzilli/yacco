@@ -6,10 +6,11 @@ import (
 	sysre "regexp"
 	"runtime"
 	"strings"
-	"yacco/config"
-	"yacco/edit"
-	"yacco/regexp"
-	"yacco/util"
+
+	"github.com/aarzilli/yacco/config"
+	"github.com/aarzilli/yacco/edit"
+	"github.com/aarzilli/yacco/regexp"
+	"github.com/aarzilli/yacco/util"
 )
 
 type LoadRule struct {
