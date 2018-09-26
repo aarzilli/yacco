@@ -13,6 +13,7 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/aarzilli/go2def"
 	"github.com/lionkov/go9p/p"
 	"github.com/lionkov/go9p/p/clnt"
 
@@ -112,7 +113,7 @@ func readlast(p9clnt *clnt.Clnt) int {
 	return idx
 }
 
-func readaddr(p9clnt *clnt.Clnt, idx int) (pos, filename, body string) {
+func readaddr(p9clnt *clnt.Clnt, idx int) (pos, filename, body string, intpos [2]int) {
 	ctlfd, err := p9clnt.FOpen(fmt.Sprintf("/%d/ctl", idx), p.ORDWR)
 	util.Allergic(debug, err)
 	ctlbs, err := ioutil.ReadAll(ctlfd)
@@ -137,25 +138,56 @@ func readaddr(p9clnt *clnt.Clnt, idx int) (pos, filename, body string) {
 	bodyb, _ := ioutil.ReadAll(bodyfd)
 	bodyfd.Close()
 
-	return fmt.Sprintf("%s:#%d,#%d", filename, s, e), filename, string(bodyb)
+	return fmt.Sprintf("%s:#%d,#%d", filename, s, e), filename, string(bodyb), [2]int{s, e}
 }
 
 func guru(arg string) {
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)
 	idx := readlast(p9clnt)
-	pos, filename, body := readaddr(p9clnt, idx)
+	pos, filename, body, _ := readaddr(p9clnt, idx)
 	cmd := exec.Command("guru", "-modified", arg, pos)
 	cmd.Stdin = modified(filename, body)
 	bs, err := cmd.CombinedOutput()
 	processout(bs, err, arg, idx, pos, false, p9clnt)
 }
 
+func go2defcmd() {
+	p9clnt, err := util.YaccoConnect()
+	util.Allergic(debug, err)
+	idx := readlast(p9clnt)
+	_, filename, body, pos := readaddr(p9clnt, idx)
+	var buf bytes.Buffer
+	go2def.Describe(filename, pos, &go2def.Config{Out: &buf, Modfiles: map[string][]byte{filename: []byte(body)}})
+
+	var out io.Writer
+
+	if os.Getenv("YACCO_TOOLTIP") != "1" {
+		buf, _, err := util.FindWin("Guru", p9clnt)
+		util.Allergic(debug, err)
+		buf.CtlFd.Write([]byte("name +Guru\n"))
+		buf.CtlFd.Write([]byte("show-nowarp\n"))
+		buf.AddrFd.Write([]byte(","))
+		buf.XDataFd.Write([]byte{0})
+		buf.EventFd.Close()
+		buf.AddrFd.Close()
+		buf.XDataFd.Close()
+		buf.TagFd.Close()
+		buf.ColorFd.Close()
+		defer buf.BodyFd.Close()
+		out = writenWrapper{buf.BodyFd}
+	} else {
+		out = os.Stdout
+	}
+
+	out.Write(buf.Bytes())
+}
+
 func guruscope(arg string, scope string) {
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)
 	idx := readlast(p9clnt)
-	pos, filename, body := readaddr(p9clnt, idx)
+	pos, filename, body, _ := readaddr(p9clnt, idx)
 	cmd := exec.Command("guru", "-modified", "-scope="+scope, arg, pos)
 	cmd.Stdin = modified(filename, body)
 	bs, err := cmd.CombinedOutput()
@@ -166,7 +198,7 @@ func guruprepared(arg string, stridx, pos string) {
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)
 	idx, _ := strconv.Atoi(stridx)
-	_, filename, body := readaddr(p9clnt, idx)
+	_, filename, body, _ := readaddr(p9clnt, idx)
 	cmd := exec.Command("guru", arg, pos)
 	cmd.Stdin = modified(filename, body)
 	bs, err := cmd.CombinedOutput()
@@ -593,6 +625,8 @@ func main() {
 			return
 		}
 		switch os.Args[1] {
+		case "go2def":
+			go2defcmd()
 		case "fmt":
 			if len(os.Args) >= 3 {
 				util.Allergic(debug, os.Chdir(os.Args[2]))

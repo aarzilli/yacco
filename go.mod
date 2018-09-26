@@ -2,6 +2,7 @@ module yacco
 
 require (
 	github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802
+	github.com/aarzilli/go2def v0.0.0-20180921173456-73bbfd18a40c
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/kr/pty v0.0.0-20160716204620-ce7fa45920dc
 	github.com/lionkov/go9p v0.0.0-20180620135904-0a603dd6808a
@@ -11,6 +12,7 @@ require (
 	golang.org/x/image v0.0.0-20180708004352-c73c2afc3b81
 	golang.org/x/mobile v0.0.0-20180719123216-371a4e8cb797
 	golang.org/x/sys v0.0.0-20180715085529-ac767d655b30 // indirect
+	golang.org/x/tools v0.0.0-20180917221912-90fa682c2a6e // indirect
 )
 
 replace golang.org/x/exp => github.com/aarzilli/exp v0.0.0-20180724135916-edb5f9d2bb76
