@@ -561,7 +561,17 @@ func (fr *Frame) reallyVisibleTick() bool {
 	return true
 }
 
+const newTick = true
+
 func (fr *Frame) drawTick(idx int) image.Rectangle {
+	if newTick {
+		return fr.drawTickNew(idx)
+	} else {
+		return fr.drawTickOld(idx)
+	}
+}
+
+func (fr *Frame) drawTickOld(idx int) image.Rectangle {
 	if !fr.reallyVisibleTick() {
 		return image.Rectangle{fr.R.Min, fr.R.Min}
 	}
@@ -622,6 +632,54 @@ func (fr *Frame) drawTick(idx int) image.Rectangle {
 	rr.Min.X -= r.Dx()
 	rr.Max.X += r.Dx()
 	return rr
+}
+
+func (fr *Frame) drawTickNew(idx int) image.Rectangle {
+	if !fr.reallyVisibleTick() {
+		return image.Rectangle{fr.R.Min, fr.R.Min}
+	}
+
+	var x, y int
+	if len(fr.glyphs) == 0 {
+		p := fr.initialInsPoint()
+		x = p.X.Floor()
+		y = p.Y.Floor()
+	} else if fr.Sel.S-fr.Top < len(fr.glyphs) {
+		p := fr.glyphs[fr.Sel.S-fr.Top].p
+		x = p.X.Floor()
+		y = p.Y.Floor()
+	} else {
+		g := fr.glyphs[len(fr.glyphs)-1]
+
+		if g.widthy > 0 {
+			x = fr.R.Min.X + fr.margin.Floor()
+			y = (g.p.Y + g.widthy).Floor()
+		} else {
+			x = (g.p.X + g.width).Floor() + 1
+			y = g.p.Y.Floor()
+		}
+	}
+
+	fm := fr.Font.Metrics()
+
+	basedx := int(math.Floor(float64(fm.Height.Floor())*5/28 + .5))
+	if basedx < 1 {
+		basedx = 1
+	}
+
+	basedxl := basedx / 2
+	basedxr := basedxl
+	if basedxl+basedxr < basedx {
+		basedxr++
+	}
+
+	r := image.Rectangle{
+		Min: image.Point{x - basedxl, y - fm.Ascent.Floor()},
+		Max: image.Point{x + basedxr, y + fm.Descent.Floor() + 1}}
+
+	draw.Draw(fr.B, fr.R.Intersect(r), &fr.Colors[0][idx], fr.R.Intersect(r).Min, draw.Src)
+
+	return r
 }
 
 func (fr *Frame) deleteTick() image.Rectangle {
