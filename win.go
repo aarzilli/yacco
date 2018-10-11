@@ -706,14 +706,25 @@ loop:
 			w.GrowEditor(col, ed, &d)
 
 		case mouse.ButtonRight: // Maximize
+			ed.size = col.contentArea()
+			edidx := -1
 			for i, oed := range col.editors {
 				if oed == ed {
-					col.MaximizeEditor(i)
-					col.Redraw()
-					w.FlushImage(col.r)
-					break
+					edidx = i
+					continue
 				}
+				oed.size = oed.MinHeight()
+				ed.size -= oed.size
 			}
+			if edidx > 0 {
+				copy(col.editors[1:edidx+1], col.editors[0:edidx])
+				col.editors[0] = ed
+			}
+			col.RecalcRects(col.last)
+			p := ed.r.Min
+			w.WarpMouse(p.Add(d))
+			col.Redraw()
+			w.FlushImage(col.r)
 		}
 	}
 }
@@ -735,13 +746,6 @@ func shrinkEditor(ed *Editor, max int) int {
 }
 
 func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
-	if col.maximized {
-		col.RecalcRects(col.last)
-		col.Redraw()
-		w.FlushImage(col.r)
-		return
-	}
-
 	mh := ed.MinHeight()
 	want := ed.size / 2
 	if want < mh*3 {
