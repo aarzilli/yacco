@@ -325,7 +325,7 @@ func golist(cfg *Config, args []string) (*bytes.Buffer, error) {
 	// will be silent unless something unexpected happened.
 	// If not, perhaps we should suppress it to reduce noise.
 	if stderr := fmt.Sprint(cmd.Stderr); stderr != "" {
-		fmt.Fprintf(os.Stderr, "go list stderr <<%s>>\n", stderr)
+		//fmt.Fprintf(os.Stderr, "go list stderr <<%s>>\n", stderr)
 	}
 
 	// debugging
