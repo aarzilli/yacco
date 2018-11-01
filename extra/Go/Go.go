@@ -73,7 +73,9 @@ func gofmt() {
 		runGofmt("", paths)
 	} else {
 		for _, gitpath := range gitpaths {
-			runGofmt(gitpath, paths)
+			if strings.HasSuffix(gitpath, ".go") {
+				runGofmt(gitpath, paths)
+			}
 		}
 	}
 	p9clnt, err := util.YaccoConnect()
