@@ -56,7 +56,6 @@ func Describe(path string, pos [2]int, cfg *Config) {
 	}
 	if ctx.Wd == "" {
 		ctx.Wd = filepath.Dir(path)
-		path = filepath.Base(path)
 	}
 	if ctx.Out == nil {
 		ctx.Out = os.Stdout
@@ -104,16 +103,16 @@ func (ctx *context) getFileSet(pos token.Pos) *token.FileSet {
 	return ctx.currentFileSet
 }
 
-func (ctx *context) parseFile() func(*token.FileSet, string) (*ast.File, error) {
+func (ctx *context) parseFile() func(*token.FileSet, string, []byte) (*ast.File, error) {
 	if ctx.Modfiles == nil {
 		return nil
 	}
 
-	return func(fset *token.FileSet, name string) (*ast.File, error) {
+	return func(fset *token.FileSet, name string, obuf []byte) (*ast.File, error) {
 		if buf, modified := ctx.Modfiles[name]; modified {
 			return parser.ParseFile(fset, name, buf, parser.ParseComments)
 		} else {
-			return parser.ParseFile(fset, name, nil, parser.ParseComments)
+			return parser.ParseFile(fset, name, obuf, parser.ParseComments)
 		}
 	}
 }
@@ -121,7 +120,7 @@ func (ctx *context) parseFile() func(*token.FileSet, string) (*ast.File, error) 
 func loadPackages(ctx *context, path string) error {
 	ctx.currentFileSet = token.NewFileSet()
 	var err error
-	ctx.pkgs, err = packages.Load(&packages.Config{Mode: packages.LoadSyntax, Dir: ctx.Wd, Fset: ctx.currentFileSet, ParseFile: ctx.parseFile()}, filepath.Dir(path))
+	ctx.pkgs, err = packages.Load(&packages.Config{Mode: packages.LoadSyntax, Dir: ctx.Wd, Fset: ctx.currentFileSet, ParseFile: ctx.parseFile()}, "contains:"+path)
 	return err
 }
 
