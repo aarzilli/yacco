@@ -431,20 +431,20 @@ func DelcolCmd(ec ExecContext, arg string) {
 		}
 	}
 
-	if n == 0 {
+	if n > 0 {
 		if time.Since(ec.col.closeRequested) > (3*time.Second) && len(ec.col.editors) > 0 {
+			Warn(t)
 			ec.col.closeRequested = time.Now()
 			return
 		}
-		for _, ed := range ec.col.editors {
-			removeBuffer(ed.bodybuf)
-		}
-		Wnd.cols.Remove(Wnd.cols.IndexOf(ec.col))
-		ec.col.Close()
-		Wnd.FlushImage()
-	} else {
-		Warn(t)
 	}
+
+	for _, ed := range ec.col.editors {
+		removeBuffer(ed.bodybuf)
+	}
+	Wnd.cols.Remove(Wnd.cols.IndexOf(ec.col))
+	ec.col.Close()
+	Wnd.FlushImage()
 }
 
 func DumpCmd(ec ExecContext, arg string) {
@@ -587,11 +587,14 @@ func KillCmd(ec ExecContext, arg string) {
 func SetenvCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	v := spacesRe.Split(arg, 2)
-	if len(v) != 2 {
+	switch len(v) {
+	case 1:
+		os.Unsetenv(v[0])
+	case 2:
+		os.Setenv(v[0], v[1])
+	default:
 		Warn("Setenv: wrong number of arguments")
-		return
 	}
-	os.Setenv(v[0], v[1])
 }
 
 func LookCmd(ec ExecContext, arg string) {
