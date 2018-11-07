@@ -119,8 +119,17 @@ func (ctx *context) parseFile() func(*token.FileSet, string, []byte) (*ast.File,
 
 func loadPackages(ctx *context, path string) error {
 	ctx.currentFileSet = token.NewFileSet()
+	cfg := &packages.Config{
+		Mode:      packages.LoadSyntax,
+		Dir:       ctx.Wd,
+		Fset:      ctx.currentFileSet,
+		ParseFile: ctx.parseFile(),
+	}
+	if strings.HasSuffix(path, "_test.go") {
+		cfg.Tests = true
+	}
 	var err error
-	ctx.pkgs, err = packages.Load(&packages.Config{Mode: packages.LoadSyntax, Dir: ctx.Wd, Fset: ctx.currentFileSet, ParseFile: ctx.parseFile()}, "contains:"+path)
+	ctx.pkgs, err = packages.Load(cfg, "file="+path)
 	return err
 }
 
