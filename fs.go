@@ -194,6 +194,8 @@ func FsAddEditor(n int) {
 
 	addr := &ReadWriteP9{srv.File{}, bwr(readAddrFn), bww(writeAddrFn)}
 	addr.Add(bufdir, "addr", user, nil, 0660, addr)
+	byteaddr := &ReadOnlyP9{srv.File{}, bwr(readByteAddrFn)}
+	byteaddr.Add(bufdir, "byteaddr", user, nil, 0660, byteaddr)
 	body := &ReadWriteP9{srv.File{}, bwr(readBodyFn), bww(writeBodyFn)}
 	body.Add(bufdir, "body", user, nil, 0660, body)
 	color := &ReadWriteP9{srv.File{}, bwr(readColorFn), bww(writeColorFn)}
@@ -562,6 +564,29 @@ func readAddrFn(i int, off int64) ([]byte, syscall.Errno) {
 	}
 	<-done
 	debugfsf("Read addr %s\n", t)
+	return []byte(t), 0
+}
+
+func readByteAddrFn(i int, off int64) ([]byte, syscall.Errno) {
+	if off > 0 {
+		return []byte{}, 0
+	}
+	ec := bufferExecContext(i)
+	if ec == nil {
+		return nil, syscall.ENOENT
+	}
+
+	t := ""
+	done := make(chan bool)
+	sideChan <- func() {
+		defer func() {
+			done <- true
+		}()
+		ec.buf.FixSel(&ec.ed.otherSel[OS_ADDR])
+		t = fmt.Sprintf("%d,%d", ec.ed.bodybuf.ByteOffset(ec.ed.otherSel[OS_ADDR].S), ec.ed.bodybuf.ByteOffset(ec.ed.otherSel[OS_ADDR].E))
+	}
+	<-done
+	debugfsf("Read byte addr %s\n", t)
 	return []byte(t), 0
 }
 

@@ -591,6 +591,26 @@ func (b *Buffer) SelectionRunes(sel util.Sel) []rune {
 	return r
 }
 
+func (b *Buffer) ByteOffset(p int) int {
+	n := 0
+	ba, bb := b.Selection(util.Sel{0, p})
+	for _, bcur := range [][]rune{ba, bb} {
+		for _, ch := range bcur {
+			switch {
+			case ch <= 0x7f:
+				n++
+			case ch <= 0x7FF:
+				n += 2
+			case ch <= 0xFFFF:
+				n += 3
+			case ch <= 0x10FFFF:
+				n += 4
+			}
+		}
+	}
+	return n
+}
+
 func (b *Buffer) Size() int {
 	return len(b.buf) - b.gapsz
 }

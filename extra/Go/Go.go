@@ -123,7 +123,7 @@ func readaddr(p9clnt *clnt.Clnt, idx int) (pos, filename, body string, intpos [2
 	ctlfd.Write([]byte("addr=dot"))
 	ctlfd.Close()
 
-	addrfd, err := p9clnt.FOpen(fmt.Sprintf("/%d/addr", idx), p.OREAD)
+	addrfd, err := p9clnt.FOpen(fmt.Sprintf("/%d/byteaddr", idx), p.OREAD)
 	util.Allergic(debug, err)
 	bs, err := ioutil.ReadAll(addrfd)
 	addrfd.Close()
