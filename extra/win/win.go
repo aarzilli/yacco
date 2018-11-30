@@ -142,12 +142,14 @@ func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReader
 				state = ANSI_NORMAL
 				switch escseq[len(escseq)-1] {
 				case 'J':
-					if debug {
-						fmt.Println("Requesting screen clear")
+					if len(escseq) == 3 && (escseq[1] == '2' || escseq[1] == '3') {
+						if debug {
+							fmt.Printf("Requesting screen clear %v\n", []byte(escseq))
+						}
+						controlChan <- AppendMsg{s}
+						controlChan <- DeleteAddrMsg{","}
+						s = []byte{}
 					}
-					controlChan <- AppendMsg{s}
-					controlChan <- DeleteAddrMsg{","}
-					s = []byte{}
 				case 'H':
 					if debug {
 						fmt.Println("Requesting back to home")
@@ -679,7 +681,8 @@ func main() {
 		cmd = exec.Command(shell)
 	}
 
-	os.Setenv("TERM", "ansi")
+	//os.Setenv("TERM", "ansi")
+	os.Setenv("TERM", "xterm-256color")
 	os.Setenv("PAGER", "")
 	os.Setenv("EDITOR", "E")
 	os.Setenv("VISUAL", "")
