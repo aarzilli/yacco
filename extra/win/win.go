@@ -681,8 +681,7 @@ func main() {
 		cmd = exec.Command(shell)
 	}
 
-	//os.Setenv("TERM", "ansi")
-	os.Setenv("TERM", "xterm-256color")
+	os.Setenv("TERM", "ansi")
 	os.Setenv("PAGER", "")
 	os.Setenv("EDITOR", "E")
 	os.Setenv("VISUAL", "")
