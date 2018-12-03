@@ -21,6 +21,7 @@ var shouldKill = flag.Bool("k", false, "If a change happens while the command is
 var delayPeriod = flag.Int("d", 1, "Number of seconds after running the command while events will be discarded (default 3)")
 var recurse = flag.Bool("r", false, "Recursively register subdirectories")
 var depth = flag.Int("depth", 10, "Maximum recursion depth when recursion is enabled (default: 10)")
+var timeout = flag.Int("t", 0, "Maximum number of seconds the command is allowed to run before we kill it")
 
 var doneTimeMutex sync.Mutex
 var doneTime time.Time
@@ -49,7 +50,7 @@ func startCommand(clean bool, buf *util.BufferConn) {
 			buf.BodyFd.Writen(co, 0)
 
 			if err != nil {
-				fmt.Fprintf(buf.BodyFd, "Error executing command: %v", err)
+				fmt.Fprintf(buf.BodyFd, "Error executing command: %v\n", err)
 			}
 
 			// signal the end of the process if anyone is listening
@@ -58,6 +59,12 @@ func startCommand(clean bool, buf *util.BufferConn) {
 			default:
 			}
 		}()
+
+		var timeoutChan <-chan time.Time
+
+		if *timeout > 0 {
+			timeoutChan = time.After(time.Duration(*timeout) * time.Second)
+		}
 
 		// wait either for the end of the process (waitChan) or a request to kill it
 		done := false
@@ -75,7 +82,13 @@ func startCommand(clean bool, buf *util.BufferConn) {
 				break
 			case <-killChan:
 				if err := cmd.Process.Kill(); err != nil {
-					fmt.Fprintf(buf.BodyFd, "Error killing process: %v", err)
+					fmt.Fprintf(buf.BodyFd, "Error killing process: %v\n", err)
+				}
+				break
+			case <-timeoutChan:
+				fmt.Fprintf(buf.BodyFd, "Process ran too long\n")
+				if err := cmd.Process.Kill(); err != nil {
+					fmt.Fprintf(buf.BodyFd, "Error killing process: %v\n", err)
 				}
 				break
 			}
