@@ -1033,7 +1033,15 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 	default:
 		ec := lp.asExecContext(true)
 		//fmt.Printf("keypress: <%s>\n", util.KeyEvent(e))
-		if fcmd, ok := KeyBindings[util.KeyEvent(e)]; ok {
+		estr := util.KeyEvent(e)
+		if ec.ed != nil && ec.eventChan != nil && ec.ed.bodybuf.Props["send-arrows"] == "1" && ((estr == "up_arrow") || (estr == "down_arrow")) {
+			//TODO: send event
+			dir := "↑"
+			if estr == "down_arrow" {
+				dir = "↓"
+			}
+			util.Fmtevent2(ec.eventChan, util.EO_MOUSE, true, true, false, 0, 0, 0, dir, nil)
+		} else if fcmd, ok := KeyBindings[estr]; ok {
 			LastTypeTime = time.Time{}
 			HideCompl(false)
 			//println("Execute command: <" + cmd + ">")

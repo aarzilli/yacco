@@ -23,6 +23,8 @@ type lookFileResult struct {
 	show   string
 	mpos   []int
 	needle string
+
+	start, end int
 }
 
 func exactMatch(needle []rune) bool {
@@ -198,7 +200,7 @@ func fileSystemSearchMatch(name string, off int, exact bool, needlerx *regexp.Re
 	}
 
 	select {
-	case resultChan <- &lookFileResult{score, relPath, mpos, needle}:
+	case resultChan <- &lookFileResult{score, relPath, mpos, needle, 0, 0}:
 	case <-searchDone:
 		return -1
 	}
@@ -271,7 +273,7 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 		}
 
 		select {
-		case resultChan <- &lookFileResult{score, x, []int{}, needle}:
+		case resultChan <- &lookFileResult{score, x, []int{}, needle, 0, 0}:
 		case <-searchDone:
 			return
 		}

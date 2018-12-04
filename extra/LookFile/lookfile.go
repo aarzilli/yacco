@@ -69,11 +69,13 @@ func windowManFinish(outbufid string, p9clnt *clnt.Clnt, cwd string) *util.Buffe
 	fmt.Fprintf(buf.CtlFd, "name %s/+Lookfile\n", cwd)
 	io.WriteString(buf.CtlFd, "noautocompl\n")
 	io.WriteString(buf.CtlFd, "show-tag\n")
+	io.WriteString(buf.PropFd, "tab=4")
+	io.WriteString(buf.PropFd, "send-arrows=1")
 
 	return buf
 }
 
-func readEvents(buf *util.BufferConn, searchChan chan<- string, openChan chan<- struct{}) {
+func readEvents(buf *util.BufferConn, searchChan chan<- string, moveChan chan<- int, openChan chan<- struct{}) {
 	needle := ""
 
 	var er util.EventReader
@@ -99,6 +101,16 @@ func readEvents(buf *util.BufferConn, searchChan chan<- string, openChan chan<- 
 				case openChan <- struct{}{}:
 				default:
 				}
+			} else if arg == "↑" {
+				select {
+				case moveChan <- -1:
+				default:
+				}
+			} else if arg == "↓" {
+				select {
+				case moveChan <- +1:
+				default:
+				}
 			} else {
 				util.Allergic(debug, er.SendBack(buf.EventFd))
 			}
@@ -121,8 +133,9 @@ func readEvents(buf *util.BufferConn, searchChan chan<- string, openChan chan<- 
 			util.Allergic(debug, err)
 			tag := string(bs)
 			v := strings.SplitN(tag, "|", 2)
-			if len(v) > 1 {
-				needle = strings.TrimSpace(v[1])
+			v[1] = strings.TrimSpace(v[1])
+			if len(v[1]) > 1 && v[1] != needle {
+				needle = v[1]
 				select {
 				case searchChan <- needle:
 				default:
@@ -132,14 +145,25 @@ func readEvents(buf *util.BufferConn, searchChan chan<- string, openChan chan<- 
 	}
 }
 
-func searcher(buf *util.BufferConn, cwd string, searchChan <-chan string, openChan <-chan struct{}) {
+func searcher(buf *util.BufferConn, cwd string, searchChan <-chan string, moveChan <-chan int, openChan <-chan struct{}) {
 	resultChan := make(chan *lookFileResult, 1)
 	var searchDone chan struct{}
 	curNeedle := ""
+	curSelected := 0
 	var resultList = []*lookFileResult{}
 
 	for {
 		select {
+		case move := <-moveChan:
+			curSelected += move
+			if curSelected >= len(resultList) {
+				curSelected = len(resultList) - 1
+			}
+			if curSelected < 0 {
+				curSelected = 0
+			}
+			displayResults(buf, curSelected, resultList)
+
 		case needle, ok := <-searchChan:
 			if searchDone != nil {
 				close(searchDone)
@@ -148,29 +172,31 @@ func searcher(buf *util.BufferConn, cwd string, searchChan <-chan string, openCh
 			if !ok {
 				return
 			}
+			if curNeedle == needle {
+				break
+			}
 
 			exact := exactMatch([]rune(needle))
 			curNeedle = needle
+			curSelected = 0
 
-			displayResults(buf, resultList)
+			displayResults(buf, curSelected, resultList)
 			if needle != "" {
 				resultList = resultList[0:0]
 				searchDone = make(chan struct{})
 				go fileSystemSearch(cwd, resultChan, searchDone, needle, exact, MAX_RESULTS)
 				go tagsSearch(resultChan, searchDone, needle, exact, MAX_RESULTS)
 			} else {
-				displayResults(buf, resultList)
+				displayResults(buf, curSelected, resultList)
 			}
 
 		case _, ok := <-openChan:
 			if !ok {
 				return
 			}
-			if len(resultList) > 0 {
-				_, err := fmt.Fprintf(buf.EventFd, "EL%d %d 0 %d %s\n",
-					0, utf8.RuneCountInString(resultList[0].show),
-					utf8.RuneCountInString(resultList[0].show),
-					resultList[0].show)
+			if curSelected < len(resultList) {
+				_, err := fmt.Fprintf(buf.EventFd, "EL%d %d 0 1 x\n",
+					resultList[curSelected].start, resultList[curSelected].end)
 				util.Allergic(debug, err)
 				_, err = fmt.Fprintf(buf.EventFd, "EX0 0 0 3 Del\n")
 				util.Allergic(debug, err)
@@ -199,16 +225,17 @@ func searcher(buf *util.BufferConn, cwd string, searchChan <-chan string, openCh
 				resultList = resultList[:MAX_RESULTS]
 			}
 
-			displayResults(buf, resultList)
+			displayResults(buf, curSelected, resultList)
 		}
 	}
 }
 
-func displayResults(buf *util.BufferConn, resultList []*lookFileResult) {
+func displayResults(buf *util.BufferConn, curSelected int, resultList []*lookFileResult) {
 	n := 0
 	for _, result := range resultList {
-		n += utf8.RuneCountInString(result.show) + 1
+		n += utf8.RuneCountInString(result.show) + 2 // newline and tab
 	}
+	n += utf8.RuneCountInString(">>")
 
 	t := make([]rune, 0, n)
 	color := make([]uint8, n)
@@ -217,17 +244,28 @@ func displayResults(buf *util.BufferConn, resultList []*lookFileResult) {
 		color[i] = 0x01
 	}
 
-	s := 0
-	for _, result := range resultList {
+	for i, result := range resultList {
+		if i == curSelected {
+			t = append(t, []rune(">>\t")...)
+		} else {
+			t = append(t, []rune("\t")...)
+		}
+		s := len(t)
+		result.start = len(t)
 		t = append(t, []rune(result.show)...)
-		t = append(t, rune('\n'))
+		result.end = len(t)
+		t = append(t, []rune("\n")...)
 		for i := range result.mpos {
 			color[result.mpos[i]+s] = 0x03
 		}
-		s = len(t)
 	}
 
 	ct := util.MixColorHack(t, color)
+
+	xct := ct
+	if len(xct) > 20 {
+		xct = xct[:20]
+	}
 
 	io.WriteString(buf.AddrFd, ",")
 	buf.XDataFd.Write([]byte{0})
@@ -273,7 +311,8 @@ func main() {
 
 	searchChan := make(chan string, 1)
 	openChan := make(chan struct{}, 1)
+	moveChan := make(chan int, 1)
 
-	go readEvents(buf, searchChan, openChan)
-	searcher(buf, cwd, searchChan, openChan)
+	go readEvents(buf, searchChan, moveChan, openChan)
+	searcher(buf, cwd, searchChan, moveChan, openChan)
 }
