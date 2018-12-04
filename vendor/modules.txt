@@ -15,8 +15,6 @@ github.com/kr/pty
 github.com/lionkov/go9p/p
 github.com/lionkov/go9p/p/srv
 github.com/lionkov/go9p/p/clnt
-# github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
-github.com/nfnt/resize
 # github.com/wendal/readline-go v0.0.0-20130305043046-3ff003ef4c80
 github.com/wendal/readline-go
 # golang.org/x/exp v0.0.0-20180710024300-14dda7b62fcd => github.com/aarzilli/exp v0.0.0-20180724135916-edb5f9d2bb76

@@ -95,7 +95,6 @@ func init() {
 	cmds["Mark"] = MarkCmd
 	cmds["Savepos"] = SaveposCmd
 	cmds["Tooltip"] = TooltipCmd
-	cmds["Minimap"] = MinimapCmd
 }
 
 func HelpCmd(ec ExecContext, arg string) {
@@ -1368,13 +1367,6 @@ func TooltipCmd(ec ExecContext, arg string) {
 			Tooltip.Start(ec)
 		}
 	}()
-}
-
-func MinimapCmd(ec ExecContext, arg string) {
-	if ec.ed == nil {
-		return
-	}
-	ec.ed.DrawMinimap()
 }
 
 func makeEditContext(buf *buf.Buffer, sel *util.Sel, eventChan chan string, ed *Editor) edit.EditContext {

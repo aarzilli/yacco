@@ -11,8 +11,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/nfnt/resize"
-
 	"github.com/aarzilli/yacco/buf"
 	"github.com/aarzilli/yacco/config"
 	"github.com/aarzilli/yacco/edutil"
@@ -57,8 +55,6 @@ type Editor struct {
 
 	redrawRects []image.Rectangle
 	closed      bool
-
-	minimap bool
 }
 
 const NUM_JUMPS = 7
@@ -260,7 +256,6 @@ func (e *Editor) redrawResizeHandle() {
 }
 
 func (e *Editor) Redraw() {
-	e.minimap = false
 	e.redrawResizeHandle()
 
 	// draw text frames
@@ -348,7 +343,6 @@ func (e *Editor) refreshIntl(full bool) {
 	if !full && (e.otherSel[OS_TOP].E == e.refreshOpt.top) && (e.bodybuf.RevCount == e.refreshOpt.revCount) {
 		return
 	}
-	e.minimap = false
 	e.refreshOpt.top = e.otherSel[OS_TOP].E
 
 	e.sfr.Fr.Clear()
@@ -761,79 +755,10 @@ func (ed *Editor) MinimapClick(ev util.MouseDownEvent) {
 }
 
 func (ed *Editor) MinimapExit() {
-	ed.minimap = false
 	ed.sfr.Fr.VisibleTick = true
 	ed.sfr.Fr.Invalidate()
 	ed.refreshIntl(true)
 	ed.BufferRefreshEx(true, false)
-}
-
-func (e *Editor) DrawMinimap() {
-	if e.bodybuf.Size() > 50*1024 {
-		return
-	}
-
-	e.sfr.Fr.VisibleTick = false
-	e.minimap = true
-
-	r := e.r
-	r.Min.Y = e.tagfr.R.Max.Y + 1
-	r = e.r.Intersect(r)
-
-	draw.Draw(e.sfr.Fr.B, r, &editorColors[0][0], r.Min, draw.Src)
-
-	lines := 1
-	for i := 0; i < e.bodybuf.Size(); i++ {
-		if e.bodybuf.At(i) == '\n' {
-			lines++
-		}
-	}
-
-	lh := e.sfr.Fr.Font.Metrics().Height.Floor()
-	sz := lines * lh
-	sz += int(0.2 * float64(sz))
-
-	b := image.NewRGBA(image.Rect(0, 0, e.sfr.Fr.R.Max.X-e.sfr.Fr.R.Min.X, sz))
-
-	fr := popupFrame(b, b.Bounds())
-	fr.B = b
-	fr.R = b.Bounds()
-	fr.Font = e.sfr.Fr.Font
-	fr.Colors = e.sfr.Fr.Colors
-	fr.Hackflags = textframe.HF_NOVERTSTOP
-	fr.Sel.S = e.otherSel[OS_TOP].E
-	fr.Sel.E = e.otherSel[OS_TOP].E + e.sfr.Fr.Size()
-
-	ra, rb := e.bodybuf.Selection(util.Sel{0, e.bodybuf.Size()})
-	limit := fr.Insert(ra, rb)
-	limit.X += 10
-	limit.Y += 10
-
-	if limit.Y > b.Bounds().Max.Y {
-		b = image.NewRGBA(image.Rect(0, 0, e.sfr.Fr.R.Max.X-e.sfr.Fr.R.Min.X, limit.Y))
-		fr.B = b
-		fr.R = b.Bounds()
-	}
-
-	fr.RefreshColors(hl.New(config.LanguageRules, e.bodybuf.Name).Highlight(0, e.bodybuf.Size(), e.bodybuf, nil))
-	fr.Redraw(false, nil)
-
-	b = thumbnail(b, limit, r.Max.Y-r.Min.Y)
-
-	draw.Draw(e.sfr.Fr.B, r, b.SubImage(image.Rect(0, 0, limit.X, limit.Y)), image.ZP, draw.Src)
-
-	Wnd.FlushImage(r)
-}
-
-func thumbnail(b *image.RGBA, limit image.Point, height int) *image.RGBA {
-	if limit.Y <= height {
-		return b
-	}
-	scale := func(x int) int {
-		return int(float64(x) * float64(height) / float64(limit.Y))
-	}
-	width := uint(scale(limit.X))
-	return resize.Resize(width, uint(height), b.SubImage(image.Rect(0, 0, limit.X, limit.Y)), resize.Bilinear).(*image.RGBA)
 }
 
 type fileInfos []os.FileInfo

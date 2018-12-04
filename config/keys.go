@@ -58,7 +58,6 @@ var KeyBindings = map[string]string{
 	"control+shift+g": "Look!Prev",
 
 	"control+q": "LookFile",
-	"control+m": "Minimap",
 
 	"backspace": "Do\nEdit g// -#1,.\nEdit c//",
 	"control+w": "Do\nEdit g// -#1,.\nEdit c//",

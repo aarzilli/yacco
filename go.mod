@@ -6,7 +6,7 @@ require (
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/kr/pty v0.0.0-20160716204620-ce7fa45920dc
 	github.com/lionkov/go9p v0.0.0-20180620135904-0a603dd6808a
-	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
+	github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646 // indirect
 	github.com/wendal/readline-go v0.0.0-20130305043046-3ff003ef4c80
 	golang.org/x/exp v0.0.0-20180710024300-14dda7b62fcd
 	golang.org/x/image v0.0.0-20180708004352-c73c2afc3b81
