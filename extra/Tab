@@ -8,13 +8,9 @@ def send(s, dst):
 	p = Popen([ "y9p", "write", dst ], shell=False, stdin=PIPE)
 	p.communicate(s)
 
-if sys.argv[1] == "adj" or sys.argv[1] == "adjust":
-	send("tabadj", "buf/ctl")
-elif sys.argv[1] == "help" or sys.argv[1] == "-h":
+if sys.argv[1] == "help" or sys.argv[1] == "-h":
 	print "Tab stops manipulation:"
-	print "\tTab <argument>"
-	print "Possible <argument> values:"
-	print "\tadj, tabadj\t\tElastic adjustment of tab stops for the current frame"
-	print "\ttab=<width>\t\tWidth of a tab in number of spaces for the current frame"
+	print "\tTab <width>"
+	print "Sets the number of spaces that correspond to a tab"
 else:
 	send("tab=" + sys.argv[1], "prop")
