@@ -37,6 +37,7 @@ const (
 	ANSI_ESCAPE
 	ANSI_ESCAPE_CSI
 	ANSI_ESCAPE_OSC
+	ANSI_AFTER_HOME
 )
 
 type AppendMsg struct {
@@ -81,6 +82,7 @@ type FuncMsg struct {
 func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReaderDone chan struct{}) {
 	bufout := bufio.NewReaderSize(stdout, 32*1024)
 	escseq := []byte{}
+	athome := false
 	state := ANSI_NORMAL
 	s := []byte{}
 	for {
@@ -101,6 +103,7 @@ func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReader
 			return
 		}
 
+	reprocess:
 		switch state {
 		case ANSI_NORMAL:
 			switch ch {
@@ -142,22 +145,46 @@ func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReader
 				state = ANSI_NORMAL
 				switch escseq[len(escseq)-1] {
 				case 'J':
-					if len(escseq) == 3 && (escseq[1] == '2' || escseq[1] == '3') {
-						if debug {
-							fmt.Printf("Requesting screen clear %v\n", []byte(escseq))
-						}
-						controlChan <- AppendMsg{s}
-						controlChan <- DeleteAddrMsg{","}
-						s = []byte{}
+					arg := 0
+					if len(escseq) == 3 {
+						arg = int(escseq[1] - '0')
 					}
+					if debug {
+						fmt.Printf("Requesting screen clear %v\n", []byte(escseq))
+					}
+					controlChan <- AppendMsg{s}
+					s = []byte{}
+
+					switch arg {
+					case 0: // nothing or 0: clear cursor to end of screen
+						if athome {
+							controlChan <- DeleteAddrMsg{","}
+						}
+					case 1:
+						// can't do this
+					default: // 2 or 3: clear full screen
+						controlChan <- DeleteAddrMsg{","}
+					}
+
 				case 'H':
 					if debug {
 						fmt.Println("Requesting back to home")
 					}
 					controlChan <- AppendMsg{s}
 					s = []byte{}
-					controlChan <- MoveDotMsg{"#0"}
+					athome = true
+					state = ANSI_AFTER_HOME
 				}
+			}
+
+		case ANSI_AFTER_HOME:
+			if ch == 0x1b {
+				escseq = []byte{}
+				state = ANSI_ESCAPE
+			} else {
+				athome = false
+				state = ANSI_NORMAL
+				goto reprocess
 			}
 
 		case ANSI_ESCAPE_OSC:
