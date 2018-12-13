@@ -39,6 +39,7 @@ func startCommand(clean bool, buf *util.BufferConn) {
 
 	go func() {
 		cmd := exec.Command(args[0], args[1:]...)
+		cmd.SysProcAttr = &syscall.SysProcAttr{Pgid: 0, Setpgid: true}
 
 		waitChan := make(chan bool, 0)
 		go func() {
@@ -81,13 +82,13 @@ func startCommand(clean bool, buf *util.BufferConn) {
 				done = true
 				break
 			case <-killChan:
-				if err := cmd.Process.Kill(); err != nil {
+				if err := kill(cmd); err != nil {
 					fmt.Fprintf(buf.BodyFd, "Error killing process: %v\n", err)
 				}
 				break
 			case <-timeoutChan:
-				fmt.Fprintf(buf.BodyFd, "Process ran too long\n")
-				if err := cmd.Process.Kill(); err != nil {
+				fmt.Fprintf(buf.BodyFd, "Process ran too long %d\n", cmd.Process.Pid)
+				if err := kill(cmd); err != nil {
 					fmt.Fprintf(buf.BodyFd, "Error killing process: %v\n", err)
 				}
 				break
@@ -101,6 +102,18 @@ func startCommand(clean bool, buf *util.BufferConn) {
 
 		buf.AddrFd.Write([]byte{'#', '0'})
 	}()
+}
+
+func kill(cmd *exec.Cmd) error {
+	pgrp, err := syscall.Getpgid(cmd.Process.Pid)
+	if err == nil && pgrp == cmd.Process.Pid {
+		group, err := os.FindProcess(-pgrp)
+		if err == nil {
+			group.Kill()
+			return nil
+		}
+	}
+	return cmd.Process.Kill()
 }
 
 func canExecute() bool {
