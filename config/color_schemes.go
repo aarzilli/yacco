@@ -269,8 +269,8 @@ var atombg = c(40, 44, 52)
 var atomcmtfg = c(92, 99, 112)
 var atomstrfg = c(152, 195, 121)
 var atomnormfg = c(206, 209, 214)
-var atomtagfg = c(219, 219, 219)
-var atomtagbg = c(33, 37, 43)
+var atomtagbg = c(0xaa, 0xaa, 0xaa)
+var atomtagfg = c(0x00, 0x00, 0x00)
 var atomwinbg = c(45, 45, 45)
 var atomselbg = c(62, 68, 81)
 var atomtagselbg = c(135, 135, 135)
@@ -278,7 +278,7 @@ var atomtagselbg = c(135, 135, 135)
 var AtomColorScheme = ColorScheme{
 	WindowBG: atomwinbg,
 
-	TopBorder: atomnormfg, VertBorder: atomnormfg,
+	TopBorder: atomtagfg, VertBorder: atomnormfg,
 	Scrollbar: c(53, 59, 69),
 
 	EditorPlain: []image.Uniform{atombg, atomnormfg, atomstrfg, atomcmtfg},
@@ -298,7 +298,7 @@ var AtomColorScheme = ColorScheme{
 	TagMatchingParenthesis: []image.Uniform{atomtagselbg, atomtagfg},
 
 	HandleFG:         atomtagbg,
-	HandleModifiedFG: c(224, 108, 107),
+	HandleModifiedFG: atomtagselbg,
 	HandleSpecialFG:  *DMedgreen,
 	HandleBG:         atomwinbg,
 }
