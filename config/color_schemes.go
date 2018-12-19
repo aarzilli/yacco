@@ -279,7 +279,7 @@ var AtomColorScheme = ColorScheme{
 	WindowBG: atomwinbg,
 
 	TopBorder: atomtagfg, VertBorder: atomnormfg,
-	Scrollbar: c(53, 59, 69),
+	Scrollbar: atomselbg,
 
 	EditorPlain: []image.Uniform{atombg, atomnormfg, atomstrfg, atomcmtfg},
 	EditorSel1:  []image.Uniform{atomselbg, atomnormfg, atomstrfg, atomcmtfg},
