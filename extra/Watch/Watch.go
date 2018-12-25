@@ -82,6 +82,7 @@ func startCommand(clean bool, buf *util.BufferConn) {
 				done = true
 				break
 			case <-killChan:
+				fmt.Fprintf(buf.BodyFd, "Killing process\n")
 				if err := kill(cmd); err != nil {
 					fmt.Fprintf(buf.BodyFd, "Error killing process: %v\n", err)
 				}
@@ -196,16 +197,30 @@ func readEvents(buf *util.BufferConn) {
 		switch er.Type() {
 		case util.ET_TAGEXEC, util.ET_BODYEXEC:
 			arg, _ := er.Text(nil, nil, nil)
-			if arg == "Rerun" {
+			switch arg {
+			case "Rerun":
 				buf.CtlFd.Write([]byte("show\n"))
 				if canExecute() {
 					startCommand(true, buf)
 				}
-			} else if arg == "Stop" {
-				/*TODO: kill the process if it's running */
-			} else {
-				err := er.SendBack(buf.EventFd)
-				util.Allergic(debug, err)
+			case "Kill":
+				select {
+				case killChan <- true:
+				default:
+				}
+			default:
+				const timeoutPrefix = "Timeout "
+				if strings.HasPrefix(arg, timeoutPrefix) {
+					var err error
+					*timeout, err = strconv.Atoi(arg[len(timeoutPrefix):])
+					if err != nil {
+						*timeout = -1
+						fmt.Fprintf(buf.BodyFd, "Timeout changed to %d\n", *timeout)
+					}
+				} else {
+					err := er.SendBack(buf.EventFd)
+					util.Allergic(debug, err)
+				}
 			}
 		case util.ET_TAGLOAD, util.ET_BODYLOAD:
 			err := er.SendBack(buf.EventFd)
