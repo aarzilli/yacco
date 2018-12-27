@@ -53,6 +53,7 @@ func init() {
 	ColorSchemeMap["4c"] = &C4CColorScheme
 	ColorSchemeMap["4cr"] = &C4CRColorScheme
 	ColorSchemeMap["g"] = &GruvboxColorScheme
+	ColorSchemeMap["eve"] = &EveColorScheme
 }
 
 func c(r, g, b uint8) image.Uniform {
@@ -475,4 +476,31 @@ var GruvboxColorScheme = ColorScheme{
 	HandleModifiedFG: cc(0xd79921),
 	HandleSpecialFG:  cc(0xfabd2f),
 	HandleBG:         cc(0xfbf1c7),
+}
+
+var EveColorScheme = ColorScheme{
+	WindowBG: *image.White,
+
+	TopBorder: *image.Black, VertBorder: *image.Black,
+	Scrollbar: cc(0xced1d7),
+
+	EditorPlain: []image.Uniform{cc(0xebeef5), *image.Black, cc(0x53A053), cc(0x5D5D5F), cc(0x437aed)},
+	EditorSel1:  []image.Uniform{cc(0xceddf6), *image.Black, cc(0x53A053), cc(0x5D5D5F)},
+	EditorSel2:  []image.Uniform{cc(0x00BEC4), cc(0xebeef5)},
+	EditorSel3:  []image.Uniform{cc(0x00BEC4), cc(0xebeef5)},
+
+	EditorMatchingParenthesis: []image.Uniform{*image.Black, yellowbg},
+
+	Compl: []image.Uniform{bluebg, *image.Black},
+
+	TagPlain:               []image.Uniform{bluebg, *image.Black},
+	TagSel1:                []image.Uniform{*DPalegreygreen, *image.Black},
+	TagSel2:                []image.Uniform{col2sel, bluebg},
+	TagSel3:                []image.Uniform{col3sel, bluebg},
+	TagMatchingParenthesis: []image.Uniform{*image.Black, bluebg},
+
+	HandleFG:         bluebg,
+	HandleModifiedFG: *DMedblue,
+	HandleSpecialFG:  *DMedgreen,
+	HandleBG:         *DPurpleblue,
 }
