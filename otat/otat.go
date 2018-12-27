@@ -252,6 +252,9 @@ scriptSearch:
 	if len(m.lookups) == 0 {
 		if autoligatures {
 			maxbacktrack, maxlookahead = m.setupAuto()
+			if maxbacktrack == 0 && maxlookahead == 0 {
+				return Dummy(), availableFeaturesStr, err
+			}
 		} else {
 			return Dummy(), availableFeaturesStr, err
 		}
