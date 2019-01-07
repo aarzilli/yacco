@@ -4,6 +4,7 @@ import (
 	"image"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/aarzilli/yacco/otat"
@@ -24,9 +25,51 @@ type Multiface struct {
 	Otatm *otat.Machine
 }
 
+func parseFontConfig(fontConfig string, defaultSize, defaultLineSpacing float64, defaultFullHinting, defaultAutoligatures bool) (fontv []string, size, lineSpacing float64, fullHinting, autoligatures bool) {
+	size = defaultSize
+	lineSpacing = defaultLineSpacing
+	fullHinting = defaultFullHinting
+	autoligatures = defaultAutoligatures
+	v := strings.Split(fontConfig, "@")
+	for _, param := range v[1:] {
+		vv := strings.SplitN(param, "=", 2)
+		if len(vv) != 2 {
+			continue
+		}
+		switch vv[0] {
+		case "Pixel":
+			x, err := strconv.ParseFloat(vv[1], 64)
+			if err == nil {
+				size = x
+			}
+		case "LineSpacing":
+			x, err := strconv.ParseFloat(vv[1], 64)
+			if err == nil {
+				lineSpacing = x
+			}
+		case "FullHinting":
+			switch vv[1] {
+			case "true":
+				fullHinting = true
+			case "false":
+				fullHinting = false
+			}
+		case "Autoligatures":
+			switch vv[1] {
+			case "true":
+				autoligatures = true
+			case "false":
+				autoligatures = false
+			}
+		}
+	}
+	fontv = strings.Split(v[0], ":")
+	return
+}
+
 // Reads a Font: fontPath is a ':' separated list of ttf or pcf font files (they will be used to search characters)
 func NewFont(dpi, size, lineSpacing float64, fullHinting, autoligatures bool, fontPath string) (font.Face, error) {
-	fontPathV := strings.Split(fontPath, ":")
+	fontPathV, size, lineSpacing, fullHinting, autoligatures := parseFontConfig(fontPath, size, lineSpacing, fullHinting, autoligatures)
 	fbs := make([][]byte, len(fontPathV))
 	for i, fontfile := range fontPathV {
 		fontBytes, err := ioutil.ReadFile(os.ExpandEnv(fontfile))

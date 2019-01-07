@@ -18,7 +18,7 @@ func arrayOut(v []string) string {
 }
 
 func splitIs(t *testing.T, in string, tgt []string) {
-	out := quotedSplit(in)
+	out := QuotedSplit(in)
 	if len(out) != len(tgt) {
 		t.Fatalf("Parsing of <%s> failed: tgt: [%s] out: [%s]\n", in, arrayOut(tgt), arrayOut(out))
 	}
