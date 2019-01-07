@@ -1,6 +1,7 @@
 package go2def
 
 import (
+	"bytes"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -37,6 +38,8 @@ type Config struct {
 
 	Verbose           bool
 	DebugLoadPackages bool
+
+	out Description
 }
 
 type context struct {
@@ -48,7 +51,7 @@ type context struct {
 	pkgs []*packages.Package
 }
 
-func Describe(path string, pos [2]int, cfg *Config) {
+func Describe(path string, pos [2]int, cfg *Config) Description {
 	var ctx context
 
 	if cfg != nil {
@@ -63,8 +66,8 @@ func Describe(path string, pos [2]int, cfg *Config) {
 
 	err := loadPackages(&ctx, path)
 	if err != nil {
-		fmt.Fprintf(cfg.Out, "loading packages: %v", err)
-		return
+		cfg.out.err("loading packages: %v", err)
+		return nil
 	}
 
 	if cfg.Verbose && cfg.DebugLoadPackages {
@@ -92,7 +95,11 @@ func Describe(path string, pos [2]int, cfg *Config) {
 
 	if !found {
 		fmt.Fprintf(ctx.Out, "nothing found\n")
+	} else {
+		ctx.out.writeTo(ctx.Out)
 	}
+
+	return ctx.out
 }
 
 func (ctx *context) getPosition(pos token.Pos) token.Position {
@@ -168,7 +175,7 @@ func describeNode(ctx *context, pkg *packages.Package, node ast.Node) {
 	case *ast.Ident:
 		obj := pkg.TypesInfo.Uses[node]
 		if obj == nil {
-			fmt.Fprintf(ctx.Out, "unknown identifier %v\n", node)
+			ctx.out.err("unknown identifier %v\n", node)
 			return
 		}
 
@@ -180,14 +187,12 @@ func describeNode(ctx *context, pkg *packages.Package, node ast.Node) {
 		if declnode != nil {
 			describeDeclaration(ctx, declnode, obj.Type())
 
-			printPos(ctx, "\n", ctx.getPosition(declnode.Pos()))
-
+			ctx.out.pos(pos2str(ctx, ctx.getPosition(declnode.Pos())))
 		} else {
-			fmt.Fprintf(ctx.Out, "%s\n", obj)
+			ctx.out.object(obj)
 			describeType(ctx, "type:", obj.Type())
 
-			printPos(ctx, "\n", ctx.getPosition(obj.Pos()))
-
+			ctx.out.pos(pos2str(ctx, ctx.getPosition(obj.Pos())))
 		}
 
 	case *ast.SelectorExpr:
@@ -199,12 +204,10 @@ func describeNode(ctx *context, pkg *packages.Package, node ast.Node) {
 			}
 			if typeOfExpr := pkg.TypesInfo.Types[node.X]; typeOfExpr.Type != nil {
 				describeType(ctx, "receiver:", typeOfExpr.Type)
-				describeTypeContents(ctx.Out, typeOfExpr.Type, node.Sel.String())
+				describeTypeContents(&ctx.out, typeOfExpr.Type, node.Sel.String())
 				return
 			}
-			fmt.Fprintf(ctx.Out, "unknown selector expression ")
-			printer.Fprint(ctx.Out, ctx.getFileSet(node.Pos()), node)
-			fmt.Fprintf(ctx.Out, "\n")
+			ctx.out.err(fmt.Sprintf("unknown selector expression %s", printerSprint(ctx.getFileSet(node.Pos()), node)))
 			return
 		}
 
@@ -218,30 +221,19 @@ func describeNode(ctx *context, pkg *packages.Package, node ast.Node) {
 			pos = ctx.getPosition(declnode.Pos())
 			switch declnode := declnode.(type) {
 			case *ast.FuncDecl:
-				printFunc(ctx, declnode)
+				ctx.out.funcHeader(ctx.getFileSet(declnode.Pos()), declnode)
 				fallbackdescr = false
 			}
 		}
 
 		if fallbackdescr {
-			switch sel.Kind() {
-			case types.FieldVal:
-				fmt.Fprintf(ctx.Out, "struct field ")
-			case types.MethodVal:
-				fmt.Fprintf(ctx.Out, "method ")
-			case types.MethodExpr:
-				fmt.Fprintf(ctx.Out, "method expression ")
-			default:
-				fmt.Fprintf(ctx.Out, "unknown selector ")
-			}
+			ctx.out.selector(sel.Kind(), printerSprint(ctx.getFileSet(node.Pos()), node))
 
-			printer.Fprint(ctx.Out, ctx.getFileSet(node.Pos()), node)
-			fmt.Fprintf(ctx.Out, "\n")
 			describeType(ctx, "receiver:", sel.Recv())
 			describeType(ctx, "type:", sel.Type())
 		}
 
-		printPos(ctx, "\n", pos)
+		ctx.out.pos(pos2str(ctx, pos))
 
 	case ast.Expr:
 		typeAndVal := pkg.TypesInfo.Types[node]
@@ -249,12 +241,18 @@ func describeNode(ctx *context, pkg *packages.Package, node ast.Node) {
 	}
 }
 
+func printerSprint(fset *token.FileSet, node ast.Node) string {
+	var buf bytes.Buffer
+	printer.Fprint(&buf, fset, node)
+	return buf.String()
+}
+
 func describeDeclaration(ctx *context, declnode ast.Node, typ types.Type) {
 	normaldescr := true
 
 	switch declnode := declnode.(type) {
 	case *ast.FuncDecl:
-		printFunc(ctx, declnode)
+		ctx.out.funcHeader(ctx.getFileSet(declnode.Pos()), declnode)
 		normaldescr = false
 	default:
 	}
@@ -264,35 +262,29 @@ func describeDeclaration(ctx *context, declnode ast.Node, typ types.Type) {
 	}
 }
 
-func printFunc(ctx *context, declnode *ast.FuncDecl) {
-	body := declnode.Body
-	declnode.Body = nil
-	printer.Fprint(ctx.Out, ctx.getFileSet(declnode.Pos()), declnode)
-	fmt.Fprintf(ctx.Out, "\n")
-	declnode.Body = body
-}
-
 func describeType(ctx *context, prefix string, typ types.Type) {
-	fmt.Fprintf(ctx.Out, "%s %s\n", prefix, printTypesTypeNice(typ))
+	typstr := printTypesTypeNice(typ)
 	if ptyp, isptr := typ.(*types.Pointer); isptr {
 		typ = ptyp.Elem()
 	}
 	ntyp, isnamed := typ.(*types.Named)
 	if !isnamed {
+		ctx.out.typ(prefix, typstr, "")
 		return
 	}
 	obj := ntyp.Obj()
 	if obj == nil {
+		ctx.out.typ(prefix, typstr, "")
 		return
 	}
 	pos := ctx.getPosition(obj.Pos())
-	printPos(ctx, "\t", pos)
+	ctx.out.typ(prefix, typstr, pos2str(ctx, pos))
 }
 
-func printPos(ctx *context, prefix string, pos token.Position) {
+func pos2str(ctx *context, pos token.Position) string {
 	filename := pos.Filename
 	filename = replaceGoroot(ctx, filename)
-	fmt.Fprintf(ctx.Out, "%s%s:%d\n", prefix, filename, pos.Line)
+	return fmt.Sprintf("%s:%d", filename, pos.Line)
 }
 
 func replaceGoroot(ctx *context, filename string) string {
@@ -303,13 +295,15 @@ func replaceGoroot(ctx *context, filename string) string {
 	return filename
 }
 
-func describeTypeContents(out io.Writer, typ types.Type, prefix string) {
+func describeTypeContents(descr *Description, typ types.Type, prefix string) {
 	if prefix == "_" {
 		prefix = ""
 	}
 	if ptyp, isptr := typ.(*types.Pointer); isptr {
 		typ = ptyp.Elem()
 	}
+
+	out := bytes.NewBuffer(make([]byte, 0))
 
 	switch styp := typ.(type) {
 	case *types.Named:
@@ -358,6 +352,8 @@ func describeTypeContents(out io.Writer, typ types.Type, prefix string) {
 			}
 		}
 	}
+
+	descr.typeContents(out.String())
 }
 
 func findNodeInPackages(ctx *context, pkgpath string, pos token.Pos) ast.Node {
@@ -470,4 +466,99 @@ func printTypesTypeNice(t types.Type) string {
 	return types.TypeString(t, func(pkg *types.Package) string {
 		return pkg.Name()
 	})
+}
+
+//go:generate stringer -type InfoKind
+
+type Description []Info
+
+type Info struct {
+	Kind InfoKind
+	Text string
+	Pos  string
+}
+
+type InfoKind uint8
+
+const (
+	InfoErr InfoKind = iota
+	InfoObject
+	InfoSelection
+	InfoFunction
+	InfoType
+	InfoTypeContents
+	InfoPos
+)
+
+func (descr Description) writeTo(out io.Writer) {
+	for _, info := range descr {
+		info.writeTo(out)
+	}
+}
+
+func (descr *Description) err(fmtstr string, args ...interface{}) {
+	*descr = append(*descr, Info{Kind: InfoErr, Text: fmt.Sprintf(fmtstr, args...)})
+}
+
+func (descr *Description) object(obj types.Object) {
+	*descr = append(*descr, Info{Kind: InfoObject, Text: fmt.Sprintf("%s", obj)})
+}
+
+func (descr *Description) selector(kind types.SelectionKind, expr string) {
+	kindstr := "unknown selector"
+	switch kind {
+	case types.FieldVal:
+		kindstr = "struct field"
+	case types.MethodVal:
+		kindstr = "method"
+	case types.MethodExpr:
+		kindstr = "method expression"
+	}
+
+	*descr = append(*descr, Info{Kind: InfoSelection, Text: fmt.Sprintf("%s %s", kindstr, expr)})
+}
+
+func (descr *Description) funcHeader(fset *token.FileSet, declnode *ast.FuncDecl) {
+	body := declnode.Body
+	declnode.Body = nil
+	var buf bytes.Buffer
+	printer.Fprint(&buf, fset, declnode)
+	*descr = append(*descr, Info{Kind: InfoFunction, Text: buf.String()})
+	declnode.Body = body
+}
+
+func (descr *Description) typ(prefix, typeDescr, pos string) {
+	*descr = append(*descr, Info{Kind: InfoType, Text: fmt.Sprintf("%s %s", prefix, typeDescr), Pos: pos})
+}
+
+func (descr *Description) typeContents(contents string) {
+	*descr = append(*descr, Info{Kind: InfoTypeContents, Text: contents})
+}
+
+func (descr *Description) pos(pos string) {
+	*descr = append(*descr, Info{Kind: InfoPos, Pos: pos})
+}
+
+func (info *Info) writeTo(out io.Writer) {
+	switch info.Kind {
+	case InfoErr, InfoObject, InfoSelection, InfoFunction:
+		out.Write([]byte(info.Text))
+		out.Write([]byte("\n"))
+
+	case InfoTypeContents:
+		out.Write([]byte(info.Text))
+
+	case InfoType:
+		out.Write([]byte(info.Text))
+		out.Write([]byte("\n"))
+		if info.Pos != "" {
+			out.Write([]byte("\t"))
+			out.Write([]byte(info.Pos))
+			out.Write([]byte("\n"))
+		}
+	case InfoPos:
+		out.Write([]byte("\n"))
+		out.Write([]byte(info.Pos))
+		out.Write([]byte("\n"))
+	}
 }
