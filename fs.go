@@ -924,23 +924,29 @@ func writePropFn(i int, data []byte, off int64) syscall.Errno {
 		return syscall.ENOENT
 	}
 	v := strings.SplitN(string(data), "=", 2)
-	if len(v) >= 2 {
-		if (v[0] == "font") && (v[1] == "switch") {
-			if ec.buf.Props["font"] == "main" {
-				ec.buf.Props["font"] = "alt"
+	done := make(chan syscall.Errno)
+	sideChan <- func() {
+		defer close(done)
+		if len(v) >= 2 {
+			if (v[0] == "font") && (v[1] == "switch") {
+				if ec.buf.Props["font"] == "main" {
+					ec.buf.Props["font"] = "alt"
+				} else {
+					ec.buf.Props["font"] = "main"
+				}
+			} else if (v[0] == "font") && ((v[1] == "+") || (v[1] == "-")) {
+				done <- writeMainPropFn(data, off)
+				return
 			} else {
-				ec.buf.Props["font"] = "main"
+				ec.buf.Props[v[0]] = v[1]
 			}
-		} else if (v[0] == "font") && ((v[1] == "+") || (v[1] == "-")) {
-			return writeMainPropFn(data, off)
-		} else {
-			ec.buf.Props[v[0]] = v[1]
 		}
+		if ec.ed != nil {
+			ec.ed.PropTrigger()
+		}
+		done <- 0
 	}
-	if ec.ed != nil {
-		ec.ed.PropTrigger()
-	}
-	return 0
+	return <-done
 }
 
 func readMainPropFn(off int64) ([]byte, syscall.Errno) {
