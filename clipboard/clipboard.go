@@ -112,7 +112,8 @@ func eventLoop() {
 		case xproto.SelectionRequestEvent:
 			if debugClipboardRequests {
 				tgtname := lookupAtom(e.Target)
-				fmt.Println("SelectionRequest", e, textAtom, tgtname, "isPrimary:", e.Selection == primaryAtom, "isClipboard:", e.Selection == clipboardAtom)
+				propname := lookupAtom(e.Property)
+				fmt.Println("SelectionRequest", e, textAtom, tgtname, propname, "isPrimary:", e.Selection == primaryAtom, "isClipboard:", e.Selection == clipboardAtom)
 			}
 			t := clipboardText
 
@@ -177,7 +178,7 @@ func lookupAtom(at xproto.Atom) string {
 
 func sendSelectionNotify(e xproto.SelectionRequestEvent) {
 	sn := xproto.SelectionNotifyEvent{
-		Time:      xproto.TimeCurrentTime,
+		Time:      e.Time,
 		Requestor: e.Requestor,
 		Selection: e.Selection,
 		Target:    e.Target,
