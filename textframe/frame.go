@@ -35,6 +35,7 @@ const (
 	HF_MARKSOFTWRAP uint32 = 1 << iota
 	HF_TRUNCATE            // truncates instead of softwrapping
 	HF_NOVERTSTOP          // Insert and InsertColor don't stop after they are past the bottom of the visible area
+	HF_AUTOINDENT_SOFTWRAP
 )
 
 type Frame struct {
@@ -201,6 +202,8 @@ func (fr *Frame) Insert(r1, r2 []rune) (limit image.Point) {
 		return 0, false
 	})
 
+	autoindentMargin := fixed.Int26_6(0)
+
 	for fr.otatm.Next() {
 		i, glyphidx, crune := fr.otatm.Glyph()
 		if crune == 0 {
@@ -235,6 +238,7 @@ func (fr *Frame) Insert(r1, r2 []rune) (limit image.Point) {
 			fr.ins.X = fr.leftMargin
 			fr.ins.Y += lh
 			prevRune, hasPrev = ' ', true
+			autoindentMargin = 0
 
 		case '\t':
 			var toNextCell fixed.Int26_6
@@ -268,10 +272,6 @@ func (fr *Frame) Insert(r1, r2 []rune) (limit image.Point) {
 			prevRune, hasPrev = ' ', true
 
 		default:
-			/*
-				if glyphidx == 0 {
-					fmt.Printf("glyph 0 for rune %c %d (%d)\n", crune, crune, i)
-				}*/
 			width, _ := fr.Font.GlyphAdvance(crune)
 			kerning := fixed.I(0)
 			if hasPrev {
@@ -281,9 +281,17 @@ func (fr *Frame) Insert(r1, r2 []rune) (limit image.Point) {
 
 			if fr.Hackflags&HF_TRUNCATE == 0 {
 				if fr.ins.X+width > fr.rightMargin {
-					fr.ins.X = fr.leftMargin
+					if autoindentMargin != 0 && (fr.Hackflags&HF_AUTOINDENT_SOFTWRAP != 0) {
+						fr.ins.X = autoindentMargin + fr.margin
+					} else {
+						fr.ins.X = fr.leftMargin
+					}
 					fr.ins.Y += lh
 				}
+			}
+
+			if autoindentMargin == 0 && (fr.Hackflags&HF_AUTOINDENT_SOFTWRAP != 0) {
+				autoindentMargin = fr.ins.X
 			}
 
 			g := glyph{
@@ -930,9 +938,11 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 
 		onpmatch := (fr.PMatch.S != fr.PMatch.E) && (i+fr.Top+n == fr.PMatch.S) && (len(fr.Colors) > 4) && (ssel == 0)
 
+		midlineh := (fr.Font.Metrics().Height - fr.Font.Metrics().Descent).Floor() / 2
+
 		// Softwrap mark drawing
 		if (g.p.Y != cury) && ((fr.Hackflags & HF_MARKSOFTWRAP) != 0) {
-			midline := cury.Floor() - fr.Font.Metrics().Height.Floor()/2
+			midline := cury.Floor() - midlineh
 			if !newline {
 				r := image.Rectangle{
 					image.Point{fr.rightMargin.Floor(), midline},
@@ -942,12 +952,12 @@ func (fr *Frame) redrawIntl(glyphs []glyph, drawSels bool, n int) {
 
 			cury = g.p.Y
 
-			midline = cury.Floor() - fr.Font.Metrics().Height.Floor()/2
+			midline = cury.Floor() - midlineh
 
 			if !newline {
 				r := image.Rectangle{
-					image.Point{(fr.leftMargin - fr.margin).Floor(), midline},
-					image.Point{fr.leftMargin.Floor(), midline + 1}}
+					image.Point{(g.p.X - fr.margin).Floor(), midline},
+					image.Point{g.p.X.Floor(), midline + 1}}
 				draw.Draw(fr.B, fr.R.Intersect(r), &fr.Colors[0][1], fr.R.Intersect(r).Min, draw.Src)
 			}
 		}

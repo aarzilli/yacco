@@ -92,7 +92,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 		Color: config.TheColorScheme.Scrollbar,
 		Fr: textframe.Frame{
 			Font:            config.MainFont,
-			Hackflags:       textframe.HF_MARKSOFTWRAP,
+			Hackflags:       textframe.HF_MARKSOFTWRAP | textframe.HF_AUTOINDENT_SOFTWRAP,
 			Scroll:          nil,
 			ExpandSelection: edutil.MakeExpandSelectionFn(e.bodybuf),
 			VisibleTick:     false,
