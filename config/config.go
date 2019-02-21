@@ -63,12 +63,21 @@ var LanguageRules = []hl.LanguageRules{
 
 	// Python
 	hl.LanguageRules{
-		NameRe: `\.py$`,
+		NameRe: `\.(?:py|star)$`,
 		RegionMatches: []hl.RegionMatch{
 			hl.StringRegion(`"""`, `"""`, 0),
 			hl.StringRegion("\"", "\"", '\\'),
 			hl.StringRegion("'", "'", '\\'),
 			hl.CommentRegion("#", "\n", 0),
+		},
+	},
+
+	hl.LanguageRules{
+		NameRe: `\.lua$`,
+		RegionMatches: []hl.RegionMatch{
+			hl.StringRegion("\"", "\"", '\\'),
+			hl.StringRegion("'", "'", '\\'),
+			hl.CommentRegion("--", "\n", 0),
 		},
 	},
 }
