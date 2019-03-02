@@ -3,7 +3,7 @@ github.com/BurntSushi/xgb
 github.com/BurntSushi/xgb/xproto
 github.com/BurntSushi/xgb/render
 github.com/BurntSushi/xgb/shm
-# github.com/aarzilli/go2def v0.0.0-20190107104408-38e8880f7089
+# github.com/aarzilli/go2def v0.0.0-20190302121637-5f926d55bba8
 github.com/aarzilli/go2def
 # github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 => github.com/aarzilli/freetype v0.0.0-20160928082430-6c8832ae5783
 github.com/golang/freetype/truetype
@@ -44,7 +44,7 @@ golang.org/x/mobile/geom
 golang.org/x/mobile/gl
 # golang.org/x/sys v0.0.0-20180715085529-ac767d655b30
 golang.org/x/sys/windows
-# golang.org/x/tools v0.0.0-20190107030206-d345f29b0d7b
+# golang.org/x/tools v0.0.0-20190228203856-589c23e65e65
 golang.org/x/tools/go/packages
 golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/internal/cgo
