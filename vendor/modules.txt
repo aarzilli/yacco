@@ -15,6 +15,8 @@ github.com/kr/pty
 github.com/lionkov/go9p/p
 github.com/lionkov/go9p/p/srv
 github.com/lionkov/go9p/p/clnt
+# github.com/sourcegraph/jsonrpc2 v0.0.0-20190106185902-35a74f039c6a
+github.com/sourcegraph/jsonrpc2
 # github.com/wendal/readline-go v0.0.0-20130305043046-3ff003ef4c80
 github.com/wendal/readline-go
 # golang.org/x/exp v0.0.0-20180710024300-14dda7b62fcd => github.com/aarzilli/exp v0.0.0-20180724135916-edb5f9d2bb76
