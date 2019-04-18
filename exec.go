@@ -95,6 +95,7 @@ func init() {
 	cmds["Mark"] = MarkCmd
 	cmds["Savepos"] = SaveposCmd
 	cmds["Tooltip"] = TooltipCmd
+	cmds["NextError"] = NextErrorCmd
 }
 
 func HelpCmd(ec ExecContext, arg string) {
@@ -252,6 +253,7 @@ Debug <…>		Run without arguments for informations
 Mark			Sets the mark
 Jump			Swap cursor and mark
 Direxec			Executes the specified command on the currently selected directory entry.
+NextError		Tries to load the file specified in the next line of the last editor where a load operation was executed
 `)
 	}
 }
@@ -1367,6 +1369,36 @@ func TooltipCmd(ec ExecContext, arg string) {
 			Tooltip.Start(ec)
 		}
 	}()
+}
+
+func NextErrorCmd(ec ExecContext, arg string) {
+	if lastLoadSel.ed == nil || lastLoadSel.p >= lastLoadSel.ed.bodybuf.Size() || lastLoadSel.ed.bodybuf.IsDir() || (lastLoadSel.ed.eventChan != nil && !lastLoadSel.ed.eventChanSpecial) {
+		return
+	}
+	found := false
+	for _, col := range Wnd.cols.cols {
+		for _, ed := range col.editors {
+			if ed == lastLoadSel.ed {
+				found = true
+				break
+			}
+		}
+	}
+	if !found {
+		return
+	}
+	lastLoadSel.p = lastLoadSel.ed.bodybuf.Tonl(lastLoadSel.p, +1)
+	s, e := expandSelToLine(lastLoadSel.ed.bodybuf, util.Sel{lastLoadSel.p, lastLoadSel.p})
+	lastLoadSel.ed.sfr.Fr.SetSelect(0, 1, s, e)
+	lastLoadSel.ed.sfr.Fr.SetSelect(0, 2, s, e)
+	lastLoadSel.ed.sfr.Redraw(true, nil)
+	Load(ExecContext{
+		ed:  lastLoadSel.ed,
+		dir: lastLoadSel.ed.bodybuf.Dir,
+		fr:  &lastLoadSel.ed.sfr.Fr,
+		buf: lastLoadSel.ed.bodybuf,
+		br:  lastLoadSel.ed.BufferRefresh,
+	}, lastLoadSel.p)
 }
 
 func makeEditContext(buf *buf.Buffer, sel *util.Sel, eventChan chan string, ed *Editor) edit.EditContext {

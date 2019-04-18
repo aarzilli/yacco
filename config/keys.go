@@ -65,6 +65,8 @@ var KeyBindings = map[string]string{
 
 	"control+=": "Font +",
 	"control+-": "Font -",
+
+	"control+n": "NextError",
 }
 
 var KeyConversion = map[string]key.Event{

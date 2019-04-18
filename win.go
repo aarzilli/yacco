@@ -62,9 +62,10 @@ type activeSelStruct struct {
 	zeroxEd *Editor
 	path    string
 	txt     string
+	p       int
 }
 
-var activeSel activeSelStruct
+var activeSel, lastLoadSel activeSelStruct
 var activeEditor *Editor = nil
 var activeCol *Col = nil
 var HasFocus = true
@@ -83,6 +84,18 @@ func (as *activeSelStruct) Set(lp LogicalPos) {
 	as.ed = lp.ed
 	as.path = filepath.Join(lp.bodybuf.Dir, lp.bodybuf.Name)
 	as.txt = string(lp.bodybuf.SelectionRunes(lp.sfr.Fr.Sel))
+}
+
+func (as *activeSelStruct) Set2(lp LogicalPos, p int) {
+	if (lp.bodybuf == nil) || (lp.sfr == nil) {
+		return
+	}
+	as.zeroxEd = lp.ed
+
+	as.ed = lp.ed
+	as.path = filepath.Join(lp.bodybuf.Dir, lp.bodybuf.Name)
+	as.txt = string(lp.bodybuf.SelectionRunes(lp.sfr.Fr.Sel))
+	as.p = p
 }
 
 func (as *activeSelStruct) Reset() {
@@ -1220,6 +1233,7 @@ func clickExec3(lp LogicalPos) {
 	s, original := expandedSelection(lp, 2)
 
 	if (lp.ed == nil) || (lp.ed.eventChan == nil) || lp.ed.eventChanSpecial {
+		lastLoadSel.Set2(lp, original)
 		Load(ec, original)
 	} else {
 		fr := lp.tagfr
