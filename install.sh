@@ -35,12 +35,12 @@ QuoteHack=false
 
 [Fonts "Main"]
 Pixel=16
-LineScale=0.8
+LineSpacing=0
 Path="\$HOME/.config/yacco/DejaVuSans.ttf"
 
 [Fonts "Alt"]
 Pixel=14
-LineScale=1.0
+LineSpacing=0
 Path="\$HOME/.config/yacco/luximr.ttf"
 
 [Fonts "Compl"]
