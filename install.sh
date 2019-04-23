@@ -75,7 +75,7 @@ CopyFrom=Main
 .	.+	XLook $l0
 
 [Keybindings]
-control+`	Mark
+control+\`	Mark
 control+p	Savepos
 control+d	Tooltip Go describe
 control+b	Jump
