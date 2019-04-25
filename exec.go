@@ -17,6 +17,7 @@ import (
 	"github.com/aarzilli/yacco/clipboard"
 	"github.com/aarzilli/yacco/config"
 	"github.com/aarzilli/yacco/edit"
+	"github.com/aarzilli/yacco/lsp"
 	"github.com/aarzilli/yacco/textframe"
 	"github.com/aarzilli/yacco/util"
 )
@@ -96,6 +97,7 @@ func init() {
 	cmds["Savepos"] = SaveposCmd
 	cmds["Tooltip"] = TooltipCmd
 	cmds["NextError"] = NextErrorCmd
+	cmds["Lsp"] = LspCmd
 }
 
 func HelpCmd(ec ExecContext, arg string) {
@@ -1331,11 +1333,11 @@ func SaveposCmd(ec ExecContext, arg string) {
 			clipboard.Set(fmt.Sprintf("%s:#%d,#%d", p, s.S, s.E))
 		}
 	} else {
-		sln, _ := b.GetLine(s.S)
+		sln, _ := b.GetLine(s.S, false)
 		if s.S == s.E {
 			clipboard.Set(fmt.Sprintf("%s:%d", p, sln))
 		} else {
-			eln, _ := b.GetLine(s.E)
+			eln, _ := b.GetLine(s.E, false)
 			clipboard.Set(fmt.Sprintf("%s:%d,%d", p, sln, eln))
 		}
 	}
@@ -1399,6 +1401,27 @@ func NextErrorCmd(ec ExecContext, arg string) {
 		buf: lastLoadSel.ed.bodybuf,
 		br:  lastLoadSel.ed.BufferRefresh,
 	}, lastLoadSel.p)
+}
+
+func LspCmd(ec ExecContext, arg string) {
+	if ec.ed == nil || ec.ed.bodybuf == nil {
+		return
+	}
+	b := ec.ed.bodybuf
+
+	srv, lspb := lsp.BufferToLsp(Wnd.tagbuf.Dir, b, ec.ed.sfr.Fr.Sel, true)
+	if srv == nil {
+		return
+	}
+
+	go func() {
+		tooltipContents = srv.Describe(lspb)
+		if tooltipContents != "" {
+			Tooltip.Start(ec)
+		} else if Tooltip.Visible {
+			HideCompl(true)
+		}
+	}()
 }
 
 func makeEditContext(buf *buf.Buffer, sel *util.Sel, eventChan chan string, ed *Editor) edit.EditContext {

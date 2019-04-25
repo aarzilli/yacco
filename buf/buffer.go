@@ -875,19 +875,19 @@ func (rr *runeReader) ReadRune() (r rune, size int, err error) {
 	}
 }
 
-func (b *Buffer) GetLine(i int) (int, int) {
+func (b *Buffer) GetLine(i int, utf16col bool) (int, int) {
 	if i > b.Size() {
 		println("GetLine Error:", i, b.Size())
 		return 0, 0
 	}
 	ba, bb := b.Selection(util.Sel{0, b.Size()})
 	if i < len(ba) {
-		n, c := countNl(ba[:i])
+		n, c := countNl(ba[:i], utf16col)
 		return n + 1, c
 	} else {
 		di := i - len(ba)
-		na, offa := countNl(ba)
-		nb, offb := countNl(bb[:di])
+		na, offa := countNl(ba, utf16col)
+		nb, offb := countNl(bb[:di], utf16col)
 		if nb == 0 {
 			return na + 1, offa + offb
 		} else {
@@ -919,7 +919,7 @@ func (b *Buffer) CanSave() bool {
 	}
 }
 
-func countNl(rs []rune) (int, int) {
+func countNl(rs []rune, utf16col bool) (int, int) {
 	count := 0
 	off := 0
 	for _, r := range rs {
@@ -927,7 +927,15 @@ func countNl(rs []rune) (int, int) {
 			count++
 			off = 0
 		} else {
-			off++
+			if utf16col {
+				if r <= 0xFFFF {
+					off++
+				} else {
+					off += 2
+				}
+			} else {
+				off++
+			}
 		}
 	}
 	return count, off

@@ -12,6 +12,7 @@ import (
 	"github.com/aarzilli/yacco/buf"
 	"github.com/aarzilli/yacco/config"
 	"github.com/aarzilli/yacco/hl"
+	"github.com/aarzilli/yacco/lsp"
 	"github.com/aarzilli/yacco/textframe"
 	"github.com/aarzilli/yacco/util"
 )
@@ -187,11 +188,22 @@ func complStart(p *Popup, ec ExecContext) (bool, string) {
 	hasFp, fpPrefixSuffix := getPrefixSuffix(compls, resName)
 
 	wdCompls := []string{}
-	if (wdwd != "") && ((fpwd == wdwd) || (len(compls) <= 0)) {
-		wdCompls = append(wdCompls, getWordCompls(wdwd)...)
-		wdCompls = util.Dedup(wdCompls)
+
+	var hasWd bool
+	var wdPrefixSuffix string
+	if fpwd != "" { // intentional, so that '.' is considered a valid character
+		if srv, lspb := lsp.BufferToLsp(Wnd.tagbuf.Dir, ec.buf, ec.fr.Sel, true); srv != nil {
+			wdCompls, wdPrefixSuffix = srv.Complete(lspb)
+			hasWd = len(wdCompls) > 0
+		}
 	}
-	hasWd, wdPrefixSuffix := getPrefixSuffix(wdCompls, wdwd)
+	if len(wdCompls) == 0 {
+		if (wdwd != "") && ((fpwd == wdwd) || (len(compls) <= 0)) {
+			wdCompls = append(wdCompls, getWordCompls(wdwd)...)
+			wdCompls = util.Dedup(wdCompls)
+		}
+		hasWd, wdPrefixSuffix = getPrefixSuffix(wdCompls, wdwd)
+	}
 	compls = util.Dedup(append(compls, wdCompls...))
 
 	templCompl := []string{}

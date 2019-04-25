@@ -77,7 +77,7 @@ CopyFrom=Main
 [Keybindings]
 control+\`	Mark
 control+p	Savepos
-control+d	Tooltip Go describe
+control+d	Lsp
 control+b	Jump
 control+.	|a+
 control+,	|a-

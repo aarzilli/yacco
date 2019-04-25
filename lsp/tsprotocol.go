@@ -4,7 +4,7 @@
 // generated automatically from vscode-languageserver-node
 //  version of Mon Feb 25 2019 09:01:22 GMT-0500 (Eastern Standard Time)
 
-package main
+package lsp
 
 // ImplementationClientCapabilities is:
 type ImplementationClientCapabilities struct {
@@ -644,6 +644,8 @@ type WorkspaceClientCapabilities struct {
 		 */
 		DynamicRegistration bool `json:"dynamicRegistration,omitempty"`
 	} `json:"executeCommand,omitempty"`
+
+	Configuration bool `json:"configuration"`
 }
 
 // TextDocumentClientCapabilities is:
@@ -998,11 +1000,9 @@ type TextDocumentClientCapabilities struct {
 	} `json:"publishDiagnostics,omitempty"`
 }
 
-// InnerClientCapabilities is:
-/**
- * Defines the capabilities provided by the client.
- */
-type InnerClientCapabilities struct {
+// ClientCapabilities is:
+type ClientCapabilities struct {
+	// InnerClientCapabilities
 
 	/** Workspace defined:
 	 * Workspace specific client capabilities.
@@ -1018,11 +1018,7 @@ type InnerClientCapabilities struct {
 	 * Experimental client capabilities.
 	 */
 	Experimental interface{} `json:"experimental,omitempty"`
-}
 
-// ClientCapabilities is:
-type ClientCapabilities struct {
-	InnerClientCapabilities
 	ImplementationClientCapabilities
 	TypeDefinitionClientCapabilities
 	WorkspaceFoldersClientCapabilities
@@ -2002,7 +1998,7 @@ type Position struct {
 	 * If a line number is greater than the number of lines in a document, it defaults back to the number of lines in the document.
 	 * If a line number is negative, it defaults to 0.
 	 */
-	Line float64 `json:"line"`
+	Line int `json:"line"`
 
 	/** Character defined:
 	 * Character offset on a line in a document (zero-based). Assuming that the line is
@@ -2013,7 +2009,7 @@ type Position struct {
 	 * line length.
 	 * If a line number is negative, it defaults to 0.
 	 */
-	Character float64 `json:"character"`
+	Character int `json:"character"`
 }
 
 // Range is:
@@ -2471,7 +2467,7 @@ type TextDocumentIdentifier struct {
  * An identifier to denote a specific version of a text document.
  */
 type VersionedTextDocumentIdentifier struct {
-	TextDocumentIdentifier
+	URI string `json:"uri"`
 
 	/** Version defined:
 	 * The version number of this document. If a versioned text document identifier

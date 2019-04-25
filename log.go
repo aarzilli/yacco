@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/aarzilli/yacco/buf"
+	"github.com/aarzilli/yacco/lsp"
+	"github.com/aarzilli/yacco/util"
 )
 
 /*
@@ -48,6 +50,13 @@ func Log(wid int, op LogOperation, buf *buf.Buffer) {
 		}
 	}
 	t.Stop()
+
+	if op == LOP_PUT {
+		srv, lspb := lsp.BufferToLsp(Wnd.tagbuf.Dir, buf, util.Sel{0, 0}, false)
+		if srv != nil {
+			srv.Changed(lspb)
+		}
+	}
 }
 
 func LogExec(cmd, dir string) {
