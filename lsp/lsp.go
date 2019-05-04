@@ -73,7 +73,7 @@ func LspFor(lang, wd string, create bool) *LspSrv {
 	lspMu.Lock()
 	defer lspMu.Unlock()
 
-	if lspConns[wd] != nil {
+	if _, ok := lspConns[wd]; ok {
 		return lspConns[wd]
 	}
 
@@ -89,7 +89,11 @@ func LspFor(lang, wd string, create bool) *LspSrv {
 	stderr, err := cmd.StderrPipe()
 	must(err)
 	go io.Copy(os.Stdout, stderr)
-	must(cmd.Start())
+	err = cmd.Start()
+	if err != nil {
+		lspConns[wd] = nil
+		return nil
+	}
 	go func() {
 		err := cmd.Wait()
 		fmt.Printf("process exited %v\n", err)
