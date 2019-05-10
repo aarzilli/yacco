@@ -830,11 +830,17 @@ func PutallCmd(ec ExecContext, arg string) {
 				if !ec.norefresh {
 					ed.BufferRefresh()
 				}
+				if config.IsTemplatesFile(filepath.Join(ed.bodybuf.Dir, ed.bodybuf.Name)) {
+					config.LoadTemplates()
+				}
 			}
 		}
 	}
 	if nerr != 0 {
 		Warn(t)
+	}
+	if AutoDumpPath != "" {
+		DumpTo(AutoDumpPath)
 	}
 }
 
