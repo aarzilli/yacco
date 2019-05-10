@@ -146,6 +146,8 @@ func getPrefixSuffix(compls []string, word string) (has bool, prefixSuffix strin
 	return
 }
 
+const completeUsingLspServer = false
+
 func complStart(p *Popup, ec ExecContext) (bool, string) {
 	if ec.buf == nil {
 		HideCompl(false)
@@ -191,7 +193,7 @@ func complStart(p *Popup, ec ExecContext) (bool, string) {
 
 	var hasWd bool
 	var wdPrefixSuffix string
-	if fpwd != "" && strings.Contains(fpwd, ".") { // intentional, so that '.' is considered a valid character and also because autocompletion requests are too slow
+	if completeUsingLspServer && fpwd != "" && strings.Contains(fpwd, ".") { // intentional, so that '.' is considered a valid character and also because autocompletion requests are too slow
 		if srv, lspb := lsp.BufferToLsp(Wnd.tagbuf.Dir, ec.buf, ec.fr.Sel, true); srv != nil {
 			wdCompls, wdPrefixSuffix = srv.Complete(lspb)
 			hasWd = len(wdCompls) > 0
