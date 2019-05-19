@@ -50,9 +50,9 @@ var LanguageRules = []hl.LanguageRules{
 		},
 	},
 
-	// C / C++ / Java / js
+	// C / C++ / Java / js / HolyC
 	hl.LanguageRules{
-		NameRe: `\.(?:c|java|cpp|h|js)$`,
+		NameRe: `\.(?:c|java|cpp|h|js|HC|HH)$`,
 		RegionMatches: []hl.RegionMatch{
 			hl.StringRegion("\"", "\"", '\\'),
 			hl.StringRegion("'", "'", '\\'),
