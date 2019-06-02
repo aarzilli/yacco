@@ -26,7 +26,7 @@ function make_config {
 	mkdir -p $HOME/.config/yacco/
 	
 	if [ ! -e $HOME/.config/yacco/rc ]; then
-		cat >$HOME/.config/yacco/rc <<EOF
+		cat >$HOME/.config/yacco/rc <<'EOF'
 [Core]
 EnableHighlighting=true
 HideHidden=true
