@@ -1420,6 +1420,11 @@ func LspCmd(ec ExecContext, arg string) {
 		return
 	}
 
+	if arg == "restart" {
+		lsp.Restart(Wnd.tagbuf.Dir)
+		return
+	}
+
 	go func() {
 		tooltipContents = srv.Describe(lspb)
 		if tooltipContents != "" {

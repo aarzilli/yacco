@@ -65,6 +65,11 @@ var lspMu sync.Mutex
 
 const debug = false
 
+func Restart(wd string) {
+	lspConns[wd].conn.Close()
+	delete(lspConns, wd)
+}
+
 func LspFor(lang, wd string, create bool) *LspSrv {
 	if lang != ".go" {
 		return nil
