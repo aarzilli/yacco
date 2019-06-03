@@ -26,7 +26,7 @@ func historyAppend(command string) {
 func historyCmd(cmd string) string {
 	vcmd := strings.SplitN(cmd, " ", 2)
 	if len(vcmd) <= 1 {
-		return historyNum(1)
+		return historyNum(10)
 	}
 
 	if n, err := strconv.ParseInt(vcmd[1], 10, 32); err == nil {
