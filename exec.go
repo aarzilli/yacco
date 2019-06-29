@@ -1410,6 +1410,16 @@ func NextErrorCmd(ec ExecContext, arg string) {
 }
 
 func LspCmd(ec ExecContext, arg string) {
+	switch arg {
+	case "restart":
+		lsp.Restart(Wnd.tagbuf.Dir)
+		return
+	case "":
+		// ok
+	default:
+		Warn("wrong argument")
+	}
+
 	if ec.ed == nil || ec.ed.bodybuf == nil {
 		return
 	}
@@ -1417,11 +1427,6 @@ func LspCmd(ec ExecContext, arg string) {
 
 	srv, lspb := lsp.BufferToLsp(Wnd.tagbuf.Dir, b, ec.ed.sfr.Fr.Sel, true)
 	if srv == nil {
-		return
-	}
-
-	if arg == "restart" {
-		lsp.Restart(Wnd.tagbuf.Dir)
 		return
 	}
 

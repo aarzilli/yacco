@@ -66,8 +66,9 @@ var lspMu sync.Mutex
 const debug = false
 
 func Restart(wd string) {
-	lspConns[wd].conn.Close()
-	delete(lspConns, wd)
+	if lspConns[wd] != nil {
+		lspConns[wd].conn.Close()
+	}
 }
 
 func LspFor(lang, wd string, create bool) *LspSrv {
@@ -100,11 +101,10 @@ func LspFor(lang, wd string, create bool) *LspSrv {
 		return nil
 	}
 	go func() {
-		err := cmd.Wait()
-		fmt.Printf("process exited %v\n", err)
+		cmd.Wait()
 		lspMu.Lock()
 		defer lspMu.Unlock()
-		lspConns[wd] = nil
+		delete(lspConns, wd)
 	}()
 
 	if debug {
