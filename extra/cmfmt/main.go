@@ -17,6 +17,10 @@ func getprefix(text string) (prefix, rest string) {
 		i++
 	}
 
+	if i >= len(text) {
+		return "", text
+	}
+
 	var commentChar byte
 
 	if ch := text[i]; ch == '/' || ch == '#' || ch == ';' || ch == '%' {
