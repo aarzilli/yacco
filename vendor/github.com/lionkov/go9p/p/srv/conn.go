@@ -59,11 +59,9 @@ func (conn *Conn) close() {
 
 	/* call FidDestroy for all remaining fids */
 	if op, ok := (conn.Srv.ops).(FidOps); ok {
-		conn.Lock()
 		for _, fid := range conn.Fidpool {
 			op.FidDestroy(fid)
 		}
-		conn.Unlock()
 	}
 }
 

@@ -13,20 +13,47 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 
 	"golang.org/x/tools/go/packages"
 )
 
-func (ctx *context) Goroot() string {
-	if ctx.goroot != nil {
-		return *ctx.goroot
-	}
+var goroot string
+var possibleGoos, possibleGoarch map[string]struct{}
 
-	b, _ := exec.Command("go", "env", "GOROOT").CombinedOutput()
-	s := strings.TrimSpace(string(b))
-	ctx.goroot = &s
-	return *ctx.goroot
+var setupOnce sync.Once
+
+func (ctx *context) Goroot() string {
+	setupOnce.Do(func() {
+		possibleGoos = make(map[string]struct{})
+		possibleGoarch = make(map[string]struct{})
+		b, _ := exec.Command("go", "env", "GOROOT").CombinedOutput()
+		goroot = strings.TrimSpace(string(b))
+
+		b, _ = exec.Command("go", "tool", "dist", "list").Output()
+		lines := strings.Split(string(b), "\n")
+		for _, line := range lines {
+			slash := strings.Index(line, "/")
+			if slash < 0 {
+				continue
+			}
+			possibleGoos[line[:slash]] = struct{}{}
+			possibleGoarch[line[slash+1:]] = struct{}{}
+		}
+	})
+	return goroot
+}
+
+func (ctx *context) PossibleGoos() map[string]struct{} {
+	ctx.Goroot()
+	return possibleGoos
+}
+
+func (ctx *context) PossibleGoarch() map[string]struct{} {
+	ctx.Goroot()
+	return possibleGoarch
 }
 
 type Config struct {
@@ -44,11 +71,13 @@ type Config struct {
 
 type context struct {
 	Config
-	goroot *string
 
 	currentFileSet *token.FileSet
 
 	pkgs []*packages.Package
+
+	originalPath string
+	buildTags    []string
 }
 
 func Describe(path string, pos [2]int, cfg *Config) Description {
@@ -63,6 +92,8 @@ func Describe(path string, pos [2]int, cfg *Config) Description {
 	if ctx.Out == nil {
 		ctx.Out = os.Stdout
 	}
+
+	ctx.originalPath = path
 
 	err := loadPackages(&ctx, path)
 	if err != nil {
@@ -124,6 +155,148 @@ func (ctx *context) parseFile() func(*token.FileSet, string, []byte) (*ast.File,
 	}
 }
 
+func isGoarch(ctx *context, x string) bool {
+	_, ok := ctx.PossibleGoarch()[x]
+	return ok
+}
+
+func isGoos(ctx *context, x string) bool {
+	_, ok := ctx.PossibleGoos()[x]
+	return ok
+}
+
+func decorateConfig(ctx *context, cfg *packages.Config) *packages.Config {
+	const (
+		goSuffix   = ".go"
+		testSuffix = "_test"
+	)
+	p := ctx.originalPath
+	if !strings.HasSuffix(p, goSuffix) {
+		return cfg
+	}
+	p = p[:len(p)-len(goSuffix)]
+	if strings.HasSuffix(p, testSuffix) {
+		cfg.Tests = true
+		p = p[:len(p)-len(testSuffix)]
+	}
+
+	if len(cfg.Env) == 0 {
+		cfg.Env = os.Environ()
+	}
+
+	goarch := runtime.GOARCH
+	goos := runtime.GOOS
+
+	if underscore := strings.LastIndex(p, "_"); underscore >= 0 {
+		if isGoarch(ctx, p[underscore+1:]) {
+			goarch = p[underscore+1:]
+			cfg.Env = append(cfg.Env, "GOARCH="+goarch)
+			p = p[:underscore]
+		}
+	}
+
+	if underscore := strings.LastIndex(p, "_"); underscore >= 0 {
+		if isGoos(ctx, p[underscore+1:]) {
+			goos = p[underscore+1:]
+			cfg.Env = append(cfg.Env, "GOOS="+goos)
+			p = p[:underscore]
+		}
+	}
+
+	if ctx.buildTags == nil {
+		findBuildTags(ctx, goos, goarch)
+	}
+
+	cfg.BuildFlags = append(cfg.BuildFlags, ctx.buildTags...)
+
+	return cfg
+}
+
+func findBuildTags(ctx *context, goos, goarch string) {
+	const (
+		singlelineComment   = "//"
+		multilineComment    = "/*"
+		multilineCommentEnd = "*/"
+		buildDirective      = "+build"
+	)
+	var fset token.FileSet
+	f, err := parser.ParseFile(&fset, ctx.originalPath, nil, parser.ParseComments|parser.ImportsOnly)
+	if err == nil {
+	commentLoop:
+		for _, cmtg := range f.Comments {
+			for _, cmt := range cmtg.List {
+				cmtt := cmt.Text
+				switch {
+				case strings.HasPrefix(cmtt, singlelineComment):
+					cmtt = cmtt[len(singlelineComment):]
+				case strings.HasPrefix(cmtt, multilineComment):
+					cmtt = cmtt[len(multilineComment):]
+					if strings.HasSuffix(cmtt, multilineComment) {
+						cmtt = cmtt[:len(cmtt)-len(multilineCommentEnd)]
+					}
+				}
+
+				cmtt = strings.TrimSpace(cmtt)
+
+				if !strings.HasPrefix(cmtt, buildDirective) {
+					continue
+				}
+
+				cmtt = strings.TrimSpace(cmtt[len(buildDirective):])
+
+				for _, alt := range strings.Split(cmtt, " ") {
+					alt = strings.TrimSpace(alt)
+					if matchBuildDirectiveAlternative(ctx, alt, goos, goarch) {
+						break commentLoop
+					}
+				}
+			}
+		}
+
+		if ctx.buildTags == nil {
+			ctx.buildTags = []string{}
+		}
+	}
+}
+
+func matchBuildDirectiveAlternative(ctx *context, alt, goos, goarch string) bool {
+	tags := []string{}
+	for _, term := range strings.Split(alt, ",") {
+		if len(term) == 0 {
+			continue
+		}
+		exclude := false
+		if term[0] == '!' {
+			exclude = true
+			term = term[1:]
+		}
+		if len(term) == 0 {
+			continue
+		}
+
+		switch {
+		case isGoos(ctx, term):
+			if (term == goos) == exclude {
+				return false
+			}
+
+		case isGoarch(ctx, term):
+			if (term == goarch) == exclude {
+				return false
+			}
+
+		default:
+			if !exclude {
+				tags = append(tags, term)
+			}
+		}
+	}
+
+	ctx.buildTags = []string{"-tags", strings.Join(tags, ",")}
+	return true
+
+}
+
 func loadPackages(ctx *context, path string) error {
 	ctx.currentFileSet = token.NewFileSet()
 	cfg := &packages.Config{
@@ -132,9 +305,7 @@ func loadPackages(ctx *context, path string) error {
 		Fset:      ctx.currentFileSet,
 		ParseFile: ctx.parseFile(),
 	}
-	if strings.HasSuffix(path, "_test.go") {
-		cfg.Tests = true
-	}
+	decorateConfig(ctx, cfg)
 	var err error
 	ctx.pkgs, err = packages.Load(cfg, "file="+path)
 	return err
@@ -370,7 +541,11 @@ func findNodeInPackages(ctx *context, pkgpath string, pos token.Pos) ast.Node {
 			if ctx.Verbose {
 				log.Printf("loading syntax for %q", pkg.PkgPath)
 			}
-			pkgs2, err := packages.Load(&packages.Config{Mode: packages.LoadSyntax, Dir: ctx.Wd, Fset: pkg.Fset, ParseFile: ctx.parseFile()}, pkg.PkgPath)
+			pkgs2, err := packages.Load(decorateConfig(ctx, &packages.Config{
+				Mode:      packages.LoadSyntax,
+				Dir:       ctx.Wd,
+				Fset:      pkg.Fset,
+				ParseFile: ctx.parseFile()}), pkg.PkgPath)
 			if err != nil {
 				return true
 			}
