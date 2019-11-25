@@ -88,6 +88,9 @@ func Describe(path string, pos [2]int, cfg *Config) Description {
 	}
 	if ctx.Wd == "" {
 		ctx.Wd = filepath.Dir(path)
+		if vendor := strings.Index(ctx.Wd, string(filepath.Separator)+"vendor"+string(filepath.Separator)); vendor >= 0 {
+			ctx.Wd = ctx.Wd[:vendor+1]
+		}
 	}
 	if ctx.Out == nil {
 		ctx.Out = os.Stdout
