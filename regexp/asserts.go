@@ -49,12 +49,39 @@ var zAssert = nodeAssert{
 }
 
 var bolAssert = nodeAssert{
-	name: "^",
+	name: "^^",
 	check: func(b Matchable, start, end, i int) bool {
 		if i == end {
 			return false
 		}
 		return (i == 0) || (b.At(i-1) == '\n')
+	},
+}
+
+var bolNonspaceAssert = nodeAssert{
+	name: "^",
+	check: func(b Matchable, start, end, i int) bool {
+		if i == end {
+			return false
+		}
+		switch b.At(i) {
+		case ' ', '\t':
+			return false
+		}
+		if i == 0 {
+			return true
+		}
+		for j := i - 1; j > 0; j-- {
+			switch b.At(j) {
+			case '\n':
+				return true
+			case ' ', '\t':
+				// keep looking
+			default:
+				return false
+			}
+		}
+		return true
 	},
 }
 

@@ -151,7 +151,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 }
 
 func (e *Editor) defaultTag() []rune {
-	s := "Look Edit "
+	s := "Edit "
 	switch {
 	case e.bodybuf.IsDir():
 		s = "Direxec "

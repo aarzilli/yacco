@@ -114,7 +114,13 @@ func (p *parser) parseBranch(str []rune) (*nodeGroup, []rune) {
 			case '.':
 				r.nodes = append(r.nodes, &dotClass)
 			case '^':
-				r.nodes = append(r.nodes, &bolAssert)
+
+				if i+1 < len(rest) && rest[i+1] == '^' {
+					i++
+					r.nodes = append(r.nodes, &bolAssert)
+				} else {
+					r.nodes = append(r.nodes, &bolNonspaceAssert)
+				}
 			case '$':
 				r.nodes = append(r.nodes, &eolAssert)
 			case '[':
