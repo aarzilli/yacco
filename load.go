@@ -2,11 +2,13 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	sysre "regexp"
 	"runtime"
 	"strings"
 
+	"github.com/aarzilli/yacco/buf"
 	"github.com/aarzilli/yacco/config"
 	"github.com/aarzilli/yacco/edit"
 	"github.com/aarzilli/yacco/regexp"
@@ -53,7 +55,7 @@ func printStackTrace() {
 	}
 }
 
-func Load(ec ExecContext, origin int) {
+func Load(ec ExecContext, origin int, othered bool) {
 	defer func() {
 		if ierr := recover(); ierr != nil {
 			fmt.Printf("Error during Load: %v\n", ierr.(error).Error())
@@ -102,7 +104,7 @@ func Load(ec ExecContext, origin int) {
 					strmatches = append(strmatches, string(ec.buf.SelectionRunes(util.Sel{s, e})))
 				}
 				//println("Match:", strmatches[0])
-				if rule.Exec(ec, strmatches, s, e) {
+				if rule.Exec(ec, strmatches, s, e, othered) {
 					return
 				} else {
 					// abandon rule after the first match straddling the origin
@@ -156,7 +158,7 @@ func expandMatches(str string, matches []string) string {
 	return string(out)
 }
 
-func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
+func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int, othered bool) bool {
 	defer func() {
 		if ierr := recover(); ierr != nil {
 			fmt.Printf("Error during Load (exec): %v\n", ierr.(error).Error())
@@ -170,6 +172,15 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 		expaction := expandMatches(action, matches)
 		ec.fr.Sel = util.Sel{s, e}
 		ec.fr.SelColor = 2
+		if othered {
+			newed := zeroxEd(ec.ed)
+			ec2 := editorExecContext(newed)
+			if ec2 != nil {
+				ec = *ec2
+			} else {
+				fmt.Fprintf(os.Stderr, "could not find new editor\n")
+			}
+		}
 		Exec(ec, expaction)
 		return true
 	case 'L':
@@ -193,6 +204,24 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 		} else {
 			newed = ec.ed
 		}
+		{
+			eds := allZeroxEditors(newed.bodybuf)
+			if othered {
+				if len(eds) == 1 && ec.ed == eds[0] {
+					eds = append(eds, zeroxEd(newed))
+				}
+				for i := len(eds) - 1; i >= 0; i-- {
+					if eds[i] != ec.ed {
+						newed = eds[i]
+						break
+					}
+				}
+			} else {
+				if newed != ec.ed {
+					newed = eds[len(eds)-1]
+				}
+			}
+		}
 		ec.fr.Sel = util.Sel{s, e}
 		ec.fr.SelColor = 2
 		ec.br()
@@ -212,4 +241,16 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int) bool {
 		return true
 	}
 	return false
+}
+
+func allZeroxEditors(buf *buf.Buffer) []*Editor {
+	eds := []*Editor{}
+	for _, col := range Wnd.cols.cols {
+		for _, ed := range col.editors {
+			if ed.bodybuf == buf {
+				eds = append(eds, ed)
+			}
+		}
+	}
+	return eds
 }

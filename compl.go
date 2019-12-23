@@ -24,6 +24,7 @@ type Popup struct {
 	Dir        string
 	alignRight bool
 	start      func(*Popup, ExecContext) (bool, string)
+	ed         *Editor
 }
 
 var tooltipContents string
@@ -270,6 +271,8 @@ func (p *Popup) Start(ec ExecContext) {
 		return
 	}
 
+	p.ed = ec.ed
+
 	p.Dir = ""
 	if ec.buf != nil {
 		p.Dir = ec.buf.Dir
@@ -473,6 +476,7 @@ func TooltipClick(e util.MouseDownEvent) LogicalPos {
 	buf.ReplaceFull([]rune(tooltipContents))
 	fr.OnClick(e, nil)
 	return LogicalPos{
+		ed:     Tooltip.ed,
 		tagfr:  &fr,
 		tagbuf: buf,
 	}

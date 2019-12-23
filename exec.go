@@ -940,11 +940,16 @@ func ZeroxCmd(ec ExecContext, arg string) {
 	}
 	ed.confirmDel = false
 	ed.confirmSave = false
+	zeroxEd(ed)
+}
+
+func zeroxEd(ed *Editor) *Editor {
 	ned := NewEditor(ed.bodybuf)
 	ned.sfr.Fr.Sel.S = ed.sfr.Fr.Sel.S
 	ned.sfr.Fr.Sel.E = ed.sfr.Fr.Sel.E
 	Log(ed.edid, LOP_ZEROX, ed.bodybuf)
 	HeuristicPlaceEditor(ned, true)
+	return ned
 }
 
 func PipeCmd(ec ExecContext, arg string) {
@@ -1406,7 +1411,7 @@ func NextErrorCmd(ec ExecContext, arg string) {
 		fr:  &lastLoadSel.ed.sfr.Fr,
 		buf: lastLoadSel.ed.bodybuf,
 		br:  lastLoadSel.ed.BufferRefresh,
-	}, lastLoadSel.p)
+	}, lastLoadSel.p, false)
 }
 
 func LspCmd(ec ExecContext, arg string) {

@@ -380,7 +380,7 @@ func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
 			lp := TooltipClick(e)
 			switch e.Which {
 			case mouse.ButtonRight:
-				clickExec3(lp)
+				clickExec3(lp, e.Modifiers&key.ModShift != 0)
 			case mouse.ButtonMiddle:
 				clickExec2(lp)
 			}
@@ -1116,14 +1116,14 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *mouse.Event, events <-c
 			clickExec2extra(lp)
 		} else {
 			if ee.Button != mouse.ButtonMiddle { // middle button cancels right button
-				clickExec3(lp)
+				clickExec3(lp, shift)
 			}
 		}
 
 	case mouse.ButtonLeft:
 		switch {
 		case alt:
-			clickExec3(lp)
+			clickExec3(lp, shift)
 			return
 		case ctrl:
 			clickExec2(lp)
@@ -1228,13 +1228,13 @@ func clickExec2extra(lp LogicalPos) {
 }
 
 // Load click
-func clickExec3(lp LogicalPos) {
+func clickExec3(lp LogicalPos, shift bool) {
 	ec := lp.asExecContext(true)
 	s, original := expandedSelection(lp, 2)
 
 	if (lp.ed == nil) || (lp.ed.eventChan == nil) || lp.ed.eventChanSpecial {
 		lastLoadSel.Set2(lp, original)
-		Load(ec, original)
+		Load(ec, original, shift)
 	} else {
 		fr := lp.tagfr
 		if fr == nil {

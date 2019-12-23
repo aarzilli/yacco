@@ -208,15 +208,8 @@ func bufferExecContext(i int) *ExecContext {
 		for _, col := range Wnd.cols.cols {
 			for _, ed := range col.editors {
 				if ed.edid == i {
-					done <- &ExecContext{
-						col:       col,
-						ed:        ed,
-						br:        ed.BufferRefresh,
-						fr:        &ed.sfr.Fr,
-						buf:       ed.bodybuf,
-						eventChan: ed.eventChan,
-						dir:       ed.bodybuf.Dir,
-					}
+
+					done <- editorColExecContext(ed, col)
 					return
 				}
 			}
@@ -226,4 +219,27 @@ func bufferExecContext(i int) *ExecContext {
 		return
 	}
 	return <-done
+}
+
+func editorExecContext(ed *Editor) *ExecContext {
+	for _, col := range Wnd.cols.cols {
+		for _, ed2 := range col.editors {
+			if ed == ed2 {
+				return editorColExecContext(ed, col)
+			}
+		}
+	}
+	return nil
+}
+
+func editorColExecContext(ed *Editor, col *Col) *ExecContext {
+	return &ExecContext{
+		col:       col,
+		ed:        ed,
+		br:        ed.BufferRefresh,
+		fr:        &ed.sfr.Fr,
+		buf:       ed.bodybuf,
+		eventChan: ed.eventChan,
+		dir:       ed.bodybuf.Dir,
+	}
 }
