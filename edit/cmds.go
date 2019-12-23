@@ -111,7 +111,7 @@ func scmdfn(c *Cmd, ec *EditContext) {
 	for {
 		psel := sel.S
 		loc := re.Match(ec.Buf, sel.S, addrSave.E, +1)
-		if (loc == nil) || (len(loc) < 2) {
+		if (loc == nil) || (len(loc) < 2) || loc[0] >= addrSave.E {
 			return
 		}
 		sel = util.Sel{loc[0], loc[1]}
