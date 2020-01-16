@@ -115,9 +115,11 @@ func scmdfn(c *Cmd, ec *EditContext) {
 			return
 		}
 		sel = util.Sel{loc[0], loc[1]}
+		allWhitespace := false
 		if globalrepl || (c.numarg == nmatch) {
 			realSubs := resolveBackreferences(subs, ec.Buf, loc)
 			ec.Buf.Replace(realSubs, &sel, first, ec.EventChan, util.EO_MOUSE)
+			allWhitespace = isWhitespace(realSubs)
 			if !globalrepl {
 				break
 			}
@@ -125,6 +127,11 @@ func scmdfn(c *Cmd, ec *EditContext) {
 			sel.S = sel.E
 		}
 		nmatch++
+
+		if loc[0] == loc[1] && allWhitespace {
+			sel.S++
+			sel.E = sel.S
+		}
 
 		if sel.S == psel {
 			count++
@@ -136,6 +143,18 @@ func scmdfn(c *Cmd, ec *EditContext) {
 		}
 		first = false
 	}
+}
+
+func isWhitespace(r []rune) bool {
+	for i := range r {
+		switch r[i] {
+		case ' ', '\t':
+			//ok
+		default:
+			return false
+		}
+	}
+	return true
 }
 
 func resolveBackreferences(subs []rune, b *buf.Buffer, loc []int) []rune {
