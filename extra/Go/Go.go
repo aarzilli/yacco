@@ -44,7 +44,7 @@ func runGofmt(argument string, paths map[string]bool) {
 	}
 	out, err := exec.Command("go", args...).CombinedOutput()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%s\n%v\n", string(out), err)
+		fmt.Fprintf(os.Stderr, "go %s\n%s\n%v\n", strings.Join(args, " "), string(out), err)
 	}
 	for _, path := range strings.Split(string(out), "\n") {
 		paths[filepath.Join(wd, path)] = true
@@ -52,7 +52,12 @@ func runGofmt(argument string, paths map[string]bool) {
 }
 
 func gitModifiedPaths() []string {
-	out, err := exec.Command("git", "status", "--porcelain").CombinedOutput()
+	out, err := exec.Command("git", "rev-parse", "--show-toplevel").CombinedOutput()
+	if err != nil {
+		return nil
+	}
+	rootdir := strings.TrimSpace(string(out))
+	out, err = exec.Command("git", "status", "--porcelain").CombinedOutput()
 	if err != nil {
 		return nil
 	}
@@ -61,7 +66,7 @@ func gitModifiedPaths() []string {
 		if len(entry) < 3 {
 			continue
 		}
-		r = append(r, entry[3:])
+		r = append(r, filepath.Join(rootdir, entry[3:]))
 	}
 	return r
 }
