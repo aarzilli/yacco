@@ -155,6 +155,7 @@ function install_Go {
 	cd - >/dev/null
 	cp -f extra/Go/Go $destdir/yaccodir/Go
 	ln -sf $destdir/yaccodir/Go $destdir/yaccodir/Gofmt
+	ln -sf $destdir/yaccodir/Go $destdir/yaccodir/Goren
 	ln -sf $destdir/yaccodir/Go $destdir/yaccodir/God
 	ln -sf $destdir/yaccodir/Go $destdir/yaccodir/Gor
 }

@@ -12,6 +12,7 @@ require (
 	golang.org/x/exp v0.0.0-20180710024300-14dda7b62fcd
 	golang.org/x/image v0.0.0-20180708004352-c73c2afc3b81
 	golang.org/x/mobile v0.0.0-20180719123216-371a4e8cb797
+	golang.org/x/tools v0.0.0-20200331025713-a30bf2db82d4 // indirect
 )
 
 replace golang.org/x/exp => github.com/aarzilli/exp v0.0.0-20180724135916-edb5f9d2bb76

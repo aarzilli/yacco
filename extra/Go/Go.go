@@ -17,6 +17,7 @@ import (
 	"github.com/lionkov/go9p/p"
 	"github.com/lionkov/go9p/p/clnt"
 
+	"github.com/aarzilli/yacco/extra/Go/rename"
 	"github.com/aarzilli/yacco/util"
 )
 
@@ -96,6 +97,10 @@ func gofmt() {
 			}
 		}
 	}
+}
+
+func gorename() {
+	rename.Auto()
 }
 
 func readlast(p9clnt *clnt.Clnt) int {
@@ -620,6 +625,8 @@ func main() {
 			usage()
 		case "Gofmt":
 			gofmt()
+		case "Goren":
+			gorename()
 		case "God":
 			guru("describe")
 		case "Gor":
@@ -641,6 +648,8 @@ func main() {
 			} else {
 				gofmt()
 			}
+		case "ren", "rename":
+			gorename()
 		case "definition", "describe", "freevars", "implements", "referrers", "what":
 			guru(os.Args[1])
 		case "callers", "callees", "callstack", "peers", "pointsto", "whicherrs":
