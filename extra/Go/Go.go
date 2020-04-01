@@ -84,6 +84,19 @@ func gofmt() {
 			}
 		}
 	}
+	getChangedPaths(paths)
+}
+
+func gorename() {
+	vpaths := rename.Auto()
+	paths := make(map[string]bool)
+	for _, path := range vpaths {
+		paths[path] = true
+	}
+	getChangedPaths(paths)
+}
+
+func getChangedPaths(paths map[string]bool) {
 	p9clnt, err := util.YaccoConnect()
 	util.Allergic(debug, err)
 	defer p9clnt.Unmount()
@@ -97,10 +110,6 @@ func gofmt() {
 			}
 		}
 	}
-}
-
-func gorename() {
-	rename.Auto()
 }
 
 func readlast(p9clnt *clnt.Clnt) int {

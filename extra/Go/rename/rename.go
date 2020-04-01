@@ -28,11 +28,11 @@ const dummy = false
 const arrow = "->"
 const sparrow = " -> "
 
-func Auto() {
+func Auto() []string {
 	out, err := exec.Command("go", "list", "-m").CombinedOutput()
 	util.Allergic(debug, err)
 
-	renamePackages(strings.TrimSpace(string(out)) + "/...")
+	return renamePackages(strings.TrimSpace(string(out)) + "/...")
 }
 
 func renamePackages(pattern string) []string {
