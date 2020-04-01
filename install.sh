@@ -74,6 +74,9 @@ CopyFrom=Main
 .	\w+	XLook $l0
 .	.+	XLook $l0
 
+[Save]
+.go	Gosave
+
 [Keybindings]
 control+\`	Mark
 control+p	Savepos
@@ -156,6 +159,7 @@ function install_Go {
 	cp -f extra/Go/Go $destdir/yaccodir/Go
 	ln -sf $destdir/yaccodir/Go $destdir/yaccodir/Gofmt
 	ln -sf $destdir/yaccodir/Go $destdir/yaccodir/Goren
+	ln -sf $destdir/yaccodir/Go $destdir/yaccodir/Gosave
 	ln -sf $destdir/yaccodir/Go $destdir/yaccodir/God
 	ln -sf $destdir/yaccodir/Go $destdir/yaccodir/Gor
 }

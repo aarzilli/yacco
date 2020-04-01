@@ -31,6 +31,11 @@ type LoadRule struct {
 	Action string // action to execute
 }
 
+type SaveRule struct {
+	Ext string
+	Cmd string
+}
+
 var keynames = map[key.Code]string{
 	key.CodeReturnEnter:     "return",
 	key.CodeEscape:          "escape",

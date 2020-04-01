@@ -1,6 +1,8 @@
 package config
 
 import (
+	"strings"
+
 	"github.com/aarzilli/yacco/hl"
 	"github.com/aarzilli/yacco/util"
 
@@ -35,6 +37,7 @@ var Templates []string
 const DefaultLookFileExt = ",c,cc,cpp,h,py,txt,pl,tcl,java,js,html,go,clj,jsp"
 
 var LoadRules = []util.LoadRule{}
+var SaveRules = []util.SaveRule{}
 
 var LanguageRules = []hl.LanguageRules{
 	// Go
@@ -80,4 +83,13 @@ var LanguageRules = []hl.LanguageRules{
 			hl.CommentRegion("--", "\n", 0),
 		},
 	},
+}
+
+func SaveRuleFor(path string) *util.SaveRule {
+	for i := range SaveRules {
+		if strings.HasSuffix(path, SaveRules[i].Ext) {
+			return &SaveRules[i]
+		}
+	}
+	return nil
 }

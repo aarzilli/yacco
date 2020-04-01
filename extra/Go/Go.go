@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"go/parser"
+	"go/token"
 	"io"
 	"io/ioutil"
 	"os"
@@ -72,7 +74,7 @@ func gitModifiedPaths() []string {
 	return r
 }
 
-func gofmt() {
+func gofmtIntl() map[string]bool {
 	paths := map[string]bool{}
 	gitpaths := gitModifiedPaths()
 	if gitpaths == nil {
@@ -84,6 +86,11 @@ func gofmt() {
 			}
 		}
 	}
+	return paths
+}
+
+func gofmt() {
+	paths := gofmtIntl()
 	getChangedPaths(paths)
 }
 
@@ -92,6 +99,27 @@ func gorename() {
 	paths := make(map[string]bool)
 	for _, path := range vpaths {
 		paths[path] = true
+	}
+	getChangedPaths(paths)
+}
+
+func gosave(args []string) {
+	paths := gofmtIntl()
+	var runrename bool
+	for _, path := range args {
+		file, err := parser.ParseFile(new(token.FileSet), path, nil, parser.ParseComments)
+		if err == nil {
+			if rename.HasRenameComment(file) {
+				runrename = true
+				break
+			}
+		}
+	}
+	if runrename {
+		paths2 := rename.Auto()
+		for _, path := range paths2 {
+			paths[path] = true
+		}
 	}
 	getChangedPaths(paths)
 }
@@ -642,9 +670,13 @@ func main() {
 			guru("referrers")
 		}
 	default:
-		if os.Args[0] == "Gofmt" {
+		switch filepath.Base(os.Args[0]) {
+		case "Gofmt":
 			util.Allergic(debug, os.Chdir(os.Args[1]))
 			gofmt()
+			return
+		case "Gosave":
+			gosave(os.Args[1:])
 			return
 		}
 		switch os.Args[1] {
@@ -659,6 +691,8 @@ func main() {
 			}
 		case "ren", "rename":
 			gorename()
+		case "save":
+			gosave(os.Args[2:])
 		case "definition", "describe", "freevars", "implements", "referrers", "what":
 			guru(os.Args[1])
 		case "callers", "callees", "callstack", "peers", "pointsto", "whicherrs":

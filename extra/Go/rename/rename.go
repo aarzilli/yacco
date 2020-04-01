@@ -35,6 +35,37 @@ func Auto() []string {
 	return renamePackages(strings.TrimSpace(string(out)) + "/...")
 }
 
+func HasRenameComment(file *ast.File) bool {
+	for _, cmtg := range file.Comments {
+		for _, cmt := range cmtg.List {
+			if !strings.HasPrefix(cmt.Text, "//") {
+				continue
+			}
+			t := strings.TrimLeft(cmt.Text[len("//"):], " ")
+			var from, to string
+			switch {
+			case strings.HasPrefix(t, arrow):
+				from = ""
+				to = t[len(arrow):]
+			default:
+				idx := strings.Index(t, sparrow)
+				if idx >= 0 {
+					from = t[:idx]
+					to = t[idx+len(sparrow):]
+				}
+			}
+			if from != "" || to != "" {
+				from = strings.TrimSpace(from)
+				to = strings.TrimSpace(to)
+				if !strings.Contains(from, " ") && !strings.Contains(to, " ") {
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
 func renamePackages(pattern string) []string {
 	cfg := &packages.Config{
 		Mode:  packages.NeedName | packages.NeedFiles | packages.NeedTypes | packages.NeedSyntax | packages.NeedTypesInfo | packages.NeedCompiledGoFiles,

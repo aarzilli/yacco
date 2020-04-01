@@ -792,6 +792,8 @@ func PutCmd(ec ExecContext, arg string) {
 		return
 	}
 
+	triggeredSaveRules := make(map[string][]string)
+
 	if !ec.ed.confirmSave {
 		if !ec.ed.bodybuf.CanSave() {
 			ec.ed.confirmSave = true
@@ -803,6 +805,8 @@ func PutCmd(ec ExecContext, arg string) {
 	err := ec.ed.bodybuf.Put()
 	if err != nil {
 		Warn(fmt.Sprintf("Put: Couldn't save %s: %s", ec.ed.bodybuf.ShortName(), err.Error()))
+	} else {
+		registerSaveRule(ec.ed.bodybuf.Path(), triggeredSaveRules)
 	}
 	if !ec.norefresh {
 		ec.ed.BufferRefresh()
@@ -813,12 +817,14 @@ func PutCmd(ec ExecContext, arg string) {
 	if config.IsTemplatesFile(filepath.Join(ec.ed.bodybuf.Dir, ec.ed.bodybuf.Name)) {
 		config.LoadTemplates()
 	}
+	runSaveRules(triggeredSaveRules)
 }
 
 func PutallCmd(ec ExecContext, arg string) {
 	exitConfirmed = false
 	t := "Putall: Saving the following files failed:\n"
 	nerr := 0
+	triggeredSaveRules := make(map[string][]string)
 	for _, col := range Wnd.cols.cols {
 		for _, ed := range col.editors {
 			if !fakebuf(ed.bodybuf.Name) && ed.bodybuf.Modified {
@@ -826,11 +832,13 @@ func PutallCmd(ec ExecContext, arg string) {
 				if err != nil {
 					t += ed.bodybuf.ShortName() + ": " + err.Error() + "\n"
 					nerr++
+				} else {
+					registerSaveRule(ed.bodybuf.Path(), triggeredSaveRules)
 				}
 				if !ec.norefresh {
 					ed.BufferRefresh()
 				}
-				if config.IsTemplatesFile(filepath.Join(ed.bodybuf.Dir, ed.bodybuf.Name)) {
+				if config.IsTemplatesFile(ed.bodybuf.Path()) {
 					config.LoadTemplates()
 				}
 			}
@@ -841,6 +849,19 @@ func PutallCmd(ec ExecContext, arg string) {
 	}
 	if AutoDumpPath != "" {
 		DumpTo(AutoDumpPath)
+	}
+	runSaveRules(triggeredSaveRules)
+}
+
+func registerSaveRule(path string, triggeredSaveRules map[string][]string) {
+	if sr := config.SaveRuleFor(path); sr != nil {
+		triggeredSaveRules[sr.Cmd] = append(triggeredSaveRules[sr.Cmd], path)
+	}
+}
+
+func runSaveRules(triggeredSaveRules map[string][]string) {
+	for srcmd, files := range triggeredSaveRules {
+		NewJob(Wnd.tagbuf.Dir, fmt.Sprintf("%s %s", srcmd, strings.Join(files, " ")), "", &ExecContext{}, false, false, nil)
 	}
 }
 

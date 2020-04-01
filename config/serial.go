@@ -27,6 +27,7 @@ type configObj struct {
 	}
 	Fonts       map[string]*configFont
 	Load        *configLoadRules
+	Save        *configSaveRules
 	KeyBindings *configKeys
 }
 
@@ -43,6 +44,10 @@ type configFont struct {
 
 type configLoadRules struct {
 	loadRules []util.LoadRule
+}
+
+type configSaveRules struct {
+	saveRules []util.SaveRule
 }
 
 type configKeys struct {
@@ -84,6 +89,7 @@ func LoadConfiguration(path string) {
 	u := iniparse.NewUnmarshaller()
 	u.Path = path
 	u.AddSpecialUnmarshaller("load", LoadRulesParser)
+	u.AddSpecialUnmarshaller("save", SaveRulesParser)
 	u.AddSpecialUnmarshaller("keybindings", LoadKeysParser)
 
 	fh, err := os.Open(path)
@@ -115,6 +121,9 @@ func LoadConfiguration(path string) {
 
 	if co.Load != nil {
 		LoadRules = co.Load.loadRules
+	}
+	if co.Save != nil {
+		SaveRules = co.Save.saveRules
 	}
 
 	if co.KeyBindings != nil {
@@ -213,6 +222,25 @@ func LoadRulesParser(path string, lineno int, lines []string) (interface{}, erro
 			return nil, fmt.Errorf("%s:%d: Malformed line", path, lineno+i)
 		}
 		r.loadRules = append(r.loadRules, util.LoadRule{BufRe: v[0], Re: v[1], Action: v[2]})
+	}
+	return r, nil
+}
+
+func SaveRulesParser(path string, lineno int, lines []string) (interface{}, error) {
+	r := &configSaveRules{make([]util.SaveRule, 0, len(lines))}
+	for i := range lines {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		if line[0] == ';' || line[0] == '#' {
+			continue
+		}
+		v := strings.Split(line, "\t")
+		if len(v) != 2 {
+			return nil, fmt.Errorf("%s:%d: Malformed line", path, lineno+1)
+		}
+		r.saveRules = append(r.saveRules, util.SaveRule{Ext: v[0], Cmd: v[1]})
 	}
 	return r, nil
 }
