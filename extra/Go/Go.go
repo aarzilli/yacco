@@ -47,7 +47,8 @@ func runGofmt(argument string, paths map[string]bool) {
 	}
 	out, err := exec.Command("go", args...).CombinedOutput()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "go %s\n%s\n%v\n", strings.Join(args, " "), string(out), err)
+		return
+		//fmt.Fprintf(os.Stderr, "go %s\n%s\n%v\n", strings.Join(args, " "), string(out), err)
 	}
 	for _, path := range strings.Split(string(out), "\n") {
 		paths[filepath.Join(wd, path)] = true

@@ -15,8 +15,6 @@ import (
 	"unicode"
 
 	"golang.org/x/tools/go/packages"
-
-	"github.com/aarzilli/yacco/util"
 )
 
 const debugFind = false
@@ -30,7 +28,9 @@ const sparrow = " -> "
 
 func Auto() []string {
 	out, err := exec.Command("go", "list", "-m").CombinedOutput()
-	util.Allergic(debug, err)
+	if err != nil {
+		return nil
+	}
 
 	return renamePackages(strings.TrimSpace(string(out)) + "/...")
 }
@@ -77,7 +77,9 @@ func renamePackages(pattern string) []string {
 	}
 
 	pkgs, err := packages.Load(cfg, pattern)
-	util.Allergic(debug, err)
+	if err != nil {
+		return nil
+	}
 
 	changedFiles := make(map[string]*ast.File)
 	seenFile := make(map[string]struct{})
