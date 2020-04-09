@@ -17,6 +17,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/aarzilli/go2def/visit"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -105,14 +106,21 @@ func Describe(path string, pos [2]int, cfg *Config) Description {
 	}
 
 	if cfg.Verbose && cfg.DebugLoadPackages {
-		packages.Visit(ctx.pkgs, func(pkg *packages.Package) bool {
-			log.Printf("package %v\n", pkg)
-			return true
-		}, nil)
+		pkgit := visit.Packages(ctx.pkgs)
+		for pkgit.Next() {
+			if pkgit.Pkg() != nil {
+				fmt.Printf("package %v\n", pkgit.Pkg())
+			}
+		}
 	}
 
 	found := false
-	packages.Visit(ctx.pkgs, func(pkg *packages.Package) bool {
+	pkgit := visit.Packages(ctx.pkgs)
+	for pkgit.Next() {
+		if pkgit.Pkg() == nil {
+			continue
+		}
+		pkg := pkgit.Pkg()
 		for i := range pkg.Syntax {
 			//TODO: better way to match file?
 			if strings.HasSuffix(pkg.CompiledGoFiles[i], path) {
@@ -124,8 +132,10 @@ func Describe(path string, pos [2]int, cfg *Config) Description {
 				break
 			}
 		}
-		return true
-	}, nil)
+		if found {
+			break
+		}
+	}
 
 	if !found {
 		fmt.Fprintf(ctx.Out, "nothing found\n")
@@ -348,7 +358,7 @@ func describeNode(ctx *context, pkg *packages.Package, node ast.Node) {
 	switch node := node.(type) {
 	case *ast.Ident:
 		obj := pkg.TypesInfo.Uses[node]
-		if obj == nil {
+		if obj == nil || obj.Pkg() == nil {
 			ctx.out.err("unknown identifier %v\n", node)
 			return
 		}
@@ -531,50 +541,51 @@ func describeTypeContents(descr *Description, typ types.Type, prefix string) {
 }
 
 func findNodeInPackages(ctx *context, pkgpath string, pos token.Pos) ast.Node {
-	var r ast.Node
-	packages.Visit(ctx.pkgs, func(pkg *packages.Package) bool {
-		if r != nil {
-			return false
+	pkgit := visit.Packages(ctx.pkgs)
+	for pkgit.Next() {
+		pkg := pkgit.Pkg()
+		if pkg != nil && pkg.PkgPath == pkgpath {
+			break
 		}
-		if pkg.PkgPath != pkgpath {
-			return true
+	}
+
+	pkg := pkgit.Pkg()
+	if pkg == nil {
+		// could not find package
+		return nil
+	}
+	if pkg.Syntax == nil {
+		if ctx.Verbose {
+			log.Printf("loading syntax for %q", pkg.PkgPath)
 		}
-
-		if pkg.Syntax == nil {
-			if ctx.Verbose {
-				log.Printf("loading syntax for %q", pkg.PkgPath)
-			}
-			pkgs2, err := packages.Load(decorateConfig(ctx, &packages.Config{
-				Mode:      packages.LoadSyntax,
-				Dir:       ctx.Wd,
-				Fset:      pkg.Fset,
-				ParseFile: ctx.parseFile()}), pkg.PkgPath)
-			if err != nil {
-				return true
-			}
-
-			pkg = pkgs2[0]
-			p := pkg.Fset.Position(pos)
-			filename := replaceGoroot(ctx, p.Filename)
-			//XXX: ideally we would look for pkg.Fset.File(pos).Offset(pos) instead but it seems to be wrong.
-			for i := range pkg.Syntax {
-				node := findDeclByLine(ctx, pkg.Syntax[i], filename, p.Line)
-				if node != nil {
-					r = node
-				}
-			}
-			return true
+		pkgs2, err := packages.Load(decorateConfig(ctx, &packages.Config{
+			Mode:      packages.LoadSyntax,
+			Dir:       ctx.Wd,
+			Fset:      pkg.Fset,
+			ParseFile: ctx.parseFile()}), pkg.PkgPath)
+		if err != nil {
+			return nil
 		}
 
+		pkg = pkgs2[0]
+		p := pkg.Fset.Position(pos)
+		filename := replaceGoroot(ctx, p.Filename)
+		//XXX: ideally we would look for pkg.Fset.File(pos).Offset(pos) instead but it seems to be wrong.
+		for i := range pkg.Syntax {
+			node := findDeclByLine(ctx, pkg.Syntax[i], filename, p.Line)
+			if node != nil {
+				return node
+			}
+		}
+	} else {
 		for i := range pkg.Syntax {
 			node := findDecl(pkg.Syntax[i], pos)
 			if node != nil {
-				r = node
+				return node
 			}
 		}
-		return true
-	}, nil)
-	return r
+	}
+	return nil
 }
 
 func findDecl(root *ast.File, pos token.Pos) ast.Node {

@@ -3,8 +3,9 @@ github.com/BurntSushi/xgb
 github.com/BurntSushi/xgb/render
 github.com/BurntSushi/xgb/shm
 github.com/BurntSushi/xgb/xproto
-# github.com/aarzilli/go2def v0.0.0-20191125104011-51712d3e2e98
+# github.com/aarzilli/go2def v0.0.0-20200405090725-d6ba1b677cfd
 github.com/aarzilli/go2def
+github.com/aarzilli/go2def/visit
 # github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 => github.com/aarzilli/freetype v0.0.0-20160928082430-6c8832ae5783
 github.com/golang/freetype
 github.com/golang/freetype/raster

@@ -2,7 +2,7 @@ module github.com/aarzilli/yacco
 
 require (
 	github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802
-	github.com/aarzilli/go2def v0.0.0-20191125104011-51712d3e2e98
+	github.com/aarzilli/go2def v0.0.0-20200405090725-d6ba1b677cfd
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
 	github.com/kr/pty v0.0.0-20160716204620-ce7fa45920dc
 	github.com/lionkov/go9p v0.0.0-20180620135904-0a603dd6808a

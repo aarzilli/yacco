@@ -175,7 +175,8 @@ func (b *Buffer) Reload(create bool) error {
 		s1 := sha1.Sum(bytes)
 		b.onDiskChecksum = &s1
 		b.Modified = false
-		b.ul.Reset()
+		//b.ul.Reset()
+		b.ul.SetSaved()
 
 		if len(b.buf)-b.gapsz < 1*1024*1024 {
 			str := string(b.SelectionRunes(util.Sel{0, b.Size()}))
