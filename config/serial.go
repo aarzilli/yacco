@@ -86,11 +86,7 @@ func LoadConfiguration(path string) {
 	co.Core.LookFileExt = DefaultLookFileExt
 	co.Core.LookFileDepth = -1
 
-	u := iniparse.NewUnmarshaller()
-	u.Path = path
-	u.AddSpecialUnmarshaller("load", LoadRulesParser)
-	u.AddSpecialUnmarshaller("save", SaveRulesParser)
-	u.AddSpecialUnmarshaller("keybindings", LoadKeysParser)
+	u := newUnmarshaller(path)
 
 	fh, err := os.Open(path)
 	if err != nil {
@@ -155,10 +151,7 @@ func ReloadFonts(path string) {
 		path = filepath.Join(os.Getenv("HOME"), ".config/yacco/rc")
 	}
 
-	u := iniparse.NewUnmarshaller()
-	u.Path = path
-	u.AddSpecialUnmarshaller("load", LoadRulesParser)
-	u.AddSpecialUnmarshaller("keybindings", LoadKeysParser)
+	u := newUnmarshaller(path)
 
 	fh, err := os.Open(path)
 	if err != nil {
@@ -182,6 +175,15 @@ func ReloadFonts(path string) {
 	TagFont = fontFromConf(*co.Fonts["Tag"], co.Fonts)
 	AltFont = fontFromConf(*co.Fonts["Alt"], co.Fonts)
 	ComplFont = fontFromConf(*co.Fonts["Compl"], co.Fonts)
+}
+
+func newUnmarshaller(path string) *iniparse.Unmarshaller {
+	u := iniparse.NewUnmarshaller()
+	u.Path = path
+	u.AddSpecialUnmarshaller("load", LoadRulesParser)
+	u.AddSpecialUnmarshaller("save", SaveRulesParser)
+	u.AddSpecialUnmarshaller("keybindings", LoadKeysParser)
+	return u
 }
 
 func admissibleValues(m []string, a []string) (bool, string) {
