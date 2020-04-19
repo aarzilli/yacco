@@ -211,6 +211,9 @@ func normalParserState(line string, eof bool, ps *parserState) (parserStateFn, e
 	case _SYM, _STR:
 		name = t1.v
 		// continue to equal or eol
+
+	default:
+		return nil, tokUnexpected(t1, "Expecting '[', symbol or end of line")
 	}
 
 	t2 := <-tz.ch

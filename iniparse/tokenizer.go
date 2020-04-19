@@ -76,7 +76,7 @@ func tokUnexpected(t token, explanation string) error {
 	if explanation != "" {
 		return fmt.Errorf("%s:%d:%d: Unexpected token %s: %s\n", t.path, t.lineno, t.colno, tname, explanation)
 	} else {
-		return fmt.Errorf("%s:%d:%d: Unexpected token %s", t.path, t.lineno, t.colno)
+		return fmt.Errorf("%s:%d:%d: Unexpected token %s", t.path, t.lineno, t.colno, tname)
 	}
 }
 
@@ -223,11 +223,11 @@ func tokenizerBaseFn(tz *tokenizer, ch chan<- token) tokenizerStateFn {
 }
 
 func emit(tz *tokenizer, ch chan<- token, t ttype) {
-	emit4(tz, ch, t, tz.idx, "")
+	emit4(tz, ch, t, tz.idx+1, "")
 }
 
 func emit3(tz *tokenizer, ch chan<- token, t ttype, v string) {
-	emit4(tz, ch, t, tz.idx, v)
+	emit4(tz, ch, t, tz.idx+1, v)
 }
 
 func emit4(tz *tokenizer, ch chan<- token, t ttype, colno int, v string) {
