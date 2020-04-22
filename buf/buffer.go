@@ -983,6 +983,29 @@ type savedSels struct {
 	spacehack bool
 }
 
+const (
+	maxSpaceHackSize = 100 * 1024
+	spaceHackLineOff = 20
+)
+
+func init() {
+	if (1 << spaceHackLineOff) <= maxSpaceHackSize {
+		panic("bad configuration")
+	}
+}
+
+func spaceHackAdvance(ch rune, linecol *int) {
+	switch ch {
+	case '\n':
+		*linecol += (1 << spaceHackLineOff)
+		*linecol = *linecol &^ ((1 << spaceHackLineOff) - 1)
+	case ' ', '\r', '\t':
+		// nothing
+	default:
+		(*linecol)++
+	}
+}
+
 func (b *Buffer) saveSels() savedSels {
 	r := []util.Sel{}
 	sels := b.sels
@@ -991,7 +1014,7 @@ func (b *Buffer) saveSels() savedSels {
 			r = append(r, *sels[i])
 		}
 	}
-	if b.Size() > 100*1024 {
+	if b.Size() > maxSpaceHackSize {
 		return savedSels{r, false}
 	}
 
@@ -1001,15 +1024,12 @@ func (b *Buffer) saveSels() savedSels {
 		pos2nonspc[sel.E] = -1
 	}
 
-	nonspc := 0
+	linecol := 0
 	for i := 0; i < b.Size(); i++ {
 		if _, ok := pos2nonspc[i]; ok {
-			pos2nonspc[i] = nonspc
+			pos2nonspc[i] = linecol
 		}
-		ch := b.At(i)
-		if ch != ' ' && ch != '\n' && ch != '\r' && ch != '\t' {
-			nonspc++
-		}
+		spaceHackAdvance(b.At(i), &linecol)
 	}
 
 	for i := range r {
@@ -1024,29 +1044,25 @@ func (b *Buffer) saveSels() savedSels {
 
 func (b *Buffer) restoreSels(ssels savedSels) {
 	if ssels.spacehack {
-		nonspc2pos := make(map[int]int)
+		linecol2pos := make(map[int]int)
 
 		for _, sel := range ssels.sels {
-			nonspc2pos[sel.S] = -1
-			nonspc2pos[sel.E] = -1
+			linecol2pos[sel.S] = -1
+			linecol2pos[sel.E] = -1
 		}
 
-		nonspc := 0
+		linecol := 0
 		for i := 0; i < b.Size(); i++ {
-			if _, ok := nonspc2pos[nonspc]; ok && nonspc2pos[nonspc] < 0 {
-				nonspc2pos[nonspc] = i
+			if _, ok := linecol2pos[linecol]; ok && linecol2pos[linecol] < 0 {
+				linecol2pos[linecol] = i
 			}
-
-			ch := b.At(i)
-			if ch != ' ' && ch != '\n' && ch != '\r' && ch != '\t' {
-				nonspc++
-			}
+			spaceHackAdvance(b.At(i), &linecol)
 		}
 
 		for i := range ssels.sels {
-			if nonspc2pos[ssels.sels[i].S] >= 0 && nonspc2pos[ssels.sels[i].E] >= 0 {
-				ssels.sels[i].S = nonspc2pos[ssels.sels[i].S]
-				ssels.sels[i].E = nonspc2pos[ssels.sels[i].E]
+			if linecol2pos[ssels.sels[i].S] >= 0 && linecol2pos[ssels.sels[i].E] >= 0 {
+				ssels.sels[i].S = linecol2pos[ssels.sels[i].S]
+				ssels.sels[i].E = linecol2pos[ssels.sels[i].E]
 			} else {
 				ssels.sels[i].S = 0
 				ssels.sels[i].E = 0
