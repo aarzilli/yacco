@@ -139,7 +139,8 @@ func eventLoop() {
 					xgb.Put32(buf[i*4:], uint32(atom))
 				}
 
-				xproto.ChangePropertyChecked(X, xproto.PropModeReplace, e.Requestor, e.Property, atomAtom, 32, uint32(len(targetAtoms)), buf).Check()
+				cpc := xproto.ChangePropertyChecked(X, xproto.PropModeReplace, e.Requestor, e.Property, atomAtom, 32, uint32(len(targetAtoms)), buf)
+				err := cpc.Check()
 				if err == nil {
 					sendSelectionNotify(e)
 				} else {
