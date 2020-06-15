@@ -638,6 +638,10 @@ func SpecialSendCmd(ec ExecContext, msg string) {
 }
 
 func GetCmd(ec ExecContext, arg string) {
+	getCmdIntl(ec, arg, false)
+}
+
+func getCmdIntl(ec ExecContext, arg string, special bool) {
 	exitConfirmed = false
 	if ec.ed == nil {
 		return
@@ -653,7 +657,11 @@ func GetCmd(ec ExecContext, arg string) {
 	if ec.ed.bodybuf.IsDir() {
 		ec.ed.readDir()
 	} else {
-		ec.ed.bodybuf.Reload(true)
+		flag := buf.ReloadCreate
+		if special {
+			flag |= buf.ReloadPreserveCurlineWhitespace
+		}
+		ec.ed.bodybuf.Reload(flag)
 		ec.ed.FixTop()
 	}
 	if !ec.norefresh {
@@ -876,7 +884,7 @@ func GetallCmd(ec ExecContext, arg string) {
 					t += ed.bodybuf.ShortName() + "\n"
 					nerr++
 				} else {
-					ed.bodybuf.Reload(true)
+					ed.bodybuf.Reload(buf.ReloadCreate)
 					ed.FixTop()
 					ed.BufferRefresh()
 				}

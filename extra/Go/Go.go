@@ -134,7 +134,7 @@ func getChangedPaths(paths map[string]bool) {
 	for _, ie := range index {
 		if _, loaded := paths[ie.Path]; loaded {
 			if ctlfd, err := p9clnt.FOpen(fmt.Sprintf("/%d/ctl", ie.Idx), p.OWRITE); err == nil {
-				ctlfd.Write([]byte("get"))
+				ctlfd.Write([]byte("get-special"))
 				ctlfd.Close()
 			}
 		}

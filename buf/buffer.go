@@ -104,7 +104,11 @@ func NewBuffer(dir, name string, create bool, indentchar string, hl hl.Highlight
 	}
 
 	if name[0] != '+' {
-		err := b.Reload(create)
+		flag := ReloadFlag(0)
+		if create {
+			flag |= ReloadCreate
+		}
+		err := b.Reload(flag)
 		if err != nil {
 			return nil, err
 		}
@@ -143,8 +147,16 @@ func (b *Buffer) RmSel(sel *util.Sel) {
 	}
 }
 
+type ReloadFlag uint8
+
+const (
+	ReloadCreate ReloadFlag = 1 << iota
+	ReloadPreserveCurlineWhitespace
+)
+
 // (re)loads buffer from disk
-func (b *Buffer) Reload(create bool) error {
+func (b *Buffer) Reload(flags ReloadFlag) error {
+	create := flags&ReloadCreate != 0
 	path := filepath.Join(b.Dir, b.Name)
 	infile, err := os.Open(path)
 	if err == nil {
@@ -169,7 +181,34 @@ func (b *Buffer) Reload(create bool) error {
 		if isBinary(bytes) {
 			return fmt.Errorf("Can not open binary file")
 		}
+
+		restoreCurline := ""
+
+		if len(b.sels) > 0 && b.sels[0].S == b.sels[0].E {
+			s1 := b.Tonl(b.sels[0].S-1, -1)
+			if s1 < b.sels[0].S {
+				curline := string(b.SelectionRunes(util.Sel{s1, b.sels[0].S}))
+				allspace := true
+				for _, ch := range curline {
+					if ch != ' ' && ch != '\t' {
+						allspace = false
+						break
+					}
+				}
+				if allspace {
+					restoreCurline = curline
+				}
+			}
+		}
+
 		b.ReplaceFull([]rune(string(bytes)))
+
+		if restoreCurline != "" {
+			s1 := b.Tonl(b.sels[0].S-1, -1)
+			if s1 == b.sels[0].S {
+				b.Replace([]rune(restoreCurline), b.sels[0], false, nil, 0)
+			}
+		}
 
 		b.modTime = fi.ModTime()
 		s1 := sha1.Sum(bytes)
@@ -1056,6 +1095,9 @@ func (b *Buffer) restoreSels(ssels savedSels) {
 			if _, ok := linecol2pos[linecol]; ok && linecol2pos[linecol] < 0 {
 				linecol2pos[linecol] = i
 			}
+			if b.At(i) == '\n' {
+				linecol2pos[linecol|((1<<spaceHackLineOff)-1)] = i
+			}
 			spaceHackAdvance(b.At(i), &linecol)
 		}
 
@@ -1064,8 +1106,15 @@ func (b *Buffer) restoreSels(ssels savedSels) {
 				ssels.sels[i].S = linecol2pos[ssels.sels[i].S]
 				ssels.sels[i].E = linecol2pos[ssels.sels[i].E]
 			} else {
-				ssels.sels[i].S = 0
-				ssels.sels[i].E = 0
+				sline := ssels.sels[i].S | ((1 << spaceHackLineOff) - 1)
+				eline := ssels.sels[i].E | ((1 << spaceHackLineOff) - 1)
+				if linecol2pos[sline] >= 0 && linecol2pos[eline] >= 0 {
+					ssels.sels[i].S = linecol2pos[sline]
+					ssels.sels[i].E = linecol2pos[eline]
+				} else {
+					ssels.sels[i].S = b.Size()
+					ssels.sels[i].E = b.Size()
+				}
 			}
 		}
 	}

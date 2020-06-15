@@ -45,6 +45,10 @@ func ExecFs(ec *ExecContext, cmd string) syscall.Errno {
 		ec.ed.bodybuf.Modified = false
 		GetCmd(*ec, "")
 
+	case "get-special":
+		ec.ed.bodybuf.Modified = false
+		getCmdIntl(*ec, "", true)
+
 	case "limit=addr":
 		fmt.Fprintf(os.Stderr, "limit=addr not implemented\n")
 
