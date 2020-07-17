@@ -214,6 +214,11 @@ func (b *Buffer) Reload(flags ReloadFlag) error {
 		s1 := sha1.Sum(bytes)
 		b.onDiskChecksum = &s1
 		b.Modified = false
+		if len(b.ul.lst) == 1 {
+			b.ul.Reset()
+		} else {
+			b.ul.lst[b.ul.cur-1].solid = false
+		}
 		//b.ul.Reset()
 		b.ul.SetSaved()
 
