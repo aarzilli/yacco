@@ -195,7 +195,7 @@ func (b *Buffer) Reload(flags ReloadFlag) error {
 						break
 					}
 				}
-				if allspace {
+				if allspace && b.At(b.sels[0].S) == '\n' {
 					restoreCurline = curline
 				}
 			}
