@@ -1279,5 +1279,8 @@ func (fr *Frame) Size() int {
 
 func (fr *Frame) LimitY() int {
 	p := fr.PointToCoord(fr.Top + len(fr.glyphs) - 1)
+	if len(fr.glyphs) > 0 && fr.glyphs[len(fr.glyphs)-1].r == '\n' {
+		p.Y += fr.Font.Metrics().Height.Floor()
+	}
 	return p.Y + fr.Font.Metrics().Descent.Floor()
 }
