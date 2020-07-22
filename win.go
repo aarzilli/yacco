@@ -949,25 +949,20 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 			LastTypeTime = time.Time{}
 			if lp.tagbuf.EditableStart >= 0 {
 				ec := lp.asExecContext(false)
-				if lp.tagfr.Sel.S == lp.tagfr.Sel.E && ec.ed != nil {
-					ec.ed.tagbuf.Replace([]rune{'\n'}, &lp.tagfr.Sel, true, ec.eventChan, util.EO_KBD)
-					lp.ed.TagRefresh()
-					lp.ed.BufferRefresh()
+				if lp.tagfr.Sel.S == lp.tagfr.Sel.E {
+					lp.tagfr.SetSelect(1, 1, lp.tagbuf.EditableStart, lp.tagbuf.Size())
 				} else {
-					if lp.tagfr.Sel.S == lp.tagfr.Sel.E {
-						lp.tagfr.SetSelect(1, 1, lp.tagbuf.EditableStart, lp.tagbuf.Size())
-					}
 					lp.tagfr.SelColor = 1
-					if lp.ed != nil {
-						lp.ed.TagRefresh()
-					} else if lp.col != nil {
-						lp.col.BufferRefresh()
-					} else {
-						Wnd.BufferRefresh()
-					}
-					cmd := string(lp.tagbuf.SelectionRunes(lp.tagfr.Sel))
-					sendEventOrExec(ec, cmd, true, -1)
 				}
+				if lp.ed != nil {
+					lp.ed.TagRefresh()
+				} else if lp.col != nil {
+					lp.col.BufferRefresh()
+				} else {
+					Wnd.BufferRefresh()
+				}
+				cmd := string(lp.tagbuf.SelectionRunes(lp.tagfr.Sel))
+				sendEventOrExec(ec, cmd, true, -1)
 			}
 		} else {
 			LastTypeTime = time.Now()
