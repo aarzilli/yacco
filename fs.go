@@ -986,11 +986,14 @@ func writeMainPropFn(data []byte, off int64) syscall.Errno {
 			} else {
 				Wnd.Prop["font"] = "main"
 			}
-		} else if (v[0] == "font") && (v[1] == "+") {
-			config.FontSizeChange++
-			fontszchange()
-		} else if (v[0] == "font") && (v[1] == "-") {
-			config.FontSizeChange--
+		} else if v[0] == "font" {
+			if v[1] == "+" {
+				config.FontSizeChange++
+			} else if v[1] == "-" {
+				config.FontSizeChange--
+			} else {
+				config.FontSizeChange, _ = strconv.Atoi(v[1])
+			}
 			fontszchange()
 		} else if v[0] == "cwd" {
 			CdCmd(ExecContext{buf: nil}, v[1])

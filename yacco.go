@@ -35,6 +35,7 @@ var acmeCompatFlag = flag.Bool("acme", false, "Uses acme file to listen")
 var cpuprofileFlag = flag.String("cpuprofile", "", "Write cpu profile to file")
 var memprofileFlag = flag.String("memprofile", "", "Write memory profile to file")
 var pprofServerFlag = flag.Bool("pprof", false, "Start pprof server")
+var fontSizeChangeFlag = flag.Int("fsc", 0, "Initial font size change")
 
 var tagColors = [][]image.Uniform{
 	config.TheColorScheme.TagPlain,
@@ -169,6 +170,9 @@ func main() {
 		go func() {
 			log.Println(http.ListenAndServe("localhost:6060", nil))
 		}()
+	}
+	if fontSizeChangeFlag != nil {
+		config.FontSizeChange = *fontSizeChangeFlag
 	}
 	config.LoadConfiguration(*configFlag)
 	config.LoadTemplates()
