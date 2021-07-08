@@ -15,9 +15,9 @@ var DefaultWindowTag = []rune("Newcol Getall Putall Jobs Exit | ")
 var DefaultColumnTag = []rune("New Cut Paste Sort Zerox Delcol ")
 var DefaultEditorTag = " Del"
 
-var StartupWidth = 640
+var StartupWidth = 0
 var ScrollWidth = 10
-var StartupHeight = 480
+var StartupHeight = 0
 var ComplMaxX = 1024
 var ComplMaxY = 1024
 

@@ -24,6 +24,8 @@ type configObj struct {
 		LookFileExt        string
 		LookFileSkip       string
 		LookFileDepth      int
+		StartupWidth       int
+		StartupHeight      int
 	}
 	Fonts       map[string]*configFont
 	Load        *configLoadRules
@@ -136,6 +138,8 @@ func LoadConfiguration(path string) {
 	EnableHighlighting = co.Core.EnableHighlighting
 	ServeTCP = co.Core.ServeTCP
 	HideHidden = co.Core.HideHidden
+	StartupWidth = co.Core.StartupWidth
+	StartupHeight = co.Core.StartupHeight
 
 	os.Setenv("LOOKFILE_EXT", co.Core.LookFileExt)
 	os.Setenv("LOOKFILE_SKIP", co.Core.LookFileSkip)

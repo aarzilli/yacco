@@ -119,7 +119,7 @@ func (w *Window) Init(s screen.Screen, width, height int) (err error) {
 	w.Words = []string{}
 
 	w.screen = s
-	w.wnd, err = s.NewWindow(nil)
+	w.wnd, err = s.NewWindow(&screen.NewWindowOptions{Width: width, Height: height})
 	if err != nil {
 		return err
 	}
