@@ -1404,7 +1404,7 @@ func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, 
 		return endfn(match)
 	}
 
-	if fr.Sel.S > 1 {
+	if fr.Sel.S >= 1 {
 		match = b.Topmatch(fr.Sel.S-1, +1)
 		if match >= 0 {
 			match -= 1

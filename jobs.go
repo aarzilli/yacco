@@ -305,7 +305,7 @@ func UpdateJobs(create bool) {
 		if job == nil {
 			continue
 		}
-		t += fmt.Sprintf("%d %s\n", i, job.descr)
+		t += fmt.Sprintf("[ Kill %d ] %s\n", i, job.descr)
 		n++
 	}
 	jobsMutex.Unlock()
