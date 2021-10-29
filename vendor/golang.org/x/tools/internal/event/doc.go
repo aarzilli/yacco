@@ -2,6 +2,6 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package windows
-
-//go:generate ./mkerrors.bash zerrors_windows.go
+// Package event provides a set of packages that cover the main
+// concepts of telemetry in an implementation agnostic way.
+package event
