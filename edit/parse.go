@@ -173,9 +173,9 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*Cmd, []run
 		} else if theCmdDef.optxtarg {
 			switch cmdch {
 			default:
-				fallthrough
-			case 'x', 'y':
 				r.sregexp = regexp.Compile(`\w+`, true, false)
+			case 'x', 'y':
+				r.sregexp = regexp.Compile(`.*\n`, true, false)
 			case 'X', 'Y':
 				r.sregexp = regexp.Compile(``, true, false)
 			}

@@ -280,7 +280,7 @@ func gcmdfn(inv bool, c *Cmd, ec *EditContext) {
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
 	re := c.sregexp
 	loc := re.Match(ec.Buf, ec.atsel.S, ec.atsel.E, +1)
-	if (loc == nil) || (loc[0] != ec.atsel.S) || (loc[1] != ec.atsel.E) {
+	if loc == nil {
 		if inv {
 			c.body.fn(c.body, ec)
 		}
