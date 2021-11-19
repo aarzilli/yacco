@@ -59,9 +59,9 @@ var KeyBindings = map[string]string{
 
 	"control+q": "LookFile",
 
-	"backspace": "Do\nEdit g// -#1,.\nEdit c//",
-	"control+w": "Do\nEdit g// -#1,.\nEdit c//",
-	"delete":    "Do\nEdit g// .,+#1\nEdit c//",
+	"backspace": "Do\nEdit G// -#1,.\nEdit c//",
+	"control+w": "Do\nEdit G// -#1,.\nEdit c//",
+	"delete":    "Do\nEdit G// .,+#1\nEdit c//",
 
 	"control+=": "Font +",
 	"control+-": "Font -",

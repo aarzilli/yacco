@@ -276,18 +276,29 @@ func ycmdfn(c *Cmd, ec *EditContext) {
 	}
 }
 
-func gcmdfn(inv bool, c *Cmd, ec *EditContext) {
+type gcmdFlags uint8
+
+const (
+	gcmdInv gcmdFlags = 1 << iota
+	gcmdFullMatch
+)
+
+func gcmdfn(flags gcmdFlags, c *Cmd, ec *EditContext) {
+	inv := flags&gcmdInv != 0
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
 	re := c.sregexp
 	loc := re.Match(ec.Buf, ec.atsel.S, ec.atsel.E, +1)
-	if loc == nil {
-		if inv {
-			c.body.fn(c.body, ec)
+	doit := loc != nil
+	if flags&gcmdFullMatch != 0 {
+		if doit {
+			doit = (loc[0] == ec.atsel.S) && (loc[1] == ec.atsel.E)
 		}
-	} else {
-		if !inv {
-			c.body.fn(c.body, ec)
-		}
+	}
+	if inv {
+		doit = !doit
+	}
+	if doit {
+		c.body.fn(c.body, ec)
 	}
 }
 
