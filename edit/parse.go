@@ -35,7 +35,6 @@ var commands = map[rune]cmdDef{
 	'x': cmdDef{txtargs: 1, bodyarg: true, optxtarg: true, rca1: true, fn: xcmdfn},
 	'y': cmdDef{txtargs: 1, bodyarg: true, rca1: true, fn: ycmdfn},
 	'g': cmdDef{txtargs: 1, rca1: true, bodyarg: true, fn: func(c *Cmd, ec *EditContext) { gcmdfn(0, c, ec) }},
-	'G': cmdDef{txtargs: 1, rca1: true, bodyarg: true, fn: func(c *Cmd, ec *EditContext) { gcmdfn(gcmdFullMatch, c, ec) }},
 	'v': cmdDef{txtargs: 1, rca1: true, bodyarg: true, fn: func(c *Cmd, ec *EditContext) { gcmdfn(gcmdInv, c, ec) }},
 	'<': cmdDef{restargs: true, fn: pipeincmdfn},
 	'>': cmdDef{restargs: true, fn: pipeoutcmdfn},
