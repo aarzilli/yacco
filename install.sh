@@ -3,6 +3,7 @@
 set -e
 
 export GO111MODULE=on
+export GOFLAGS='-mod=vendor'
 
 destdir=$1
 
