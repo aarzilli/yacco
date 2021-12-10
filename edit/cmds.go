@@ -500,9 +500,9 @@ func XYcmdfn(inv bool, c *Cmd, ec *EditContext) {
 	}
 
 	for i := range matchbuffers {
-		subec := ec.subec(buffers[i].Buffer, buffers[i].Sel)
+		subec := ec.subec(matchbuffers[i].Buffer, matchbuffers[i].Sel)
 		c.body.fn(c.body, &subec)
-		ec.BufMan.RefreshBuffer(buffers[i].Buffer)
+		ec.BufMan.RefreshBuffer(matchbuffers[i].Buffer)
 	}
 }
 
