@@ -110,6 +110,53 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*Cmd, []run
 	r.rangeaddr = addr
 	r.fn = theCmdDef.fn
 
+	if cmdch == 'a' || cmdch == 'c' || cmdch == 'i' {
+		nlarg := false
+	findNlLoop:
+		for i := range rest {
+			switch rest[i] {
+			case ' ', '\t':
+				// continue
+			case '\n':
+				nlarg = true
+				rest = rest[i+1:]
+				break findNlLoop
+			default:
+				nlarg = false
+				break findNlLoop
+			}
+		}
+		if nlarg {
+			sol := true
+			done := false
+		findEndOfArgLoop:
+			for i := range rest {
+				switch rest[i] {
+				case '\n':
+					sol = true
+				case '.':
+					if sol && (i+1 < len(rest) && rest[i+1] == '\n') || (i+1 == len(rest)) {
+						r.txtargs = []string{string(rest[:i])}
+						if i+2 < len(rest) {
+							rest = rest[i+2:]
+						} else {
+							rest = []rune{}
+						}
+						done = true
+						break findEndOfArgLoop
+					}
+					sol = false
+				default:
+					sol = false
+				}
+			}
+			if !done {
+				panic(fmt.Errorf("Expected end of argument for 'a'"))
+			}
+			return r, rest
+		}
+	}
+
 	rest = skipSpaces(rest)
 
 	if theCmdDef.sarg {
