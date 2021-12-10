@@ -98,9 +98,12 @@ func (e *AddrBase) Eval(b *buf.Buffer, sel util.Sel) (rsel util.Sel) {
 		if e.Dir >= 0 {
 			value := asnumber(e.Value)
 			if e.Dir == 0 {
-				value--
 				rsel.S = 0
 				rsel.E = 0
+				if value == 0 {
+					return rsel
+				}
+				value--
 			} else {
 				rsel = sel
 			}
