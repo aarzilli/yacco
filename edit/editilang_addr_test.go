@@ -18,7 +18,7 @@ func testEdit(t *testing.T, input, pgm, target string) {
 	e := strings.Index(input, ">")
 	input = input[:e] + input[e+1:]
 
-	buf, _ := buf.NewBuffer("/", "+Tag", true, " ")
+	buf, _ := buf.NewBuffer("/", "+Tag", true, " ", nil)
 	buf.Replace([]rune(input), &util.Sel{0, 0}, true, nil, util.EO_MOUSE)
 
 	sel := util.Sel{s, e}

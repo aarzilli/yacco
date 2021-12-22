@@ -163,28 +163,29 @@ func resolveBackreferences(subs []rune, b *buf.Buffer, loc []int) []rune {
 		r = make([]rune, src, len(subs))
 		copy(r, subs[:src])
 	}
+	replace := func(src, n int) {
+		if r == nil {
+			initR(src)
+		}
+		if 2*n+1 < len(loc) {
+			r = append(r, b.SelectionRunes(util.Sel{loc[2*n], loc[2*n+1]})...)
+		} else {
+			panic(fmt.Errorf("Nonexistent backreference %d (%d)", n, len(loc)))
+		}
+	}
 	for src := 0; src < len(subs); src++ {
 		if (subs[src] == '\\') && (src+1 < len(subs)) {
 			switch subs[src+1] {
-			case '1', '2', '3', '4', '5', '6', '7', '8', '9':
-				if r == nil {
-					initR(src)
-				}
+			case '0', '1', '2', '3', '4', '5', '6', '7', '8', '9':
 				n := int(subs[src+1] - '0')
-				if 2*n+1 < len(loc) {
-					r = append(r, b.SelectionRunes(util.Sel{loc[2*n], loc[2*n+1]})...)
-				} else {
-					panic(fmt.Errorf("Nonexistent backreference %d (%d)", n, len(loc)))
-				}
-				src++
-			case '\\':
-				if r == nil {
-					initR(src)
-				}
-				r = append(r, '\\')
+				replace(src, n)
 				src++
 			default:
-				//do nothing
+				if r == nil {
+					initR(src)
+				}
+				r = append(r, subs[src+1])
+				src++
 			}
 		} else if r != nil {
 			r = append(r, subs[src])

@@ -484,7 +484,9 @@ func (b *Buffer) replaceIntl(text []rune, sel *util.Sel) {
 	}
 	b.gap += len(text)
 	b.gapsz -= len(text)
-	b.Hl.Alter(sel.S - 1)
+	if b.Hl != nil {
+		b.Hl.Alter(sel.S - 1)
+	}
 
 	b.RevCount++
 }
