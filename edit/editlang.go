@@ -36,6 +36,7 @@ type EditContext struct {
 	atsel     *util.Sel
 	EventChan chan string
 	BufMan    BufferManaging
+	Trace     bool
 
 	stash *[]replaceOp
 	depth int
@@ -150,6 +151,7 @@ func (ec *EditContext) subec(buf *buf.Buffer, atsel *util.Sel) EditContext {
 			atsel:     atsel,
 			EventChan: ec.EventChan,
 			BufMan:    ec.BufMan,
+			Trace:     ec.Trace,
 			depth:     ec.depth + 1,
 		}
 	} else {
@@ -159,6 +161,7 @@ func (ec *EditContext) subec(buf *buf.Buffer, atsel *util.Sel) EditContext {
 			atsel:     atsel,
 			EventChan: nil,
 			BufMan:    ec.BufMan,
+			Trace:     ec.Trace,
 			depth:     ec.depth + 1,
 		}
 	}

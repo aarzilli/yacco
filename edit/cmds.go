@@ -1,7 +1,9 @@
 package edit
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -22,6 +24,8 @@ func nilcmdfn(c *Cmd, ec *EditContext) {
 
 func inscmdfn(dir int, c *Cmd, ec *EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+
+	ec.tracecmd(sel, c)
 
 	switch c.cmdch {
 	case 'a':
@@ -44,6 +48,8 @@ func mtcmdfn(del bool, c *Cmd, ec *EditContext) {
 
 	txt := ec.Buf.SelectionRunes(selfrom)
 
+	ec.tracecmd(selfrom, c, selto)
+
 	if selto > selfrom.E {
 		ec.replace(txt, &util.Sel{selto, selto}, ec.Buf.EditMark)
 		ec.replace([]rune{}, &selfrom, false)
@@ -58,11 +64,13 @@ func mtcmdfn(del bool, c *Cmd, ec *EditContext) {
 func pcmdfn(c *Cmd, ec *EditContext) {
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
 	txt := ec.Buf.SelectionRunes(*ec.atsel)
+	ec.tracecmd(*ec.atsel, c)
 	Warnfn(string(txt))
 }
 
 func eqcmdfn(c *Cmd, ec *EditContext) {
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	ec.tracecmd(*ec.atsel, c)
 
 	var charpos bool
 
@@ -102,6 +110,9 @@ func scmdfn(c *Cmd, ec *EditContext) {
 		ec.Buf.EditMark = ec.Buf.EditMarkNext
 	}()
 
+	ec.tracecmd(*ec.atsel, c, "{")
+	defer ec.tracecmd("}")
+
 	re := c.sregexp
 	subs := []rune(c.txtargs[1])
 	first := ec.Buf.EditMark
@@ -118,6 +129,7 @@ func scmdfn(c *Cmd, ec *EditContext) {
 		allWhitespace := false
 		if globalrepl || (c.numarg == nmatch) {
 			realSubs := resolveBackreferences(subs, ec.Buf, loc)
+			ec.tracemore("replace", sel, realSubs)
 			ec.replace(realSubs, &sel, first)
 			allWhitespace = isWhitespace(realSubs)
 			if !globalrepl {
@@ -201,13 +213,17 @@ func xycmdfn(c *Cmd, ec *EditContext, inv bool) {
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
 	rngsel := *ec.atsel
 
+	ec.tracecmd(*ec.atsel, c, "{")
+
 	re := c.sregexp
 	count := 0
 	stash := []replaceOp{}
 
 	for {
+		ec.tracemore("searching regex at", rngsel)
 		loc := re.Match(ec.Buf, rngsel.S, rngsel.E, +1)
 		if (loc == nil) || (len(loc) < 2) {
+			ec.tracecmd("}")
 			ec.applyStash(stash)
 			return
 		}
@@ -217,6 +233,7 @@ func xycmdfn(c *Cmd, ec *EditContext, inv bool) {
 		} else {
 			cursel = util.Sel{loc[0], loc[1]}
 		}
+		ec.tracemore("match at", util.Sel{loc[0], loc[1]})
 		subec := ec.subec(ec.Buf, &cursel)
 		subec.stash = &stash
 		c.body.fn(c.body, &subec)
@@ -250,8 +267,13 @@ func gcmdfn(flags gcmdFlags, c *Cmd, ec *EditContext) {
 	if inv {
 		doit = !doit
 	}
+	ec.tracecmd(*ec.atsel, c)
 	if doit {
+		ec.tracecmd("{")
+		ec.depth++
 		c.body.fn(c.body, ec)
+		ec.depth--
+		ec.tracecmd("}")
 	}
 }
 
@@ -260,6 +282,7 @@ func pipeincmdfn(c *Cmd, ec *EditContext) {
 	NewJob(ec.Buf.Dir, c.bodytxt, "", ec.Buf, resultChan)
 	str := <-resultChan
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	ec.tracecmd(*ec.atsel, c, str)
 	ec.replace([]rune(str), ec.atsel, ec.Buf.EditMark)
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 }
@@ -276,12 +299,14 @@ func pipecmdfn(c *Cmd, ec *EditContext) {
 	resultChan := make(chan string)
 	NewJob(ec.Buf.Dir, c.bodytxt, str, ec.Buf, resultChan)
 	str = <-resultChan
+	ec.tracecmd(*ec.atsel, c, str)
 	ec.replace([]rune(str), ec.atsel, ec.Buf.EditMark)
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 }
 
 func kcmdfn(c *Cmd, ec *EditContext) {
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	ec.tracecmd(*ec.atsel, c)
 	if ec.Sel != nil {
 		*ec.Sel = *ec.atsel
 	}
@@ -302,6 +327,8 @@ func Mcmdfn(c *Cmd, ec *EditContext) {
 
 	ms := c.rangeaddr.Eval(ec.Buf, util.Sel{p, p})
 
+	ec.tracecmd(ms, c)
+
 	if ms.S != ms.E {
 		panic("M command called on non-empty selection")
 	}
@@ -319,9 +346,12 @@ func bcmdfn(openOthers bool, c *Cmd, ec *EditContext) {
 	fileNames := processFileList(ec, c.bodytxt)
 	open := bufferMap(ec)
 
+	ec.tracecmd(*ec.atsel, c)
+
 	first := true
 
 	for i := range fileNames {
+		ec.tracemore("opening", fileNames[i])
 		buf, ok := open[fileNames[i]]
 
 		if openOthers && !ok {
@@ -343,7 +373,10 @@ func Dcmdfn(c *Cmd, ec *EditContext) {
 	fileNames := processFileList(ec, c.bodytxt)
 	open := bufferMap(ec)
 
+	ec.tracecmd(*ec.atsel, c)
+
 	for i := range fileNames {
+		ec.tracemore("closing", fileNames[i])
 		buf, ok := open[fileNames[i]]
 		if ok {
 			ec.BufMan.Close(buf)
@@ -395,6 +428,8 @@ func extreplcmdfn(all bool, c *Cmd, ec *EditContext) {
 		*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
 	}
 
+	ec.tracecmd(c)
+
 	c.bodytxt = strings.TrimSpace(c.bodytxt)
 
 	bytes, err := ioutil.ReadFile(util.ResolvePath(ec.Buf.Dir, c.bodytxt))
@@ -413,6 +448,7 @@ func extreplcmdfn(all bool, c *Cmd, ec *EditContext) {
 
 func wcmdfn(c *Cmd, ec *EditContext) {
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	ec.tracecmd(*ec.atsel, c)
 	if ec.atsel.S == ec.atsel.E {
 		ec.atsel.S = 0
 		ec.atsel.E = ec.Buf.Size()
@@ -427,6 +463,9 @@ func wcmdfn(c *Cmd, ec *EditContext) {
 
 func XYcmdfn(inv bool, c *Cmd, ec *EditContext) {
 	buffers := ec.BufMan.List()
+
+	ec.tracecmd(c, "{")
+	defer ec.tracecmd("}")
 
 	matchbuffers := make([]BufferManagingEntry, 0, len(buffers))
 
@@ -453,6 +492,7 @@ func XYcmdfn(inv bool, c *Cmd, ec *EditContext) {
 	}
 
 	for i := range matchbuffers {
+		ec.tracemore("executing on", matchbuffers[i].Buffer.Path())
 		subec := ec.subec(matchbuffers[i].Buffer, matchbuffers[i].Sel)
 		c.body.fn(c.body, &subec)
 		ec.BufMan.RefreshBuffer(matchbuffers[i].Buffer)
@@ -462,6 +502,9 @@ func XYcmdfn(inv bool, c *Cmd, ec *EditContext) {
 func blockcmdfn(c *Cmd, ec *EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, *ec.atsel)
 	stash := []replaceOp{}
+
+	ec.tracecmd(sel, c)
+	defer ec.tracecmd("}")
 
 	for i := range c.mbody {
 		subec := ec.subec(ec.Buf, &sel)
@@ -507,4 +550,63 @@ func (ec *EditContext) applyStash(stash []replaceOp) {
 		ec.Buf.Replace(stash[i].text, &stash[i].sel, i == 0, ec.EventChan, util.EO_MOUSE)
 		curpos = stash[i].sel.E
 	}
+}
+
+func (ec *EditContext) printSel(w io.Writer, sel util.Sel) {
+	fmt.Fprintf(w, "%d,%d", sel.S, sel.E)
+	dot := false
+	if sel.E-sel.S > 20 {
+		sel.E = sel.S + 20
+		dot = true
+	}
+	txt := ec.Buf.SelectionRunes(sel)
+	fmt.Fprintf(w, " %q", string(txt))
+	if dot {
+		fmt.Fprintf(w, "...")
+	}
+}
+
+func (ec *EditContext) tracecmd(args ...interface{}) {
+	if !ec.Trace {
+		return
+	}
+	var buf bytes.Buffer
+	for i := 0; i < ec.depth; i++ {
+		buf.Write([]byte("   "))
+	}
+
+	first := true
+	for _, arg := range args {
+		if !first {
+			buf.WriteByte(' ')
+		}
+		first = false
+		switch arg := arg.(type) {
+		case *Cmd:
+			c := arg
+			fmt.Fprintf(&buf, "%c", c.cmdch)
+			for i := range c.txtargs {
+				fmt.Fprintf(&buf, " %q", c.txtargs[i])
+			}
+			if c.bodytxt != "" {
+				fmt.Fprintf(&buf, " %q", c.bodytxt)
+			}
+		case util.Sel:
+			ec.printSel(&buf, arg)
+		case *util.Sel:
+			ec.printSel(&buf, *arg)
+		case []rune:
+			fmt.Fprintf(&buf, "%q", string(arg))
+		default:
+			fmt.Fprintf(&buf, "%v", arg)
+		}
+	}
+	buf.WriteByte('\n')
+	Warnfn(buf.String())
+}
+
+func (ec *EditContext) tracemore(args ...interface{}) {
+	ec.depth++
+	ec.tracecmd(args...)
+	ec.depth--
 }

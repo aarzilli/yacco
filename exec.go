@@ -531,15 +531,19 @@ func getDumpPath(arg string, dodef bool) string {
 }
 
 func EditCmd(ec ExecContext, arg string) {
+	editCmd(ec, arg, false)
+}
+
+func editCmd(ec ExecContext, arg string, trace bool) {
 	exitConfirmed = false
 	if ec.ed != nil {
 		ec.ed.confirmDel = false
 		ec.ed.confirmSave = false
 	}
 	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
-		edit.Edit(arg, makeEditContext(nil, nil, nil, nil))
+		edit.Edit(arg, makeEditContext(nil, nil, nil, nil, trace))
 	} else {
-		edit.Edit(arg, makeEditContext(ec.buf, &ec.fr.Sel, ec.eventChan, ec.ed))
+		edit.Edit(arg, makeEditContext(ec.buf, &ec.fr.Sel, ec.eventChan, ec.ed, trace))
 		if !ec.norefresh {
 			ec.br()
 		}
@@ -1201,7 +1205,7 @@ func editPgmToFunc(pgm *edit.Cmd) func(ec ExecContext) {
 			return
 		}
 
-		pgm.Exec(makeEditContext(ec.buf, &ec.fr.Sel, ec.eventChan, ec.ed))
+		pgm.Exec(makeEditContext(ec.buf, &ec.fr.Sel, ec.eventChan, ec.ed, false))
 		if !ec.norefresh {
 			ec.br()
 		}
@@ -1302,6 +1306,9 @@ Debug memory
 	
 Debug undo
 	Prints undo list for the current buffer
+
+Debug Edit ...
+	Traces execution of the given edit command
 `)
 	}
 
@@ -1330,7 +1337,7 @@ Debug undo
 			return
 		}
 		pgm := edit.Parse([]rune(v[1]))
-		Warn(pgm.String())
+		Warn(pgm.String(true))
 	case "memory":
 		debug.FreeOSMemory()
 		var buf bytes.Buffer
@@ -1341,6 +1348,9 @@ Debug undo
 			return
 		}
 		Warn(ec.ed.bodybuf.DescribeUndo())
+	case "Edit":
+		editCmd(ec, v[1], true)
+
 	default:
 		usage()
 		return
@@ -1474,12 +1484,13 @@ func LspCmd(ec ExecContext, arg string) {
 	}()
 }
 
-func makeEditContext(buf *buf.Buffer, sel *util.Sel, eventChan chan string, ed *Editor) edit.EditContext {
+func makeEditContext(buf *buf.Buffer, sel *util.Sel, eventChan chan string, ed *Editor, trace bool) edit.EditContext {
 	return edit.EditContext{
 		Buf:       buf,
 		Sel:       sel,
 		EventChan: eventChan,
 		BufMan:    &BufMan{},
+		Trace:     trace,
 	}
 }
 
