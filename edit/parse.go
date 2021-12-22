@@ -32,8 +32,8 @@ var commands = map[rune]cmdDef{
 	't': cmdDef{txtargs: 0, addrarg: true, fn: func(c *Cmd, ec *EditContext) { mtcmdfn(false, c, ec) }},
 	'p': cmdDef{txtargs: 0, fn: pcmdfn},
 	'=': cmdDef{restargs: true, txtargs: 0, fn: eqcmdfn},
-	'x': cmdDef{txtargs: 1, bodyarg: true, optxtarg: true, rca1: true, fn: xcmdfn},
-	'y': cmdDef{txtargs: 1, bodyarg: true, rca1: true, fn: ycmdfn},
+	'x': cmdDef{txtargs: 1, bodyarg: true, optxtarg: true, rca1: true, fn: func(c *Cmd, ec *EditContext) { xycmdfn(c, ec, false) }},
+	'y': cmdDef{txtargs: 1, bodyarg: true, rca1: true, fn: func(c *Cmd, ec *EditContext) { xycmdfn(c, ec, true) }},
 	'g': cmdDef{txtargs: 1, rca1: true, bodyarg: true, fn: func(c *Cmd, ec *EditContext) { gcmdfn(0, c, ec) }},
 	'v': cmdDef{txtargs: 1, rca1: true, bodyarg: true, fn: func(c *Cmd, ec *EditContext) { gcmdfn(gcmdInv, c, ec) }},
 	'<': cmdDef{restargs: true, fn: pipeincmdfn},
@@ -57,38 +57,47 @@ var commands = map[rune]cmdDef{
 type addrTok string
 
 func Parse(pgm []rune) *Cmd {
-	r, rest := parseEx(pgm)
+	r, rest := parseEx(pgm, false)
+	for len(rest) > 0 {
+		switch rest[0] {
+		case ' ', '\t', '\n':
+			rest = rest[1:]
+			// continue
+		default:
+			break
+		}
+	}
 	if len(rest) != 0 {
 		panic(fmt.Errorf("Error while parsing <%s> spurious characters <%s>\n", string(pgm), string(rest)))
 	}
 	return r
 }
 
-func parseEx(pgm []rune) (*Cmd, []rune) {
+func parseEx(pgm []rune, nlexit bool) (*Cmd, []rune) {
 	addrs := []addrTok{}
 	rest := pgm
 	var r *Cmd
 	for {
 		if len(rest) == 0 {
 			addr := parseAddr(addrs)
-			r, rest = parseCmd(' ', cmdDef{txtargs: 0, fn: nilcmdfn}, addr, []rune{})
+			r, rest = parseCmd(' ', cmdDef{txtargs: 0, fn: nilcmdfn}, addr, []rune{}, nlexit)
 			break
 		}
 
 		if (rest[0] == ' ') || (rest[0] == '\t') || (rest[0] == '\n') {
+			if nlexit && rest[0] == '\n' {
+				break
+			}
 			rest = rest[1:]
 			continue
 		}
 
 		if rest[0] == '{' {
-			if len(addrs) > 0 {
-				panic(fmt.Errorf("Could not parse <%s>, address tokens before a block", string(pgm)))
-			}
-			r, rest = parseBlock(rest[1:])
+			r, rest = parseBlock(parseAddr(addrs), rest[1:])
 			break
 		} else if cmdDef, ok := commands[rest[0]]; ok {
 			addr := parseAddr(addrs)
-			r, rest = parseCmd(rest[0], cmdDef, addr, rest[1:])
+			r, rest = parseCmd(rest[0], cmdDef, addr, rest[1:], nlexit)
 			break
 		} else {
 			var addr addrTok
@@ -104,7 +113,7 @@ func parseEx(pgm []rune) (*Cmd, []rune) {
 	return r, rest
 }
 
-func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*Cmd, []rune) {
+func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune, nlexit bool) (*Cmd, []rune) {
 	r := &Cmd{}
 	r.cmdch = cmdch
 	r.rangeaddr = addr
@@ -157,7 +166,7 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*Cmd, []run
 		}
 	}
 
-	rest = skipSpaces(rest)
+	rest = skipSpaces(rest, nlexit)
 
 	if theCmdDef.sarg {
 		var n string
@@ -171,7 +180,7 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*Cmd, []run
 			util.Must(err, "Number format exception parsing Edit program")
 		}
 
-		rest = skipSpaces(rest)
+		rest = skipSpaces(rest, nlexit)
 	}
 
 	r.txtargs = []string{}
@@ -185,9 +194,8 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*Cmd, []run
 				var arg string
 				arg, rest = readDelim(rest, endr, theCmdDef.escarg && (i == theCmdDef.txtargs-1))
 				r.txtargs = append(r.txtargs, arg)
-				//rest = skipSpaces(rest)
 			}
-			rest = skipSpaces(rest)
+			rest = skipSpaces(rest, true)
 		} else {
 			if !theCmdDef.optxtarg {
 				panic(fmt.Errorf("Expected argument to '%c' but character '%c' found", cmdch, rest[0]))
@@ -211,7 +219,7 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*Cmd, []run
 			rest = rest[1:]
 		}
 
-		rest = skipSpaces(rest)
+		rest = skipSpaces(rest, true)
 	}
 
 	if theCmdDef.rca1 {
@@ -240,11 +248,11 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*Cmd, []run
 			}
 		}
 		r.argaddr = parseAddr(addrs)
-		rest = skipSpaces(rest)
+		rest = skipSpaces(rest, nlexit)
 	}
 
 	if theCmdDef.bodyarg {
-		r.body, rest = parseEx(rest)
+		r.body, rest = parseEx(rest, nlexit)
 	} else if theCmdDef.restargs {
 		var i int
 		for i = 0; i < len(rest); i++ {
@@ -264,7 +272,7 @@ func parseCmd(cmdch rune, theCmdDef cmdDef, addr Addr, rest []rune) (*Cmd, []run
 	return r, rest
 }
 
-func parseBlock(pgm []rune) (*Cmd, []rune) {
+func parseBlock(addr Addr, pgm []rune) (*Cmd, []rune) {
 	rest := pgm
 	cmds := []*Cmd{}
 
@@ -278,21 +286,22 @@ func parseBlock(pgm []rune) (*Cmd, []rune) {
 			rest = rest[1:]
 		case '}':
 			return &Cmd{
-				cmdch: '{',
-				mbody: cmds,
-				fn:    blockcmdfn,
+				rangeaddr: addr,
+				cmdch:     '{',
+				mbody:     cmds,
+				fn:        blockcmdfn,
 			}, rest[1:]
 		default:
 			var cmd *Cmd
-			cmd, rest = parseEx(rest)
+			cmd, rest = parseEx(rest, true)
 			cmds = append(cmds, cmd)
 		}
 	}
 }
 
-func skipSpaces(rest []rune) []rune {
+func skipSpaces(rest []rune, nlexit bool) []rune {
 	for i := range rest {
-		if (rest[i] != ' ') && (rest[i] != '\t') && (rest[i] != '\n') {
+		if (rest[i] != ' ') && (rest[i] != '\t') && ((rest[i] != '\n') || nlexit) {
 			return rest[i:]
 		}
 	}

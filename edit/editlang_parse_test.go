@@ -7,7 +7,7 @@ import (
 
 func testParsed(t *testing.T, s string, tgt string) {
 	ecmd := Parse([]rune(s))
-	o := ecmd.String()
+	o := ecmd.String(true)
 	v := strings.SplitN(o, "\n", 2)
 	o = v[0]
 
@@ -56,5 +56,9 @@ func TestSSpacesBug(t *testing.T) {
 }
 
 func TestBlock(t *testing.T) {
-	testParsed(t, "x/regexp/ { c/blah/\nc/bloh/\n}", "Range<.> Cmd<x> Arg<regexp> Body<Cmd<{> Body<Range<.> Cmd<c> Arg<blah>, Range<.> Cmd<c> Arg<bloh>>>")
+	testParsed(t, "x/regexp/ { c/blah/\nc/bloh/\n}", "Range<.> Cmd<x> Arg<regexp> Body<Range<.> Cmd<{> Body<Range<.> Cmd<c> Arg<blah>, Range<.> Cmd<c> Arg<bloh>>>")
+	testParsed(t, `{
+g/CH/ s1/./\0B/
+g/HH/ s1/./\0N/
+}`, `Range<.> Cmd<{> Body<Range<.> Cmd<g> Arg<CH> Body<Range<.> Cmd<s> Num<1> Arg<.> Arg<\0B>>, Range<.> Cmd<g> Arg<HH> Body<Range<.> Cmd<s> Num<1> Arg<.> Arg<\0N>>>`)
 }

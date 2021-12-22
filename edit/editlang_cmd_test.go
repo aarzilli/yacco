@@ -55,3 +55,31 @@ func TestXWithAddrAndC(t *testing.T) {
 	testEdit(t, "<>bip bop bappa bump", `,x/\w+/ c/M12345/`, "<M12345 M12345 M12345 >M12345")
 	testEdit(t, "<>bip bop bappa bump", `,x/\w+/ -#0;+#1 c/M/`, "<Mip Mop Mappa Mump>")
 }
+
+func TestAoC(t *testing.T) {
+	code := `1x/./ {
+.,.+#1 {
+g/CH/ s1/./\0B/
+g/HH/ s1/./\0N/
+g/CB/ s1/./\0H/
+g/NH/ s1/./\0C/
+g/HB/ s1/./\0C/
+g/HC/ s1/./\0B/
+g/HN/ s1/./\0C/
+g/NN/ s1/./\0C/
+g/BH/ s1/./\0H/
+g/NC/ s1/./\0B/
+g/NB/ s1/./\0B/
+g/BN/ s1/./\0B/
+g/BB/ s1/./\0N/
+g/BC/ s1/./\0B/
+g/CC/ s1/./\0N/
+g/CN/ s1/./\0C/
+}
+}
+`
+	testEdit(t, `<>NNCB`, code, "<NCNBCHB>")
+	testEdit(t, `<NCNBCHB>`, code, "<NBCCNBBBCBHCB>")
+	testEdit(t, `<NBCCNBBBCBHCB>`, code, "<NBBBCNCCNBBNBNBBCHBHHBCHB>")
+	testEdit(t, `<NBBBCNCCNBBNBNBBCHBHHBCHB>`, code, "<NBBNBNBBCCNBCNCCNBBNBBNBBBNBBNBBCBHCBHHNHCBBCBHCB>")
+}

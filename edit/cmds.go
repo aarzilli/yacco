@@ -30,7 +30,7 @@ func inscmdfn(dir int, c *Cmd, ec *EditContext) {
 		sel.E = sel.S
 	}
 
-	ec.Buf.Replace([]rune(c.txtargs[0]), &sel, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE)
+	ec.replace([]rune(c.txtargs[0]), &sel, ec.Buf.EditMark)
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 
 	if c.cmdch == 'c' {
@@ -45,12 +45,12 @@ func mtcmdfn(del bool, c *Cmd, ec *EditContext) {
 	txt := ec.Buf.SelectionRunes(selfrom)
 
 	if selto > selfrom.E {
-		ec.Buf.Replace(txt, &util.Sel{selto, selto}, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE)
-		ec.Buf.Replace([]rune{}, &selfrom, false, ec.EventChan, util.EO_MOUSE)
+		ec.replace(txt, &util.Sel{selto, selto}, ec.Buf.EditMark)
+		ec.replace([]rune{}, &selfrom, false)
 		ec.Buf.EditMark = ec.Buf.EditMarkNext
 	} else {
-		ec.Buf.Replace([]rune{}, &selfrom, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE)
-		ec.Buf.Replace(txt, &util.Sel{selto, selto}, false, ec.EventChan, util.EO_MOUSE)
+		ec.replace([]rune{}, &selfrom, ec.Buf.EditMark)
+		ec.replace(txt, &util.Sel{selto, selto}, false)
 		ec.Buf.EditMark = ec.Buf.EditMarkNext
 	}
 }
@@ -118,7 +118,7 @@ func scmdfn(c *Cmd, ec *EditContext) {
 		allWhitespace := false
 		if globalrepl || (c.numarg == nmatch) {
 			realSubs := resolveBackreferences(subs, ec.Buf, loc)
-			ec.Buf.Replace(realSubs, &sel, first, ec.EventChan, util.EO_MOUSE)
+			ec.replace(realSubs, &sel, first)
 			allWhitespace = isWhitespace(realSubs)
 			if !globalrepl {
 				break
@@ -197,78 +197,30 @@ func resolveBackreferences(subs []rune, b *buf.Buffer, loc []int) []rune {
 	return subs
 }
 
-func xcmdfn(c *Cmd, ec *EditContext) {
+func xycmdfn(c *Cmd, ec *EditContext, inv bool) {
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
-	var xAddrs0 = util.Sel{ec.atsel.S, ec.atsel.E}
-	var xAddrs1 = util.Sel{ec.atsel.S, ec.atsel.S}
-	var xAddrs2 = util.Sel{ec.atsel.S, ec.atsel.S}
-	ec.Buf.AddSel(&xAddrs0)
-	ec.Buf.AddSel(&xAddrs1)
-	ec.Buf.AddSel(&xAddrs2)
-	ebn := ec.Buf.EditMarkNext
-	ec.Buf.EditMarkNext = false
-	defer func() {
-		*ec.atsel = xAddrs0
-		ec.Buf.EditMarkNext = ebn
-		ec.Buf.EditMark = ec.Buf.EditMarkNext
-		ec.Buf.RmSel(&xAddrs0)
-		ec.Buf.RmSel(&xAddrs1)
-		ec.Buf.RmSel(&xAddrs2)
-	}()
+	rngsel := *ec.atsel
 
 	re := c.sregexp
 	count := 0
+	stash := []replaceOp{}
 
 	for {
-		loc := re.Match(ec.Buf, xAddrs1.S, xAddrs0.E, +1)
+		loc := re.Match(ec.Buf, rngsel.S, rngsel.E, +1)
 		if (loc == nil) || (len(loc) < 2) {
+			ec.applyStash(stash)
 			return
 		}
-		xAddrs1.S, xAddrs1.E = loc[0], loc[1]
-		xAddrs2 = xAddrs1
-		subec := ec.subec(ec.Buf, &xAddrs2)
+		var cursel util.Sel
+		if inv {
+			cursel = util.Sel{rngsel.S, loc[0]}
+		} else {
+			cursel = util.Sel{loc[0], loc[1]}
+		}
+		subec := ec.subec(ec.Buf, &cursel)
+		subec.stash = &stash
 		c.body.fn(c.body, &subec)
-		if xAddrs1.S == xAddrs1.E {
-			xAddrs1 = xAddrs2
-		}
-		xAddrs1.S = xAddrs1.E
-		count++
-		if count > LOOP_LIMIT {
-			Warnfn("x/y loop seems stuck\n")
-			return
-		}
-	}
-}
-
-func ycmdfn(c *Cmd, ec *EditContext) {
-	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
-	var yAddrs0 = util.Sel{ec.atsel.S, ec.atsel.E}
-	var yAddrs1 = util.Sel{ec.atsel.S, ec.atsel.E}
-	ec.Buf.AddSel(&yAddrs0)
-	ec.Buf.AddSel(&yAddrs1)
-	ebn := ec.Buf.EditMarkNext
-	ec.Buf.EditMarkNext = false
-	defer func() {
-		*ec.atsel = yAddrs0
-		ec.Buf.EditMarkNext = ebn
-		ec.Buf.EditMark = ec.Buf.EditMarkNext
-		ec.Buf.RmSel(&yAddrs0)
-		ec.Buf.RmSel(&yAddrs1)
-	}()
-
-	re := c.sregexp
-	count := 0
-
-	for {
-		loc := re.Match(ec.Buf, yAddrs1.S, yAddrs0.E, +1)
-		if (loc == nil) || (len(loc) < 2) {
-			return
-		}
-		yAddrs1.E = loc[0]
-		subec := ec.subec(ec.Buf, &yAddrs1)
-		c.body.fn(c.body, &subec)
-		yAddrs1.S = yAddrs1.S + (loc[1] - loc[0])
-		yAddrs1.E = yAddrs1.S
+		rngsel.S = loc[1]
 		count++
 		if count > LOOP_LIMIT {
 			Warnfn("x/y loop seems stuck\n")
@@ -308,7 +260,7 @@ func pipeincmdfn(c *Cmd, ec *EditContext) {
 	NewJob(ec.Buf.Dir, c.bodytxt, "", ec.Buf, resultChan)
 	str := <-resultChan
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
-	ec.Buf.Replace([]rune(str), ec.atsel, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE)
+	ec.replace([]rune(str), ec.atsel, ec.Buf.EditMark)
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 }
 
@@ -324,7 +276,7 @@ func pipecmdfn(c *Cmd, ec *EditContext) {
 	resultChan := make(chan string)
 	NewJob(ec.Buf.Dir, c.bodytxt, str, ec.Buf, resultChan)
 	str = <-resultChan
-	ec.Buf.Replace([]rune(str), ec.atsel, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE)
+	ec.replace([]rune(str), ec.atsel, ec.Buf.EditMark)
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 }
 
@@ -450,7 +402,7 @@ func extreplcmdfn(all bool, c *Cmd, ec *EditContext) {
 		Warnfn(fmt.Sprintf("Couldn't read file: %v\n", err))
 	}
 
-	ec.Buf.Replace([]rune(string(bytes)), ec.atsel, ec.Buf.EditMark, ec.EventChan, util.EO_MOUSE)
+	ec.replace([]rune(string(bytes)), ec.atsel, ec.Buf.EditMark)
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
 
 	if all {
@@ -508,7 +460,51 @@ func XYcmdfn(inv bool, c *Cmd, ec *EditContext) {
 }
 
 func blockcmdfn(c *Cmd, ec *EditContext) {
+	sel := c.rangeaddr.Eval(ec.Buf, *ec.atsel)
+	stash := []replaceOp{}
+
 	for i := range c.mbody {
-		c.mbody[i].fn(c.mbody[i], ec)
+		subec := ec.subec(ec.Buf, &sel)
+		subec.stash = &stash
+		c.mbody[i].fn(c.mbody[i], &subec)
+	}
+
+	ec.applyStash(stash)
+}
+
+type replaceOp struct {
+	text []rune
+	sel  util.Sel
+}
+
+func (ec *EditContext) replace(text []rune, sel *util.Sel, solid bool) {
+	if ec.stash != nil {
+		*ec.stash = append(*ec.stash, replaceOp{append([]rune{}, text...), *sel})
+	} else {
+		ec.Buf.Replace(text, sel, solid, ec.EventChan, util.EO_MOUSE)
+	}
+}
+
+func (ec *EditContext) applyStash(stash []replaceOp) {
+	if ec.stash != nil {
+		*ec.stash = append(*ec.stash, stash...)
+		return
+	}
+
+	curpos := 0
+	delta := 0
+
+	for i := range stash {
+		stash[i].sel.S += delta
+		stash[i].sel.E += delta
+		if stash[i].sel.S < curpos {
+			// discarded, not in sequence
+			continue
+		}
+
+		delta += len(stash[i].text) - (stash[i].sel.E - stash[i].sel.S)
+
+		ec.Buf.Replace(stash[i].text, &stash[i].sel, i == 0, ec.EventChan, util.EO_MOUSE)
+		curpos = stash[i].sel.E
 	}
 }

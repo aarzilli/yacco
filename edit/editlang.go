@@ -36,6 +36,9 @@ type EditContext struct {
 	atsel     *util.Sel
 	EventChan chan string
 	BufMan    BufferManaging
+
+	stash *[]replaceOp
+	depth int
 }
 
 type BufferManagingEntry struct {
@@ -80,7 +83,7 @@ func AddrEval(pgm string, b *buf.Buffer, sel util.Sel) util.Sel {
 	return addr.Eval(b, sel)
 }
 
-func (ecmd *Cmd) String() string {
+func (ecmd *Cmd) String(showregex bool) string {
 	s := ""
 
 	if ecmd.rangeaddr != nil {
@@ -106,7 +109,7 @@ func (ecmd *Cmd) String() string {
 	}
 
 	if ecmd.body != nil {
-		s += fmt.Sprintf(" Body<%s>", ecmd.body.String())
+		s += fmt.Sprintf(" Body<%s>", ecmd.body.String(showregex))
 	}
 
 	if ecmd.bodytxt != "" {
@@ -116,12 +119,12 @@ func (ecmd *Cmd) String() string {
 	if len(ecmd.mbody) > 0 {
 		v := make([]string, len(ecmd.mbody))
 		for i := range ecmd.mbody {
-			v[i] = ecmd.mbody[i].String()
+			v[i] = ecmd.mbody[i].String(false)
 		}
 		s += fmt.Sprintf(" Body<%s>", strings.Join(v, ", "))
 	}
 
-	if ecmd.sregexp != nil {
+	if showregex && ecmd.sregexp != nil {
 		s += fmt.Sprintf("\nCompiled Regex:\n")
 		s += ecmd.sregexp.String()
 	}
@@ -147,6 +150,7 @@ func (ec *EditContext) subec(buf *buf.Buffer, atsel *util.Sel) EditContext {
 			atsel:     atsel,
 			EventChan: ec.EventChan,
 			BufMan:    ec.BufMan,
+			depth:     ec.depth + 1,
 		}
 	} else {
 		return EditContext{
@@ -155,6 +159,7 @@ func (ec *EditContext) subec(buf *buf.Buffer, atsel *util.Sel) EditContext {
 			atsel:     atsel,
 			EventChan: nil,
 			BufMan:    ec.BufMan,
+			depth:     ec.depth + 1,
 		}
 	}
 }
