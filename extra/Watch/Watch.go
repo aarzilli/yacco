@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"flag"
 	"fmt"
 	"io"
@@ -11,12 +12,13 @@ import (
 	"sync"
 	"syscall"
 	"time"
+	"unicode"
 
 	"github.com/aarzilli/yacco/util"
 )
 
 var debug = false
-var args []string
+var args [][]string
 var shouldKill = flag.Bool("k", false, "If a change happens while the command is running kill the command instead of discarding the event")
 var delayPeriod = flag.Int("d", 1, "Number of seconds after running the command while events will be discarded (default 3)")
 var recurse = flag.Bool("r", false, "Recursively register subdirectories")
@@ -33,65 +35,20 @@ func startCommand(clean bool, buf *util.BufferConn) {
 
 	if clean {
 		buf.AddrFd.Write([]byte{','})
+		if s, err := buf.ReadXData(); err == nil {
+			readArgsFromBuffer(string(s))
+		}
 		buf.XDataFd.Write([]byte{0})
 	}
-	buf.BodyFd.Write([]byte(fmt.Sprintf("# %s\n", concatargs(args))))
+
+	for _, args := range args {
+		buf.BodyFd.Write([]byte(fmt.Sprintf("# %s\n", concatargs(args))))
+	}
 
 	go func() {
-		cmd := exec.Command(args[0], args[1:]...)
-		cmd.SysProcAttr = &syscall.SysProcAttr{Pgid: 0, Setpgid: true}
-
-		waitChan := make(chan bool, 0)
-		go func() {
-			co, err := cmd.CombinedOutput()
-
-			if debug {
-				fmt.Printf("Read: %s", string(co))
-			}
-			buf.BodyFd.Writen(co, 0)
-
-			if err != nil {
-				fmt.Fprintf(buf.BodyFd, "Error executing command: %v\n", err)
-			}
-
-			// signal the end of the process if anyone is listening
-			select {
-			case waitChan <- len(co) == 0:
-			default:
-			}
-		}()
-
-		var timeoutChan <-chan time.Time
-
-		if *timeout > 0 {
-			timeoutChan = time.After(time.Duration(*timeout) * time.Second)
-		}
-
-		// wait either for the end of the process (waitChan) or a request to kill it
-		done := false
-		for !done {
-			select {
-			case success := <-waitChan:
-				buf.BodyFd.Write([]byte{'~', '\n'})
-				if success {
-					buf.CtlFd.Write([]byte("clean\n"))
-				} else {
-					buf.CtlFd.Write([]byte("dirty\n"))
-				}
-
-				done = true
-				break
-			case <-killChan:
-				fmt.Fprintf(buf.BodyFd, "Killing process\n")
-				if err := kill(cmd); err != nil {
-					fmt.Fprintf(buf.BodyFd, "Error killing process: %v\n", err)
-				}
-				break
-			case <-timeoutChan:
-				fmt.Fprintf(buf.BodyFd, "Process ran too long %d\n", cmd.Process.Pid)
-				if err := kill(cmd); err != nil {
-					fmt.Fprintf(buf.BodyFd, "Error killing process: %v\n", err)
-				}
+		for _, args := range args {
+			ok := execOneCommand(args, buf)
+			if !ok {
 				break
 			}
 		}
@@ -103,6 +60,78 @@ func startCommand(clean bool, buf *util.BufferConn) {
 
 		buf.AddrFd.Write([]byte{'#', '0'})
 	}()
+}
+
+func readArgsFromBuffer(s string) {
+	lines := strings.SplitN(s, "\n", -1)
+	args = [][]string{}
+	for _, line := range lines {
+		if !strings.HasPrefix(line, "# ") {
+			break
+		}
+		args = append(args, SplitQuotedFields(line[2:], '"'))
+	}
+}
+
+func execOneCommand(args []string, buf *util.BufferConn) bool {
+	cmd := exec.Command(args[0], args[1:]...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Pgid: 0, Setpgid: true}
+
+	waitChan := make(chan bool, 0)
+	go func() {
+		co, err := cmd.CombinedOutput()
+
+		if debug {
+			fmt.Printf("Read: %s", string(co))
+		}
+		buf.BodyFd.Writen(co, 0)
+
+		if err != nil {
+			fmt.Fprintf(buf.BodyFd, "Error executing command: %v\n", err)
+		}
+
+		// signal the end of the process if anyone is listening
+		select {
+		case waitChan <- len(co) == 0:
+		default:
+		}
+	}()
+
+	var timeoutChan <-chan time.Time
+
+	if *timeout > 0 {
+		timeoutChan = time.After(time.Duration(*timeout) * time.Second)
+	}
+
+	// wait either for the end of the process (waitChan) or a request to kill it
+	done := false
+	for !done {
+		select {
+		case success := <-waitChan:
+			buf.BodyFd.Write([]byte{'~', '\n'})
+			if success {
+				buf.CtlFd.Write([]byte("clean\n"))
+			} else {
+				buf.CtlFd.Write([]byte("dirty\n"))
+			}
+
+			done = true
+			break
+		case <-killChan:
+			fmt.Fprintf(buf.BodyFd, "Killing process\n")
+			if err := kill(cmd); err != nil {
+				fmt.Fprintf(buf.BodyFd, "Error killing process: %v\n", err)
+			}
+			break
+		case <-timeoutChan:
+			fmt.Fprintf(buf.BodyFd, "Process ran too long %d\n", cmd.Process.Pid)
+			if err := kill(cmd); err != nil {
+				fmt.Fprintf(buf.BodyFd, "Error killing process: %v\n", err)
+			}
+			break
+		}
+	}
+	return done
 }
 
 func kill(cmd *exec.Cmd) error {
@@ -244,9 +273,63 @@ func concatargs(args []string) string {
 	return string(buf)
 }
 
+func SplitQuotedFields(in string, quote rune) []string {
+	type stateEnum int
+	const (
+		inSpace stateEnum = iota
+		inField
+		inQuote
+		inQuoteEscaped
+	)
+	state := inSpace
+	r := []string{}
+	var buf bytes.Buffer
+
+	for _, ch := range in {
+		switch state {
+		case inSpace:
+			if ch == quote {
+				state = inQuote
+			} else if !unicode.IsSpace(ch) {
+				buf.WriteRune(ch)
+				state = inField
+			}
+
+		case inField:
+			if ch == quote {
+				state = inQuote
+			} else if unicode.IsSpace(ch) {
+				r = append(r, buf.String())
+				buf.Reset()
+			} else {
+				buf.WriteRune(ch)
+			}
+
+		case inQuote:
+			if ch == quote {
+				state = inField
+			} else if ch == '\\' {
+				state = inQuoteEscaped
+			} else {
+				buf.WriteRune(ch)
+			}
+
+		case inQuoteEscaped:
+			buf.WriteRune(ch)
+			state = inQuote
+		}
+	}
+
+	if buf.Len() != 0 {
+		r = append(r, buf.String())
+	}
+
+	return r
+}
+
 func main() {
 	flag.Parse()
-	args = flag.Args()
+	args = append(args, flag.Args())
 
 	if len(args) <= 0 {
 		fmt.Fprintf(os.Stderr, "Must specify at least one argument to run:\n")
