@@ -33,7 +33,8 @@ type screenImpl struct {
 	xsi     *xproto.ScreenInfo
 	keysyms x11key.KeysymTable
 
-	atomNETWMName      xproto.Atom
+	atomNETWMName, atomWMClass xproto.Atom
+
 	atomUTF8String     xproto.Atom
 	atomWMDeleteWindow xproto.Atom
 	atomWMProtocols    xproto.Atom
@@ -431,6 +432,9 @@ func (s *screenImpl) NewWindow(opts *screen.NewWindowOptions) (screen.Window, er
 
 	title := []byte(opts.GetTitle())
 	xproto.ChangeProperty(s.xc, xproto.PropModeReplace, xw, s.atomNETWMName, s.atomUTF8String, 8, uint32(len(title)), title)
+	class := []byte(fmt.Sprintf("%s\x00%s", opts.Class, opts.Class))
+	stringAtom, _ := s.internAtom("STRING")
+	xproto.ChangeProperty(s.xc, xproto.PropModeReplace, xw, s.atomWMClass, stringAtom, 8, uint32(len(class)), class)
 
 	xproto.CreateGC(s.xc, xg, xproto.Drawable(xw), 0, nil)
 	render.CreatePicture(s.xc, xp, xproto.Drawable(xw), pictformat, 0, nil)
@@ -461,6 +465,10 @@ func (s *screenImpl) initAtoms() (err error) {
 		return err
 	}
 	s.atomNetWMName, err = s.internAtom("_NET_WM_NAME")
+	if err != nil {
+		return err
+	}
+	s.atomWMClass, err = s.internAtom("WM_CLASS")
 	if err != nil {
 		return err
 	}

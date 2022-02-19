@@ -1,26 +1,36 @@
 # github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802 => github.com/aarzilli/xgb v0.0.0-20170123105216-2ca2a6c0622c
+## explicit
 github.com/BurntSushi/xgb
 github.com/BurntSushi/xgb/render
 github.com/BurntSushi/xgb/shm
 github.com/BurntSushi/xgb/xproto
 # github.com/aarzilli/go2def v0.0.0-20200405090725-d6ba1b677cfd
+## explicit
 github.com/aarzilli/go2def
 github.com/aarzilli/go2def/visit
 # github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 => github.com/aarzilli/freetype v0.0.0-20160928082430-6c8832ae5783
+## explicit
 github.com/golang/freetype
 github.com/golang/freetype/raster
 github.com/golang/freetype/truetype
 # github.com/kr/pty v0.0.0-20160716204620-ce7fa45920dc
+## explicit
 github.com/kr/pty
 # github.com/lionkov/go9p v0.0.0-20180620135904-0a603dd6808a
+## explicit
 github.com/lionkov/go9p/p
 github.com/lionkov/go9p/p/clnt
 github.com/lionkov/go9p/p/srv
+# github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
+## explicit
 # github.com/sourcegraph/jsonrpc2 v0.0.0-20190106185902-35a74f039c6a
+## explicit
 github.com/sourcegraph/jsonrpc2
 # github.com/wendal/readline-go v0.0.0-20130305043046-3ff003ef4c80
+## explicit
 github.com/wendal/readline-go
-# golang.org/x/exp v0.0.0-20180710024300-14dda7b62fcd => github.com/aarzilli/exp v0.0.0-20180724135916-edb5f9d2bb76
+# golang.org/x/exp v0.0.0-20180710024300-14dda7b62fcd => github.com/aarzilli/exp v0.0.0-20220219150628-972bd7e11036
+## explicit
 golang.org/x/exp/shiny/driver
 golang.org/x/exp/shiny/driver/gldriver
 golang.org/x/exp/shiny/driver/internal/drawer
@@ -34,10 +44,12 @@ golang.org/x/exp/shiny/driver/windriver
 golang.org/x/exp/shiny/driver/x11driver
 golang.org/x/exp/shiny/screen
 # golang.org/x/image v0.0.0-20180708004352-c73c2afc3b81
+## explicit
 golang.org/x/image/font
 golang.org/x/image/math/f64
 golang.org/x/image/math/fixed
 # golang.org/x/mobile v0.0.0-20180719123216-371a4e8cb797
+## explicit
 golang.org/x/mobile/event/key
 golang.org/x/mobile/event/lifecycle
 golang.org/x/mobile/event/mouse
@@ -48,10 +60,12 @@ golang.org/x/mobile/gl
 # golang.org/x/mod v0.5.1
 golang.org/x/mod/semver
 # golang.org/x/sys v0.0.0-20211124211545-fe61309f8881
+## explicit
 golang.org/x/sys/execabs
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/windows
 # golang.org/x/tools v0.1.8-0.20211202032535-e212aff8fd14
+## explicit
 golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/internal/gcimporter
 golang.org/x/tools/go/internal/packagesdriver
@@ -67,3 +81,6 @@ golang.org/x/tools/internal/typesinternal
 # golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
 golang.org/x/xerrors
 golang.org/x/xerrors/internal
+# golang.org/x/exp => github.com/aarzilli/exp v0.0.0-20220219150628-972bd7e11036
+# github.com/BurntSushi/xgb => github.com/aarzilli/xgb v0.0.0-20170123105216-2ca2a6c0622c
+# github.com/golang/freetype => github.com/aarzilli/freetype v0.0.0-20160928082430-6c8832ae5783

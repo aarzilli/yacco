@@ -239,6 +239,7 @@ type NewWindowOptions struct {
 
 	// Title specifies the window title.
 	Title string
+	Class string
 
 	// TODO: fullscreen, icon, cursorHidden?
 }

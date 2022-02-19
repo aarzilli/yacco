@@ -16,10 +16,10 @@ require (
 	golang.org/x/tools v0.1.8-0.20211202032535-e212aff8fd14
 )
 
-replace golang.org/x/exp => github.com/aarzilli/exp v0.0.0-20180724135916-edb5f9d2bb76
+replace golang.org/x/exp => github.com/aarzilli/exp v0.0.0-20220219150628-972bd7e11036
 
 replace github.com/BurntSushi/xgb => github.com/aarzilli/xgb v0.0.0-20170123105216-2ca2a6c0622c
 
 replace github.com/golang/freetype => github.com/aarzilli/freetype v0.0.0-20160928082430-6c8832ae5783
 
-go 1.13
+go 1.16

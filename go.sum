@@ -4,6 +4,8 @@ github.com/aarzilli/exp v0.0.0-20160801184912-c8d42c6c189c h1:OrWciTuItWWCYkD9R5
 github.com/aarzilli/exp v0.0.0-20160801184912-c8d42c6c189c/go.mod h1:XERIKN7NwPIwxgPZAfVsSprwuRJFWeCXqWcvCQJKuXw=
 github.com/aarzilli/exp v0.0.0-20180724135916-edb5f9d2bb76 h1:JWWciYpp/sr7s2HADvRKFQHe8MDQClJz0u/RCkBPDas=
 github.com/aarzilli/exp v0.0.0-20180724135916-edb5f9d2bb76/go.mod h1:XERIKN7NwPIwxgPZAfVsSprwuRJFWeCXqWcvCQJKuXw=
+github.com/aarzilli/exp v0.0.0-20220219150628-972bd7e11036 h1:ogsAqDtIxhRcsSGfEdILNUm14lZHlwH1Ik8goTk3yfE=
+github.com/aarzilli/exp v0.0.0-20220219150628-972bd7e11036/go.mod h1:XERIKN7NwPIwxgPZAfVsSprwuRJFWeCXqWcvCQJKuXw=
 github.com/aarzilli/freetype v0.0.0-20160928082430-5a35f014fc91 h1:q76bcrmG17XW4EjOCUI0bqGyLK+kVOpvLGx0fNLWUnk=
 github.com/aarzilli/freetype v0.0.0-20160928082430-5a35f014fc91/go.mod h1:x3ylkimRUVHS0+9mkdpMg0F3b7aczdnc6CqDP9mUXqE=
 github.com/aarzilli/freetype v0.0.0-20160928082430-6c8832ae5783 h1:q8fQIgM7xzyqMeRJ3Pp7Q9TlchPfbD5mQvZlPbMMyyk=
