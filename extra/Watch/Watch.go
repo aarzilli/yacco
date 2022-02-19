@@ -42,7 +42,7 @@ func startCommand(clean bool, buf *util.BufferConn) {
 	}
 
 	for _, args := range args {
-		buf.BodyFd.Write([]byte(fmt.Sprintf("# %s\n", concatargs(args))))
+		buf.BodyFd.Write([]byte(fmt.Sprintf("$ %s\n", concatargs(args))))
 	}
 
 	go func() {
@@ -66,7 +66,7 @@ func readArgsFromBuffer(s string) {
 	lines := strings.SplitN(s, "\n", -1)
 	args = [][]string{}
 	for _, line := range lines {
-		if !strings.HasPrefix(line, "# ") {
+		if !strings.HasPrefix(line, "$ ") {
 			break
 		}
 		args = append(args, SplitQuotedFields(line[2:], '"'))
