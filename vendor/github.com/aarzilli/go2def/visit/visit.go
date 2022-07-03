@@ -18,11 +18,11 @@ func Packages(pkgs []*packages.Package) *PackagesIterator {
 // After aving visited all the imports of a package it will return nil as the current package.
 // For example given this tree:
 //
-//              a
-//             / \
-//            b   c
-//           / \
-//          d   e
+//	    a
+//	   / \
+//	  b   c
+//	 / \
+//	d   e
 //
 // It will return:
 // a, b, d, e, nil, c, nil
