@@ -86,7 +86,7 @@ func (sfr *ScrollFrame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	}
 }
 
-func (sfr *ScrollFrame) scrollSetClick(event util.MouseDownEvent, events <-chan interface{}) {
+func (sfr *ScrollFrame) scrollSetClick(event util.MouseDownEvent, events <-chan util.EventOrRunnable) {
 	scrollr := sfr.r
 	scrollr.Max.X = scrollr.Min.X + sfr.Width
 
@@ -99,7 +99,7 @@ func (sfr *ScrollFrame) scrollSetClick(event util.MouseDownEvent, events <-chan 
 	set(event.Where)
 
 	for ei := range events {
-		switch e := ei.(type) {
+		switch e := ei.EventOrRun().(type) {
 		case mouse.Event:
 			switch e.Direction {
 			case mouse.DirRelease:
@@ -117,7 +117,7 @@ func (sfr *ScrollFrame) Under(p image.Point) bool {
 
 // If the click wasn't in the scrollbar area returns false
 // Otherwise handles the click, until mouse-up is received, then returns true
-func (sfr *ScrollFrame) ScrollClick(e util.MouseDownEvent, events <-chan interface{}) bool {
+func (sfr *ScrollFrame) ScrollClick(e util.MouseDownEvent, events <-chan util.EventOrRunnable) bool {
 	scrollr := sfr.r
 	scrollr.Max.X = scrollr.Min.X + sfr.Width
 
@@ -153,7 +153,7 @@ loop:
 	for {
 		select {
 		case ei := <-events:
-			switch e := ei.(type) {
+			switch e := ei.EventOrRun().(type) {
 			case mouse.Event:
 				switch e.Direction {
 				case mouse.DirRelease:
@@ -177,7 +177,7 @@ loop:
 	return true
 }
 
-func (sfr *ScrollFrame) OnClick(e util.MouseDownEvent, events <-chan interface{}) (bool, *mouse.Event) {
+func (sfr *ScrollFrame) OnClick(e util.MouseDownEvent, events <-chan util.EventOrRunnable) (bool, *mouse.Event) {
 	if sfr.ScrollClick(e, events) {
 		return false, nil
 	}

@@ -337,13 +337,13 @@ func abs(n int) int {
 
 // Tracks the mouse position, selecting text, the events channel is from go.wde
 // kind is 1 for character by character selection, 2 for word by word selection, 3 for line by line selection
-func (fr *Frame) Select(idx, kind int, button mouse.Button, startPos image.Point, events <-chan interface{}) *mouse.Event {
+func (fr *Frame) Select(idx, kind int, button mouse.Button, startPos image.Point, events <-chan util.EventOrRunnable) *mouse.Event {
 	if events == nil {
 		return nil
 	}
 	if (idx < 0) || (idx >= len(fr.Colors)-1) {
 		for ei := range events {
-			switch e := ei.(type) {
+			switch e := ei.EventOrRun().(type) {
 			case mouse.Event:
 				if e.Direction == mouse.DirRelease {
 					return &e
@@ -375,7 +375,7 @@ func (fr *Frame) Select(idx, kind int, button mouse.Button, startPos image.Point
 		runtime.Gosched()
 		select {
 		case ei := <-events:
-			switch e := ei.(type) {
+			switch e := ei.EventOrRun().(type) {
 			case mouse.Event:
 				if e.Direction == mouse.DirRelease {
 					stopAutoscroll()
@@ -1017,7 +1017,7 @@ func (fr *Frame) drawSingleGlyph(g *glyph, ssel int) {
 	}
 }
 
-func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan interface{}) *mouse.Event {
+func (f *Frame) OnClick(e util.MouseDownEvent, events <-chan util.EventOrRunnable) *mouse.Event {
 	if e.Which == mouse.ButtonWheelUp {
 		f.Scroll(-1, 1)
 		return nil

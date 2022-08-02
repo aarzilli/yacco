@@ -549,3 +549,24 @@ func parseOne(eventstr string) (origin EventOrigin, etype EventType, s, e int, f
 
 	return
 }
+
+type EventOrRunnable struct {
+	e interface{}
+	r func()
+}
+
+func NewEvent(e interface{}) EventOrRunnable {
+	return EventOrRunnable{e: e}
+}
+
+func NewRunnable(r func()) EventOrRunnable {
+	return EventOrRunnable{r: r}
+}
+
+func (e *EventOrRunnable) EventOrRun() interface{} {
+	if e.r != nil {
+		e.r()
+		e.r = nil
+	}
+	return e.e
+}

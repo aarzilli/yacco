@@ -316,18 +316,24 @@ func (w *Window) RedrawHard() {
 }
 
 func (w *Window) EventLoop() {
-	wndEvents := util.FilterEvents(Wnd.wnd, config.AltingList, config.KeyConversion)
+	wndEvents_ := FilterEvents(Wnd.wnd, config.AltingList, config.KeyConversion)
+	wndEvents := make(chan util.EventOrRunnable)
+
+	go func() {
+		for {
+			select {
+			case uie := <-wndEvents_:
+				wndEvents <- util.NewEvent(uie)
+			case se := <-sideChan:
+				wndEvents <- util.NewRunnable(se)
+			}
+		}
+	}()
 
 	lastWordUpdate := time.Now()
 
-	for {
-		select {
-		case uie := <-wndEvents:
-			w.UiEventLoop(uie, wndEvents)
-
-		case se := <-sideChan:
-			se()
-		}
+	for uie := range wndEvents {
+		w.UiEventLoop(&uie, wndEvents)
 
 		// update completions dictionary at least once every 10 minutes
 		if time.Now().Sub(lastWordUpdate) >= time.Duration(10*time.Minute) {
@@ -342,8 +348,8 @@ func (w *Window) EventLoop() {
 	FsQuit()
 }
 
-func (w *Window) UiEventLoop(ei interface{}, events chan interface{}) {
-	switch e := ei.(type) {
+func (w *Window) UiEventLoop(ei *util.EventOrRunnable, events <-chan util.EventOrRunnable) {
+	switch e := ei.EventOrRun().(type) {
 	case paint.Event:
 		w.FlushImage()
 
@@ -603,7 +609,7 @@ func dist(a, b image.Point) float32 {
 	return float32(math.Sqrt(float64(dx*dx + dy*dy)))
 }
 
-func (w *Window) EditorMove(col *Col, ed *Editor, e util.MouseDownEvent, events <-chan interface{}) {
+func (w *Window) EditorMove(col *Col, ed *Editor, e util.MouseDownEvent, events <-chan util.EventOrRunnable) {
 	w.wnd.SetCursor(screen.FleurCursor)
 
 	startPos := e.Where
@@ -614,7 +620,7 @@ func (w *Window) EditorMove(col *Col, ed *Editor, e util.MouseDownEvent, events 
 loop:
 	for ei := range events {
 		runtime.Gosched()
-		e, ismouse := ei.(mouse.Event)
+		e, ismouse := ei.EventOrRun().(mouse.Event)
 		if !ismouse {
 			continue
 		}
@@ -788,7 +794,7 @@ func (w *Window) GrowEditor(col *Col, ed *Editor, d *image.Point) {
 	}
 }
 
-func (w *Window) ColResize(col *Col, e util.MouseDownEvent, events <-chan interface{}) {
+func (w *Window) ColResize(col *Col, e util.MouseDownEvent, events <-chan util.EventOrRunnable) {
 	w.wnd.SetCursor(screen.FleurCursor)
 
 	startPos := e.Where
@@ -797,7 +803,7 @@ func (w *Window) ColResize(col *Col, e util.MouseDownEvent, events <-chan interf
 loop:
 	for ei := range events {
 		runtime.Gosched()
-		e, ismouse := ei.(mouse.Event)
+		e, ismouse := ei.EventOrRun().(mouse.Event)
 		if !ismouse {
 			continue
 		}
@@ -1078,7 +1084,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 	}
 }
 
-func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *mouse.Event, events <-chan interface{}) {
+func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *mouse.Event, events <-chan util.EventOrRunnable) {
 	if ee == nil {
 		ee = &mouse.Event{}
 		ee.Direction = mouse.DirRelease
@@ -1154,9 +1160,9 @@ func clickExec(lp LogicalPos, e util.MouseDownEvent, ee *mouse.Event, events <-c
 	}
 }
 
-func completeClick(events <-chan interface{}, completeAction, cancelAction mouse.Button) bool {
+func completeClick(events <-chan util.EventOrRunnable, completeAction, cancelAction mouse.Button) bool {
 	for ei := range events {
-		switch e := ei.(type) {
+		switch e := ei.EventOrRun().(type) {
 		case mouse.Event:
 			if e.Direction == mouse.DirRelease {
 				switch e.Button {
@@ -1249,11 +1255,11 @@ func clickExec3(lp LogicalPos, shift bool) {
 }
 
 // click with left button, followed by the middle button
-func clickExec12(lp LogicalPos, events <-chan interface{}) {
+func clickExec12(lp LogicalPos, events <-chan util.EventOrRunnable) {
 	del := true
 eventLoop:
 	for ei := range events {
-		e, ismouse := ei.(mouse.Event)
+		e, ismouse := ei.EventOrRun().(mouse.Event)
 		if !ismouse || e.Direction != mouse.DirRelease {
 			continue
 		}
@@ -1376,7 +1382,7 @@ func (w *Window) GenTag() {
 	TagSetEditableStart(w.tagbuf)
 }
 
-func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, events <-chan interface{}) (*mouse.Event, bool) {
+func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, events <-chan util.EventOrRunnable) (*mouse.Event, bool) {
 	if (b == nil) || (fr == nil) || (e.Count != 2) || (e.Which == 0) {
 		return nil, false
 	}
@@ -1390,7 +1396,7 @@ func specialDblClick(b *buf.Buffer, fr *textframe.Frame, e util.MouseDownEvent, 
 		fr.Redraw(true, nil)
 
 		for ee := range events {
-			eei, ismouse := ee.(mouse.Event)
+			eei, ismouse := ee.EventOrRun().(mouse.Event)
 			if ismouse && eei.Direction == mouse.DirRelease {
 				return &eei, true
 			}
