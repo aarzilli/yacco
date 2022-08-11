@@ -208,6 +208,9 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int, othered b
 		} else {
 			newed = ec.ed
 		}
+		if AutoDumpPath == "" && FirstOpenFile {
+			historyAdd(filepath.Join(newed.bodybuf.Dir, newed.bodybuf.Name))
+		}
 		{
 			eds := allZeroxEditors(newed.bodybuf)
 			if othered {

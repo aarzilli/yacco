@@ -2,8 +2,10 @@ package main
 
 import (
 	"encoding/json"
+	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/aarzilli/yacco/buf"
 	"github.com/aarzilli/yacco/config"
@@ -159,4 +161,44 @@ func setDumpTitle() {
 	b := filepath.Base(AutoDumpPath)
 	b = b[:len(b)-len(".dump")]
 	Wnd.SetTitle("Yacco " + b)
+}
+
+func historyAdd(path string) {
+	if !FirstOpenFile {
+		return
+	}
+	if AutoDumpPath != "" {
+		return
+	}
+	FirstOpenFile = false
+
+	histpath := os.ExpandEnv("$HOME/.config/yacco/history")
+	buf, _ := ioutil.ReadFile(histpath)
+	oldpaths := strings.Split(string(buf), "\n")
+	paths := make([]string, 0, len(oldpaths))
+	for _, p := range oldpaths {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		paths = append(paths, p)
+	}
+
+	found := false
+	for i := range paths {
+		if paths[i] == path {
+			paths = append(paths[:i], paths[i+1:]...)
+			paths = append(paths, path)
+			found = true
+			break
+		}
+	}
+	if !found {
+		paths = append(paths, path)
+	}
+	if len(paths) > 12 {
+		paths = paths[:len(paths)-12]
+	}
+
+	ioutil.WriteFile(histpath, []byte(strings.Join(paths, "\n")+"\n"), 0666)
 }

@@ -681,9 +681,13 @@ func NewCmd(ec ExecContext, arg string) {
 		arg = "+New"
 	}
 	path := util.ResolvePath(ec.dir, arg)
-	_, err := HeuristicOpen(path, true, true)
+	ed, err := HeuristicOpen(path, true, true)
 	if err != nil {
 		Warn("New: " + err.Error())
+	} else {
+		if ed != nil && AutoDumpPath == "" && FirstOpenFile {
+			historyAdd(filepath.Join(ed.bodybuf.Dir, ed.bodybuf.Name))
+		}
 	}
 }
 

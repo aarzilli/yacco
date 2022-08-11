@@ -5,6 +5,7 @@ import (
 	"image"
 	"log"
 	"os"
+	"path/filepath"
 	"runtime/debug"
 	"runtime/pprof"
 	"strconv"
@@ -20,12 +21,12 @@ import (
 	"golang.org/x/exp/shiny/screen"
 
 	"net/http"
-	_ "net/http/pprof"
 )
 
 var Wnd Window
 var sideChan chan func()
 var AutoDumpPath string
+var FirstOpenFile bool = true
 
 var themeFlag = flag.String("t", "", "Theme to use (standard, evening, midnight, bw)")
 var dumpFlag = flag.String("d", "", "Dump file to load")
@@ -133,6 +134,9 @@ func realmain(s screen.Screen) {
 							&edit.AddrBase{"#", "0", -1}}}
 					ed.sfr.Fr.Sel = addr.Eval(ed.bodybuf, ed.sfr.Fr.Sel)
 					ed.BufferRefresh()
+				}
+				if toline <= 0 && ed != nil {
+					historyAdd(filepath.Join(ed.bodybuf.Dir, ed.bodybuf.Name))
 				}
 			}
 		}
