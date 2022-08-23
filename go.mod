@@ -12,8 +12,7 @@ require (
 	golang.org/x/exp v0.0.0-20180710024300-14dda7b62fcd
 	golang.org/x/image v0.0.0-20180708004352-c73c2afc3b81
 	golang.org/x/mobile v0.0.0-20180719123216-371a4e8cb797
-	golang.org/x/sys v0.0.0-20211124211545-fe61309f8881 // indirect
-	golang.org/x/tools v0.1.11
+	golang.org/x/tools v0.1.12
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 )
 
