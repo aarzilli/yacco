@@ -1313,6 +1313,9 @@ Debug undo
 
 Debug Edit ...
 	Traces execution of the given edit command
+
+Debug load
+	Toggle tracing evaluation of load rules (right click)
 `)
 	}
 
@@ -1354,6 +1357,13 @@ Debug Edit ...
 		Warn(ec.ed.bodybuf.DescribeUndo())
 	case "Edit":
 		editCmd(ec, v[1], true)
+	case "load":
+		debugLoad = !debugLoad
+		if debugLoad {
+			Warn("load tracing enabled\n")
+		} else {
+			Warn("load tracing disabled\n")
+		}
 
 	default:
 		usage()

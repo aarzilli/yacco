@@ -15,11 +15,15 @@ import (
 	"github.com/aarzilli/yacco/util"
 )
 
+var debugLoad = false
+
 type LoadRule struct {
 	ForDir bool
 	BufRe  *sysre.Regexp
 	Re     *regexp.Regex
 	Action string
+
+	PathPattern, Pattern string
 }
 
 var LoadRules []LoadRule
@@ -36,7 +40,7 @@ func LoadInit() {
 		} else {
 			bufRe = nil
 		}
-		LoadRules = append(LoadRules, LoadRule{ForDir: bufRe == nil, BufRe: bufRe, Re: regexp.Compile(rule.Re, true, false), Action: rule.Action})
+		LoadRules = append(LoadRules, LoadRule{ForDir: bufRe == nil, BufRe: bufRe, Re: regexp.Compile(rule.Re, true, false), Action: rule.Action, PathPattern: rule.BufRe, Pattern: rule.Re})
 	}
 	if config.StartupWidth == 0 {
 		config.StartupWidth = config.MainFontSize * 40
@@ -70,7 +74,7 @@ func Load(ec ExecContext, origin int, othered bool) {
 	if ec.buf == nil {
 		return
 	}
-	for _, rule := range LoadRules {
+	for i, rule := range LoadRules {
 		path := filepath.Join(ec.buf.Dir, ec.buf.Name)
 		if rule.ForDir {
 			if !ec.buf.IsDir() {
@@ -80,6 +84,9 @@ func Load(ec ExecContext, origin int, othered bool) {
 			if !rule.BufRe.MatchString(path) {
 				continue
 			}
+		}
+		if debugLoad {
+			Warn(fmt.Sprintf("considering rule %d path=[%s] pattern=[%s] action=[%s]\n", i, rule.PathPattern, rule.Pattern, rule.Action))
 		}
 		start := ec.fr.Sel.S
 		for {
@@ -100,6 +107,10 @@ func Load(ec ExecContext, origin int, othered bool) {
 				ok = (s <= origin) && (origin <= e)
 			}
 
+			if debugLoad && !ok {
+				Warn(fmt.Sprintf("\tmatch range %d,%d does not straddle origin = %d\n", s, e, origin))
+			}
+
 			if ok {
 				strmatches := []string{}
 				for i := 0; 2*i+1 < len(matches); i++ {
@@ -107,10 +118,19 @@ func Load(ec ExecContext, origin int, othered bool) {
 					e := matches[2*i+1]
 					strmatches = append(strmatches, string(ec.buf.SelectionRunes(util.Sel{s, e})))
 				}
+				if debugLoad {
+					Warn(fmt.Sprintf("\tmatch range %d,%d %q\n", s, e, strmatches[0]))
+				}
 				//println("Match:", strmatches[0])
 				if rule.Exec(ec, strmatches, s, e, othered) {
+					if debugLoad {
+						Warn(fmt.Sprintf("\trule succeeded\n"))
+					}
 					return
 				} else {
+					if debugLoad {
+						Warn(fmt.Sprintf("\trule failed, abandoning rule\n"))
+					}
 					// abandon rule after the first match straddling the origin
 					break
 				}
