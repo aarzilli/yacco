@@ -75,6 +75,14 @@ func (sfr *ScrollFrame) Redraw(flush bool, predrawRects *[]image.Rectangle) {
 	posr.Max.Y = posz + posr.Min.Y
 	draw.Draw(sfr.b, sfr.r.Intersect(posr), &sfr.Fr.Colors[0][0], sfr.r.Intersect(posr).Min, draw.Src)
 
+	if sfr.Fr.MarkSel.S >= 0 && sfr.Fr.MarkSel.E >= 0 {
+		markr := bgr
+		markr.Max.X = markr.Max.X - 1
+		markr.Min.Y = sfr.scale(sfr.Fr.MarkSel.S) + sfr.r.Min.Y
+		markr.Max.Y = 5 + markr.Min.Y
+		draw.Draw(sfr.b, sfr.r.Intersect(markr), &sfr.Fr.Colors[1][0], sfr.r.Intersect(markr).Min, draw.Src)
+	}
+
 	sfr.Fr.Redraw(false, predrawRects)
 
 	if flush && (sfr.Flush != nil) {

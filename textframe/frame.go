@@ -58,6 +58,7 @@ type Frame struct {
 	Offset            int
 
 	Sel      util.Sel
+	MarkSel  *util.Sel
 	SelColor int
 	PMatch   util.Sel
 

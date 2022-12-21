@@ -1377,7 +1377,17 @@ func MarkCmd(ec ExecContext, arg string) {
 	}
 	ec.ed.confirmDel = false
 	ec.ed.confirmSave = false
-	ec.ed.otherSel[OS_MARK] = ec.ed.sfr.Fr.Sel
+	if arg == "-sel" {
+		if ec.ed.otherSel[OS_MARK].S < ec.ed.sfr.Fr.Sel.E {
+			ec.ed.sfr.Fr.Sel.S = ec.ed.otherSel[OS_MARK].S
+		} else {
+			ec.ed.sfr.Fr.Sel.E = ec.ed.otherSel[OS_MARK].E
+		}
+	} else {
+		ec.ed.otherSel[OS_MARK] = ec.ed.sfr.Fr.Sel
+	}
+	ec.ed.Redraw()
+	Wnd.FlushImage()
 }
 
 func SaveposCmd(ec ExecContext, arg string) {

@@ -100,6 +100,7 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 		},
 	}
 	e.otherSel = make([]util.Sel, NUM_OTHER_SEL)
+	e.sfr.Fr.MarkSel = &e.otherSel[OS_MARK]
 	e.sfr.Fr.Scroll = edutil.MakeScrollfn(e.bodybuf, &e.otherSel[OS_TOP], &e.sfr)
 
 	e.tagfr = textframe.Frame{
