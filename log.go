@@ -52,7 +52,7 @@ func Log(wid int, op LogOperation, buf *buf.Buffer) {
 	t.Stop()
 
 	if op == LOP_PUT {
-		srv, lspb := lsp.BufferToLsp(Wnd.tagbuf.Dir, buf, util.Sel{0, 0}, false)
+		srv, lspb := lsp.BufferToLsp(Wnd.tagbuf.Dir, buf, util.Sel{0, 0}, false, Warn)
 		if srv != nil {
 			srv.Changed(lspb)
 		}

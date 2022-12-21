@@ -1407,11 +1407,11 @@ func SaveposCmd(ec ExecContext, arg string) {
 			clipboard.Set(fmt.Sprintf("%s:#%d,#%d", p, s.S, s.E))
 		}
 	} else {
-		sln, _ := b.GetLine(s.S, false)
+		_, sln, _ := b.GetLine(s.S, false)
 		if s.S == s.E {
 			clipboard.Set(fmt.Sprintf("%s:%d", p, sln))
 		} else {
-			eln, _ := b.GetLine(s.E, false)
+			_, eln, _ := b.GetLine(s.E, false)
 			clipboard.Set(fmt.Sprintf("%s:%d,%d", p, sln, eln))
 		}
 	}
@@ -1478,34 +1478,41 @@ func NextErrorCmd(ec ExecContext, arg string) {
 }
 
 func LspCmd(ec ExecContext, arg string) {
-	switch arg {
-	case "restart":
+	if arg == "restart" {
 		lsp.Restart(Wnd.tagbuf.Dir)
 		return
-	case "":
-		// ok
-	default:
-		Warn("wrong argument")
 	}
-
 	if ec.ed == nil || ec.ed.bodybuf == nil {
 		return
 	}
 	b := ec.ed.bodybuf
 
-	srv, lspb := lsp.BufferToLsp(Wnd.tagbuf.Dir, b, ec.ed.sfr.Fr.Sel, true)
+	srv, lspb := lsp.BufferToLsp(Wnd.tagbuf.Dir, b, ec.ed.sfr.Fr.Sel, true, Warn)
 	if srv == nil {
 		return
 	}
 
-	go func() {
-		tooltipContents = srv.Describe(lspb)
-		if tooltipContents != "" {
-			Tooltip.Start(ec)
-		} else if Tooltip.Visible {
-			HideCompl(true)
-		}
-	}()
+	switch arg {
+	case "":
+		go func() {
+			tooltipContents = srv.Describe(lspb)
+			if tooltipContents != "" {
+				Tooltip.Start(ec)
+			} else if Tooltip.Visible {
+				HideCompl(true)
+			}
+		}()
+	case "refs":
+		go func() {
+			s := srv.References(lspb)
+			sideChan <- func() {
+				Warnfull("+Lsp", s, true, false)
+			}
+		}()
+	default:
+		Warn("wrong argument")
+	}
+
 }
 
 func makeEditContext(buf *buf.Buffer, sel *util.Sel, eventChan chan string, ed *Editor, trace bool) edit.EditContext {

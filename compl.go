@@ -195,7 +195,7 @@ func complStart(p *Popup, ec ExecContext) (bool, string) {
 	var hasWd bool
 	var wdPrefixSuffix string
 	if completeUsingLspServer && fpwd != "" && strings.Contains(fpwd, ".") { // intentional, so that '.' is considered a valid character and also because autocompletion requests are too slow
-		if srv, lspb := lsp.BufferToLsp(Wnd.tagbuf.Dir, ec.buf, ec.fr.Sel, true); srv != nil {
+		if srv, lspb := lsp.BufferToLsp(Wnd.tagbuf.Dir, ec.buf, ec.fr.Sel, true, Warn); srv != nil {
 			wdCompls, wdPrefixSuffix = srv.Complete(lspb)
 			hasWd = len(wdCompls) > 0
 		}

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf16"
 
 	"github.com/aarzilli/yacco/buf"
 	"github.com/aarzilli/yacco/util"
@@ -71,7 +72,7 @@ func Restart(wd string) {
 	}
 }
 
-func LspFor(lang, wd string, create bool) *LspSrv {
+func LspFor(lang, wd string, create bool, warn func(string)) *LspSrv {
 	if lang != ".go" {
 		return nil
 	}
@@ -141,49 +142,72 @@ func LspFor(lang, wd string, create bool) *LspSrv {
 
 	client.Notify(context.Background(), "initialized", &InitializedParams{})
 
-	srv := &LspSrv{client, out.Capabilities.InnerServerCapabilities.DefinitionProvider, out.Capabilities.TypeDefinitionServerCapabilities.TypeDefinitionProvider}
+	srv := &LspSrv{client, warn, out.Capabilities, make(map[string]int)}
 	lspConns[wd] = srv
 	return srv
 }
 
 type LspBufferPos struct {
-	Path      string
-	Ln, Col   int
-	VersionId int
-	Contents  string
+	Path    string
+	Ln, Col int
+	b       *buf.Buffer
+	line    []uint16
 }
 
-func (srv *LspSrv) Describe(a LspBufferPos) string {
-	if a.Contents != "" {
-		srv.Changed(a)
-	}
-
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(60*time.Second))
-	defer cancel()
-	//ctx := context.Background()
-
-	tp := &TextDocumentPositionParams{
+func (a *LspBufferPos) tdpp() *TextDocumentPositionParams {
+	return &TextDocumentPositionParams{
 		TextDocument: TextDocumentIdentifier{
 			URI: "file://" + a.Path,
 		},
 		Position: Position{a.Ln, a.Col},
 	}
+}
 
+type locationAndKind struct {
+	Location
+	kind string
+}
+
+func (srv *LspSrv) Describe(a LspBufferPos) string {
+	srv.Changed(a)
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(60*time.Second))
+	defer cancel()
+	//ctx := context.Background()
+
+	tp := a.tdpp()
 	var hover Hover
 	srv.conn.Call(ctx, "textDocument/hover", tp, &hover)
 	if hover.Contents.Value != "" {
-		if !srv.definitionProvider {
-			return hover.Contents.Value
+		var def []locationAndKind
+
+		getlocs := func(kind, hkind string) {
+			var def2 []locationAndKind
+			srv.conn.Call(ctx, kind, tp, &def2)
+			for i := range def2 {
+				def2[i].kind = hkind
+			}
+			def = append(def, def2...)
 		}
-		var def, typeDef []Location
-		if srv.definitionProvider {
-			srv.conn.Call(ctx, "textDocument/definition", tp, &def)
+		if srv.Capabilities.DefinitionProvider {
+			getlocs("textDocument/definition", "")
 		}
-		if srv.typeDefinitionProvider {
-			srv.conn.Call(ctx, "textDocument/typeDefinition", tp, &typeDef)
+		if srv.Capabilities.TypeDefinitionServerCapabilities.TypeDefinitionProvider {
+			getlocs("textDocument/typeDefinition", "Type:")
 		}
-		s := hover.Contents.Value
-		def = append(def, typeDef...)
+		if srv.Capabilities.DeclarationProvider {
+			getlocs("textDocument/declaration", "Declaration:")
+		}
+		if srv.Capabilities.ImplementationProvider {
+			getlocs("textDocument/implementation", "Implementation:")
+		}
+
+		lines := strings.Split(hover.Contents.Value, "\n")
+		if len(lines) > 5 {
+			lines = lines[:5]
+			lines = append(lines, "...")
+		}
+		s := strings.Join(lines, "\n")
 		s = appendLocs(s, def, a.Path, a.Ln)
 		return s
 	}
@@ -196,15 +220,28 @@ func (srv *LspSrv) Describe(a LspBufferPos) string {
 	return sign.Signatures[0].Label
 }
 
-func appendLocs(s string, defs []Location, curPath string, ln int) string {
+func (srv *LspSrv) References(a LspBufferPos) string {
+	srv.Changed(a)
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(60*time.Second))
+	defer cancel()
+	//ctx := context.Background()
+
+	tp := a.tdpp()
+	var locs []locationAndKind
+	srv.conn.Call(ctx, "textDocument/references", tp, &locs)
+	return appendLocs("", locs, a.Path, a.Ln)
+}
+
+func appendLocs(s string, defs []locationAndKind, curPath string, ln int) string {
 	const sillyURI = "file://"
 	if len(defs) <= 0 {
 		return s
 	}
 
 	strdefs := []string{}
+	seen := map[string]bool{}
 
-	var lastDef string
 	for _, def := range defs {
 		if def.URI == "" {
 			continue
@@ -217,22 +254,26 @@ func appendLocs(s string, defs []Location, curPath string, ln int) string {
 			continue
 		}
 		defstr := fmt.Sprintf("%s:%d", path, def.Range.Start.Line+1)
-		if defstr == lastDef {
+		if seen[defstr] {
 			continue
 		}
+		seen[defstr] = true
+		if def.kind != "" {
+			defstr = def.kind + " " + defstr
+		}
 		strdefs = append(strdefs, defstr)
-		lastDef = defstr
 	}
 	if len(strdefs) <= 0 {
 		return s
+	}
+	if s == "" {
+		return strings.Join(strdefs, "\n")
 	}
 	return s + "\n\n" + strings.Join(strdefs, "\n")
 }
 
 func (srv *LspSrv) Complete(a LspBufferPos) ([]string, string) {
-	if a.Contents != "" {
-		srv.Changed(a)
-	}
+	srv.Changed(a)
 
 	first := true
 	insertPrefix := ""
@@ -255,16 +296,41 @@ func (srv *LspSrv) Complete(a LspBufferPos) ([]string, string) {
 		if cmplItem.TextEdit == nil {
 			continue
 		}
-		r = append(r, cmplItem.Label)
+		if cmplItem.TextEdit.Range.Start.Line != cmplItem.TextEdit.Range.End.Line {
+			continue
+		}
+		if cmplItem.TextEdit.Range.Start.Line != a.Ln {
+			continue
+		}
+
+		nt := utf16.Encode([]rune(cmplItem.TextEdit.NewText))
+		commonidx := a.Col - cmplItem.TextEdit.Range.Start.Character
+
+		if !issfx(nt[:commonidx], a.line) {
+			continue
+		}
+
+		nt = nt[commonidx:]
+
+		r = append(r, cmplItem.TextEdit.NewText)
 		if first {
 			first = false
-			insertPrefix = cmplItem.TextEdit.NewText
+			insertPrefix = string(utf16.Decode(nt))
 		} else {
-			insertPrefix = commonPrefix2(insertPrefix, cmplItem.TextEdit.NewText)
+			insertPrefix = commonPrefix2(insertPrefix, string(utf16.Decode(nt)))
 		}
 	}
 
 	return r, insertPrefix
+}
+
+func issfx(a, b []uint16) bool {
+	for i, j := len(a)-1, len(b)-1; i >= 0 && j >= 0; i, j = i-1, j-1 {
+		if a[i] != b[j] {
+			return false
+		}
+	}
+	return true
 }
 
 func commonPrefix2(a, b string) string {
@@ -281,14 +347,23 @@ func commonPrefix2(a, b string) string {
 }
 
 func (srv *LspSrv) Changed(a LspBufferPos) {
+	if srv.revision[a.Path] == a.b.RevCount {
+		return
+	}
+	if _, ok := srv.revision[a.Path]; !ok {
+		srv.conn.Notify(context.Background(), "textDocument/didOpen", DidOpenTextDocumentParams{
+			TextDocument: TextDocumentItem{URI: "file://" + a.Path, Version: 0},
+		})
+	}
+	srv.revision[a.Path] = a.b.RevCount
 	srv.conn.Notify(context.Background(), "textDocument/didChange", DidChangeTextDocumentParams{
 		TextDocument: VersionedTextDocumentIdentifier{
 			URI:     "file://" + a.Path,
-			Version: float64(a.VersionId),
+			Version: float64(a.b.RevCount),
 		},
 		ContentChanges: []TextDocumentContentChangeEvent{
 			TextDocumentContentChangeEvent{
-				Text: a.Contents,
+				Text: string(a.b.SelectionRunes(util.Sel{0, a.b.Size()})),
 			},
 		},
 	})
@@ -321,23 +396,19 @@ func (h *lspHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonr
 }
 
 type LspSrv struct {
-	conn                   *jsonrpc2.Conn
-	definitionProvider     bool
-	typeDefinitionProvider bool
+	conn         *jsonrpc2.Conn
+	warn         func(string)
+	Capabilities ServerCapabilities
+	revision     map[string]int
 }
 
-func BufferToLsp(wd string, b *buf.Buffer, sel util.Sel, createLsp bool) (*LspSrv, LspBufferPos) {
-	srv := LspFor(filepath.Ext(b.Name), wd, createLsp)
+func BufferToLsp(wd string, b *buf.Buffer, sel util.Sel, createLsp bool, warn func(string)) (*LspSrv, LspBufferPos) {
+	srv := LspFor(filepath.Ext(b.Name), wd, createLsp, warn)
 	if srv == nil {
 		return nil, LspBufferPos{}
 	}
 
-	var changed string
-	if b.Modified {
-		changed = string(b.SelectionRunes(util.Sel{0, b.Size()}))
-	}
+	linestr, ln, col := b.GetLine(sel.S, true)
 
-	ln, col := b.GetLine(sel.S, true)
-
-	return srv, LspBufferPos{b.Path(), ln - 1, col, b.RevCount, changed}
+	return srv, LspBufferPos{b.Path(), ln - 1, col, b, utf16.Encode([]rune(linestr))}
 }

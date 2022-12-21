@@ -90,8 +90,8 @@ func eqcmdfn(c *Cmd, ec *EditContext) {
 			Warnfn(fmt.Sprintf("%s:#%d,#%d\n", ec.Buf.Path(), ec.atsel.S, ec.atsel.E))
 		}
 	} else {
-		sln, _ := ec.Buf.GetLine(ec.atsel.S, false)
-		eln, _ := ec.Buf.GetLine(ec.atsel.E, false)
+		_, sln, _ := ec.Buf.GetLine(ec.atsel.S, false)
+		_, eln, _ := ec.Buf.GetLine(ec.atsel.E, false)
 		if ec.atsel.S == ec.atsel.E {
 			Warnfn(fmt.Sprintf("%s:%d\n", ec.Buf.Path(), sln))
 		} else {
