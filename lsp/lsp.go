@@ -68,6 +68,7 @@ const debug = false
 
 func Restart(wd string) {
 	if lspConns[wd] != nil {
+		log.Reset()
 		lspConns[wd].conn.Close()
 	}
 }
@@ -88,7 +89,7 @@ func LspFor(lang, wd string, create bool, warn func(string)) *LspSrv {
 		return nil
 	}
 
-	cmd := exec.Command("gopls", "-logfile=/tmp/gopls.log", "serve")
+	cmd := exec.Command("gopls", "serve")
 	stdin, err := cmd.StdinPipe()
 	must(err)
 	stdout, err := cmd.StdoutPipe()
@@ -209,6 +210,7 @@ func (srv *LspSrv) Describe(a LspBufferPos) string {
 		}
 		s := strings.Join(lines, "\n")
 		s = appendLocs(s, def, a.Path, a.Ln)
+		lspLog(fmt.Sprint("hover for", a, "got", len(lines), "\n"))
 		return s
 	}
 
@@ -217,6 +219,7 @@ func (srv *LspSrv) Describe(a LspBufferPos) string {
 	if len(sign.Signatures) == 0 {
 		return ""
 	}
+	lspLog(fmt.Sprint("no hover for", a, "and signature help len is", len(sign.Signatures[0].Label), "\n"))
 	return sign.Signatures[0].Label
 }
 
@@ -372,27 +375,51 @@ func (srv *LspSrv) Changed(a LspBufferPos) {
 type lspHandler struct {
 }
 
+var logMessageType = map[MessageType]string{
+	1: "ERROR ",
+	2: "WARN ",
+	3: "INFO ",
+	4: "LOG ",
+}
+
 func (h *lspHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	if req.Method != "workspace/configuration" {
-		return
+	switch req.Method {
+	case "workspace/configuration":
+		var params ConfigurationParams
+		must(json.Unmarshal(*req.Params, &params))
+
+		v := []map[string]interface{}{
+			map[string]interface{}{
+				"enhancedHover": true,
+			},
+		}
+
+		var respJson json.RawMessage
+		respJson, err := json.Marshal(v)
+		must(err)
+
+		var r jsonrpc2.Response
+		r.ID = req.ID
+		r.Result = &respJson
+		conn.SendResponse(ctx, &r)
+
+	case "window/logMessage", "window/showMessage":
+		var params ShowMessageParams
+		must(json.Unmarshal(*req.Params, &params))
+		lspLog(logMessageType[params.Type])
+		lspLog(params.Message)
+		if params.Message != "" && params.Message[len(params.Message)-1] != '\n' {
+			lspLog("\n")
+		}
+
+	case "textDocument/publishDiagnostics":
+		// not interesting
+
+	default:
+		buf, _ := json.Marshal(req)
+		lspLog(string(buf))
+		lspLog("\n")
 	}
-	var params ConfigurationParams
-	must(json.Unmarshal(*req.Params, &params))
-
-	v := []map[string]interface{}{
-		map[string]interface{}{
-			"enhancedHover": true,
-		},
-	}
-
-	var respJson json.RawMessage
-	respJson, err := json.Marshal(v)
-	must(err)
-
-	var r jsonrpc2.Response
-	r.ID = req.ID
-	r.Result = &respJson
-	conn.SendResponse(ctx, &r)
 }
 
 type LspSrv struct {
@@ -411,4 +438,14 @@ func BufferToLsp(wd string, b *buf.Buffer, sel util.Sel, createLsp bool, warn fu
 	linestr, ln, col := b.GetLine(sel.S, true)
 
 	return srv, LspBufferPos{b.Path(), ln - 1, col, b, utf16.Encode([]rune(linestr))}
+}
+
+var log strings.Builder
+
+func lspLog(s string) {
+	log.WriteString(s)
+}
+
+func GetLog() string {
+	return log.String()
 }

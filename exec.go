@@ -1482,6 +1482,11 @@ func LspCmd(ec ExecContext, arg string) {
 		lsp.Restart(Wnd.tagbuf.Dir)
 		return
 	}
+	if arg == "log" {
+		lsplog := lsp.GetLog()
+		Warnfull("+Lsp", lsplog, true, false)
+		return
+	}
 	if ec.ed == nil || ec.ed.bodybuf == nil {
 		return
 	}

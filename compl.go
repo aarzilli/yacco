@@ -147,7 +147,7 @@ func getPrefixSuffix(compls []string, word string) (has bool, prefixSuffix strin
 	return
 }
 
-const completeUsingLspServer = true
+const completeUsingLspServer = false
 
 func complStart(p *Popup, ec ExecContext) (bool, string) {
 	if ec.buf == nil {
