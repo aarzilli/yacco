@@ -308,6 +308,9 @@ func (srv *LspSrv) Complete(a LspBufferPos) ([]string, string) {
 
 		nt := utf16.Encode([]rune(cmplItem.TextEdit.NewText))
 		commonidx := a.Col - cmplItem.TextEdit.Range.Start.Character
+		if commonidx < 0 || commonidx > len(nt) {
+			continue
+		}
 
 		if !issfx(nt[:commonidx], a.line) {
 			continue
