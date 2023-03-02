@@ -170,6 +170,10 @@ type locationAndKind struct {
 }
 
 func (srv *LspSrv) Describe(a LspBufferPos) string {
+	const (
+		linkPerKindMax = 2
+		hoverLen       = 10
+	)
 	srv.Changed(a)
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(60*time.Second))
@@ -188,6 +192,9 @@ func (srv *LspSrv) Describe(a LspBufferPos) string {
 			for i := range def2 {
 				def2[i].kind = hkind
 			}
+			if len(def2) > linkPerKindMax {
+				def2 = def2[:linkPerKindMax]
+			}
 			def = append(def, def2...)
 		}
 		if srv.Capabilities.DefinitionProvider {
@@ -204,8 +211,8 @@ func (srv *LspSrv) Describe(a LspBufferPos) string {
 		}
 
 		lines := strings.Split(hover.Contents.Value, "\n")
-		if len(lines) > 5 {
-			lines = lines[:5]
+		if len(lines) > hoverLen {
+			lines = lines[:hoverLen]
 			lines = append(lines, "...")
 		}
 		s := strings.Join(lines, "\n")
