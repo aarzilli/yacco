@@ -903,6 +903,7 @@ func GetallCmd(ec ExecContext, arg string) {
 	if nerr != 0 {
 		Warn(t)
 	}
+	lsp.Killall() // if there is a LSP server kill it
 }
 
 func RedoCmd(ec ExecContext, arg string) {

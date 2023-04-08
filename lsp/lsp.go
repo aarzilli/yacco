@@ -70,7 +70,16 @@ func Restart(wd string) {
 	if lspConns[wd] != nil {
 		log.Reset()
 		lspConns[wd].conn.Close()
+		lspConns[wd] = nil
 	}
+}
+
+func Killall() {
+	for wd := range lspConns {
+		lspConns[wd].conn.Close()
+		lspConns[wd] = nil
+	}
+	log.Reset()
 }
 
 func LspFor(lang, wd string, create bool, warn func(string)) *LspSrv {
