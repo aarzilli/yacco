@@ -256,6 +256,7 @@ Mark			Sets the mark
 Jump			Swap cursor and mark
 Direxec			Executes the specified command on the currently selected directory entry.
 NextError		Tries to load the file specified in the next line of the last editor where a load operation was executed
+Lsp			Language server management
 `)
 	}
 }
@@ -1485,6 +1486,21 @@ func LspCmd(ec ExecContext, arg string) {
 	if arg == "log" {
 		lsplog := lsp.GetLog()
 		Warnfull("+Lsp", lsplog, true, false)
+		return
+	}
+	if arg == "help" {
+		Warn(`Lsp help
+	This help message
+
+Lsp restart
+	Restarts LSP server
+
+Lsp log
+	Shows LSP log
+
+Lsp refs
+	Shows all references
+`)
 		return
 	}
 	if ec.ed == nil || ec.ed.bodybuf == nil {
