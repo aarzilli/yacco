@@ -435,7 +435,7 @@ func (fr *Frame) Select(idx, kind int, button mouse.Button, startPos image.Point
 // Sets extremes of the selection, pass start == end if you want an empty selection
 // idx is the index of the selection
 func (fr *Frame) SetSelect(idx, kind, start, end int) {
-	if (idx < 0) || (idx >= len(fr.Colors)) {
+	if (idx < 0) || (idx+1 >= len(fr.Colors)) {
 		idx = 0
 	}
 

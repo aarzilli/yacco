@@ -1300,8 +1300,13 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 	} else if lp.tagfr != nil {
 		frame = lp.tagfr
 		buf = lp.tagbuf
-		expandToLine = false
-		expandToTabs = false
+		if lp.tagbuf.Name == "+Tooltip" {
+			expandToLine = true
+			expandToTabs = false
+		} else {
+			expandToLine = false
+			expandToTabs = false
+		}
 		redraw = lp.tagfr.Redraw
 	}
 

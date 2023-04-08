@@ -173,6 +173,10 @@ func (srv *LspSrv) Describe(a LspBufferPos) string {
 	const (
 		linkPerKindMax = 2
 		hoverLen       = 10
+		nothing        = `(nothing)
+
+Lsp restart
+`
 	)
 	srv.Changed(a)
 
@@ -224,10 +228,13 @@ func (srv *LspSrv) Describe(a LspBufferPos) string {
 	var sign SignatureHelp
 	srv.conn.Call(context.Background(), "textDocument/signatureHelp", tp, &sign)
 	if len(sign.Signatures) == 0 {
-		return ""
+		return nothing
 	}
 	lspLog(fmt.Sprint("no hover for", a, "and signature help len is", len(sign.Signatures[0].Label), "\n"))
-	return sign.Signatures[0].Label
+	if sign.Signatures[0].Label != "" {
+		return sign.Signatures[0].Label
+	}
+	return nothing
 }
 
 func (srv *LspSrv) References(a LspBufferPos) string {
