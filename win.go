@@ -232,12 +232,14 @@ func (w *Window) upload(rects []image.Rectangle) {
 		default:
 		}
 	}()
-	for _, rect := range rects {
-		rect := w.bounds.Intersect(rect)
-		if rect.Dx() > 0 && rect.Dy() > 0 {
-			w.wnd.Upload(rect.Min, w.wndb, rect)
-		}
-	}
+	/*
+		for _, rect := range rects {
+			rect := w.bounds.Intersect(rect)
+			if rect.Dx() > 0 && rect.Dy() > 0 {
+				w.wnd.Upload(rect.Min, w.wndb, rect)
+			}
+		}*/
+	w.wnd.Upload(w.bounds.Min, w.wndb, w.bounds)
 	w.wnd.Publish()
 }
 
