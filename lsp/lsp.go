@@ -191,9 +191,33 @@ Lsp restart
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(60*time.Second))
 	defer cancel()
-	//ctx := context.Background()
 
 	tp := a.tdpp()
+
+	linestr := string(utf16.Decode(a.line))
+	if a.Col > 0 && a.Col < len(linestr) && linestr[a.Col] == '.' {
+		// autocompletions
+		var cmpl CompletionList
+		srv.conn.Call(ctx, "textDocument/completion", tp, &cmpl)
+		out := new(strings.Builder)
+		for _, cmplItem := range cmpl.Items {
+			if cmplItem.TextEdit == nil {
+				continue
+			}
+			if cmplItem.TextEdit.Range.Start.Line != cmplItem.TextEdit.Range.End.Line {
+				continue
+			}
+			if cmplItem.TextEdit.Range.Start.Line != a.Ln {
+				continue
+			}
+			if a.Col != cmplItem.TextEdit.Range.Start.Character {
+				continue
+			}
+			fmt.Fprintln(out, "."+cmplItem.TextEdit.NewText)
+		}
+		return out.String()
+	}
+
 	var hover Hover
 	srv.conn.Call(ctx, "textDocument/hover", tp, &hover)
 	if hover.Contents.Value != "" {
@@ -230,6 +254,7 @@ Lsp restart
 		}
 		s := strings.Join(lines, "\n")
 		s = appendLocs(s, def, a.Path, a.Ln)
+		s += "\nLsp refs"
 		lspLog(fmt.Sprint("hover for", a, "got", len(lines), "\n"))
 		return s
 	}
@@ -308,12 +333,7 @@ func (srv *LspSrv) Complete(a LspBufferPos) ([]string, string) {
 	defer cancel()
 	//ctx := context.Background()
 
-	tp := &TextDocumentPositionParams{
-		TextDocument: TextDocumentIdentifier{
-			URI: "file://" + a.Path,
-		},
-		Position: Position{a.Ln, a.Col},
-	}
+	tp := a.tdpp()
 
 	var cmpl CompletionList
 	srv.conn.Call(ctx, "textDocument/completion", tp, &cmpl)
