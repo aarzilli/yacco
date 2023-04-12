@@ -217,7 +217,7 @@ func xycmdfn(c *Cmd, ec *EditContext, inv bool) {
 
 	re := c.sregexp
 	count := 0
-	stash := []replaceOp{}
+	stash := []buf.ReplaceOp{}
 
 	for {
 		ec.tracemore("searching regex at", rngsel)
@@ -501,7 +501,7 @@ func XYcmdfn(inv bool, c *Cmd, ec *EditContext) {
 
 func blockcmdfn(c *Cmd, ec *EditContext) {
 	sel := c.rangeaddr.Eval(ec.Buf, *ec.atsel)
-	stash := []replaceOp{}
+	stash := []buf.ReplaceOp{}
 
 	ec.tracecmd(sel, c)
 	defer ec.tracecmd("}")
@@ -515,41 +515,21 @@ func blockcmdfn(c *Cmd, ec *EditContext) {
 	ec.applyStash(stash)
 }
 
-type replaceOp struct {
-	text []rune
-	sel  util.Sel
-}
-
 func (ec *EditContext) replace(text []rune, sel *util.Sel, solid bool) {
 	if ec.stash != nil {
-		*ec.stash = append(*ec.stash, replaceOp{append([]rune{}, text...), *sel})
+		*ec.stash = append(*ec.stash, buf.ReplaceOp{append([]rune{}, text...), *sel})
 	} else {
 		ec.Buf.Replace(text, sel, solid, ec.EventChan, util.EO_MOUSE)
 	}
 }
 
-func (ec *EditContext) applyStash(stash []replaceOp) {
+func (ec *EditContext) applyStash(stash []buf.ReplaceOp) {
 	if ec.stash != nil {
 		*ec.stash = append(*ec.stash, stash...)
 		return
 	}
 
-	curpos := 0
-	delta := 0
-
-	for i := range stash {
-		stash[i].sel.S += delta
-		stash[i].sel.E += delta
-		if stash[i].sel.S < curpos {
-			// discarded, not in sequence
-			continue
-		}
-
-		delta += len(stash[i].text) - (stash[i].sel.E - stash[i].sel.S)
-
-		ec.Buf.Replace(stash[i].text, &stash[i].sel, i == 0, ec.EventChan, util.EO_MOUSE)
-		curpos = stash[i].sel.E
-	}
+	ec.Buf.ReplaceAll(*ec.stash, ec.EventChan, util.EO_MOUSE)
 }
 
 func (ec *EditContext) printSel(w io.Writer, sel util.Sel) {

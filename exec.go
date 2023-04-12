@@ -98,6 +98,7 @@ func init() {
 	cmds["Tooltip"] = TooltipCmd
 	cmds["NextError"] = NextErrorCmd
 	cmds["Lsp"] = LspCmd
+	cmds["Prepare"] = PrepareCmd
 }
 
 func HelpCmd(ec ExecContext, arg string) {
@@ -1514,6 +1515,13 @@ Lsp refs
 		return
 	}
 
+	v := strings.Split(arg, " ")
+	arg = v[0]
+	var rest string
+	if len(v) > 1 {
+		rest = v[1]
+	}
+
 	switch arg {
 	case "":
 		go func() {
@@ -1531,10 +1539,50 @@ Lsp refs
 				Warnfull("+Lsp", s, true, false)
 			}
 		}()
+	case "rename":
+		tdes := srv.Rename(lspb, rest)
+		executeLspTextEdits(tdes)
 	default:
 		Warn("wrong argument")
 	}
+}
 
+func executeLspTextEdits(tdes []lsp.TextDocumentEdit) {
+	edits := map[string][]buf.ReplaceOp{}
+	for _, tde := range tdes {
+		const file = "file://"
+		path := tde.TextDocument.URI[len(file):]
+		ed, err := EditFind(".", path, false, false)
+		if err != nil {
+			Warn(fmt.Sprintf("error opening %s: %v", path, err))
+			continue
+		}
+
+		for _, e := range tde.Edits {
+			edits[path] = append(edits[path], buf.ReplaceOp{
+				Sel: util.Sel{
+					S: ed.bodybuf.UTF16Pos(e.Range.Start.Line, e.Range.Start.Character),
+					E: ed.bodybuf.UTF16Pos(e.Range.End.Line, e.Range.End.Character),
+				},
+				Text: []rune(e.NewText),
+			})
+		}
+	}
+	for path, es := range edits {
+		ed, _ := EditFind(".", path, false, false)
+		ed.bodybuf.ReplaceAll(es, ed.eventChan, util.EO_MOUSE)
+		ed.BufferRefresh()
+	}
+}
+
+func PrepareCmd(ec ExecContext, arg string) {
+	if ec.ed == nil {
+		return
+	}
+	ec.ed.tagbuf.Replace([]rune(arg+" "), &util.Sel{ec.ed.tagbuf.EditableStart, ec.ed.tagbuf.Size()}, true, ec.eventChan, util.EO_BODYTAG)
+	ec.ed.tagfr.Sel.S = ec.ed.tagbuf.Size()
+	ec.ed.tagfr.Sel.E = ec.ed.tagfr.Sel.S
+	ec.ed.TagRefresh()
 }
 
 func makeEditContext(buf *buf.Buffer, sel *util.Sel, eventChan chan string, ed *Editor, trace bool) edit.EditContext {

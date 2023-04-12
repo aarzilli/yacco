@@ -254,8 +254,8 @@ Lsp restart
 		}
 		s := strings.Join(lines, "\n")
 		s = appendLocs(s, def, a.Path, a.Ln)
-		s += "\nLsp refs"
-		lspLog(fmt.Sprint("hover for", a, "got", len(lines), "\n"))
+		s += "\nLsp refs\nPrepare Lsp rename"
+		lspLog(fmt.Sprint("hover for ", a, " got ", len(lines), "\n"))
 		return s
 	}
 
@@ -371,6 +371,24 @@ func (srv *LspSrv) Complete(a LspBufferPos) ([]string, string) {
 	}
 
 	return r, insertPrefix
+}
+
+func (srv *LspSrv) Rename(a LspBufferPos, to string) []TextDocumentEdit {
+	srv.Changed(a)
+	tp := a.tdpp()
+	renameOpts := RenameParams{
+		TextDocument: tp.TextDocument,
+		Position:     tp.Position,
+		NewName:      to,
+	}
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(60*time.Second))
+	defer cancel()
+	var we WorkspaceEdit
+	err := srv.conn.Call(ctx, "textDocument/rename", renameOpts, &we)
+	if err != nil {
+		srv.warn(err.Error())
+	}
+	return we.DocumentChanges
 }
 
 func issfx(a, b []uint16) bool {

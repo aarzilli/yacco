@@ -38,7 +38,7 @@ type EditContext struct {
 	BufMan    BufferManaging
 	Trace     bool
 
-	stash *[]replaceOp
+	stash *[]buf.ReplaceOp
 	depth int
 }
 

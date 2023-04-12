@@ -1212,3 +1212,47 @@ func (buf *Buffer) Highlight(start, end int) []uint8 {
 func (buf *Buffer) Toregend(start int) int {
 	return buf.Hl.Toregend(start, buf)
 }
+
+type ReplaceOp struct {
+	Text []rune
+	Sel  util.Sel
+}
+
+func (buf *Buffer) ReplaceAll(stash []ReplaceOp, eventChan chan string, origin util.EventOrigin) {
+	curpos := 0
+	delta := 0
+
+	for i := range stash {
+		stash[i].Sel.S += delta
+		stash[i].Sel.E += delta
+		if stash[i].Sel.S < curpos {
+			// discarded, not in sequence
+			continue
+		}
+
+		delta += len(stash[i].Text) - (stash[i].Sel.E - stash[i].Sel.S)
+
+		buf.Replace(stash[i].Text, &stash[i].Sel, i == 0, eventChan, util.EO_MOUSE)
+		curpos = stash[i].Sel.E
+	}
+}
+
+func (buf *Buffer) UTF16Pos(ln, col int) int {
+	for i := 0; i < buf.Size(); i++ {
+		if ln <= 0 {
+			if col <= 0 {
+				return i
+			}
+			if buf.At(i) > 0xffff {
+				col -= 2
+			} else {
+				col--
+			}
+		} else {
+			if buf.At(i) == '\n' {
+				ln--
+			}
+		}
+	}
+	return buf.Size()
+}
