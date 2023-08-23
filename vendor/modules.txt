@@ -1,18 +1,20 @@
-# github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802 => github.com/aarzilli/xgb v0.0.0-20170123105216-2ca2a6c0622c
+# github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802 => github.com/aarzilli/xgb v0.0.0-20170123161437-2ca2a6c0622c
 ## explicit
 github.com/BurntSushi/xgb
 github.com/BurntSushi/xgb/render
 github.com/BurntSushi/xgb/shm
 github.com/BurntSushi/xgb/xproto
 # github.com/aarzilli/go2def v0.0.0-20220703140930-d8673a371c40
-## explicit
+## explicit; go 1.13
 github.com/aarzilli/go2def
 github.com/aarzilli/go2def/visit
-# github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 => github.com/aarzilli/freetype v0.0.0-20160928082430-6c8832ae5783
+# github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 => github.com/aarzilli/freetype v0.0.0-20180724121948-6c8832ae5783
 ## explicit
 github.com/golang/freetype
 github.com/golang/freetype/raster
 github.com/golang/freetype/truetype
+# github.com/gorilla/websocket v1.5.0
+## explicit; go 1.12
 # github.com/kr/pty v0.0.0-20160716204620-ce7fa45920dc
 ## explicit
 github.com/kr/pty
@@ -21,8 +23,6 @@ github.com/kr/pty
 github.com/lionkov/go9p/p
 github.com/lionkov/go9p/p/clnt
 github.com/lionkov/go9p/p/srv
-# github.com/nfnt/resize v0.0.0-20180221191011-83c6a9932646
-## explicit
 # github.com/sourcegraph/jsonrpc2 v0.0.0-20190106185902-35a74f039c6a
 ## explicit
 github.com/sourcegraph/jsonrpc2
@@ -58,13 +58,15 @@ golang.org/x/mobile/event/size
 golang.org/x/mobile/geom
 golang.org/x/mobile/gl
 # golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4
+## explicit; go 1.17
 golang.org/x/mod/semver
 # golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f
+## explicit; go 1.17
 golang.org/x/sys/execabs
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/windows
 # golang.org/x/tools v0.1.12
-## explicit
+## explicit; go 1.18
 golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/internal/gcimporter
 golang.org/x/tools/go/internal/packagesdriver
@@ -78,8 +80,6 @@ golang.org/x/tools/internal/gocommand
 golang.org/x/tools/internal/packagesinternal
 golang.org/x/tools/internal/typeparams
 golang.org/x/tools/internal/typesinternal
-# golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1
-## explicit
 # golang.org/x/exp => github.com/aarzilli/exp v0.0.0-20220219150628-972bd7e11036
-# github.com/BurntSushi/xgb => github.com/aarzilli/xgb v0.0.0-20170123105216-2ca2a6c0622c
-# github.com/golang/freetype => github.com/aarzilli/freetype v0.0.0-20160928082430-6c8832ae5783
+# github.com/BurntSushi/xgb => github.com/aarzilli/xgb v0.0.0-20170123161437-2ca2a6c0622c
+# github.com/golang/freetype => github.com/aarzilli/freetype v0.0.0-20180724121948-6c8832ae5783
