@@ -914,35 +914,7 @@ type TextDocumentClientCapabilities struct {
 	/** CodeAction defined:
 	 * Capabilities specific to the `textDocument/codeAction`
 	 */
-	CodeAction *struct {
-
-		/** DynamicRegistration defined:
-		 * Whether code action supports dynamic registration.
-		 */
-		DynamicRegistration bool `json:"dynamicRegistration,omitempty"`
-
-		/** CodeActionLiteralSupport defined:
-		 * The client support code action literals as a valid
-		 * response of the `textDocument/codeAction` request.
-		 */
-		CodeActionLiteralSupport *struct {
-
-			/** CodeActionKind defined:
-			 * The code action kind is support with the following value
-			 * set.
-			 */
-			CodeActionKind struct {
-
-				/** ValueSet defined:
-				 * The code action kind values the client supports. When this
-				 * property exists the client also guarantees that it will
-				 * handle values outside its set gracefully and falls back
-				 * to a default value when unknown.
-				 */
-				ValueSet []CodeActionKind `json:"valueSet"`
-			} `json:"codeActionKind"`
-		} `json:"codeActionLiteralSupport,omitempty"`
-	} `json:"codeAction,omitempty"`
+	CodeAction *CodeActionClientCapabilities `json:"codeAction,omitempty"`
 
 	/** CodeLens defined:
 	 * Capabilities specific to the `textDocument/codeLens`
@@ -2994,6 +2966,8 @@ type CodeAction struct {
 	 * executed and then the command.
 	 */
 	Command *Command `json:"command,omitempty"`
+
+	Data []byte
 }
 
 // CodeLens is:
@@ -3793,3 +3767,36 @@ type DefinitionLink LocationLink
  * by the client.
  */
 type DeclarationLink LocationLink
+
+type CodeActionClientCapabilities struct {
+	/** DynamicRegistration defined:
+	 * Whether code action supports dynamic registration.
+	 */
+	DynamicRegistration bool `json:"dynamicRegistration,omitempty"`
+
+	/** CodeActionLiteralSupport defined:
+	 * The client support code action literals as a valid
+	 * response of the `textDocument/codeAction` request.
+	 */
+	CodeActionLiteralSupport *CodeActionLiteralSupport `json:"codeActionLiteralSupport,omitempty"`
+
+	DataSupport bool `json:"dataSupport"`
+}
+
+type CodeActionLiteralSupport struct {
+
+	/** CodeActionKind defined:
+	 * The code action kind is support with the following value
+	 * set.
+	 */
+	CodeActionKind struct {
+
+		/** ValueSet defined:
+		 * The code action kind values the client supports. When this
+		 * property exists the client also guarantees that it will
+		 * handle values outside its set gracefully and falls back
+		 * to a default value when unknown.
+		 */
+		ValueSet []CodeActionKind `json:"valueSet"`
+	} `json:"codeActionKind"`
+}

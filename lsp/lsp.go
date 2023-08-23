@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -18,6 +19,8 @@ import (
 
 	"github.com/sourcegraph/jsonrpc2"
 )
+
+const logToStdout = false
 
 func must(err error) {
 	if err != nil {
@@ -134,6 +137,9 @@ func LspFor(lang, wd string, create bool, warn func(string)) *LspSrv {
 	tdcc.Completion.CompletionItem.DocumentationFormat = []MarkupKind{"plaintext"}
 	tdcc.Hover.ContentFormat = []MarkupKind{"plaintext"}
 	tdcc.SignatureHelp.SignatureInformation.DocumentationFormat = []MarkupKind{"plaintext"}
+	tdcc.CodeAction = &CodeActionClientCapabilities{
+		DataSupport: true,
+	}
 
 	wcc := &WorkspaceClientCapabilities{}
 	wcc.Configuration = true
@@ -152,7 +158,8 @@ func LspFor(lang, wd string, create bool, warn func(string)) *LspSrv {
 
 	client.Notify(context.Background(), "initialized", &InitializedParams{})
 
-	srv := &LspSrv{client, warn, out.Capabilities, make(map[string]int)}
+	srv := &LspSrv{client, warn, out.Capabilities, make(map[string]int), nil, nil}
+	handler.srv = srv
 	lspConns[wd] = srv
 	return srv
 }
@@ -162,6 +169,8 @@ type LspBufferPos struct {
 	Ln, Col int
 	b       *buf.Buffer
 	line    []uint16
+
+	EndLn, EndCol int
 }
 
 func (a *LspBufferPos) tdpp() *TextDocumentPositionParams {
@@ -192,6 +201,8 @@ Lsp restart
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(60*time.Second))
 	defer cancel()
 
+	srv.getCodeActionsList(ctx, a)
+
 	tp := a.tdpp()
 
 	linestr := string(utf16.Decode(a.line))
@@ -215,7 +226,7 @@ Lsp restart
 			}
 			fmt.Fprintln(out, "."+cmplItem.TextEdit.NewText)
 		}
-		return out.String()
+		return srv.appendCodeActions(out.String())
 	}
 
 	var hover Hover
@@ -256,19 +267,19 @@ Lsp restart
 		s = appendLocs(s, def, a.Path, a.Ln)
 		s += "\nLsp refs\nPrepare Lsp rename"
 		lspLog(fmt.Sprint("hover for ", a, " got ", len(lines), "\n"))
-		return s
+		return srv.appendCodeActions(s)
 	}
 
 	var sign SignatureHelp
 	srv.conn.Call(context.Background(), "textDocument/signatureHelp", tp, &sign)
 	if len(sign.Signatures) == 0 {
-		return nothing
+		return srv.appendCodeActions(nothing)
 	}
 	lspLog(fmt.Sprint("no hover for", a, "and signature help len is", len(sign.Signatures[0].Label), "\n"))
 	if sign.Signatures[0].Label != "" {
-		return sign.Signatures[0].Label
+		return srv.appendCodeActions(sign.Signatures[0].Label)
 	}
-	return nothing
+	return srv.appendCodeActions(nothing)
 }
 
 func (srv *LspSrv) References(a LspBufferPos) string {
@@ -391,6 +402,52 @@ func (srv *LspSrv) Rename(a LspBufferPos, to string) []TextDocumentEdit {
 	return we.DocumentChanges
 }
 
+func (srv *LspSrv) getCodeActionsList(ctx context.Context, a LspBufferPos) {
+	srv.codeActions = nil
+	cap := &CodeActionParams{
+		TextDocument: TextDocumentIdentifier{
+			URI: "file://" + a.Path,
+		},
+		Range: Range{
+			Start: Position{a.Ln, a.Col},
+			End:   Position{a.EndLn, a.EndCol},
+		},
+	}
+	var actions []CodeAction
+	srv.conn.Call(ctx, "textDocument/codeAction", cap, &actions)
+	for i := range actions {
+		if actions[i].Edit == nil || (actions[i].Edit.Changes == nil && actions[i].Edit.DocumentChanges == nil) {
+			srv.codeActions = append(srv.codeActions, actions[i])
+		}
+	}
+}
+
+func (srv *LspSrv) appendCodeActions(s string) string {
+	if len(srv.codeActions) == 0 {
+		return s
+	}
+	out := new(strings.Builder)
+	for i := range srv.codeActions {
+		fmt.Fprintf(out, "Lsp ca %d %s\n", i, srv.codeActions[i].Title)
+	}
+	return s + "\n" + out.String()
+}
+
+func (srv *LspSrv) ExecCodeAction(a LspBufferPos, rest string, execEdit func([]TextDocumentEdit)) {
+	arg, _, _ := strings.Cut(rest, " ")
+	i, _ := strconv.Atoi(arg)
+	if i < 0 || i > len(srv.codeActions) {
+		return
+	}
+	action := srv.codeActions[i]
+	//TODO: execute action edits (must also remove the filtering above)
+	cmd := action.Command
+	srv.applyEdits = execEdit
+	defer func() { srv.applyEdits = nil }()
+	var out any
+	srv.conn.Call(context.Background(), "workspace/executeCommand", &ExecuteCommandParams{Command: cmd.Command, Arguments: cmd.Arguments}, out)
+}
+
 func issfx(a, b []uint16) bool {
 	for i, j := len(a)-1, len(b)-1; i >= 0 && j >= 0; i, j = i-1, j-1 {
 		if a[i] != b[j] {
@@ -437,6 +494,7 @@ func (srv *LspSrv) Changed(a LspBufferPos) {
 }
 
 type lspHandler struct {
+	srv *LspSrv
 }
 
 var logMessageType = map[MessageType]string{
@@ -479,6 +537,25 @@ func (h *lspHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonr
 	case "textDocument/publishDiagnostics":
 		// not interesting
 
+	case "workspace/applyEdit":
+		if h.srv.applyEdits == nil {
+			lspLog("workspace/applyEdit request rejected\n")
+			conn.SendResponse(ctx, &jsonrpc2.Response{ID: req.ID, Error: &jsonrpc2.Error{Code: 500, Message: "unsupported now"}})
+			return
+		}
+		var params ApplyWorkspaceEditParams
+		must(json.Unmarshal(*req.Params, &params))
+		if params.Edit.Changes != nil && len(*params.Edit.Changes) > 0 {
+			lspLog("workspace/applyEdit request rejected (Changes field)\n")
+			conn.SendResponse(ctx, &jsonrpc2.Response{ID: req.ID, Error: &jsonrpc2.Error{Code: 500, Message: "unsupported changes field"}})
+			return
+		}
+		for i := range params.Edit.DocumentChanges {
+			lspLog(fmt.Sprintf("applying edit %#v\n", params.Edit.DocumentChanges[i]))
+		}
+		h.srv.applyEdits(params.Edit.DocumentChanges)
+		conn.Reply(ctx, req.ID, &ApplyWorkspaceEditResponse{Applied: true})
+
 	default:
 		buf, _ := json.Marshal(req)
 		lspLog(string(buf))
@@ -491,6 +568,8 @@ type LspSrv struct {
 	warn         func(string)
 	Capabilities ServerCapabilities
 	revision     map[string]int
+	codeActions  []CodeAction
+	applyEdits   func([]TextDocumentEdit)
 }
 
 func BufferToLsp(wd string, b *buf.Buffer, sel util.Sel, createLsp bool, warn func(string)) (*LspSrv, LspBufferPos) {
@@ -500,13 +579,25 @@ func BufferToLsp(wd string, b *buf.Buffer, sel util.Sel, createLsp bool, warn fu
 	}
 
 	linestr, ln, col := b.GetLine(sel.S, true)
+	_, endln, endcol := b.GetLine(sel.E, true)
 
-	return srv, LspBufferPos{b.Path(), ln - 1, col, b, utf16.Encode([]rune(linestr))}
+	return srv, LspBufferPos{
+		Path:   b.Path(),
+		Ln:     ln - 1,
+		Col:    col,
+		b:      b,
+		line:   utf16.Encode([]rune(linestr)),
+		EndLn:  endln,
+		EndCol: endcol,
+	}
 }
 
 var log strings.Builder
 
 func lspLog(s string) {
+	if logToStdout {
+		os.Stderr.WriteString(s)
+	}
 	log.WriteString(s)
 }
 

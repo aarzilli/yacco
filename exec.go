@@ -1542,6 +1542,8 @@ Lsp refs
 	case "rename":
 		tdes := srv.Rename(lspb, rest)
 		executeLspTextEdits(tdes)
+	case "ca":
+		srv.ExecCodeAction(lspb, rest, executeLspTextEdits)
 	default:
 		Warn("wrong argument")
 	}
