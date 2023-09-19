@@ -924,6 +924,57 @@ func (lp *LogicalPos) bufferRefreshable(ontag bool) func() {
 func (w *Window) Type(lp LogicalPos, e key.Event) {
 	ec := lp.asExecContext(true)
 
+	otherKeys := func() {
+		ec := lp.asExecContext(true)
+		//fmt.Printf("keypress: <%s>\n", util.KeyEvent(e))
+		estr := util.KeyEvent(e)
+		if ec.ed != nil && ec.eventChan != nil && ec.ed.bodybuf.Props["send-arrows"] == "1" && ((estr == "up_arrow") || (estr == "down_arrow")) {
+			//TODO: send event
+			dir := "↑"
+			if estr == "down_arrow" {
+				dir = "↓"
+			}
+			util.Fmtevent2(ec.eventChan, util.EO_MOUSE, true, true, false, 0, 0, 0, dir, nil)
+		} else if fcmd, ok := KeyBindings[estr]; ok {
+			LastTypeTime = time.Time{}
+			HideCompl(false)
+			//println("Execute command: <" + cmd + ">")
+			fcmd(ec)
+			if Tooltip.Visible {
+				// hide tooltip if we moved to a position where it shouldn't be visible
+				HideCompl(false)
+			}
+		} else if e.Rune > 0 {
+			LastTypeTime = time.Now()
+			if lp.tagfr == nil && ec.ed != nil {
+				activeEditor = ec.ed
+				activeCol = nil
+			}
+			if ec.buf != nil {
+				ec.buf.Replace([]rune{e.Rune}, &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
+				ec.br()
+				Compl.Start(ec, 0)
+			}
+		}
+	}
+
+	insertTab := func() {
+		HideCompl(false)
+		tch := "\t"
+
+		if (ec.ed != nil) && (ec.ed.bodybuf == ec.buf) {
+			tch = ec.ed.bodybuf.Props["indentchar"]
+		}
+
+		ec.buf.Replace([]rune(tch), &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
+		ec.br()
+	}
+
+	if e.Modifiers != 0 {
+		otherKeys()
+		return
+	}
+
 	switch e.Code {
 	case key.CodeEscape:
 		if !HideCompl(true) {
@@ -1029,18 +1080,17 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 			case Compl.Visible:
 				ec.buf.Replace([]rune(complPrefixSuffix), &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
 				ec.br()
-				Compl.Start(ec)
-			default:
-				HideCompl(false)
-				tch := "\t"
-
-				if (ec.ed != nil) && (ec.ed.bodybuf == ec.buf) {
-					tch = ec.ed.bodybuf.Props["indentchar"]
+				Compl.Start(ec, 0)
+			case Tooltip.Visible:
+				if Tooltip.autocompl {
+					ec.buf.Replace([]rune(tooltipContents), &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
+					ec.br()
+					HideCompl(true)
+				} else {
+					insertTab()
 				}
-
-				ec.buf.Replace([]rune(tch), &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
-				ec.br()
-
+			default:
+				insertTab()
 			}
 		}
 
@@ -1048,41 +1098,11 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		LastTypeTime = time.Now()
 		if !Compl.Visible {
 			ec := lp.asExecContext(true)
-			Compl.Start(ec)
+			Compl.Start(ec, 0)
 		}
 
 	default:
-		ec := lp.asExecContext(true)
-		//fmt.Printf("keypress: <%s>\n", util.KeyEvent(e))
-		estr := util.KeyEvent(e)
-		if ec.ed != nil && ec.eventChan != nil && ec.ed.bodybuf.Props["send-arrows"] == "1" && ((estr == "up_arrow") || (estr == "down_arrow")) {
-			//TODO: send event
-			dir := "↑"
-			if estr == "down_arrow" {
-				dir = "↓"
-			}
-			util.Fmtevent2(ec.eventChan, util.EO_MOUSE, true, true, false, 0, 0, 0, dir, nil)
-		} else if fcmd, ok := KeyBindings[estr]; ok {
-			LastTypeTime = time.Time{}
-			HideCompl(false)
-			//println("Execute command: <" + cmd + ">")
-			fcmd(ec)
-			if Tooltip.Visible {
-				// hide tooltip if we moved to a position where it shouldn't be visible
-				HideCompl(false)
-			}
-		} else if e.Rune > 0 {
-			LastTypeTime = time.Now()
-			if lp.tagfr == nil && ec.ed != nil {
-				activeEditor = ec.ed
-				activeCol = nil
-			}
-			if ec.buf != nil {
-				ec.buf.Replace([]rune{e.Rune}, &ec.fr.Sel, true, ec.eventChan, util.EO_KBD)
-				ec.br()
-				Compl.Start(ec)
-			}
-		}
+		otherKeys()
 	}
 }
 

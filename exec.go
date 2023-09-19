@@ -258,6 +258,7 @@ Jump			Swap cursor and mark
 Direxec			Executes the specified command on the currently selected directory entry.
 NextError		Tries to load the file specified in the next line of the last editor where a load operation was executed
 Lsp			Language server management
+Tooltip <cmd>	Executes a command and shows the result in a tooltip, if the output starts with the BEL character the tooltip will behave as autocompletion
 `)
 	}
 }
@@ -1444,8 +1445,13 @@ func TooltipCmd(ec ExecContext, arg string) {
 		}
 
 		sideChan <- func() {
+			flags := popupAlignLeft
+			if out[0] == 0x07 {
+				flags = popupAutocompl
+				out = out[1:]
+			}
 			tooltipContents = out
-			Tooltip.Start(ec)
+			Tooltip.Start(ec, flags)
 		}
 	}()
 }
@@ -1527,7 +1533,7 @@ Lsp refs
 		go func() {
 			tooltipContents = srv.Describe(lspb)
 			if tooltipContents != "" {
-				Tooltip.Start(ec)
+				Tooltip.Start(ec, popupAlignLeft)
 			} else if Tooltip.Visible {
 				HideCompl(true)
 			}

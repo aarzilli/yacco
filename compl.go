@@ -18,14 +18,21 @@ import (
 )
 
 type Popup struct {
-	Visible    bool
-	R          image.Rectangle
-	B          *image.RGBA
-	Dir        string
-	alignRight bool
-	start      func(*Popup, ExecContext) (bool, string)
-	ed         *Editor
+	Visible   bool
+	R         image.Rectangle
+	B         *image.RGBA
+	Dir       string
+	start     func(*Popup, ExecContext) (bool, string)
+	ed        *Editor
+	autocompl bool
 }
+
+type popupFlags uint8
+
+const (
+	popupAlignLeft popupFlags = iota
+	popupAutocompl
+)
 
 var tooltipContents string
 var Compl, Tooltip Popup
@@ -34,7 +41,6 @@ var complPrefixSuffix string
 func init() {
 	Compl.start = complStart
 	Tooltip.start = tooltipStart
-	Tooltip.alignRight = true
 }
 
 func popupFrame(b *image.RGBA, r image.Rectangle) textframe.Frame {
@@ -265,12 +271,13 @@ func complStart(p *Popup, ec ExecContext) (bool, string) {
 	return true, txt
 }
 
-func (p *Popup) Start(ec ExecContext) {
+func (p *Popup) Start(ec ExecContext, flags popupFlags) {
 	ok, txt := p.start(p, ec)
 	if !ok {
 		return
 	}
 
+	p.autocompl = flags&popupAutocompl != 0
 	p.ed = ec.ed
 
 	p.Dir = ""
@@ -282,7 +289,7 @@ func (p *Popup) Start(ec ExecContext) {
 	oldR := p.R
 	p.prepare(txt)
 	p0 := ec.fr.PointToCoord(ec.fr.Sel.S)
-	if p.alignRight {
+	if flags&popupAlignLeft != 0 {
 		p0.X = ec.fr.R.Min.X
 	}
 	p0 = p0.Add(image.Point{2, 4})
