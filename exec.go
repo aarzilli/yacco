@@ -1446,7 +1446,7 @@ func TooltipCmd(ec ExecContext, arg string) {
 
 		sideChan <- func() {
 			flags := popupAlignLeft
-			if out[0] == 0x07 {
+			if len(out) > 0 && out[0] == 0x07 {
 				flags = popupAutocompl
 				out = out[1:]
 			}
