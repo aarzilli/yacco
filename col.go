@@ -238,6 +238,7 @@ func (c *Col) Redraw() {
 	}
 	draw.Draw(c.tagfr.B, br, &config.TheColorScheme.VertBorder, br.Min, draw.Src)
 
+	c.tagfr.Invalidate()
 	c.tagfr.Redraw(false, nil)
 
 	for i, _ := range c.editors {

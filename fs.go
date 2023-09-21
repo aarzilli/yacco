@@ -978,29 +978,36 @@ func writeMainPropFn(data []byte, off int64) syscall.Errno {
 		Wnd.RedrawHard()
 	}
 
-	v := strings.SplitN(string(data), "=", 2)
-	if len(v) >= 2 {
-		if (v[0] == "font") && (v[1] == "switch") {
-			if Wnd.Prop["font"] == "main" {
-				Wnd.Prop["font"] = "alt"
+	done := make(chan struct{})
+
+	sideChan <- func() {
+		defer close(done)
+		v := strings.SplitN(string(data), "=", 2)
+		if len(v) >= 2 {
+			if (v[0] == "font") && (v[1] == "switch") {
+				if Wnd.Prop["font"] == "main" {
+					Wnd.Prop["font"] = "alt"
+				} else {
+					Wnd.Prop["font"] = "main"
+				}
+			} else if v[0] == "font" {
+				if v[1] == "+" {
+					config.FontSizeChange++
+				} else if v[1] == "-" {
+					config.FontSizeChange--
+				} else {
+					config.FontSizeChange, _ = strconv.Atoi(v[1])
+				}
+				fontszchange()
+			} else if v[0] == "cwd" {
+				CdCmd(ExecContext{buf: nil}, v[1])
 			} else {
-				Wnd.Prop["font"] = "main"
+				Wnd.Prop[v[0]] = v[1]
 			}
-		} else if v[0] == "font" {
-			if v[1] == "+" {
-				config.FontSizeChange++
-			} else if v[1] == "-" {
-				config.FontSizeChange--
-			} else {
-				config.FontSizeChange, _ = strconv.Atoi(v[1])
-			}
-			fontszchange()
-		} else if v[0] == "cwd" {
-			CdCmd(ExecContext{buf: nil}, v[1])
-		} else {
-			Wnd.Prop[v[0]] = v[1]
 		}
 	}
+
+	<-done
 	return 0
 }
 
