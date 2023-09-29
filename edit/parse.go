@@ -58,13 +58,14 @@ type addrTok string
 
 func Parse(pgm []rune) *Cmd {
 	r, rest := parseEx(pgm, false)
+parseLoop:
 	for len(rest) > 0 {
 		switch rest[0] {
 		case ' ', '\t', '\n':
 			rest = rest[1:]
 			// continue
 		default:
-			break
+			break parseLoop
 		}
 	}
 	if len(rest) != 0 {
