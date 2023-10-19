@@ -935,7 +935,7 @@ func writePropFn(i int, data []byte, off int64) syscall.Errno {
 					ec.buf.Props["font"] = "main"
 				}
 			} else if (v[0] == "font") && ((v[1] == "+") || (v[1] == "-")) {
-				done <- writeMainPropFn(data, off)
+				done <- writeMainPropInternal(data)
 				return
 			} else {
 				ec.buf.Props[v[0]] = v[1]
@@ -966,6 +966,18 @@ func readMainPropFn(off int64) ([]byte, syscall.Errno) {
 }
 
 func writeMainPropFn(data []byte, off int64) syscall.Errno {
+	done := make(chan struct{})
+
+	sideChan <- func() {
+		defer close(done)
+		writeMainPropInternal(data)
+	}
+
+	<-done
+	return 0
+}
+
+func writeMainPropInternal(data []byte) syscall.Errno {
 	fontszchange := func() {
 		config.ReloadFonts(*configFlag)
 		for _, col := range Wnd.cols.cols {
@@ -978,36 +990,29 @@ func writeMainPropFn(data []byte, off int64) syscall.Errno {
 		Wnd.RedrawHard()
 	}
 
-	done := make(chan struct{})
-
-	sideChan <- func() {
-		defer close(done)
-		v := strings.SplitN(string(data), "=", 2)
-		if len(v) >= 2 {
-			if (v[0] == "font") && (v[1] == "switch") {
-				if Wnd.Prop["font"] == "main" {
-					Wnd.Prop["font"] = "alt"
-				} else {
-					Wnd.Prop["font"] = "main"
-				}
-			} else if v[0] == "font" {
-				if v[1] == "+" {
-					config.FontSizeChange++
-				} else if v[1] == "-" {
-					config.FontSizeChange--
-				} else {
-					config.FontSizeChange, _ = strconv.Atoi(v[1])
-				}
-				fontszchange()
-			} else if v[0] == "cwd" {
-				CdCmd(ExecContext{buf: nil}, v[1])
+	v := strings.SplitN(string(data), "=", 2)
+	if len(v) >= 2 {
+		if (v[0] == "font") && (v[1] == "switch") {
+			if Wnd.Prop["font"] == "main" {
+				Wnd.Prop["font"] = "alt"
 			} else {
-				Wnd.Prop[v[0]] = v[1]
+				Wnd.Prop["font"] = "main"
 			}
+		} else if v[0] == "font" {
+			if v[1] == "+" {
+				config.FontSizeChange++
+			} else if v[1] == "-" {
+				config.FontSizeChange--
+			} else {
+				config.FontSizeChange, _ = strconv.Atoi(v[1])
+			}
+			fontszchange()
+		} else if v[0] == "cwd" {
+			CdCmd(ExecContext{buf: nil}, v[1])
+		} else {
+			Wnd.Prop[v[0]] = v[1]
 		}
 	}
-
-	<-done
 	return 0
 }
 
