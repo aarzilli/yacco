@@ -929,7 +929,6 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		//fmt.Printf("keypress: <%s>\n", util.KeyEvent(e))
 		estr := util.KeyEvent(e)
 		if ec.ed != nil && ec.eventChan != nil && ec.ed.bodybuf.Props["send-arrows"] == "1" && ((estr == "up_arrow") || (estr == "down_arrow")) {
-			//TODO: send event
 			dir := "↑"
 			if estr == "down_arrow" {
 				dir = "↓"
@@ -944,6 +943,8 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 				// hide tooltip if we moved to a position where it shouldn't be visible
 				HideCompl(false)
 			}
+		} else if commandMode {
+			commandModeType(ec, e, lp)
 		} else if e.Rune > 0 {
 			LastTypeTime = time.Now()
 			if lp.tagfr == nil && ec.ed != nil {
@@ -977,22 +978,32 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 
 	switch e.Code {
 	case key.CodeEscape:
-		if !HideCompl(true) {
-			if lp.ed != nil && lp.ed.eventChanSpecial {
-				lp.ed.sfr.Fr.VisibleTick = true
-				util.Fmtevent2(ec.ed.eventChan, util.EO_KBD, true, false, false, 0, 0, 0, "Escape", nil)
-				return
-			} else if ec.buf != nil {
-				var fr *textframe.Frame
-				if lp.tagfr != nil {
-					fr = lp.tagfr
-				} else if lp.sfr != nil {
-					fr = &lp.sfr.Fr
-				}
-				if fr != nil {
-					escapeSel(&fr.Sel, ec.buf.LastTypePos())
-					ec.br()
-				}
+		if HideCompl(true) {
+			return
+		}
+		if lp.ed != nil && lp.ed.eventChanSpecial {
+			lp.ed.sfr.Fr.VisibleTick = true
+			util.Fmtevent2(ec.ed.eventChan, util.EO_KBD, true, false, false, 0, 0, 0, "Escape", nil)
+			return
+		}
+		if config.ModalEnabled {
+			if commandMode {
+				commandModeType(ec, e, lp)
+			} else {
+				commandModeEnter()
+			}
+			return
+		}
+		if ec.buf != nil {
+			var fr *textframe.Frame
+			if lp.tagfr != nil {
+				fr = lp.tagfr
+			} else if lp.sfr != nil {
+				fr = &lp.sfr.Fr
+			}
+			if fr != nil {
+				escapeSel(&fr.Sel, ec.buf.LastTypePos())
+				ec.br()
 			}
 		}
 
@@ -1073,6 +1084,10 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		}
 
 	case key.CodeTab:
+		if commandMode {
+			commandModeType(ec, e, lp)
+			return
+		}
 		LastTypeTime = time.Now()
 		ec := lp.asExecContext(true)
 		if ec.buf != nil {
@@ -1095,6 +1110,10 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		}
 
 	case key.CodeInsert:
+		if commandMode {
+			commandModeType(ec, e, lp)
+			return
+		}
 		LastTypeTime = time.Now()
 		if !Compl.Visible {
 			ec := lp.asExecContext(true)
@@ -1369,11 +1388,11 @@ func expandedSelection(lp LogicalPos, idx int) (string, int) {
 
 func expandSelToWord(buf *buf.Buffer, sel util.Sel) (s, e int) {
 	if sel.S >= buf.Size() {
-		s = buf.Tospc(sel.S-1, -1)
+		s = buf.Tospc(sel.S-1, -1, false)
 	} else {
-		s = buf.Tospc(sel.S, -1)
+		s = buf.Tospc(sel.S, -1, false)
 	}
-	e = buf.Tospc(sel.S, +1)
+	e = buf.Tospc(sel.S, +1, false)
 	return
 }
 

@@ -31,6 +31,7 @@ type configObj struct {
 	Load        *configLoadRules
 	Save        *configSaveRules
 	KeyBindings *configKeys
+	Modal       *configKeys
 }
 
 var admissibleFonts = []string{"Main", "Tag", "Alt", "Compl"}
@@ -130,6 +131,10 @@ func LoadConfiguration(path string) {
 		}
 	}
 
+	if co.Modal != nil {
+		postprocessModal(co.Modal.keys)
+	}
+
 	MainFontSize = co.Fonts["Main"].Pixel
 	MainFont = fontFromConf(*co.Fonts["Main"], co.Fonts)
 	TagFont = fontFromConf(*co.Fonts["Tag"], co.Fonts)
@@ -184,9 +189,10 @@ func ReloadFonts(path string) {
 func newUnmarshaller(path string) *iniparse.Unmarshaller {
 	u := iniparse.NewUnmarshaller()
 	u.Path = path
-	u.AddSpecialUnmarshaller("load", LoadRulesParser)
-	u.AddSpecialUnmarshaller("save", SaveRulesParser)
-	u.AddSpecialUnmarshaller("keybindings", LoadKeysParser)
+	u.AddSpecialUnmarshaller("load", loadRulesParser)
+	u.AddSpecialUnmarshaller("save", saveRulesParser)
+	u.AddSpecialUnmarshaller("keybindings", loadKeysParser)
+	u.AddSpecialUnmarshaller("modal", modalKeysParser)
 	return u
 }
 
@@ -213,7 +219,7 @@ func admissibleValues(m []string, a []string) (bool, string) {
 	return true, ""
 }
 
-func LoadRulesParser(path string, lineno int, lines []string) (interface{}, error) {
+func loadRulesParser(path string, lineno int, lines []string) (interface{}, error) {
 	r := &configLoadRules{make([]util.LoadRule, 0, len(lines))}
 	for i := range lines {
 		line := strings.TrimSpace(lines[i])
@@ -232,7 +238,7 @@ func LoadRulesParser(path string, lineno int, lines []string) (interface{}, erro
 	return r, nil
 }
 
-func SaveRulesParser(path string, lineno int, lines []string) (interface{}, error) {
+func saveRulesParser(path string, lineno int, lines []string) (interface{}, error) {
 	r := &configSaveRules{make([]util.SaveRule, 0, len(lines))}
 	for i := range lines {
 		line := strings.TrimSpace(lines[i])
@@ -251,7 +257,7 @@ func SaveRulesParser(path string, lineno int, lines []string) (interface{}, erro
 	return r, nil
 }
 
-func LoadKeysParser(path string, lineno int, lines []string) (interface{}, error) {
+func loadKeysParser(path string, lineno int, lines []string) (interface{}, error) {
 	r := &configKeys{map[string]string{}}
 	lastkey := ""
 	for i := range lines {
@@ -266,6 +272,29 @@ func LoadKeysParser(path string, lineno int, lines []string) (interface{}, error
 		if len(v) != 2 {
 			return nil, fmt.Errorf("%s:%d: Malformed line (wrong number of fileds)", path, lineno+i)
 		}
+		if v[0] == "" {
+			r.keys[lastkey] += "\n" + v[1]
+		} else {
+			r.keys[v[0]] = v[1]
+			lastkey = v[0]
+		}
+	}
+	return r, nil
+}
+
+func modalKeysParser(path string, lineno int, lines []string) (interface{}, error) {
+	r := &configKeys{keys: make(map[string]string)}
+	lastkey := ""
+	for i := range lines {
+		line := strings.TrimSpace(lines[i])
+		if line == "" {
+			continue
+		}
+		v := strings.SplitN(line, "\t", 2)
+		if len(v) != 2 {
+			return nil, fmt.Errorf("%s:%d: Malformed line (wrong number of fields)", path, lineno+i)
+		}
+		v[1] = strings.TrimLeft(v[1], "\t ")
 		if v[0] == "" {
 			r.keys[lastkey] += "\n" + v[1]
 		} else {

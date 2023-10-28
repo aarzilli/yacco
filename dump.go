@@ -150,7 +150,7 @@ func LoadFrom(dumpDest string) bool {
 
 	for i := range Wnd.cols.cols {
 		for j := range Wnd.cols.cols[i].editors {
-			Wnd.cols.cols[i].editors[j].BufferRefreshEx(true, true)
+			Wnd.cols.cols[i].editors[j].BufferRefreshEx(true, true, -1)
 		}
 	}
 

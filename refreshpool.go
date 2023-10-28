@@ -55,7 +55,7 @@ func RefreshReal() {
 		for _, col := range Wnd.cols.cols {
 			for _, e := range col.editors {
 				if e.bodybuf == refreshRequests[i].kb {
-					e.BufferRefreshEx(false, refreshRequests[i].scrollAll)
+					e.BufferRefreshEx(false, refreshRequests[i].scrollAll, -1)
 				}
 			}
 		}

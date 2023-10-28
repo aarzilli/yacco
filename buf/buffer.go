@@ -716,7 +716,7 @@ func (b *Buffer) Towd(start int, dir int, dontForceAdvance bool) int {
 }
 
 // Moves to the beginning or end of a space delimited word
-func (b *Buffer) Tospc(start int, dir int) int {
+func (b *Buffer) Tospc(start int, dir int, dontForceAdvance bool) int {
 	return b.Tof(start, dir, unicode.IsSpace)
 }
 

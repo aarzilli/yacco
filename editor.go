@@ -390,7 +390,7 @@ func (e *Editor) badTop() bool {
 	return e.bodybuf.At(e.sfr.Fr.Top-1) != '\n'
 }
 
-func (e *Editor) BufferRefreshEx(recur, scroll bool) {
+func (e *Editor) BufferRefreshEx(recur, scroll bool, scrollto int) {
 	// adjust matching parenthesis highlight
 	match := findPMatch(e.tagbuf, e.tagfr.Sel)
 	if match.S >= 0 {
@@ -414,9 +414,16 @@ func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 
 	// refresh, possibly scroll the editor to show cursor
 	e.refreshIntl(false)
-	if (!(e.sfr.Fr.Inside(e.sfr.Fr.Sel.E) || e.sfr.Fr.Inside(e.sfr.Fr.Sel.S)) || e.badTop()) && scroll {
-		x := e.bodybuf.Tonl(e.sfr.Fr.Sel.E-2, -1)
-		e.otherSel[OS_TOP].E = x
+	mustScroll := false
+	if scrollto >= 0 {
+		mustScroll = !e.sfr.Fr.Inside(scrollto)
+	}
+	if (!(e.sfr.Fr.Inside(e.sfr.Fr.Sel.E) || e.sfr.Fr.Inside(e.sfr.Fr.Sel.S)) || mustScroll || e.badTop()) && scroll {
+		if scrollto >= 0 {
+			e.otherSel[OS_TOP].E = e.bodybuf.Tonl(scrollto-2, -1)
+		} else {
+			e.otherSel[OS_TOP].E = e.bodybuf.Tonl(e.sfr.Fr.Sel.E-2, -1)
+		}
 		e.refreshIntl(false)
 		if !(e.sfr.Fr.Inside(e.sfr.Fr.Sel.E) || e.sfr.Fr.Inside(e.sfr.Fr.Sel.S)) {
 			e.otherSel[OS_TOP].E = e.sfr.Fr.LastPhisicalLineStart(e.bodybuf.Selection(util.Sel{e.otherSel[OS_TOP].E, e.sfr.Fr.Sel.E}))
@@ -445,7 +452,7 @@ func (e *Editor) BufferRefreshEx(recur, scroll bool) {
 	for _, col := range Wnd.cols.cols {
 		for _, oe := range col.editors {
 			if (oe.bodybuf == e.bodybuf) && (oe != e) {
-				oe.BufferRefreshEx(false, false)
+				oe.BufferRefreshEx(false, false, -1)
 			}
 		}
 	}
@@ -469,7 +476,7 @@ func (e *Editor) tagRefreshIntl() {
 }
 
 func (e *Editor) BufferRefresh() {
-	e.BufferRefreshEx(true, true)
+	e.BufferRefreshEx(true, true, -1)
 }
 
 func findPMatch(b *buf.Buffer, sel0 util.Sel) util.Sel {
@@ -759,7 +766,7 @@ func (ed *Editor) MinimapExit() {
 	ed.sfr.Fr.VisibleTick = true
 	ed.sfr.Fr.Invalidate()
 	ed.refreshIntl(true)
-	ed.BufferRefreshEx(true, false)
+	ed.BufferRefreshEx(true, false, -1)
 }
 
 type fileInfos []os.FileInfo

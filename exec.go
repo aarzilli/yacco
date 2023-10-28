@@ -297,7 +297,7 @@ func IntlCmd(cmd string) (Cmd, string, string, bool) {
 func execGuard() {
 	if r := recover(); r != nil {
 		errmsg := fmt.Sprintf("%v\n", r)
-		if config.EditErrorTrace {
+		if config.EditErrorTrace || strings.Contains(errmsg, "nil pointer") {
 			for i := 1; ; i++ {
 				_, file, line, ok := runtime.Caller(i)
 				if !ok {
@@ -1138,6 +1138,7 @@ func KeysInit() {
 		KeyBindings[k] = CompileCmd(config.KeyBindings[k])
 		maybeAddSelExtension(k, config.KeyBindings[k])
 	}
+	compileModal(config.Modal)
 }
 
 // Adds to KeyBindings a version of cmdstr with +shift+ that extends the current selection
@@ -1660,7 +1661,7 @@ func (bm *BufMan) RefreshBuffer(buf *buf.Buffer) {
 	for _, col := range Wnd.cols.cols {
 		for _, ed := range col.editors {
 			if ed.bodybuf == buf {
-				ed.BufferRefreshEx(false, true)
+				ed.BufferRefreshEx(false, true, -1)
 			}
 		}
 	}
