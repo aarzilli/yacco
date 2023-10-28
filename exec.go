@@ -11,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/aarzilli/yacco/buf"
@@ -37,68 +38,87 @@ type ExecContext struct {
 
 var KeyBindings = map[string]func(ec ExecContext){}
 
-type Cmd func(ec ExecContext, arg string)
+type CmdFn func(ec ExecContext, arg string)
+type Cmd struct {
+	Category string
+	Doc      string
+	Cmd      CmdFn
+}
 
 var cmds = map[string]Cmd{}
 
-var macros = map[string]Cmd{}
+var macros = map[string]CmdFn{}
 
 var spacesRe = regexp.MustCompile("\\s+")
 var exitConfirmed = false
 
 func init() {
-	cmds["Cut"] = func(ec ExecContext, arg string) { CopyCmd(ec, arg, true) }
-	cmds["Get"] = GetCmd
-	cmds["Del"] = func(ec ExecContext, arg string) { DelCmd(ec, arg, false) }
-	cmds["Delcol"] = DelcolCmd
-	cmds["Delete"] = func(ec ExecContext, arg string) { DelCmd(ec, arg, true) }
-	cmds["Dump"] = DumpCmd
-	cmds["Edit"] = EditCmd
-	cmds["Exit"] = ExitCmd
-	cmds["Kill"] = KillCmd
-	cmds["Setenv"] = SetenvCmd
-	cmds["Look"] = LookCmd
-	cmds["New"] = NewCmd
-	cmds["Newcol"] = NewcolCmd
-	cmds["Paste"] = PasteCmd
-	cmds["Put"] = PutCmd
-	cmds["Putall"] = PutallCmd
-	cmds["Redo"] = RedoCmd
-	cmds["Send"] = SendCmd
-	cmds["Snarf"] = func(ec ExecContext, arg string) { CopyCmd(ec, arg, false) }
-	cmds["Copy"] = func(ec ExecContext, arg string) { CopyCmd(ec, arg, false) }
-	cmds["Sort"] = SortCmd
-	cmds["Undo"] = UndoCmd
-	cmds["Zerox"] = ZeroxCmd
-	cmds["|"] = PipeCmd
-	cmds["<"] = PipeInCmd
-	cmds[">"] = PipeOutCmd
+	cmds["Cut"] = Cmd{"Clipboard", "", func(ec ExecContext, arg string) { CopyCmd(ec, arg, true) }}
+	cmds["Get"] = Cmd{"Files", "", GetCmd}
+	cmds["Del"] = Cmd{"Frames and Columns", "", func(ec ExecContext, arg string) { DelCmd(ec, arg, false) }}
+	cmds["Delcol"] = Cmd{"Frames and Columns", "", DelcolCmd}
+	cmds["Delete"] = Cmd{"Frames and Columns", "Like Del but can not be blocked by an attached process", func(ec ExecContext, arg string) { DelCmd(ec, arg, true) }}
+	cmds["Dump"] = Cmd{"Session", "[<name>]\tStarts saving session to <name>", DumpCmd}
+	cmds["Edit"] = Cmd{"Editing", "<...>\tRuns sed-like editing commands, see Help Edit", EditCmd}
+	cmds["Exit"] = Cmd{"Files", "", ExitCmd}
+	cmds["Kill"] = Cmd{"Jobs", "[<jobnum>]\tKill all jobs (or the one specified)", KillCmd}
+	cmds["Setenv"] = Cmd{"Jobs", "<var> <val>\t", SetenvCmd}
+	cmds["Look"] = Cmd{"Editing", "[<text>]\tSearch <text> or starts interactive search", LookCmd}
+	cmds["New"] = Cmd{"Frames and Columns", "", NewCmd}
+	cmds["Newcol"] = Cmd{"Frames and Columns", "", NewcolCmd}
+	cmds["Paste"] = Cmd{"Clipboard", "[primary|indent]\t", PasteCmd}
+	cmds["Put"] = Cmd{"Files", "", PutCmd}
+	cmds["Putall"] = Cmd{"Files", "", PutallCmd}
+	cmds["Redo"] = Cmd{"Editing", "", RedoCmd}
+	cmds["Send"] = Cmd{"Misc", "", SendCmd}
+	cmds["Snarf"] = Cmd{"Clipboard", "Same as Copy", func(ec ExecContext, arg string) { CopyCmd(ec, arg, false) }}
+	cmds["Copy"] = Cmd{"Clipboard", "Copies current selection, or between mark and cursor if the selection is empty", func(ec ExecContext, arg string) { CopyCmd(ec, arg, false) }}
+	cmds["Sort"] = Cmd{"Frames and Columns", "Duplicates current frame", SortCmd}
+	cmds["Undo"] = Cmd{"Editing", "", UndoCmd}
+	cmds["Zerox"] = Cmd{"Frames and Columns", "Duplicates current frame", ZeroxCmd}
+	cmds["|"] = Cmd{"Jobs", "<ext. cmd.>\tRuns selection through <ext. cmd.> replaces with output", PipeCmd}
+	cmds["<"] = Cmd{"Jobs", "<ext. cmd.>\tRuns selection through <ext. cmd.>", PipeInCmd}
+	cmds[">"] = Cmd{"Jobs", "<ext. cmd.>\tReplaces selection with output of <ext. cmd.>", PipeOutCmd}
 
 	// New
-	cmds["Cd"] = CdCmd
-	cmds["Jobs"] = JobsCmd
-	cmds["Look!Again"] = LookAgainCmd
-	cmds["Look!Quit"] = func(ec ExecContext, arg string) { SpecialSendCmd(ec, "!Quit") }
-	cmds["Look!Prev"] = func(ec ExecContext, arg string) { SpecialSendCmd(ec, "!Prev") }
-	/*cmds["Paste!Primary"] = func(ec ExecContext, arg string) { PasteCmd(ec, arg, true) }
-	cmds["Paste!Indent"] = PasteIndentCmd*/
-	cmds["Jump"] = JumpCmd
-	cmds["Getall"] = GetallCmd
-	cmds["Rename"] = RenameCmd
-	cmds["Rehash"] = RehashCmd
-	cmds["Do"] = DoCmd
-	cmds["Load"] = LoadCmd
-	cmds["Builtin"] = BuiltinCmd
-	cmds["Debug"] = DebugCmd
-	cmds["Help"] = HelpCmd
-	cmds["Theme"] = ThemeCmd
-	cmds["Direxec"] = DirexecCmd
-	cmds["Mark"] = MarkCmd
-	cmds["Savepos"] = SaveposCmd
-	cmds["Tooltip"] = TooltipCmd
-	cmds["NextError"] = NextErrorCmd
-	cmds["Lsp"] = LspCmd
-	cmds["Prepare"] = PrepareCmd
+	cmds["Cd"] = Cmd{"Jobs", "<dir>\t", CdCmd}
+	cmds["Jobs"] = Cmd{"Jobs", "Lists currently running jobs", JobsCmd}
+	cmds["Look!Again"] = Cmd{"", "", LookAgainCmd}
+	cmds["Look!Quit"] = Cmd{"", "", func(ec ExecContext, arg string) { SpecialSendCmd(ec, "!Quit") }}
+	cmds["Look!Prev"] = Cmd{"", "", func(ec ExecContext, arg string) { SpecialSendCmd(ec, "!Prev") }}
+	cmds["Jump"] = Cmd{"Misc", "Swap cursor and mark", JumpCmd}
+	cmds["Getall"] = Cmd{"Files", "", GetallCmd}
+	cmds["Rename"] = Cmd{"Frames and Columns", "<name>\t", RenameCmd}
+	cmds["Rehash"] = Cmd{"Misc", "Recalculates completions", RehashCmd}
+	cmds["Do"] = Cmd{"Misc", "<…>\tExecutes sequence of commands, one per line", DoCmd}
+	cmds["Load"] = Cmd{"Session", "[<name>]\tLoads session from <name> (omit for a list of sessions)", LoadCmd}
+	cmds["Builtin"] = Cmd{"Misc", "<…>\tRuns command as builtin (skip attached processes)", BuiltinCmd}
+	cmds["Debug"] = Cmd{"Misc", "<…>\tRun without arguments for informations", DebugCmd}
+	cmds["Help"] = Cmd{"", "", HelpCmd}
+	cmds["Theme"] = Cmd{"Misc", "<name>\t", ThemeCmd}
+	cmds["Direxec"] = Cmd{"Misc", "Executes the specified command on the currently selected directory entry", DirexecCmd}
+	cmds["Mark"] = Cmd{"Misc", "Sets the mark", MarkCmd}
+	cmds["Savepos"] = Cmd{"Clipboard", "Copies current position of the cursor to clipboard", SaveposCmd}
+	cmds["Tooltip"] = Cmd{"Misc", "<cmd>\tExecutes a command and shows the result in a tooltip, if the output starts with the BEL character the tooltip will behave as autocompletion", TooltipCmd}
+	cmds["NextError"] = Cmd{"Misc", "Tries to load the file specified in the next line of the last editor where a load operation was executed", NextErrorCmd}
+	cmds["Lsp"] = Cmd{"Misc", "Language server management", LspCmd}
+	cmds["Prepare"] = Cmd{"", "", PrepareCmd}
+
+	// Not actually commands
+	cmds["LookFile"] = Cmd{"Frames and Columns", "", nil}
+	cmds["E"] = Cmd{"External Utilities", "<file>\tEdits file", nil}
+	cmds["Watch"] = Cmd{"External Utilities", "<cmd>\tExecutes command every time a file changes in current directory", nil}
+	cmds["win"] = Cmd{"External Utilities", "<cmd>\tRuns cmd within pty", nil}
+	cmds["y9p"] = Cmd{"External Utilities", "	Filesystem interface access", nil}
+	cmds["Font"] = Cmd{"External Utilities", "Toggles alternate font", nil}
+	cmds["Fs"] = Cmd{"External Utilities", "Removes redundant spaces in current file", nil}
+	cmds["Indent"] = Cmd{"External Utilities", "Controls automatic indent and tab key behaviour", nil}
+	cmds["Tab"] = Cmd{"External Utilities", "Controls tab character width", nil}
+	cmds["LookExact"] = Cmd{"External Utilities", "Toggles smart case", nil}
+	cmds["Mount"] = Cmd{"External Utilities", "Invokes p9fuse", nil}
+	cmds["a+, a-"] = Cmd{"External Utilities", "indents/removes indent from selection", nil}
+	cmds["g"] = Cmd{"External Utilities", "recursive grep", nil}
+	cmds["in"] = Cmd{"External Utilities", "<dir> <cmd>\texecute <cmd> in <dir>", nil}
 }
 
 func HelpCmd(ec ExecContext, arg string) {
@@ -173,8 +193,8 @@ For , and ; if a2 is missing it defaults to "$", if a1 is missing it defaults to
 The address "," represents the whole file.
 `)
 	default:
-		Warn(`
-== Mouse ==
+		out := new(bytes.Buffer)
+		fmt.Fprintf(out, `== Mouse ==
 
 Select = left click (and drag)
 Execute = middle click, control + left click
@@ -185,81 +205,56 @@ Chords:
 - Left + middle: cut
 - Left + right: paste
 - With left down, click middle and immediately after right: copy
-
-== Files ==
-Get
-Put
-Putall
-Getall
-Exit
-
-== Editing ==
-Undo
-Redo
-Edit <…>		Runs sed-like editing commands, see Help Edit
-Look [<text>]	Search <text> or starts interactive search
-
-== Frames and Columns ==
-New
-Del
-Delete			Like Del but can not be blocked by an attached process
-Newcol
-Delcol
-Zerox			Duplicates current frame
-Sort			Sort frames in current column alphabetically
-Rename <name>
-LookFile		Opens special frame to search and open files interactively
-
-== Clipboard ==
-Cut			Cuts current selection, or between mark and cursor if the selection is empty
-Copy			Copies current selection, or between mark and cursor if the selection is empty
-Snarf			Same as Copy
-Paste [primary|indent]
-Savepos			Copies current position of the cursor to clipboard
-
-All of Cut, Copy and Paste will reset the mark
-
-== Session ==
-Dump [<name>]		Starts saving session to <name>
-Load [<name>]		Loads session from <name> (omit for a list of sessions)
-
-== Jobs ==
-| <ext. cmd.>		Runs selection through <ext. cmd.> replaces with output
-> <ext. cmd.>		Runs selection through <ext. cmd.>
-< <ext. cmd.>		Replaces selection with output of <ext. cmd.>
-Jobs			Lists currently running jobs
-Kill [<jobnum>]		Kill all jobs (or the one specified)
-Setenv <var> <val>
-Cd <dir>
-
-== External Utilities ==
-E <file>		Edits file
-Watch <cmd>		Executes command every time a file changes in current directory
-win <cmd>		Runs cmd within pty
-y9p			Filesystem interface access
-Font			Toggles alternate font
-Fs			Removes redundant spaces in current file
-Indent			Controls automatic indent and tab key behaviour
-Tab			Controls tab character width
-LookExact		Toggles smart case
-Mount			Invokes p9fuse
-a+, a-			indents/removes indent from selection
-g			recursive grep
-in <dir> <cmd>		execute <cmd> in <dir>
-
-== Misc ==
-Do <…>			Executes sequence of commands, one per line
-Rehash			Recalculates completions
-Send			Inserts clipboard or last selection in buffer
-Builtin <…>		Runs command as builtin (skip attached processes)
-Debug <…>		Run without arguments for informations
-Mark			Sets the mark
-Jump			Swap cursor and mark
-Direxec			Executes the specified command on the currently selected directory entry.
-NextError		Tries to load the file specified in the next line of the last editor where a load operation was executed
-Lsp			Language server management
-Tooltip <cmd>	Executes a command and shows the result in a tooltip, if the output starts with the BEL character the tooltip will behave as autocompletion
 `)
+
+		cat2cmds := map[string][]string{}
+		for name, cmd := range cmds {
+			cat2cmds[cmd.Category] = append(cat2cmds[cmd.Category], name)
+		}
+
+		describe := func(names []string) {
+			sort.Strings(names)
+			first := true
+			w := new(tabwriter.Writer)
+			w.Init(out, 0, 8, 0, '\t', 0)
+			for _, name := range names {
+				cmd := cmds[name]
+				if first {
+					fmt.Fprintf(out, "\n== %s ==\n", cmd.Category)
+					first = false
+				}
+				if cmd.Doc == "" {
+					fmt.Fprintf(w, "%s\t\n", name)
+				} else {
+					v := strings.Split(cmd.Doc, "\t")
+					if len(v) == 1 {
+						fmt.Fprintf(w, "%s\t%s\n", name, cmd.Doc)
+					} else {
+						fmt.Fprintf(w, "%s %s\t%s\n", name, v[0], v[1])
+					}
+				}
+			}
+			w.Flush()
+		}
+
+		for _, cat := range []string{"Files", "Editing", "Frames and Columns", "Clipboard", "Session", "Jobs", "External Utilities", "Misc"} {
+			describe(cat2cmds[cat])
+			delete(cat2cmds, cat)
+		}
+
+		cats := []string{}
+		for k := range cat2cmds {
+			cats = append(cats, k)
+		}
+		sort.Strings(cats)
+		for _, cat := range cats {
+			if cat == "" {
+				continue
+			}
+			describe(cat2cmds[cat])
+		}
+
+		Warn(out.String())
 	}
 }
 
@@ -267,13 +262,13 @@ func fakebuf(name string) bool {
 	return (len(name) == 0) || (name[0] == '+') || (name[0] == '-') || (name[len(name)-1] == '/')
 }
 
-func IntlCmd(cmd string) (Cmd, string, string, bool) {
+func IntlCmd(cmd string) (CmdFn, string, string, bool) {
 	if len(cmd) <= 0 {
 		return nil, "", "", true
 	}
 
 	if (cmd[0] == '<') || (cmd[0] == '>') || (cmd[0] == '|') {
-		return cmds[cmd[:1]], cmd[1:], cmd[:1], true
+		return cmds[cmd[:1]].Cmd, cmd[1:], cmd[:1], true
 	} else {
 		v := spacesRe.Split(cmd, 2)
 		if f, ok := macros[v[0]]; ok {
@@ -282,12 +277,12 @@ func IntlCmd(cmd string) (Cmd, string, string, bool) {
 				arg = v[1]
 			}
 			return f, arg, v[0], true
-		} else if f, ok := cmds[v[0]]; ok {
+		} else if f, ok := cmds[v[0]]; ok && f.Cmd != nil {
 			arg := ""
 			if len(v) > 1 {
 				arg = v[1]
 			}
-			return f, arg, v[0], true
+			return f.Cmd, arg, v[0], true
 		} else {
 			return nil, "", "", false
 		}
