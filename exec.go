@@ -36,7 +36,12 @@ type ExecContext struct {
 	norefresh bool
 }
 
-var KeyBindings = map[string]func(ec ExecContext){}
+type CompiledCmd struct {
+	Str string
+	F   func(ec ExecContext)
+}
+
+var KeyBindings = map[string]CompiledCmd{}
 
 type CmdFn func(ec ExecContext, arg string)
 type Cmd struct {
@@ -192,6 +197,29 @@ For + and - if a2 is missing it defaults to "1", if a1 is missing it defaults to
 For , and ; if a2 is missing it defaults to "$", if a1 is missing it defaults to "0".
 The address "," represents the whole file.
 `)
+
+	case "Keybindings":
+		keys := []string{}
+		for k := range KeyBindings {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		out := new(bytes.Buffer)
+		w := new(tabwriter.Writer)
+		w.Init(out, 0, 8, 0, '\t', 0)
+		for _, key := range keys {
+			fmt.Fprintf(w, "%s\t%s\n", key, KeyBindings[key].Str)
+		}
+		w.Flush()
+		if config.ModalEnabled {
+			fmt.Fprintf(out, "\n\nModal:\n\n")
+			w = new(tabwriter.Writer)
+			w.Init(out, 0, 8, 0, '\t', 0)
+			printModal(w, config.Modal, []string{})
+			w.Flush()
+		}
+		Warn(out.String())
+
 	default:
 		out := new(bytes.Buffer)
 		fmt.Fprintf(out, `== Mouse ==
@@ -253,6 +281,13 @@ Chords:
 			}
 			describe(cat2cmds[cat])
 		}
+
+		fmt.Fprintf(out, `
+Additional help:
+
+Help Edit		Help for the edit command
+Help Keybindings	Print current keybindings
+`)
 
 		Warn(out.String())
 	}
@@ -1163,26 +1198,26 @@ func maybeAddSelExtension(k, cmdstr string) {
 	sort.Strings(kcomps[:len(kcomps)-1])
 	newk := strings.Join(kcomps, "+")
 
-	KeyBindings[newk] = editPgmToFunc(pgm)
+	KeyBindings[newk] = CompiledCmd{cmdstr, editPgmToFunc(pgm)}
 }
 
-func CompileCmd(cmdstr string) func(ec ExecContext) {
+func CompileCmd(cmdstr string) CompiledCmd {
 	xcmd, arg, cmdname, isintl := IntlCmd(cmdstr)
 	if !isintl {
-		return func(ec ExecContext) {
+		return CompiledCmd{cmdstr, func(ec ExecContext) {
 			defer execGuard()
 			ExtExec(ec, cmdstr, false)
-		}
+		}}
 	} else if cmdname == "Edit" {
 		pgm := edit.Parse([]rune(arg))
-		return editPgmToFunc(pgm)
+		return CompiledCmd{cmdstr, editPgmToFunc(pgm)}
 	} else if cmdname == "Do" {
 		cmds := strings.Split(arg, "\n")
 		fcmds := make([]func(ec ExecContext), len(cmds))
 		for i := range cmds {
-			fcmds[i] = CompileCmd(cmds[i])
+			fcmds[i] = CompileCmd(cmds[i]).F
 		}
-		return func(ec ExecContext) {
+		return CompiledCmd{cmdstr, func(ec ExecContext) {
 			ec.norefresh = true
 			for i, fcmd := range fcmds {
 				if i == len(fcmds)-1 {
@@ -1190,14 +1225,14 @@ func CompileCmd(cmdstr string) func(ec ExecContext) {
 				}
 				fcmd(ec)
 			}
-		}
+		}}
 	} else if xcmd == nil {
-		return func(ec ExecContext) {}
+		return CompiledCmd{cmdstr, func(ec ExecContext) {}}
 	} else {
-		return func(ec ExecContext) {
+		return CompiledCmd{cmdstr, func(ec ExecContext) {
 			defer execGuard()
 			xcmd(ec, arg)
-		}
+		}}
 	}
 }
 

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"io"
 	"strings"
 
 	"github.com/aarzilli/yacco/buf"
@@ -21,11 +23,21 @@ var CompiledModal = map[string]func(ec ExecContext){}
 func compileModal(m *config.ModalMapOrAction) {
 	if m.Action != "" {
 		if CompiledModal[m.Action] == nil && !strings.HasPrefix(m.Action, "modal-") {
-			CompiledModal[m.Action] = CompileCmd(m.Action)
+			CompiledModal[m.Action] = CompileCmd(m.Action).F
 		}
 	}
 	for _, m2 := range m.Map {
 		compileModal(m2)
+	}
+}
+
+func printModal(w io.Writer, m *config.ModalMapOrAction, path []string) {
+	if m.Action != "" {
+		fmt.Fprintf(w, "%s\t%s\n", strings.Join(path, " "), m.Action)
+		return
+	}
+	for k, m2 := range m.Map {
+		printModal(w, m2, append(path, k))
 	}
 }
 

@@ -938,7 +938,7 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 			LastTypeTime = time.Time{}
 			HideCompl(false)
 			//println("Execute command: <" + cmd + ">")
-			fcmd(ec)
+			fcmd.F(ec)
 			if Tooltip.Visible {
 				// hide tooltip if we moved to a position where it shouldn't be visible
 				HideCompl(false)
