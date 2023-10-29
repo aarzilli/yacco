@@ -1,0 +1,9 @@
+// This is a long line
+// but it is split into three lines the first one is short and should be reflown together including the last one
+// which is this one.
+// The end.
+====
+// This is a long line but it is split into three lines the first one is
+// short and should be reflown together including the last one which is this
+// one.
+// The end.

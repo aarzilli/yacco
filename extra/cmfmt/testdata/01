@@ -1,0 +1,13 @@
+This is a very very long long long long line of text that should be split into multiple lines.
+Followed by another very very long long long line of text to be split into multiple lines.
+And a short line.
+
+The end.
+====
+This is a very very long long long long line of text that should be split
+into multiple lines.
+Followed by another very very long long long line of text to be split into
+multiple lines.
+And a short line.
+
+The end.

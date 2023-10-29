@@ -1,0 +1,12 @@
+This is a very long line used to start a test for lists of items which will be split into multiple lines:
+* an item that consists of another very long line of text that needs to be split into multiple lines note that it ends with a period.
+* an item that consists of another very long line of text that needs to be split into multiple lines note that it does not end with a period
+* short item that won't get split
+====
+This is a very long line used to start a test for lists of items which will
+be split into multiple lines:
+* an item that consists of another very long line of text that needs to be
+  split into multiple lines note that it ends with a period.
+* an item that consists of another very long line of text that needs to be
+  split into multiple lines note that it does not end with a period
+* short item that won't get split
