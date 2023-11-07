@@ -1464,10 +1464,8 @@ func TooltipCmd(ec ExecContext, arg string) {
 		wd = ec.dir
 	}
 	resultChan := make(chan string)
-	var out string
-	NewJob(wd, arg, "", &ec, false, true, resultChan)
-
 	go func() {
+		var out string
 		select {
 		case out = <-resultChan:
 		case <-time.After(5 * time.Second):
@@ -1485,6 +1483,9 @@ func TooltipCmd(ec ExecContext, arg string) {
 			Tooltip.Start(ec, flags)
 		}
 	}()
+
+	NewJob(wd, arg, "", &ec, false, true, resultChan)
+
 }
 
 func NextErrorCmd(ec ExecContext, arg string) {

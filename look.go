@@ -69,6 +69,7 @@ func lookfwd(ed *Editor, needle []rune, fromEnd bool, exact bool) {
 var lastNeedle []rune
 
 func lookproc(ec ExecContext) {
+	commandModeExit()
 	ch := make(chan string, 5)
 
 	ok, savedTag, savedEventChan := ec.ed.EnterSpecial(ch)

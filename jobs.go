@@ -219,7 +219,12 @@ func NewJob(wd, cmd, input string, ec *ExecContext, writeToBuf, istooltip bool, 
 			sideChan <- ReplaceMsg(ec, nil, false, job.outstr, util.EO_BODYTAG, true, true)
 			doneSomething = true
 		} else if resultChan != nil {
-			resultChan <- job.outstr
+			select {
+			case resultChan <- job.outstr:
+				// ok
+			default:
+				//discard
+			}
 			doneSomething = true
 		}
 
