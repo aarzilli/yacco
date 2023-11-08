@@ -47,6 +47,9 @@ func getcmtprefix(text string) (prefix, rest string) {
 }
 
 func getitemprefix(text string) (prefix, rest string) {
+	if pfx := numlistprefix(text); pfx != "" {
+		return pfx, text[len(pfx):]
+	}
 	i := 0
 	for i < len(text) {
 		if text[i] != ' ' && text[i] != '\t' {
@@ -117,6 +120,34 @@ func flush(w io.Writer, in string, sz int) {
 	}
 }
 
+func numlistprefix(line string) string {
+	var i int
+	for i = range line {
+		if line[i] != ' ' {
+			break
+		}
+	}
+	found := false
+	for ; i < len(line); i++ {
+		if line[i] < '0' || line[i] > '9' {
+			break
+		}
+		found = true
+	}
+	if !found || i >= len(line) || i+1 >= len(line) {
+		return ""
+	}
+	if line[i] == '.' || line[i] == ')' {
+		for i++; i < len(line); i++ {
+			if line[i] != ' ' {
+				return line[:i]
+			}
+		}
+		return ""
+	}
+	return ""
+}
+
 func reflow(in string, sz int) string {
 	lines := strings.Split(in, "\n")
 	outlines := []string{}
@@ -143,7 +174,7 @@ func reflow(in string, sz int) string {
 				next = next[len(cmt):]
 			}
 			ch, _ := utf8.DecodeRuneInString(next)
-			if !unicode.IsLetter(ch) && !unicode.IsNumber(ch) {
+			if (!unicode.IsLetter(ch) && !unicode.IsNumber(ch)) || numlistprefix(next) != "" {
 				outlines = append(outlines, strings.Join(line, " "))
 				line = line[:0]
 				continue

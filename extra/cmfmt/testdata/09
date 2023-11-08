@@ -1,0 +1,9 @@
+1. this is a short line
+2. this is a long line inside a numbered list so it should be wrapped around but not be fused with either the stuff before or the stuff that comes after
+3. final line of the numbered list.
+====
+1. this is a short line
+2. this is a long line inside a numbered list so it should be wrapped around
+   but not be fused with either the stuff before or the stuff that comes
+   after
+3. final line of the numbered list.
