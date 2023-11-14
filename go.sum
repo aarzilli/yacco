@@ -1,5 +1,7 @@
 github.com/aarzilli/exp v0.0.0-20220219150628-972bd7e11036 h1:ogsAqDtIxhRcsSGfEdILNUm14lZHlwH1Ik8goTk3yfE=
 github.com/aarzilli/exp v0.0.0-20220219150628-972bd7e11036/go.mod h1:XERIKN7NwPIwxgPZAfVsSprwuRJFWeCXqWcvCQJKuXw=
+github.com/aarzilli/exp v0.0.0-20231114144526-8b1c86be351b h1:G9r2jlu3ojO2KTnDzSgHi3T6a6DaJ1PxwQUf7kp+who=
+github.com/aarzilli/exp v0.0.0-20231114144526-8b1c86be351b/go.mod h1:XERIKN7NwPIwxgPZAfVsSprwuRJFWeCXqWcvCQJKuXw=
 github.com/aarzilli/freetype v0.0.0-20180724121948-6c8832ae5783 h1:2E1SC5yqiqWSaJeEODtR8gDwQ1VHR4Nj2lRkIWOJANs=
 github.com/aarzilli/freetype v0.0.0-20180724121948-6c8832ae5783/go.mod h1:x3ylkimRUVHS0+9mkdpMg0F3b7aczdnc6CqDP9mUXqE=
 github.com/aarzilli/go2def v0.0.0-20220703140930-d8673a371c40 h1:367KylwfswhIQPwE2kJmE/NFFqdcNLCr53N24dtD/J4=

@@ -240,6 +240,7 @@ type NewWindowOptions struct {
 	// Title specifies the window title.
 	Title string
 	Class string
+	Icon  image.Image
 
 	// TODO: fullscreen, icon, cursorHidden?
 }

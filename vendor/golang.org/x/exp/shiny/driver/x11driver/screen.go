@@ -5,6 +5,7 @@
 package x11driver
 
 import (
+	"encoding/binary"
 	"fmt"
 	"image"
 	"image/color"
@@ -439,6 +440,27 @@ func (s *screenImpl) NewWindow(opts *screen.NewWindowOptions) (screen.Window, er
 	xproto.CreateGC(s.xc, xg, xproto.Drawable(xw), 0, nil)
 	render.CreatePicture(s.xc, xp, xproto.Drawable(xw), pictformat, 0, nil)
 	xproto.MapWindow(s.xc, xw)
+
+	if opts != nil && opts.Icon != nil {
+		netWmIconAtom, _ := s.internAtom("_NET_WM_ICON")
+		cardinalAtom, _ := s.internAtom("CARDINAL")
+		bounds := opts.Icon.Bounds()
+		data := []byte{}
+		data = binary.LittleEndian.AppendUint32(data, uint32(bounds.Dx()))
+		data = binary.LittleEndian.AppendUint32(data, uint32(bounds.Dy()))
+
+		for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
+			for x := bounds.Min.X; x < bounds.Max.X; x++ {
+				r, g, b, a := opts.Icon.At(x, y).RGBA()
+				data = append(data, uint8(r/256))
+				data = append(data, uint8(g/256))
+				data = append(data, uint8(b/256))
+				data = append(data, uint8(a/256))
+			}
+		}
+
+		xproto.ChangeProperty(s.xc, xproto.PropModeReplace, xw, netWmIconAtom, cardinalAtom, 32, uint32(len(data)/4), data)
+	}
 
 	return w, nil
 }

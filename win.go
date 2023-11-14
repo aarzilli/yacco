@@ -1,8 +1,11 @@
 package main
 
 import (
+	"bytes"
+	_ "embed"
 	"image"
 	"image/draw"
+	"image/png"
 	"math"
 	"os"
 	"path/filepath"
@@ -65,6 +68,9 @@ type activeSelStruct struct {
 	p       int
 }
 
+//go:embed 128.png
+var iconPngBytes []byte
+
 var activeSel, lastLoadSel activeSelStruct
 var activeEditor *Editor = nil
 var activeCol *Col = nil
@@ -111,15 +117,22 @@ func (w *Window) Close() {
 	w.wnd.Release()
 }
 
+func must(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (w *Window) Init(s screen.Screen, width, height int) (err error) {
 	w.Prop = make(map[string]string)
 	w.Prop["indentchar"] = "\t"
 	w.Prop["font"] = "main"
 	w.Prop["lookexact"] = "no"
 	w.Words = []string{}
+	icon, err := png.Decode(bytes.NewReader(iconPngBytes))
 
 	w.screen = s
-	w.wnd, err = s.NewWindow(&screen.NewWindowOptions{Width: width, Height: height, Class: "Yacco"})
+	w.wnd, err = s.NewWindow(&screen.NewWindowOptions{Width: width, Height: height, Class: "Yacco", Icon: icon})
 	if err != nil {
 		return err
 	}
