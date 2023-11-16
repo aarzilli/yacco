@@ -189,7 +189,8 @@ func reflow(in string, sz int) string {
 	for _, line := range outlines {
 		flush(out, line, sz)
 	}
-	return out.String()
+	outbuf := out.String()
+	return outbuf[:len(outbuf)-1]
 }
 
 func main() {

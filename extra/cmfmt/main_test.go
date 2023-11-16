@@ -29,7 +29,7 @@ func TestReflow(t *testing.T) {
 func testHelper(t *testing.T, name, in, tgt string) {
 	out := reflow(in, 75)
 	if out != tgt {
-		t.Errorf("wrong output for %s expected\n[%s]\ngot:\n[%s]", name, tgt, out)
+		t.Errorf("wrong output for %s expected\n[%s]\ngot:\n[%s]\ninput:\n[%s]", name, tgt, out, in)
 	}
 }
 
