@@ -100,7 +100,7 @@ func realmain(s screen.Screen) {
 	width := config.StartupWidth
 	height := config.StartupHeight
 
-	os.Setenv("TERM", "ascii")
+	os.Setenv("TERM", "dumb")
 
 	if *sizeFlag != "" {
 		v := strings.Split(*sizeFlag, "x")
