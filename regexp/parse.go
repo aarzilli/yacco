@@ -118,6 +118,8 @@ func (p *parser) parseBranch(str []rune) (*nodeGroup, []rune) {
 				if i+1 < len(rest) && rest[i+1] == '^' {
 					i++
 					r.nodes = append(r.nodes, &bolAssert)
+				} else if i+1 < len(rest) && (rest[i+1] == ' ' || rest[i+1] == '\t') {
+					r.nodes = append(r.nodes, &bolAssert)
 				} else {
 					r.nodes = append(r.nodes, &bolNonspaceAssert)
 				}
