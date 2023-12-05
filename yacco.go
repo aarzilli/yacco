@@ -52,13 +52,6 @@ var editorColors = [][]image.Uniform{
 	config.TheColorScheme.EditorSel3,                // 2 third button selection
 	config.TheColorScheme.EditorMatchingParenthesis, // 3 matching parenthesis
 }
-var tagColorsCommandMode = [][]image.Uniform{
-	config.TheColorScheme.TagSel1,
-	config.TheColorScheme.TagPlain,
-	config.TheColorScheme.TagSel2,
-	config.TheColorScheme.TagSel3,
-	config.TheColorScheme.TagMatchingParenthesis,
-}
 
 func setTheme(t string) {
 	cs, ok := config.ColorSchemeMap[t]
@@ -72,12 +65,6 @@ func setTheme(t string) {
 	tagColors[2] = config.TheColorScheme.TagSel2
 	tagColors[3] = config.TheColorScheme.TagSel3
 	tagColors[4] = config.TheColorScheme.TagMatchingParenthesis
-
-	tagColorsCommandMode[0] = tagColors[1]
-	tagColorsCommandMode[1] = tagColors[0]
-	tagColorsCommandMode[2] = tagColors[2]
-	tagColorsCommandMode[3] = tagColors[3]
-	tagColorsCommandMode[4] = tagColors[4]
 
 	editorColors[0] = config.TheColorScheme.EditorPlain
 	editorColors[1] = config.TheColorScheme.EditorSel1

@@ -85,6 +85,9 @@ control+d	Tooltip Go go2def
 control+b	Jump
 control+.	|a+
 control+,	|a-
+control+6	@modal-select-paragraph
+control+7	@modal-select-line
+control+8	@modal-select-bracketed
 
 EOF
 	fi

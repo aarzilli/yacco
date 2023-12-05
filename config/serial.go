@@ -31,7 +31,6 @@ type configObj struct {
 	Load        *configLoadRules
 	Save        *configSaveRules
 	KeyBindings *configKeys
-	Modal       *configKeys
 }
 
 var admissibleFonts = []string{"Main", "Tag", "Alt", "Compl"}
@@ -131,10 +130,6 @@ func LoadConfiguration(path string) {
 		}
 	}
 
-	if co.Modal != nil {
-		postprocessModal(co.Modal.keys)
-	}
-
 	MainFontSize = co.Fonts["Main"].Pixel
 	MainFont = fontFromConf(*co.Fonts["Main"], co.Fonts)
 	TagFont = fontFromConf(*co.Fonts["Tag"], co.Fonts)
@@ -192,7 +187,6 @@ func newUnmarshaller(path string) *iniparse.Unmarshaller {
 	u.AddSpecialUnmarshaller("load", loadRulesParser)
 	u.AddSpecialUnmarshaller("save", saveRulesParser)
 	u.AddSpecialUnmarshaller("keybindings", loadKeysParser)
-	u.AddSpecialUnmarshaller("modal", modalKeysParser)
 	return u
 }
 
@@ -272,29 +266,6 @@ func loadKeysParser(path string, lineno int, lines []string) (interface{}, error
 		if len(v) != 2 {
 			return nil, fmt.Errorf("%s:%d: Malformed line (wrong number of fileds)", path, lineno+i)
 		}
-		if v[0] == "" {
-			r.keys[lastkey] += "\n" + v[1]
-		} else {
-			r.keys[v[0]] = v[1]
-			lastkey = v[0]
-		}
-	}
-	return r, nil
-}
-
-func modalKeysParser(path string, lineno int, lines []string) (interface{}, error) {
-	r := &configKeys{keys: make(map[string]string)}
-	lastkey := ""
-	for i := range lines {
-		line := strings.TrimSpace(lines[i])
-		if line == "" {
-			continue
-		}
-		v := strings.SplitN(line, "\t", 2)
-		if len(v) != 2 {
-			return nil, fmt.Errorf("%s:%d: Malformed line (wrong number of fields)", path, lineno+i)
-		}
-		v[1] = strings.TrimLeft(v[1], "\t ")
 		if v[0] == "" {
 			r.keys[lastkey] += "\n" + v[1]
 		} else {

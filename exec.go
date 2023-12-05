@@ -19,6 +19,7 @@ import (
 	"github.com/aarzilli/yacco/config"
 	"github.com/aarzilli/yacco/edit"
 	"github.com/aarzilli/yacco/lsp"
+	"github.com/aarzilli/yacco/modal"
 	"github.com/aarzilli/yacco/textframe"
 	"github.com/aarzilli/yacco/util"
 )
@@ -211,13 +212,6 @@ The address "," represents the whole file.
 			fmt.Fprintf(w, "%s\t%s\n", key, KeyBindings[key].Str)
 		}
 		w.Flush()
-		if config.ModalEnabled {
-			fmt.Fprintf(out, "\n\nModal:\n\n")
-			w = new(tabwriter.Writer)
-			w.Init(out, 0, 8, 0, '\t', 0)
-			printModal(w, config.Modal, []string{})
-			w.Flush()
-		}
 		Warn(out.String())
 
 	default:
@@ -1165,10 +1159,43 @@ func JumpCmd(ec ExecContext, arg string) {
 
 func KeysInit() {
 	for k := range config.KeyBindings {
-		KeyBindings[k] = CompileCmd(config.KeyBindings[k])
+		modaladd := func(f func(*buf.Buffer, *util.Sel, edit.EditContext, func(int))) {
+			KeyBindings[k] = CompiledCmd{
+				config.KeyBindings[k],
+				func(ec ExecContext) {
+					if ec.buf == nil || ec.fr == nil || ec.ed == nil {
+						return
+					}
+					refresh := func(p int) {
+						ec.ed.BufferRefreshEx(true, true, p)
+					}
+					editctx := edit.EditContext{
+						Buf:       ec.buf,
+						Sel:       &ec.fr.Sel,
+						EventChan: ec.eventChan,
+						BufMan:    nil,
+						Trace:     false,
+					}
+					f(ec.buf, &ec.fr.Sel, editctx, refresh)
+				},
+			}
+		}
+		if strings.HasPrefix(config.KeyBindings[k], "@") {
+			switch config.KeyBindings[k] {
+			case "@modal-select-paragraph":
+				modaladd(modal.SelectParagraph)
+			case "@modal-select-line":
+				modaladd(modal.SelectLine)
+			case "@modal-select-bracketed":
+				modaladd(modal.SelectBracketed)
+			default:
+				panic(fmt.Errorf("unknown keybinding %q", config.KeyBindings[k]))
+			}
+		} else {
+			KeyBindings[k] = CompileCmd(config.KeyBindings[k])
+		}
 		maybeAddSelExtension(k, config.KeyBindings[k])
 	}
-	compileModal(config.Modal)
 }
 
 // Adds to KeyBindings a version of cmdstr with +shift+ that extends the current selection

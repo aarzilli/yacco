@@ -956,8 +956,6 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 				// hide tooltip if we moved to a position where it shouldn't be visible
 				HideCompl(false)
 			}
-		} else if commandMode {
-			commandModeType(ec, e, lp)
 		} else if e.Rune > 0 {
 			LastTypeTime = time.Now()
 			if lp.tagfr == nil && ec.ed != nil {
@@ -997,14 +995,6 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		if lp.ed != nil && lp.ed.eventChanSpecial {
 			lp.ed.sfr.Fr.VisibleTick = true
 			util.Fmtevent2(ec.ed.eventChan, util.EO_KBD, true, false, false, 0, 0, 0, "Escape", nil)
-			return
-		}
-		if config.ModalEnabled {
-			if commandMode {
-				commandModeType(ec, e, lp)
-			} else {
-				commandModeEnter()
-			}
 			return
 		}
 		if ec.buf != nil {
@@ -1097,10 +1087,6 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		}
 
 	case key.CodeTab:
-		if commandMode {
-			commandModeType(ec, e, lp)
-			return
-		}
 		LastTypeTime = time.Now()
 		ec := lp.asExecContext(true)
 		if ec.buf != nil {
@@ -1123,10 +1109,6 @@ func (w *Window) Type(lp LogicalPos, e key.Event) {
 		}
 
 	case key.CodeInsert:
-		if commandMode {
-			commandModeType(ec, e, lp)
-			return
-		}
 		LastTypeTime = time.Now()
 		if !Compl.Visible {
 			ec := lp.asExecContext(true)

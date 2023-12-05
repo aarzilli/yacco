@@ -15,40 +15,7 @@ func ee(cmd string, editctx edit.EditContext) bool {
 	return oldsel != *editctx.Sel
 }
 
-func BeginningOfParagraph(buf *buf.Buffer, sel *util.Sel, editctx edit.EditContext, refresh func(int), repeated bool) {
-	defer func() {
-		sel.E = sel.S
-		refresh(-1)
-	}()
-	savedp := sel.S
-	if startOfLine(buf, sel.S) || repeated {
-		ee("-/\n[ \t]*\n/+#0", editctx)
-		if savedp == sel.S {
-			ee("-#1-/[^\n\t ]/+#0", editctx)
-		}
-		return
-	}
-	ee("-+/@[^\t ]/-#0", editctx) // start of indentation
-	if savedp == sel.S {
-		ee("-0-#0", editctx) // start of line
-	}
-}
-
-func EndOfParagraph(buf *buf.Buffer, sel *util.Sel, editctx edit.EditContext, refresh func(int), repeated bool) {
-	defer func() {
-		sel.E = sel.S
-		refresh(-1)
-	}()
-	if endOfLine(buf, sel.S) || repeated {
-		if !ee("+/\n[ \t]*\n/+#0", editctx) {
-			ee("$", editctx)
-		}
-		return
-	}
-	ee("+0-#?1", editctx) // end of line
-}
-
-func SelectParagraph(buf *buf.Buffer, sel *util.Sel, editctx edit.EditContext, refresh func(int), repeated bool) {
+func SelectParagraph(buf *buf.Buffer, sel *util.Sel, editctx edit.EditContext, refresh func(int)) {
 	defer func() { refresh(sel.E) }()
 	if sel.S == sel.E {
 		if !ee("-/\n[\t ]*\n/+#0,.", editctx) {
@@ -60,12 +27,12 @@ func SelectParagraph(buf *buf.Buffer, sel *util.Sel, editctx edit.EditContext, r
 	}
 }
 
-func SelectLine(buf *buf.Buffer, sel *util.Sel, editctx edit.EditContext, refresh func(int), repeated bool) {
+func SelectLine(buf *buf.Buffer, sel *util.Sel, editctx edit.EditContext, refresh func(int)) {
 	defer func() { refresh(sel.E) }()
 	ee("-0,+#0+0", editctx)
 }
 
-func SelectBracketed(buf *buf.Buffer, sel *util.Sel, editctx edit.EditContext, refresh func(int), repeated bool) {
+func SelectBracketed(buf *buf.Buffer, sel *util.Sel, editctx edit.EditContext, refresh func(int)) {
 	defer refresh(-1)
 	oldSel := *sel
 	if sel.S == sel.E {
