@@ -36,6 +36,7 @@ const (
 	HF_TRUNCATE            // truncates instead of softwrapping
 	HF_NOVERTSTOP          // Insert and InsertColor don't stop after they are past the bottom of the visible area
 	HF_AUTOINDENT_SOFTWRAP
+	HF_AUTOINDENT_WORDWRAP
 )
 
 type Frame struct {
@@ -96,6 +97,7 @@ The very first row of the color matrix are the colors used for unselected text.
 
 type glyph struct {
 	r        rune
+	crune    rune
 	fakerune bool
 	width    fixed.Int26_6
 	widthy   fixed.Int26_6
@@ -203,6 +205,7 @@ func (fr *Frame) Insert(r1, r2 []rune) (limit image.Point) {
 		return 0, false
 	})
 
+	parenbalance := 0
 	autoindentMargin := fixed.Int26_6(0)
 
 	for fr.otatm.Next() {
@@ -227,6 +230,7 @@ func (fr *Frame) Insert(r1, r2 []rune) (limit image.Point) {
 		case '\n':
 			g := glyph{
 				r:        crune,
+				crune:    crune,
 				fakerune: true,
 				p:        fr.ins,
 				color:    1,
@@ -240,6 +244,7 @@ func (fr *Frame) Insert(r1, r2 []rune) (limit image.Point) {
 			fr.ins.Y += lh
 			prevRune, hasPrev = ' ', true
 			autoindentMargin = 0
+			parenbalance = 0
 
 		case '\t':
 			var toNextCell fixed.Int26_6
@@ -261,6 +266,7 @@ func (fr *Frame) Insert(r1, r2 []rune) (limit image.Point) {
 
 			g := glyph{
 				r:        crune,
+				crune:    crune,
 				fakerune: true,
 				p:        fr.ins,
 				color:    1,
@@ -282,12 +288,14 @@ func (fr *Frame) Insert(r1, r2 []rune) (limit image.Point) {
 
 			if fr.Hackflags&HF_TRUNCATE == 0 {
 				if fr.ins.X+width > fr.rightMargin {
-					if autoindentMargin != 0 && (fr.Hackflags&HF_AUTOINDENT_SOFTWRAP != 0) {
-						fr.ins.X = autoindentMargin + fr.margin
-					} else {
-						fr.ins.X = fr.leftMargin
+					if !fr.wordwrapMaybe(parenbalance, autoindentMargin, width, tabWidth, lh) {
+						if autoindentMargin != 0 && (fr.Hackflags&HF_AUTOINDENT_SOFTWRAP != 0) {
+							fr.ins.X = autoindentMargin + fr.margin
+						} else {
+							fr.ins.X = fr.leftMargin
+						}
+						fr.ins.Y += lh
 					}
-					fr.ins.Y += lh
 				}
 			}
 
@@ -297,10 +305,18 @@ func (fr *Frame) Insert(r1, r2 []rune) (limit image.Point) {
 
 			g := glyph{
 				r:        glyphidx,
+				crune:    crune,
 				fakerune: false,
 				p:        fr.ins,
 				color:    1,
 				width:    width,
+			}
+
+			switch crune {
+			case '(', '[', '{':
+				parenbalance++
+			case ')', ']', '}':
+				parenbalance--
 			}
 
 			fr.glyphs = append(fr.glyphs, g)
@@ -321,6 +337,61 @@ func (fr *Frame) Insert(r1, r2 []rune) (limit image.Point) {
 		fr.lastFull = len(fr.glyphs)
 	}
 	return
+}
+
+func (fr *Frame) wordwrapMaybe(parenbalance int, autoindentMargin, width, tabWidth, lh fixed.Int26_6) bool {
+	if fr.Hackflags&HF_AUTOINDENT_SOFTWRAP == 0 || fr.Hackflags&HF_AUTOINDENT_WORDWRAP == 0 || autoindentMargin == 0 {
+		return false
+	}
+
+	splitidx := len(fr.glyphs) - 1
+	y := fr.glyphs[splitidx].p.Y
+
+splitidxLoop:
+	for splitidx > 0 {
+		if fr.glyphs[splitidx].p.Y != y {
+			return false
+		}
+		switch fr.glyphs[splitidx].crune {
+		case '\n':
+			return false
+		case ' ', '\t', ',', '.', '(', ')', '[', ']', '{', '}':
+			// ideally we would split between tokens but we can't know here so these are safe characters
+			break splitidxLoop
+		}
+		splitidx--
+	}
+
+	wtowrap := fixed.Int26_6(0)
+	for i := splitidx + 1; i < len(fr.glyphs); i++ {
+		wtowrap += fr.glyphs[i].width
+	}
+
+	if parenbalance > 5 {
+		parenbalance = 5
+	}
+
+	parenw := fixed.Int26_6(parenbalance) * tabWidth
+
+	if autoindentMargin+fr.margin+parenw+wtowrap+width > fr.rightMargin {
+		return false
+	}
+
+	x := autoindentMargin + fr.margin + parenw
+	oldx := fixed.Int26_6(0)
+	if splitidx+1 < len(fr.glyphs) {
+		oldx = fr.glyphs[splitidx+1].p.X
+	}
+	fr.ins.X = x
+	fr.ins.Y += lh
+
+	for i := splitidx + 1; i < len(fr.glyphs); i++ {
+		fr.glyphs[i].p.X = fr.glyphs[i].p.X - oldx + x
+		fr.glyphs[i].p.Y = fr.ins.Y
+		fr.ins.X = fr.glyphs[i].p.X + fr.glyphs[i].width
+	}
+
+	return true
 }
 
 func (fr *Frame) RefreshColors(colors []uint8) {

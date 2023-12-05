@@ -1,6 +1,7 @@
 package config
 
 import (
+	"path/filepath"
 	"strings"
 
 	"github.com/aarzilli/yacco/hl"
@@ -33,6 +34,8 @@ var HideHidden = true
 var FontSizeChange = 0
 
 var Templates []string
+
+var wordWrap = make(map[string]struct{})
 
 const DefaultLookFileExt = ",c,cc,cpp,h,py,txt,pl,tcl,java,js,html,go,clj,jsp"
 
@@ -92,4 +95,13 @@ func SaveRuleFor(path string) *util.SaveRule {
 		}
 	}
 	return nil
+}
+
+func ShouldWordWrap(name string) bool {
+	ext := filepath.Ext(name)
+	if len(ext) < 2 {
+		return false
+	}
+	_, ok := wordWrap[ext[1:]]
+	return ok
 }

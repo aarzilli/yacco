@@ -87,12 +87,17 @@ func NewEditor(bodybuf *buf.Buffer) *Editor {
 	e.tagbuf, _ = buf.NewBuffer(bodybuf.Dir, "+Tag", true, Wnd.Prop["indentchar"], hl.NilHighlighter)
 	e.expandedTag = true
 
+	wordwrap := uint32(0)
+	if config.ShouldWordWrap(bodybuf.Name) {
+		wordwrap = textframe.HF_AUTOINDENT_WORDWRAP
+	}
+
 	e.sfr = textframe.ScrollFrame{
 		Width: config.ScrollWidth,
 		Color: config.TheColorScheme.Scrollbar,
 		Fr: textframe.Frame{
 			Font:            config.MainFont,
-			Hackflags:       textframe.HF_MARKSOFTWRAP | textframe.HF_AUTOINDENT_SOFTWRAP,
+			Hackflags:       textframe.HF_MARKSOFTWRAP | textframe.HF_AUTOINDENT_SOFTWRAP | wordwrap,
 			Scroll:          nil,
 			ExpandSelection: edutil.MakeExpandSelectionFn(e.bodybuf),
 			VisibleTick:     false,

@@ -26,6 +26,7 @@ type configObj struct {
 		LookFileDepth      int
 		StartupWidth       int
 		StartupHeight      int
+		WordWrap           string
 	}
 	Fonts       map[string]*configFont
 	Load        *configLoadRules
@@ -140,6 +141,9 @@ func LoadConfiguration(path string) {
 	HideHidden = co.Core.HideHidden
 	StartupWidth = co.Core.StartupWidth
 	StartupHeight = co.Core.StartupHeight
+	for _, ext := range strings.Split(co.Core.WordWrap, ",") {
+		wordWrap[ext] = struct{}{}
+	}
 
 	os.Setenv("LOOKFILE_EXT", co.Core.LookFileExt)
 	os.Setenv("LOOKFILE_SKIP", co.Core.LookFileSkip)
