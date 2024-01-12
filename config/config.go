@@ -78,12 +78,22 @@ var LanguageRules = []hl.LanguageRules{
 		},
 	},
 
+	// Lua
 	hl.LanguageRules{
 		NameRe: `\.lua$`,
 		RegionMatches: []hl.RegionMatch{
 			hl.StringRegion("\"", "\"", '\\'),
 			hl.StringRegion("'", "'", '\\'),
 			hl.CommentRegion("--", "\n", 0),
+		},
+	},
+
+	// Diff, prr
+	hl.LanguageRules{
+		NameRe: `\.(?:diff|prr)$`,
+		RegionMatches: []hl.RegionMatch{
+			hl.RegexpRegion(`^> \+`, `\n`, 0, hl.RMT_HEADER),
+			hl.RegexpRegion(`^> -`, `\n`, 0, hl.RMT_STRING),
 		},
 	},
 }
