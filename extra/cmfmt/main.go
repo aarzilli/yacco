@@ -190,7 +190,11 @@ func reflow(in string, sz int) string {
 		flush(out, line, sz)
 	}
 	outbuf := out.String()
-	return outbuf[:len(outbuf)-1]
+	outbuf = outbuf[:len(outbuf)-1]
+	if len(outbuf) > 0 && len(in) > 0 && outbuf[len(outbuf)-1] != '\n' && in[len(in)-1] == '\n' {
+		outbuf += "\n"
+	}
+	return outbuf
 }
 
 func main() {
