@@ -96,6 +96,15 @@ var LanguageRules = []hl.LanguageRules{
 			hl.RegexpRegion(`^> -`, `\n`, 0, hl.RMT_STRING),
 		},
 	},
+
+	// WolframLang
+	hl.LanguageRules{
+		NameRe: `\.wls$`,
+		RegionMatches: []hl.RegionMatch{
+			hl.StringRegion("\"", "\"", '\\'),
+			hl.CommentRegion("(*", "*)", 0),
+		},
+	},
 }
 
 func SaveRuleFor(path string) *util.SaveRule {
