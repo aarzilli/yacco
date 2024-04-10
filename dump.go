@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -97,10 +98,16 @@ func LoadFrom(dumpDest string) bool {
 		b, err := buf.NewBuffer(db.Dir, db.Name, true, Wnd.Prop["indentchar"], hl.New(config.LanguageRules, db.Name))
 		if err != nil {
 			b, _ = buf.NewBuffer(dw.Wd, "+CouldntLoad", true, Wnd.Prop["indentchar"], hl.NilHighlighter)
+			if b == nil {
+				wd, _ := os.Getwd()
+				b, _ = buf.NewBuffer(wd, "+CouldntLoad", true, Wnd.Prop["indentchar"], hl.NilHighlighter)
+			}
 		}
 		b.Props = db.Props
 		if db.Text != "" {
 			b.Replace([]rune(db.Text), &util.Sel{0, b.Size()}, true, nil, util.EO_KBD)
+		} else if err != nil {
+			b.Replace([]rune(fmt.Sprintf("error loading %s/%s: %v", db.Dir, db.Name, err)), &util.Sel{0, b.Size()}, true, nil, util.EO_KBD)
 		}
 		buffers[i] = b
 	}
