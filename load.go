@@ -63,7 +63,7 @@ func printStackTrace() {
 	}
 }
 
-func Load(ec ExecContext, origin int, othered bool) {
+func Load(ec ExecContext, origin int, othered bool, loadStr []rune) {
 	defer func() {
 		if ierr := recover(); ierr != nil {
 			fmt.Printf("Error during Load: %v\n", ierr.(error).Error())
@@ -88,9 +88,16 @@ func Load(ec ExecContext, origin int, othered bool) {
 		if debugLoad {
 			Warn(fmt.Sprintf("considering rule %d path=[%s] pattern=[%s] action=[%s]\n", i, rule.PathPattern, rule.Pattern, rule.Action))
 		}
+		var haystack regexp.Matchable = ec.buf
 		start := ec.fr.Sel.S
+		end := ec.fr.Sel.E
+		if loadStr != nil {
+			haystack = regexp.RuneArrayMatchable(loadStr)
+			start = 0
+			end = len(loadStr)
+		}
 		for {
-			matches := rule.Re.Match(ec.buf, start, ec.fr.Sel.E, +1)
+			matches := rule.Re.Match(haystack, start, end, +1)
 			//println("match:", matches, ec.fr.Sels[2].S, ec.fr.Sels[2].E)
 			if matches == nil {
 				break
@@ -116,13 +123,13 @@ func Load(ec ExecContext, origin int, othered bool) {
 				for i := 0; 2*i+1 < len(matches); i++ {
 					s := matches[2*i]
 					e := matches[2*i+1]
-					strmatches = append(strmatches, string(ec.buf.SelectionRunes(util.Sel{s, e})))
+					strmatches = append(strmatches, string(haystack.SelectionRunes(util.Sel{s, e})))
 				}
 				if debugLoad {
 					Warn(fmt.Sprintf("\tmatch range %d,%d %q\n", s, e, strmatches[0]))
 				}
 				//println("Match:", strmatches[0])
-				if rule.Exec(ec, strmatches, s, e, othered) {
+				if rule.Exec(ec, strmatches, s, e, othered, loadStr == nil) {
 					if debugLoad {
 						Warn(fmt.Sprintf("\trule succeeded\n"))
 					}
@@ -182,7 +189,7 @@ func expandMatches(str string, matches []string) string {
 	return string(out)
 }
 
-func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int, othered bool) bool {
+func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int, othered, doselect bool) bool {
 	defer func() {
 		if ierr := recover(); ierr != nil {
 			fmt.Printf("Error during Load (exec): %v\n", ierr.(error).Error())
@@ -194,8 +201,10 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int, othered b
 	switch rule.Action[0] {
 	case 'X':
 		expaction := expandMatches(action, matches)
-		ec.fr.Sel = util.Sel{s, e}
-		ec.fr.SelColor = 2
+		if doselect {
+			ec.fr.Sel = util.Sel{s, e}
+			ec.fr.SelColor = 2
+		}
 		if othered {
 			newed := zeroxEd(ec.ed)
 			ec2 := editorExecContext(newed)
@@ -249,9 +258,11 @@ func (rule *LoadRule) Exec(ec ExecContext, matches []string, s, e int, othered b
 				}
 			}
 		}
-		ec.fr.Sel = util.Sel{s, e}
-		ec.fr.SelColor = 2
-		ec.br()
+		if doselect {
+			ec.fr.Sel = util.Sel{s, e}
+			ec.fr.SelColor = 2
+			ec.br()
+		}
 		if addrExpr != "" {
 			func() {
 				defer func() {

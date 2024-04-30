@@ -36,12 +36,13 @@ type screenImpl struct {
 
 	atomNETWMName, atomWMClass xproto.Atom
 
-	atomUTF8String     xproto.Atom
-	atomWMDeleteWindow xproto.Atom
-	atomWMProtocols    xproto.Atom
-	atomWMTakeFocus    xproto.Atom
-	atomNetWMName      xproto.Atom
-	cursorCache        map[screen.Cursor]xproto.Cursor
+	atomUTF8String      xproto.Atom
+	atomWMDeleteWindow  xproto.Atom
+	atomWMProtocols     xproto.Atom
+	atomWMTakeFocus     xproto.Atom
+	atomNetWMName       xproto.Atom
+	atomNetActiveWindow xproto.Atom
+	cursorCache         map[screen.Cursor]xproto.Cursor
 
 	pixelsPerPt  float32
 	pictformat24 render.Pictformat
@@ -491,6 +492,10 @@ func (s *screenImpl) initAtoms() (err error) {
 		return err
 	}
 	s.atomWMClass, err = s.internAtom("WM_CLASS")
+	if err != nil {
+		return err
+	}
+	s.atomNetActiveWindow, err = s.internAtom("_NET_ACTIVE_WINDOW")
 	if err != nil {
 		return err
 	}

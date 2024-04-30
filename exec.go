@@ -1542,7 +1542,7 @@ func NextErrorCmd(ec ExecContext, arg string) {
 		fr:  &lastLoadSel.ed.sfr.Fr,
 		buf: lastLoadSel.ed.bodybuf,
 		br:  lastLoadSel.ed.BufferRefresh,
-	}, lastLoadSel.p, false)
+	}, lastLoadSel.p, false, nil)
 }
 
 func LspCmd(ec ExecContext, arg string) {
@@ -1575,7 +1575,7 @@ Lsp refs
 	}
 	b := ec.ed.bodybuf
 
-	srv, lspb := lsp.BufferToLsp(Wnd.tagbuf.Dir, b, ec.ed.sfr.Fr.Sel, true, Warn)
+	srv, lspb := lsp.BufferToLsp(Wnd.tagbuf.Dir, b, ec.ed.sfr.Fr.Sel, true, Warn, defaultLookForLsp)
 	if srv == nil {
 		return
 	}
@@ -1608,7 +1608,9 @@ Lsp refs
 		tdes := srv.Rename(lspb, rest)
 		executeLspTextEdits(tdes)
 	case "ca":
-		srv.ExecCodeAction(lspb, rest, executeLspTextEdits)
+		srv.ExecCodeAction(lspb, rest, executeLspTextEdits, func(tolook string) {
+			Load(ec, 0, false, []rune(tolook))
+		})
 	default:
 		Warn("wrong argument")
 	}

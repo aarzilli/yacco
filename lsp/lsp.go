@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	rdebug "runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -85,7 +86,7 @@ func Killall() {
 	log.Reset()
 }
 
-func LspFor(lang, wd string, create bool, warn func(string)) *LspSrv {
+func LspFor(lang, wd string, create bool, warn func(string), look func(string)) *LspSrv {
 	if lang != ".go" {
 		return nil
 	}
@@ -158,7 +159,7 @@ func LspFor(lang, wd string, create bool, warn func(string)) *LspSrv {
 
 	client.Notify(context.Background(), "initialized", &InitializedParams{})
 
-	srv := &LspSrv{client, warn, out.Capabilities, make(map[string]int), nil, nil}
+	srv := &LspSrv{conn: client, warn: warn, look: look, Capabilities: out.Capabilities, revision: make(map[string]int)}
 	handler.srv = srv
 	lspConns[wd] = srv
 	return srv
@@ -428,22 +429,44 @@ func (srv *LspSrv) appendCodeActions(s string) string {
 	}
 	out := new(strings.Builder)
 	for i := range srv.codeActions {
-		fmt.Fprintf(out, "Lsp ca %d %s\n", i, srv.codeActions[i].Title)
+		if strings.Index(string(srv.codeActions[i].Kind), " ") < 0 {
+			fmt.Fprintf(out, "Lsp ca %s\t%s\n", srv.codeActions[i].Kind, srv.codeActions[i].Title)
+		} else {
+			fmt.Fprintf(out, "Lsp ca %d\t%s\n", i, srv.codeActions[i].Title)
+		}
 	}
 	return s + "\n" + out.String()
 }
 
-func (srv *LspSrv) ExecCodeAction(a LspBufferPos, rest string, execEdit func([]TextDocumentEdit)) {
-	arg, _, _ := strings.Cut(rest, " ")
-	i, _ := strconv.Atoi(arg)
-	if i < 0 || i > len(srv.codeActions) {
-		return
+func (srv *LspSrv) ExecCodeAction(a LspBufferPos, rest string, execEdit func([]TextDocumentEdit), look func(string)) {
+	arg, _, _ := strings.Cut(rest, "\t")
+	var action CodeAction
+	if i, err := strconv.Atoi(arg); err == nil {
+		if i < 0 || i > len(srv.codeActions) {
+			return
+		}
+		action = srv.codeActions[i]
+	} else {
+		found := false
+		for i := range srv.codeActions {
+			if string(srv.codeActions[i].Kind) == arg {
+				action = srv.codeActions[i]
+				found = true
+				break
+			}
+		}
+		if !found {
+			return
+		}
 	}
-	action := srv.codeActions[i]
-	//TODO: execute action edits (must also remove the filtering above)
 	cmd := action.Command
 	srv.applyEdits = execEdit
-	defer func() { srv.applyEdits = nil }()
+	oldlook := srv.look
+	srv.look = look
+	defer func() {
+		srv.applyEdits = nil
+		srv.look = oldlook
+	}()
 	var out any
 	srv.conn.Call(context.Background(), "workspace/executeCommand", &ExecuteCommandParams{Command: cmd.Command, Arguments: cmd.Arguments}, out)
 }
@@ -505,6 +528,13 @@ var logMessageType = map[MessageType]string{
 }
 
 func (h *lspHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+	defer func() {
+		ierr := recover()
+		if ierr != nil {
+			buf, _ := json.Marshal(req)
+			lspLog(fmt.Sprintf("Internal error responding to: %q\nError: %v\nStacktrace:\n%s", string(buf), ierr, string(rdebug.Stack())))
+		}
+	}()
 	switch req.Method {
 	case "workspace/configuration":
 		var params ConfigurationParams
@@ -556,10 +586,32 @@ func (h *lspHandler) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonr
 		h.srv.applyEdits(params.Edit.DocumentChanges)
 		conn.Reply(ctx, req.ID, &ApplyWorkspaceEditResponse{Applied: true})
 
+	case "window/showDocument":
+		var params WindowShowDocumentParams
+		must(json.Unmarshal(*req.Params, &params))
+		const fileprefix = "file://"
+		var tolook string
+		switch {
+		case strings.HasPrefix(params.Uri, fileprefix):
+			tolook = params.Uri[len(fileprefix):]
+			if params.Selection != nil {
+				tolook = fmt.Sprintf("%s:%d:%d", tolook, params.Selection.Start.Line, params.Selection.Start.Character+2)
+			}
+		default:
+			tolook = params.Uri
+		}
+		if h.srv.look != nil {
+			h.srv.look(tolook)
+		}
+		conn.Reply(ctx, req.ID, &WindowShowDocumentResponse{Success: true})
+
 	default:
 		buf, _ := json.Marshal(req)
 		lspLog(string(buf))
 		lspLog("\n")
+		if h.srv.applyEdits != nil {
+			conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{Code: 100, Message: "not implemented"})
+		}
 	}
 }
 
@@ -570,10 +622,11 @@ type LspSrv struct {
 	revision     map[string]int
 	codeActions  []CodeAction
 	applyEdits   func([]TextDocumentEdit)
+	look         func(string)
 }
 
-func BufferToLsp(wd string, b *buf.Buffer, sel util.Sel, createLsp bool, warn func(string)) (*LspSrv, LspBufferPos) {
-	srv := LspFor(filepath.Ext(b.Name), wd, createLsp, warn)
+func BufferToLsp(wd string, b *buf.Buffer, sel util.Sel, createLsp bool, warn func(string), look func(string)) (*LspSrv, LspBufferPos) {
+	srv := LspFor(filepath.Ext(b.Name), wd, createLsp, warn, look)
 	if srv == nil {
 		return nil, LspBufferPos{}
 	}

@@ -148,6 +148,29 @@ func (w *windowImpl) translateToScreen(screen *xproto.ScreenInfo, p image.Point)
 	return
 }
 
+func (w *windowImpl) Raise() error {
+	screen := xproto.Setup(w.s.xc).DefaultScreen(w.s.xc)
+
+	ev := xproto.ClientMessageEvent{
+		Format: 32,
+		Window: w.xw,
+		Type:   w.s.atomNetActiveWindow,
+		Data: xproto.ClientMessageDataUnionData32New([]uint32{
+			0,
+			uint32(xproto.TimeCurrentTime),
+			uint32(0),
+			0,
+			0,
+		}),
+	}
+
+	xproto.SendEventChecked(w.s.xc, false, screen.Root, xproto.EventMaskSubstructureRedirect|xproto.EventMaskSubstructureNotify, string(ev.Bytes())).Check()
+
+	xproto.MapWindowChecked(w.s.xc, w.xw).Check()
+
+	return nil
+}
+
 func (w *windowImpl) handleConfigureNotify(ev xproto.ConfigureNotifyEvent) {
 	// TODO: does the order of these lifecycle and size events matter? Should
 	// they really be a single, atomic event?

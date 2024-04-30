@@ -1109,7 +1109,7 @@ func executeEventReader(ec *ExecContext, er util.EventReader) {
 			debugfsf("Selecting: %d %d %d\n", pp, sp, ep)
 			ec.fr.Sel = util.Sel{sp, ep}
 			ec.fr.SelColor = 2
-			Load(*ec, pp, false)
+			Load(*ec, pp, false, nil)
 		}
 
 	case util.ET_TAGEXEC:

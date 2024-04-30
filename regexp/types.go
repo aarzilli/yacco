@@ -5,11 +5,14 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"github.com/aarzilli/yacco/util"
 )
 
 type Matchable interface {
 	Size() int
 	At(int) rune
+	SelectionRunes(util.Sel) []rune
 }
 
 type node interface {
@@ -160,4 +163,8 @@ func (ram RuneArrayMatchable) At(i int) rune {
 
 func (ram RuneArrayMatchable) Size() int {
 	return len(ram)
+}
+
+func (ram RuneArrayMatchable) SelectionRunes(sel util.Sel) []rune {
+	return ram[sel.S:sel.E]
 }

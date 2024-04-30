@@ -3800,3 +3800,37 @@ type CodeActionLiteralSupport struct {
 		ValueSet []CodeActionKind `json:"valueSet"`
 	} `json:"codeActionKind"`
 }
+
+type WindowShowDocumentParams struct {
+	/**
+	 * The uri to show.
+	 */
+	Uri string
+
+	/**
+	 * Indicates to show the resource in an external program.
+	 * To show, for example, `https://code.visualstudio.com/`
+	 * in the default WEB browser set `external` to `true`.
+	 */
+	External *bool
+
+	/**
+	 * An optional property to indicate whether the editor
+	 * showing the document should take focus or not.
+	 * Clients might ignore this property if an external
+	 * program is started.
+	 */
+	TakeFocus *bool
+
+	/**
+	 * An optional selection range if the document is a text
+	 * document. Clients might ignore the property if an
+	 * external program is started or the file is not a text
+	 * file.
+	 */
+	Selection *Range
+}
+
+type WindowShowDocumentResponse struct {
+	Success bool `json:"success"`
+}

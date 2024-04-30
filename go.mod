@@ -20,7 +20,7 @@ require (
 	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
 )
 
-replace golang.org/x/exp => github.com/aarzilli/exp v0.0.0-20231114144526-8b1c86be351b
+replace golang.org/x/exp => github.com/aarzilli/exp v0.0.0-20240430113420-10848dee8535
 
 replace github.com/BurntSushi/xgb => github.com/aarzilli/xgb v0.0.0-20170123161437-2ca2a6c0622c
 

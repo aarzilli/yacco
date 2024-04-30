@@ -1276,7 +1276,7 @@ func clickExec3(lp LogicalPos, shift bool) {
 
 	if (lp.ed == nil) || (lp.ed.eventChan == nil) || lp.ed.eventChanSpecial {
 		lastLoadSel.Set2(lp, original)
-		Load(ec, original, shift)
+		Load(ec, original, shift, nil)
 	} else {
 		fr := lp.tagfr
 		if fr == nil {
@@ -1573,4 +1573,16 @@ func eqcol() {
 		Wnd.cols.cols[1].frac = 5.0
 	}
 	Wnd.RedrawHard()
+}
+
+func defaultLookForLsp(tolook string) {
+	var ec ExecContext
+	ec.dir = Wnd.tagbuf.Dir
+	ec.buf = Wnd.tagbuf
+	ec.fr = &Wnd.tagfr
+	ec.br = Wnd.BufferRefresh
+	Load(ec, 0, false, []rune(tolook))
+	if strings.HasPrefix(tolook, "/") {
+		Wnd.wnd.Raise()
+	}
 }
