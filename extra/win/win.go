@@ -217,7 +217,7 @@ func outputReader(controlChan chan<- interface{}, stdout io.Reader, outputReader
 				}
 				controlChan <- AppendMsg{s}
 				controlChan <- DeleteAddrMsg{"-+"}
-				s = []byte{ch}
+				goto reprocess
 			}
 		}
 	}
