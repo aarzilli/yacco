@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 import os
 import sys
@@ -6,16 +6,16 @@ from subprocess import Popen, PIPE
 
 def send(s):
 	p = Popen([ "y9p", "write", "prop" ], shell=False, stdin=PIPE)
-	p.communicate(s)
+	p.communicate(s.encode('utf-8'))
 
 arg = sys.argv[1] if len(sys.argv) > 1 else "switch"
 
 if arg == "help" or arg == "-h":
-	print "Changes the font of the current frame:"
-	print "\tswitch\t\tToggles between main and alt font"
-	print "\tmain\t\tSwitches to main (usually proportional) font"
-	print "\talt\t\t\tSwitches to alt (usually monospaced) font"
-	print "\t+\t\t\tIncreses font size"
-	print "\t-\t\t\tDecreases font size"
+	print("Changes the font of the current frame:")
+	print("\tswitch\t\tToggles between main and alt font")
+	print("\tmain\t\tSwitches to main (usually proportional) font")
+	print("\talt\t\t\tSwitches to alt (usually monospaced) font")
+	print("\t+\t\t\tIncreses font size")
+	print("\t-\t\t\tDecreases font size")
 else:
 	send("font=" + arg)
