@@ -166,11 +166,17 @@ func HelpCmd(ec ExecContext, arg string) {
 
 <addr>"<"<command>	
 <addr>">"<command>	
-<addr>"|"<command>	
+<addr>"|"<command>
 	Executes external commands
+
+<addr>!<command>
+	Executes external or internal command
 
 <addr>k
 	Saves address as current selection
+
+<addr>B<glob expr>
+	Open specified files
 	
 == Addresses ==
 The initial <addr> can always be omitted, if it is it will default to "."
@@ -568,9 +574,9 @@ func editCmd(ec ExecContext, arg string, trace bool) {
 		ec.ed.confirmSave = false
 	}
 	if (ec.buf == nil) || (ec.fr == nil) || (ec.br == nil) {
-		edit.Edit(arg, makeEditContext(nil, nil, nil, nil, trace))
+		edit.Edit(arg, makeEditContext(nil, "", nil, nil, nil, trace))
 	} else {
-		edit.Edit(arg, makeEditContext(ec.buf, &ec.fr.Sel, ec.eventChan, ec.ed, trace))
+		edit.Edit(arg, makeEditContext(ec.buf, ec.dir, &ec.fr.Sel, ec.eventChan, ec.ed, trace))
 		if !ec.norefresh {
 			ec.br()
 		}
@@ -1171,6 +1177,7 @@ func KeysInit() {
 					}
 					editctx := edit.EditContext{
 						Buf:       ec.buf,
+						Dir:       ec.dir,
 						Sel:       &ec.fr.Sel,
 						EventChan: ec.eventChan,
 						BufMan:    nil,
@@ -1271,7 +1278,7 @@ func editPgmToFunc(pgm *edit.Cmd) func(ec ExecContext) {
 			return
 		}
 
-		pgm.Exec(makeEditContext(ec.buf, &ec.fr.Sel, ec.eventChan, ec.ed, false))
+		pgm.Exec(makeEditContext(ec.buf, ec.dir, &ec.fr.Sel, ec.eventChan, ec.ed, false))
 		if !ec.norefresh {
 			ec.br()
 		}
@@ -1654,8 +1661,9 @@ func PrepareCmd(ec ExecContext, arg string) {
 	ec.ed.TagRefresh()
 }
 
-func makeEditContext(buf *buf.Buffer, sel *util.Sel, eventChan chan string, ed *Editor, trace bool) edit.EditContext {
+func makeEditContext(buf *buf.Buffer, dir string, sel *util.Sel, eventChan chan string, ed *Editor, trace bool) edit.EditContext {
 	return edit.EditContext{
+		Dir:       dir,
 		Buf:       buf,
 		Sel:       sel,
 		EventChan: eventChan,

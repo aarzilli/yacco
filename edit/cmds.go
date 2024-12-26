@@ -14,7 +14,7 @@ import (
 )
 
 var Warnfn func(msg string)
-var NewJob func(wd, Cmd, input string, buf *buf.Buffer, resultChan chan<- string)
+var NewJob func(canintl bool, wd, Cmd, input string, buf *buf.Buffer, resultChan chan<- string)
 
 const LOOP_LIMIT = 2000
 
@@ -279,7 +279,7 @@ func gcmdfn(flags gcmdFlags, c *Cmd, ec *EditContext) {
 
 func pipeincmdfn(c *Cmd, ec *EditContext) {
 	resultChan := make(chan string)
-	NewJob(ec.Buf.Dir, c.bodytxt, "", ec.Buf, resultChan)
+	NewJob(false, ec.dir(), c.bodytxt, "", ec.Buf, resultChan)
 	str := <-resultChan
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
 	ec.tracecmd(*ec.atsel, c, str)
@@ -290,18 +290,22 @@ func pipeincmdfn(c *Cmd, ec *EditContext) {
 func pipeoutcmdfn(c *Cmd, ec *EditContext) {
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
 	str := string(ec.Buf.SelectionRunes(*ec.atsel))
-	NewJob(ec.Buf.Dir, c.bodytxt, str, ec.Buf, nil)
+	NewJob(false, ec.dir(), c.bodytxt, str, ec.Buf, nil)
 }
 
 func pipecmdfn(c *Cmd, ec *EditContext) {
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
 	str := string(ec.Buf.SelectionRunes(*ec.atsel))
 	resultChan := make(chan string)
-	NewJob(ec.Buf.Dir, c.bodytxt, str, ec.Buf, resultChan)
+	NewJob(false, ec.dir(), c.bodytxt, str, ec.Buf, resultChan)
 	str = <-resultChan
 	ec.tracecmd(*ec.atsel, c, str)
 	ec.replace([]rune(str), ec.atsel, ec.Buf.EditMark)
 	ec.Buf.EditMark = ec.Buf.EditMarkNext
+}
+
+func execcmdfn(c *Cmd, ec *EditContext) {
+	NewJob(true, ec.dir(), c.bodytxt, "", ec.Buf, nil)
 }
 
 func kcmdfn(c *Cmd, ec *EditContext) {
@@ -390,7 +394,7 @@ func processFileList(ec *EditContext, body string) []string {
 
 	if body[0] == '<' {
 		resultChan := make(chan string)
-		NewJob(ec.Buf.Dir, body[1:], "", ec.Buf, resultChan)
+		NewJob(false, ec.dir(), body[1:], "", ec.Buf, resultChan)
 		body = <-resultChan
 		fileNames = util.QuotedSplit(body)
 	} else {
@@ -405,7 +409,7 @@ func processFileList(ec *EditContext, body string) []string {
 	}
 
 	for i := range fileNames {
-		fileNames[i] = util.ResolvePath(ec.Buf.Dir, fileNames[i])
+		fileNames[i] = util.ResolvePath(ec.dir(), fileNames[i])
 	}
 
 	return fileNames
@@ -432,7 +436,7 @@ func extreplcmdfn(all bool, c *Cmd, ec *EditContext) {
 
 	c.bodytxt = strings.TrimSpace(c.bodytxt)
 
-	bytes, err := ioutil.ReadFile(util.ResolvePath(ec.Buf.Dir, c.bodytxt))
+	bytes, err := ioutil.ReadFile(util.ResolvePath(ec.dir(), c.bodytxt))
 	if err != nil {
 		Warnfn(fmt.Sprintf("Couldn't read file: %v\n", err))
 	}
@@ -455,7 +459,7 @@ func wcmdfn(c *Cmd, ec *EditContext) {
 	}
 	c.bodytxt = strings.TrimSpace(c.bodytxt)
 	str := []byte(string(ec.Buf.SelectionRunes(*ec.atsel)))
-	err := ioutil.WriteFile(util.ResolvePath(ec.Buf.Dir, c.bodytxt), str, 0666)
+	err := ioutil.WriteFile(util.ResolvePath(ec.dir(), c.bodytxt), str, 0666)
 	if err != nil {
 		Warnfn(fmt.Sprintf("Couldn't write file: %v\n", err))
 	}

@@ -32,6 +32,7 @@ type Cmd struct {
 
 type EditContext struct {
 	Buf       *buf.Buffer
+	Dir       string
 	Sel       *util.Sel
 	atsel     *util.Sel
 	EventChan chan string
@@ -165,4 +166,11 @@ func (ec *EditContext) subec(buf *buf.Buffer, atsel *util.Sel) EditContext {
 			depth:     ec.depth + 1,
 		}
 	}
+}
+
+func (ec *EditContext) dir() string {
+	if ec.Dir != "" {
+		return ec.Dir
+	}
+	return ec.Buf.Dir
 }

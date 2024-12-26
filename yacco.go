@@ -194,8 +194,20 @@ func main() {
 	}
 
 	edit.Warnfn = Warn
-	edit.NewJob = func(wd, cmd, input string, buf *buf.Buffer, resultChan chan<- string) {
-		NewJob(wd, cmd, input, &ExecContext{buf: buf}, false, false, resultChan)
+	edit.NewJob = func(canintl bool, wd, cmd, input string, buf *buf.Buffer, resultChan chan<- string) {
+		if canintl {
+			for _, col := range Wnd.cols.cols {
+				for _, ed := range col.editors {
+					if ed.bodybuf == buf {
+						ec := editorColExecContext(ed, col)
+						Exec(*ec, cmd)
+						break
+					}
+				}
+			}
+		} else {
+			NewJob(wd, cmd, input, &ExecContext{buf: buf}, false, false, resultChan)
+		}
 	}
 
 	sideChan = make(chan func(), 5)

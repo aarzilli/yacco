@@ -39,6 +39,7 @@ var commands = map[rune]cmdDef{
 	'<': cmdDef{restargs: true, fn: pipeincmdfn},
 	'>': cmdDef{restargs: true, fn: pipeoutcmdfn},
 	'|': cmdDef{restargs: true, fn: pipecmdfn},
+	'!': cmdDef{restargs: true, fn: execcmdfn},
 	'k': cmdDef{fn: kcmdfn},
 	'M': cmdDef{fn: Mcmdfn},
 
