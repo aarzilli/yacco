@@ -8,7 +8,6 @@ import (
 	"unicode/utf8"
 
 	"github.com/aarzilli/yacco/regexp"
-	"github.com/aarzilli/yacco/util"
 )
 
 var Extensions []string
@@ -66,14 +65,17 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 		defer close(resultChan)
 	}
 	var startDir string
-	var needlerx *regexp.Regex
+	var needlerx []*regexp.Regex
 	if needle != "" {
-		x := util.ResolvePath(edDir, needle)
-		startDir = filepath.Dir(x)
-		needlerx = regexp.CompileFuzzySearch([]rune(filepath.Base(x)))
+		startDir = edDir
+		v := strings.Split(needle, string(filepath.Separator))
+		needlerx = make([]*regexp.Regex, len(v))
+		for i := range v {
+			needlerx[i] = regexp.CompileFuzzySearch([]rune(v[i]))
+		}
 	} else {
 		startDir = edDir
-		needlerx = regexp.CompileFuzzySearch([]rune{})
+		needlerx = []*regexp.Regex{regexp.CompileFuzzySearch([]rune{})}
 	}
 
 	//println("Searching for", needle, "starting at", startDir)
@@ -136,11 +138,12 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 				continue
 			}
 
-			off := utf8.RuneCountInString(relPath) - utf8.RuneCountInString(fi[i].Name())
+			/*
+				off := utf8.RuneCountInString(relPath) - utf8.RuneCountInString(fi[i].Name())
 
-			if !strings.HasSuffix(relPath, fi[i].Name()) {
-				off = -1
-			}
+				if !strings.HasSuffix(relPath, fi[i].Name()) {
+					off = -1
+				}*/
 
 			d := depth
 			if fi[i].IsDir() {
@@ -148,7 +151,7 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 				d++
 			}
 
-			r := fileSystemSearchMatch(fi[i].Name(), off, exact, needlerx, relPath, needle, d, resultChan, searchDone)
+			r := fileSystemSearchMatch(exact, needlerx, relPath, needle, d, resultChan, searchDone)
 			if r < 0 {
 				return
 			}
@@ -162,40 +165,46 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 	}
 }
 
-func fileSystemSearchMatch(name string, off int, exact bool, needlerx *regexp.Regex, relPath, needle string, depth int, resultChan chan<- *lookFileResult, searchDone chan struct{}) int {
+func fileSystemSearchMatch(exact bool, needlerx []*regexp.Regex, relPath, needle string, depth int, resultChan chan<- *lookFileResult, searchDone chan struct{}) int {
+	haystack := relPath
 	if !exact {
-		name = strings.ToLower(name)
+		haystack = strings.ToLower(haystack)
 	}
-	rname := []rune(name)
-	mg := needlerx.Match(regexp.RuneArrayMatchable(rname), 0, len(rname), 1)
-	if mg == nil {
+
+	haystackv := strings.Split(haystack, string(filepath.Separator))
+
+	if len(haystackv) < len(needlerx) {
 		return 0
 	}
 
-	//println("Match successful", name, "at", relPath)
+	off := utf8.RuneCountInString(haystack) - utf8.RuneCountInString(haystackv[len(haystackv)-1])
 
-	var mpos []int
-	score := 0
+	score, mpos, match := fileSystemSearchMatch1(needlerx[len(needlerx)-1], filepath.Base(needle), haystackv[len(haystackv)-1], depth)
+	if !match {
+		return 0
+	}
 
-	if len(mg) > 2 {
-		mpos = make([]int, 0, len(mg)/4)
-		ngaps := 0
-		mstart := mg[2]
+	for i := range mpos {
+		mpos[i] += off
+	}
 
-		for i := 0; i < len(mg); i += 4 {
-			if mg[i] != mg[i+1] {
-				ngaps++
-			}
+	needlei, haystacki := 0, 0
 
-			if off >= 0 {
-				mpos = append(mpos, mg[i+2]+off)
-			}
+	for {
+		if needlei >= len(needlerx)-1 {
+			// match successful
+			break
+		}
+		if haystacki >= len(haystackv)-1 {
+			// match failed
+			return 0
 		}
 
-		if needle == name {
-			score = 0
+		_, _, match := fileSystemSearchMatch1(needlerx[needlei], "", haystackv[haystacki], 0)
+		if match {
+			needlei++
 		} else {
-			score = mstart*1000 + depth*100 + ngaps*10 + len(rname) + off
+			haystacki++
 		}
 	}
 
@@ -204,8 +213,73 @@ func fileSystemSearchMatch(name string, off int, exact bool, needlerx *regexp.Re
 	case <-searchDone:
 		return -1
 	}
-
 	return 1
+
+	/*
+	   rname := []rune(name)
+	   mg := needlerx.Match(regexp.RuneArrayMatchable(rname), 0, len(rname), 1)
+
+	   	if mg == nil {
+	   		return 0
+	   	}
+
+	   //println("Match successful", name, "at", relPath)
+
+	   var mpos []int
+	   score := 0
+
+	   	if len(mg) > 2 {
+	   		mpos = make([]int, 0, len(mg)/4)
+	   		ngaps := 0
+	   		mstart := mg[2]
+
+	   		for i := 0; i < len(mg); i += 4 {
+	   			if mg[i] != mg[i+1] {
+	   				ngaps++
+	   			}
+
+	   			if off >= 0 {
+	   				mpos = append(mpos, mg[i+2]+off)
+	   			}
+	   		}
+
+	   		if needle == name {
+	   			score = 0
+	   		} else {
+	   			score = mstart*1000 + depth*100 + ngaps*10 + len(rname)
+	   		}
+	   	}
+	*/
+}
+
+func fileSystemSearchMatch1(needlerx *regexp.Regex, needle, haystack string, depth int) (int, []int, bool) {
+	rname := []rune(haystack)
+	mg := needlerx.Match(regexp.RuneArrayMatchable(rname), 0, len(rname), 1)
+	if mg == nil {
+		return 0, nil, false
+	}
+
+	var mpos []int
+	score := 0
+	if len(mg) > 2 {
+		ngaps := 0
+		mstart := mg[2]
+
+		for i := 0; i < len(mg); i += 4 {
+			if mg[i] != mg[i+1] {
+				ngaps++
+			}
+			mpos = append(mpos, mg[i+2])
+		}
+
+		if needle == haystack {
+			score = 0
+		} else {
+			score = mstart*1000 + depth*100 + ngaps*10 + len(rname)
+		}
+	}
+
+	return score, mpos, true
 }
 
 func countSlash(str string) int {

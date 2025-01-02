@@ -18,6 +18,7 @@ import (
 var debug = false
 var force = flag.Bool("f", false, "Force takeover")
 var list = flag.Bool("list", false, "Print all filesystem search paths")
+var query = flag.String("query", "", "With list prints only filesystem search paths matching the query")
 
 func getCwd(p9clnt *clnt.Clnt) string {
 	props, err := util.ReadProps(p9clnt)
@@ -253,6 +254,7 @@ func displayResults(buf *util.BufferConn, curSelected int, resultList []*lookFil
 		s := len(t)
 		result.start = len(t)
 		t = append(t, []rune(result.show)...)
+		//t = append(t, []rune(fmt.Sprintf(" (%d)", result.score))...)
 		result.end = len(t)
 		t = append(t, []rune("\n")...)
 		for i := range result.mpos {
@@ -289,12 +291,12 @@ func main() {
 		cwd, _ := os.Getwd()
 		resultChan := make(chan *lookFileResult)
 		searchDone := make(chan struct{})
-		go fileSystemSearch(cwd, resultChan, searchDone, "", true, -1)
+		go fileSystemSearch(cwd, resultChan, searchDone, *query, *query == "", -1)
 		for result := range resultChan {
 			if len(result.show) <= 0 || result.show[len(result.show)-1] == '/' {
 				continue
 			}
-			fmt.Println(result.show)
+			fmt.Printf("%d\t%s\n", result.score, result.show)
 		}
 		return
 	}
