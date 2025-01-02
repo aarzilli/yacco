@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,6 +10,9 @@ import (
 	"unicode/utf8"
 
 	"github.com/aarzilli/yacco/regexp"
+	"github.com/aarzilli/yacco/util"
+	"github.com/lionkov/go9p/p"
+	"github.com/lionkov/go9p/p/clnt"
 )
 
 var Extensions []string
@@ -23,6 +28,7 @@ type lookFileResult struct {
 	mpos   []int
 	needle string
 
+	loadEnd    int
 	start, end int
 }
 
@@ -138,13 +144,6 @@ func fileSystemSearch(edDir string, resultChan chan<- *lookFileResult, searchDon
 				continue
 			}
 
-			/*
-				off := utf8.RuneCountInString(relPath) - utf8.RuneCountInString(fi[i].Name())
-
-				if !strings.HasSuffix(relPath, fi[i].Name()) {
-					off = -1
-				}*/
-
 			d := depth
 			if fi[i].IsDir() {
 				relPath += "/"
@@ -209,7 +208,7 @@ func fileSystemSearchMatch(exact bool, needlerx []*regexp.Regex, relPath, needle
 	}
 
 	select {
-	case resultChan <- &lookFileResult{score, relPath, mpos, needle, 0, 0}:
+	case resultChan <- &lookFileResult{score, relPath, mpos, needle, 0, 0, 0}:
 	case <-searchDone:
 		return -1
 	}
@@ -347,7 +346,7 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 		}
 
 		select {
-		case resultChan <- &lookFileResult{score, x, []int{}, needle, 0, 0}:
+		case resultChan <- &lookFileResult{score, x, []int{}, needle, 0, 0, 0}:
 		case <-searchDone:
 			return
 		}
@@ -356,5 +355,33 @@ func tagsSearch(resultChan chan<- *lookFileResult, searchDone chan struct{}, nee
 		if maxResults > 0 && sent > maxResults {
 			return
 		}
+	}
+}
+
+func lspSymbolSearch(p9clnt *clnt.Clnt, cwd string, resultChan chan<- *lookFileResult, searchDone chan struct{}, needle string) {
+	lspfd, err := p9clnt.FOpen(fmt.Sprintf("/%s/lsp", os.Getenv("winid")), p.OWRITE)
+	util.Allergic(debug, err)
+	fmt.Fprintf(lspfd, "symbol %s", needle)
+	lspfd.Close()
+
+	lspfd, err = p9clnt.FOpen(fmt.Sprintf("/%s/lsp", os.Getenv("winid")), p.OREAD)
+	util.Allergic(debug, err)
+	resp, err := ioutil.ReadAll(lspfd)
+	util.Allergic(debug, err)
+	lspfd.Close()
+
+	for i, line := range strings.Split(string(resp), "\n") {
+		v := strings.SplitN(line, " ", 3)
+		if len(v) != 3 {
+			continue
+		}
+		if v[1] == "Field" {
+			continue
+		}
+		rel, _ := filepath.Rel(cwd, v[0])
+		if rel != "" {
+			v[0] = rel
+		}
+		resultChan <- &lookFileResult{show: v[0] + " " + strings.ToLower(v[1]) + " " + v[2], loadEnd: len([]rune(v[0])), score: i, needle: "@" + needle}
 	}
 }

@@ -146,7 +146,7 @@ func readEvents(buf *util.BufferConn, searchChan chan<- string, moveChan chan<- 
 	}
 }
 
-func searcher(buf *util.BufferConn, cwd string, searchChan <-chan string, moveChan <-chan int, openChan <-chan struct{}) {
+func searcher(p9clnt *clnt.Clnt, buf *util.BufferConn, cwd string, searchChan <-chan string, moveChan <-chan int, openChan <-chan struct{}) {
 	resultChan := make(chan *lookFileResult, 1)
 	var searchDone chan struct{}
 	curNeedle := ""
@@ -185,8 +185,12 @@ func searcher(buf *util.BufferConn, cwd string, searchChan <-chan string, moveCh
 			if needle != "" {
 				resultList = resultList[0:0]
 				searchDone = make(chan struct{})
-				go fileSystemSearch(cwd, resultChan, searchDone, needle, exact, MAX_RESULTS)
-				go tagsSearch(resultChan, searchDone, needle, exact, MAX_RESULTS)
+				if needle[0] == '@' {
+					go lspSymbolSearch(p9clnt, cwd, resultChan, searchDone, needle[1:])
+				} else {
+					go fileSystemSearch(cwd, resultChan, searchDone, needle, exact, MAX_RESULTS)
+					go tagsSearch(resultChan, searchDone, needle, exact, MAX_RESULTS)
+				}
 			} else {
 				displayResults(buf, curSelected, resultList)
 			}
@@ -255,7 +259,11 @@ func displayResults(buf *util.BufferConn, curSelected int, resultList []*lookFil
 		result.start = len(t)
 		t = append(t, []rune(result.show)...)
 		//t = append(t, []rune(fmt.Sprintf(" (%d)", result.score))...)
-		result.end = len(t)
+		if result.loadEnd > 0 {
+			result.end = result.loadEnd + result.start
+		} else {
+			result.end = len(t)
+		}
 		t = append(t, []rune("\n")...)
 		for i := range result.mpos {
 			color[result.mpos[i]+s] = 0x03
@@ -316,5 +324,5 @@ func main() {
 	moveChan := make(chan int, 1)
 
 	go readEvents(buf, searchChan, moveChan, openChan)
-	searcher(buf, cwd, searchChan, moveChan, openChan)
+	searcher(p9clnt, buf, cwd, searchChan, moveChan, openChan)
 }

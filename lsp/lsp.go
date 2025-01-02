@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -296,8 +297,9 @@ func (srv *LspSrv) References(a LspBufferPos) string {
 	return appendLocs("", locs, a.Path, a.Ln)
 }
 
+const sillyURI = "file://"
+
 func appendLocs(s string, defs []locationAndKind, curPath string, ln int) string {
-	const sillyURI = "file://"
 	if len(defs) <= 0 {
 		return s
 	}
@@ -468,7 +470,51 @@ func (srv *LspSrv) ExecCodeAction(a LspBufferPos, rest string, execEdit func([]T
 		srv.look = oldlook
 	}()
 	var out any
-	srv.conn.Call(context.Background(), "workspace/executeCommand", &ExecuteCommandParams{Command: cmd.Command, Arguments: cmd.Arguments}, out)
+	srv.conn.Call(context.Background(), "workspace/executeCommand", &ExecuteCommandParams{Command: cmd.Command, Arguments: cmd.Arguments}, &out)
+}
+
+var kindToString = map[SymbolKind]string{
+	1:  "File",
+	2:  "Module",
+	3:  "Namespace",
+	4:  "Package",
+	5:  "Class",
+	6:  "Method",
+	7:  "Property",
+	8:  "Field",
+	9:  "Constructor",
+	10: "Enum",
+	11: "Interface",
+	12: "Function",
+	13: "Variable",
+	14: "Constant",
+	15: "String",
+	16: "Number",
+	17: "Boolean",
+	18: "Array",
+	19: "Object",
+	20: "Key",
+	21: "Null",
+	22: "EnumMember",
+	23: "Struct",
+	24: "Event",
+	25: "Operator",
+	26: "TypeParameter",
+}
+
+func (srv *LspSrv) WorkspaceSymbol(query string) string {
+	var out []SymbolInformation
+	err := srv.conn.Call(context.Background(), "workspace/symbol", &WorkspaceSymbolParams{Query: query}, &out)
+	lspLog(fmt.Sprintf("workspace/symbol %q %v\n", query, err))
+	var buf bytes.Buffer
+	for i := range out {
+		uri := out[i].Location.URI
+		if strings.HasPrefix(uri, sillyURI) {
+			uri = uri[len(sillyURI):]
+		}
+		fmt.Fprintf(&buf, "%s:%d %s %s\n", uri, out[i].Location.Range.Start.Line+1, kindToString[out[i].Kind], out[i].Name)
+	}
+	return buf.String()
 }
 
 func issfx(a, b []uint16) bool {

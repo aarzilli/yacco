@@ -17,6 +17,7 @@ import (
 	"github.com/aarzilli/yacco/config"
 	"github.com/aarzilli/yacco/edit"
 	"github.com/aarzilli/yacco/hl"
+	"github.com/aarzilli/yacco/lsp"
 	"github.com/aarzilli/yacco/util"
 
 	"github.com/lionkov/go9p/p"
@@ -223,6 +224,8 @@ func FsAddEditor(n int) {
 	prop.Add(bufdir, "prop", user, nil, 0660, prop)
 	jumps := &ReadOnlyP9{srv.File{}, bwr(jumpFileFn)}
 	jumps.Add(bufdir, "jumps", user, nil, 0440, jumps)
+	lsp := &ReadWriteP9{srv.File{}, bwr(readLspFn), bww(writeLspFn)}
+	lsp.Add(bufdir, "lsp", user, nil, 0660, lsp)
 }
 
 func FsRemoveEditor(n int) {
@@ -1221,4 +1224,51 @@ func clunkLogFileFn(conn string) error {
 		delete(LogChans, conn)
 	}
 	return nil
+}
+
+var lspout = make(map[int]string)
+
+func readLspFn(i int, off int64) ([]byte, syscall.Errno) {
+	if off > 0 {
+		return []byte{}, 0
+	}
+	ec := bufferExecContext(i)
+	if ec == nil {
+		return nil, syscall.ENOENT
+	}
+	return []byte(lspout[i]), 0
+}
+
+func writeLspFn(i int, data []byte, off int64) syscall.Errno {
+	ec := bufferExecContext(i)
+	if ec == nil {
+		return syscall.ENOENT
+	}
+	srv, lspb := lsp.BufferToLsp(Wnd.tagbuf.Dir, ec.ed.bodybuf, ec.ed.sfr.Fr.Sel, true, Warn, defaultLookForLsp)
+	if srv == nil {
+		return syscall.EIO
+	}
+
+	v := strings.SplitN(string(data), " ", 2)
+	arg := v[0]
+	var rest string
+	if len(v) > 1 {
+		rest = v[1]
+	}
+
+	switch arg {
+	case "refs":
+		lspout[i] = srv.References(lspb)
+	case "ca":
+		lspout[i] = ""
+		srv.ExecCodeAction(lspb, rest, executeLspTextEdits, func(tolook string) {
+			Load(*ec, 0, false, []rune(tolook))
+		})
+	case "symbol":
+		lspout[i] = srv.WorkspaceSymbol(rest)
+	default:
+		return syscall.EIO
+	}
+
+	return 0
 }

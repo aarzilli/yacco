@@ -1587,7 +1587,7 @@ Lsp refs
 		return
 	}
 
-	v := strings.Split(arg, " ")
+	v := strings.SplitN(arg, " ", 2)
 	arg = v[0]
 	var rest string
 	if len(v) > 1 {
@@ -1618,6 +1618,8 @@ Lsp refs
 		srv.ExecCodeAction(lspb, rest, executeLspTextEdits, func(tolook string) {
 			Load(ec, 0, false, []rune(tolook))
 		})
+	case "symbol":
+		Warn(srv.WorkspaceSymbol(rest))
 	default:
 		Warn("wrong argument")
 	}
