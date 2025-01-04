@@ -304,7 +304,11 @@ func main() {
 			if len(result.show) <= 0 || result.show[len(result.show)-1] == '/' {
 				continue
 			}
-			fmt.Printf("%d\t%s\n", result.score, result.show)
+			if *query != "" {
+				fmt.Printf("%d\t%s\n", result.score, result.show)
+			} else {
+				fmt.Println(result.show)
+			}
 		}
 		return
 	}
