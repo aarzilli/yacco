@@ -16,7 +16,7 @@ import (
 var Warnfn func(msg string)
 var NewJob func(canintl bool, wd, Cmd, input string, buf *buf.Buffer, resultChan chan<- string)
 
-const LOOP_LIMIT = 2000
+const LOOP_LIMIT = 2_000_000
 
 func nilcmdfn(c *Cmd, ec *EditContext) {
 	*ec.atsel = c.rangeaddr.Eval(ec.Buf, *ec.atsel)
@@ -533,7 +533,7 @@ func (ec *EditContext) applyStash(stash []buf.ReplaceOp) {
 		return
 	}
 
-	ec.Buf.ReplaceAll(*ec.stash, ec.EventChan, util.EO_MOUSE)
+	ec.Buf.ReplaceAll(stash, ec.EventChan, util.EO_MOUSE)
 }
 
 func (ec *EditContext) printSel(w io.Writer, sel util.Sel) {
