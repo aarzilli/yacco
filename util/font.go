@@ -15,12 +15,15 @@ import (
 )
 
 type Multiface struct {
+	fonts     []*truetype.Font
 	faces     []font.Face
 	lineextra float64
 
 	// cache for Kern
 	r0, r1       rune
 	idxr0, idxr1 int
+
+	coverCache map[rune]int
 
 	Otatm *otat.Machine
 }
@@ -90,7 +93,16 @@ func MustNewFont(dpi, size, lineSpacing float64, fullHinting, autoligatures bool
 }
 
 func NewFontFromBytes(dpi, size, lineSpacing float64, fullHinting, autoligatures bool, fontBytes [][]byte) (font.Face, error) {
-	rf := &Multiface{make([]font.Face, 0, len(fontBytes)), lineSpacing, 0, 0, -1, -1, nil}
+	rf := &Multiface{
+		fonts:      make([]*truetype.Font, 0, len(fontBytes)),
+		faces:      make([]font.Face, 0, len(fontBytes)),
+		lineextra:  lineSpacing,
+		r0:         0,
+		r1:         0,
+		idxr0:      -1,
+		idxr1:      -1,
+		coverCache: make(map[rune]int),
+		Otatm:      nil}
 	for i, aFontBytes := range fontBytes {
 		parsedfont, err := freetype.ParseFont(aFontBytes)
 		if err != nil {
@@ -100,6 +112,7 @@ func NewFontFromBytes(dpi, size, lineSpacing float64, fullHinting, autoligatures
 		if fullHinting {
 			hinting = font.HintingFull
 		}
+		rf.fonts = append(rf.fonts, parsedfont)
 		rf.faces = append(rf.faces, truetype.NewFace(parsedfont, &truetype.Options{Size: size, DPI: dpi, Hinting: hinting}))
 		if i == 0 {
 			rf.Otatm, _, err = otat.New(aFontBytes, "", "calt", autoligatures)
@@ -129,47 +142,25 @@ func (f *Multiface) Close() error {
 }
 
 func (f *Multiface) Glyph(dot fixed.Point26_6, r rune) (dr image.Rectangle, mask image.Image, maskp image.Point, advance fixed.Int26_6, ok bool) {
-	for i := range f.faces {
-		dr, mask, maskp, advance, ok = f.faces[i].Glyph(dot, r)
-		if ok {
-			return
-		}
-	}
+	i := f.findIndex(r)
+	dr, mask, maskp, advance, ok = f.faces[i].Glyph(dot, r)
 	return
 }
 
 func (f *Multiface) GlyphAdvance(r rune) (advance fixed.Int26_6, ok bool) {
-	for i := range f.faces {
-		advance, ok = f.faces[i].GlyphAdvance(r)
-		if ok {
-			f.idxr0 = f.idxr1
-			f.r0 = f.r1
-			f.idxr1 = i
-			f.r1 = r
-			return
-		}
-	}
+	i := f.findIndex(r)
+	advance, ok = f.faces[i].GlyphAdvance(r)
+	f.idxr0 = f.idxr1
+	f.r0 = f.r1
+	f.idxr1 = i
+	f.r1 = r
 	return
 }
 
 func (f *Multiface) GlyphBounds(r rune) (bounds fixed.Rectangle26_6, advance fixed.Int26_6, ok bool) {
-	for i := range f.faces {
-		bounds, advance, ok = f.faces[i].GlyphBounds(r)
-		if ok {
-			return
-		}
-	}
+	i := f.findIndex(r)
+	bounds, advance, ok = f.faces[i].GlyphBounds(r)
 	return
-}
-
-func (f *Multiface) findIndex(r rune) int {
-	for i := range f.faces {
-		_, ok := f.faces[i].GlyphAdvance(r)
-		if ok {
-			return i
-		}
-	}
-	return -1
 }
 
 func (f *Multiface) Kern(r0, r1 rune) fixed.Int26_6 {
@@ -196,6 +187,22 @@ func (f *Multiface) Kern(r0, r1 rune) fixed.Int26_6 {
 	}
 
 	return f.faces[idxr0].Kern(r0, r1)
+}
+
+func (f *Multiface) findIndex(r rune) int {
+	if idx, ok := f.coverCache[r]; ok {
+		return idx
+	}
+
+	for i := range f.fonts {
+		if f.fonts[i].Index(r) > 0 {
+			f.coverCache[r] = i
+			return i
+		}
+	}
+
+	f.coverCache[r] = 0
+	return 0
 }
 
 func (f *Multiface) Metrics() font.Metrics {

@@ -965,6 +965,8 @@ func (g *glyph) glyph(face font.Face) (dr image.Rectangle, mask image.Image, mas
 	r := g.r
 	if g.fakerune {
 		r = ' '
+	} else if r == 0 {
+		r = g.crune
 	}
 	return face.Glyph(g.p, r)
 }
