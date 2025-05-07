@@ -714,11 +714,7 @@ func (fr *Frame) drawTickOld(idx int) image.Rectangle {
 	return rr
 }
 
-func (fr *Frame) drawTickNew(idx int) image.Rectangle {
-	if !fr.reallyVisibleTick() {
-		return image.Rectangle{fr.R.Min, fr.R.Min}
-	}
-
+func (fr *Frame) TickRect() image.Rectangle {
 	var x, y int
 	if len(fr.glyphs) == 0 {
 		p := fr.initialInsPoint()
@@ -753,10 +749,17 @@ func (fr *Frame) drawTickNew(idx int) image.Rectangle {
 		basedxr++
 	}
 
-	r := image.Rectangle{
+	return image.Rectangle{
 		Min: image.Point{x - basedxl, y - fm.Ascent.Floor()},
 		Max: image.Point{x + basedxr, y + fm.Descent.Floor() + 1}}
+}
 
+func (fr *Frame) drawTickNew(idx int) image.Rectangle {
+	if !fr.reallyVisibleTick() {
+		return image.Rectangle{fr.R.Min, fr.R.Min}
+	}
+
+	r := fr.TickRect()
 	draw.Draw(fr.B, fr.R.Intersect(r), &fr.Colors[0][idx], fr.R.Intersect(r).Min, draw.Src)
 
 	return r

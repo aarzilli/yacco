@@ -15,6 +15,7 @@ import (
 	"github.com/aarzilli/yacco/clipboard"
 	"github.com/aarzilli/yacco/config"
 	"github.com/aarzilli/yacco/edit"
+	"github.com/aarzilli/yacco/ibus"
 	"github.com/aarzilli/yacco/util"
 
 	"golang.org/x/exp/shiny/driver"
@@ -183,6 +184,7 @@ func main() {
 	LoadInit()
 	KeysInit()
 	clipboard.Start()
+	ibus.Start()
 
 	if *cpuprofileFlag != "" {
 		f, err := os.Create(*cpuprofileFlag)

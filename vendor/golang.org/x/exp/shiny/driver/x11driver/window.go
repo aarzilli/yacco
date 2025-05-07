@@ -233,3 +233,11 @@ func (w *windowImpl) handleMouse(x, y int16, b xproto.Button, state uint16, dir 
 		Direction: dir,
 	})
 }
+
+func (w *windowImpl) AbsolutePosition() (int, int) {
+	translateReply, err := xproto.TranslateCoordinates(w.s.xc, w.xw, w.s.xsi.Root, 0, 0).Reply()
+	if err == nil {
+		return int(translateReply.DstX), int(translateReply.DstY)
+	}
+	return 0, 0
+}

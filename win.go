@@ -20,6 +20,7 @@ import (
 	"github.com/aarzilli/yacco/edit"
 	"github.com/aarzilli/yacco/edutil"
 	"github.com/aarzilli/yacco/hl"
+	"github.com/aarzilli/yacco/ibus"
 	"github.com/aarzilli/yacco/textframe"
 	"github.com/aarzilli/yacco/util"
 
@@ -341,6 +342,8 @@ func (w *Window) EventLoop() {
 				wndEvents <- util.NewEvent(uie)
 			case se := <-sideChan:
 				wndEvents <- util.NewRunnable(se)
+			case ie := <-ibus.Events:
+				wndEvents <- util.NewEvent(ie)
 			}
 		}
 	}()
@@ -369,6 +372,12 @@ func (w *Window) UiEventLoop(ei *util.EventOrRunnable, events <-chan util.EventO
 		w.FlushImage()
 
 	case lifecycle.Event:
+		if e.From == lifecycle.StageFocused {
+			ibus.Focused(false)
+		}
+		if e.To == lifecycle.StageFocused {
+			ibus.Focused(true)
+		}
 		if e.To == lifecycle.StageDead {
 			for w.uploaderIsRunning() {
 				time.Sleep(20 * time.Millisecond)
@@ -483,9 +492,46 @@ func (w *Window) UiEventLoop(ei *util.EventOrRunnable, events <-chan util.EventO
 		switch e.Direction {
 		case key.DirPress, key.DirNone:
 			lp := w.TranslatePosition(w.lastWhere, true)
-			w.Type(lp, e)
+			if !ibus.ProcessKey(e, w.cursorPositionForIbus, &lp) {
+				w.Type(lp, e)
+			}
+		}
+
+	case ibus.Event:
+		if e.Payload != nil {
+			lp := e.Payload.(*LogicalPos)
+			ec := lp.asExecContext(true)
+			if ec.buf != nil {
+				ech := ec.eventChan
+				if e.Select {
+					ech = nil
+				}
+				r := []rune(e.Text)
+				ec.buf.Replace(r, &ec.fr.Sel, !e.Select, ech, util.EO_KBD)
+				if e.Select {
+					ec.fr.Sel.S -= len(r)
+					ibus.SetCursorLocation(w.cursorPositionForIbus())
+				}
+				ec.br()
+			}
 		}
 	}
+}
+
+func (w *Window) cursorPositionForIbus() image.Rectangle {
+	lp := w.TranslatePosition(w.lastWhere, true)
+	var r image.Rectangle
+	if lp.tagfr != nil {
+		r = lp.tagfr.TickRect()
+	} else if lp.sfr != nil {
+		r = lp.sfr.Fr.TickRect()
+	}
+	x, y := w.wnd.AbsolutePosition()
+	r.Min.X += x
+	r.Min.Y += y
+	r.Max.X += x
+	r.Max.Y += y
+	return r
 }
 
 func TagHeight(tagfr *textframe.Frame) int {
@@ -580,6 +626,7 @@ func (w *Window) TranslatePosition(p image.Point, abideSpecial bool) (lp Logical
 }
 
 func (w *Window) SetTick(p image.Point) {
+	ibusReset := false
 	HasFocus = true
 	lp := w.TranslatePosition(p, true)
 	if lp.tagfr != nil {
@@ -604,17 +651,23 @@ func (w *Window) SetTick(p image.Point) {
 		if col.tagfr.VisibleTick && (&col.tagfr != lp.tagfr) {
 			col.tagfr.VisibleTick = false
 			col.tagfr.Redraw(true, nil)
+			ibusReset = true
 		}
 		for _, editor := range col.editors {
 			if editor.tagfr.VisibleTick && (&editor.tagfr != lp.tagfr) {
 				editor.tagfr.VisibleTick = false
 				editor.tagfr.Redraw(true, nil)
+				ibusReset = true
 			}
 			if editor.sfr.Fr.VisibleTick && (&editor.sfr != lp.sfr) {
 				editor.sfr.Fr.VisibleTick = false
 				editor.sfr.Fr.Redraw(true, nil)
+				ibusReset = true
 			}
 		}
+	}
+	if ibusReset {
+		ibus.Reset()
 	}
 }
 

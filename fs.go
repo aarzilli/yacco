@@ -17,6 +17,7 @@ import (
 	"github.com/aarzilli/yacco/config"
 	"github.com/aarzilli/yacco/edit"
 	"github.com/aarzilli/yacco/hl"
+	"github.com/aarzilli/yacco/ibus"
 	"github.com/aarzilli/yacco/lsp"
 	"github.com/aarzilli/yacco/util"
 
@@ -132,6 +133,7 @@ func FsQuit() {
 		jobKill(i)
 	}
 	p9il.Close()
+	ibus.Stop()
 	os.Exit(0)
 }
 

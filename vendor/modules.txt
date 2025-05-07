@@ -8,12 +8,15 @@ github.com/BurntSushi/xgb/xproto
 ## explicit; go 1.13
 github.com/aarzilli/go2def
 github.com/aarzilli/go2def/visit
+# github.com/godbus/dbus/v5 v5.1.0
+## explicit; go 1.12
+github.com/godbus/dbus/v5
 # github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0 => github.com/aarzilli/freetype v0.0.0-20180724121948-6c8832ae5783
 ## explicit
 github.com/golang/freetype
 github.com/golang/freetype/raster
 github.com/golang/freetype/truetype
-# github.com/gorilla/websocket v1.5.0
+# github.com/gorilla/websocket v1.5.3
 ## explicit; go 1.12
 # github.com/kr/pty v0.0.0-20160716204620-ce7fa45920dc
 ## explicit
@@ -29,7 +32,7 @@ github.com/sourcegraph/jsonrpc2
 # github.com/wendal/readline-go v0.0.0-20130305043046-3ff003ef4c80
 ## explicit
 github.com/wendal/readline-go
-# golang.org/x/exp v0.0.0-20180710024300-14dda7b62fcd => github.com/aarzilli/exp v0.0.0-20240430113420-10848dee8535
+# golang.org/x/exp v0.0.0-20180710024300-14dda7b62fcd => github.com/aarzilli/exp v0.0.0-20250508142343-e302c350bfce
 ## explicit
 golang.org/x/exp/shiny/driver
 golang.org/x/exp/shiny/driver/gldriver
@@ -80,6 +83,6 @@ golang.org/x/tools/internal/gocommand
 golang.org/x/tools/internal/packagesinternal
 golang.org/x/tools/internal/typeparams
 golang.org/x/tools/internal/typesinternal
-# golang.org/x/exp => github.com/aarzilli/exp v0.0.0-20240430113420-10848dee8535
+# golang.org/x/exp => github.com/aarzilli/exp v0.0.0-20250508142343-e302c350bfce
 # github.com/BurntSushi/xgb => github.com/aarzilli/xgb v0.0.0-20170123161437-2ca2a6c0622c
 # github.com/golang/freetype => github.com/aarzilli/freetype v0.0.0-20180724121948-6c8832ae5783

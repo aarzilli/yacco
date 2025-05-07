@@ -222,6 +222,7 @@ type Window interface {
 	SetCursor(Cursor) error
 	WarpMouse(p image.Point) error
 	Raise() error
+	AbsolutePosition() (int, int)
 }
 
 // PublishResult is the result of an Window.Publish call.
