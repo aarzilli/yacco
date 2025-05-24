@@ -506,13 +506,21 @@ func (w *Window) UiEventLoop(ei *util.EventOrRunnable, events <-chan util.EventO
 				if e.Select {
 					ech = nil
 				}
-				r := []rune(e.Text)
-				ec.buf.Replace(r, &ec.fr.Sel, !e.Select, ech, util.EO_KBD)
-				if e.Select {
-					ec.fr.Sel.S -= len(r)
-					ibus.SetCursorLocation(w.cursorPositionForIbus())
+				dochange := true
+				if e.OldText != "" {
+					if e.OldText != string(ec.buf.SelectionRunes(ec.fr.Sel)) {
+						dochange = false
+					}
 				}
-				ec.br()
+				if dochange {
+					r := []rune(e.Text)
+					ec.buf.Replace(r, &ec.fr.Sel, !e.Select, ech, util.EO_KBD)
+					if e.Select {
+						ec.fr.Sel.S -= len(r)
+						ibus.SetCursorLocation(w.cursorPositionForIbus())
+					}
+					ec.br()
+				}
 			}
 		}
 	}

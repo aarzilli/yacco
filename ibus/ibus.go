@@ -17,6 +17,7 @@ import (
 var Events = make(chan Event, 10)
 
 type Event struct {
+	OldText string
 	Text    string
 	Select  bool
 	Payload any
@@ -30,6 +31,7 @@ var ibusConn *dbus.Conn
 
 var payloadMu sync.Mutex
 var payload any
+var preeditText string
 
 // To debug the communication of this thing with ibus:
 //
@@ -205,20 +207,27 @@ func (*messageHandler) DeliverSignal(iface, name string, signal *dbus.Signal) {
 	switch name {
 	case "UpdatePreeditText":
 		if text, ok := getTextArg(signal); ok {
+			if preeditText == text {
+				return
+			}
 			select {
-			case Events <- Event{text, true, p}:
+			case Events <- Event{preeditText, text, true, p}:
+				preeditText = text
 			default:
 			}
+
 		}
 	case "HidePreeditText":
 		select {
-		case Events <- Event{"", true, p}:
+		case Events <- Event{preeditText, "", true, p}:
+			preeditText = ""
 		default:
 		}
 	case "CommitText":
 		if text, ok := getTextArg(signal); ok {
 			select {
-			case Events <- Event{text, false, p}:
+			case Events <- Event{preeditText, text, false, p}:
+				preeditText = text
 			default:
 			}
 		}
