@@ -322,3 +322,7 @@ func Reset() {
 	payloadMu.Unlock()
 	inputContextObject.Call(inputContextIface+".Reset", 0)
 }
+
+func Enabled() bool {
+	return initialized
+}

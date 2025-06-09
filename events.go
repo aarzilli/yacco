@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aarzilli/yacco/ibus"
 	"github.com/aarzilli/yacco/util"
 
 	"golang.org/x/exp/shiny/screen"
@@ -163,7 +164,7 @@ func (em *eventMachine) processEvent(ei interface{}, altingList []util.AltingEnt
 			//println("Typed:", e.Glyph, e.Chord, "alting:", alting)
 
 		case key.DirRelease:
-			if e.Code == key.CodeRightAlt || e.Code == key.CodeCompose {
+			if !ibus.Enabled() && (e.Code == key.CodeRightAlt || e.Code == key.CodeCompose) {
 				em.alting = true
 				em.altingSeq = ""
 			}
