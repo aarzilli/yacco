@@ -27,6 +27,7 @@ type configObj struct {
 		StartupWidth       int
 		StartupHeight      int
 		WordWrap           string
+		StartWinTag        string
 	}
 	Fonts       map[string]*configFont
 	Load        *configLoadRules
@@ -141,6 +142,7 @@ func LoadConfiguration(path string) {
 	HideHidden = co.Core.HideHidden
 	StartupWidth = co.Core.StartupWidth
 	StartupHeight = co.Core.StartupHeight
+	StartWinTag = co.Core.StartWinTag
 	for _, ext := range strings.Split(co.Core.WordWrap, ",") {
 		wordWrap[ext] = struct{}{}
 	}

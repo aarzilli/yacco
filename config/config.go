@@ -42,6 +42,8 @@ const DefaultLookFileExt = ",c,cc,cpp,h,py,txt,pl,tcl,java,js,html,go,clj,jsp"
 var LoadRules = []util.LoadRule{}
 var SaveRules = []util.SaveRule{}
 
+var StartWinTag string
+
 var LanguageRules = []hl.LanguageRules{
 	// Go
 	hl.LanguageRules{

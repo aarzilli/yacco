@@ -152,10 +152,14 @@ func realmain(s screen.Screen) {
 
 	startWinTag := "Help"
 
+	if config.StartWinTag != "" {
+		startWinTag = config.StartWinTag
+	}
+
 	if !hasarg {
 		EditFind(wd, ".", false, false)
 		LoadCmd(ExecContext{}, "")
-	} else if len(flag.Args()) == 1 {
+	} else if len(flag.Args()) == 1 && config.StartWinTag != "" {
 		startWinTag += " Load"
 	}
 
