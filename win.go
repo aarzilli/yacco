@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	_ "embed"
+	"fmt"
 	"image"
 	"image/draw"
 	"image/png"
@@ -24,6 +25,7 @@ import (
 	"github.com/aarzilli/yacco/textframe"
 	"github.com/aarzilli/yacco/util"
 
+	"github.com/fsnotify/fsnotify"
 	"golang.org/x/exp/shiny/screen"
 	"golang.org/x/mobile/event/key"
 	"golang.org/x/mobile/event/lifecycle"
@@ -33,17 +35,18 @@ import (
 )
 
 type Window struct {
-	screen    screen.Screen
-	wnd       screen.Window
-	wndb      screen.Buffer
-	img       *image.RGBA
-	bounds    image.Rectangle
-	cols      *Cols
-	tagfr     textframe.Frame
-	tagbuf    *buf.Buffer
-	Words     []string
-	Prop      map[string]string
-	lastWhere image.Point
+	screen      screen.Screen
+	wnd         screen.Window
+	wndb        screen.Buffer
+	img         *image.RGBA
+	bounds      image.Rectangle
+	cols        *Cols
+	tagfr       textframe.Frame
+	tagbuf      *buf.Buffer
+	Words       []string
+	Prop        map[string]string
+	lastWhere   image.Point
+	fileWatcher *fsnotify.Watcher
 
 	invalidRects    []image.Rectangle
 	uploadMutex     sync.Mutex
@@ -125,6 +128,11 @@ func must(err error) {
 }
 
 func (w *Window) Init(s screen.Screen, width, height int) (err error) {
+	w.fileWatcher, err = fsnotify.NewWatcher()
+	if err != nil {
+		panic(fmt.Sprintf("fsnotify.NewWatcher: %v", err))
+	}
+
 	w.Prop = make(map[string]string)
 	w.Prop["indentchar"] = "\t"
 	w.Prop["font"] = "main"
@@ -344,6 +352,10 @@ func (w *Window) EventLoop() {
 				wndEvents <- util.NewRunnable(se)
 			case ie := <-ibus.Events:
 				wndEvents <- util.NewEvent(ie)
+			case ev := <-w.fileWatcher.Events:
+				wndEvents <- util.NewEvent(ev)
+			case err := <-w.fileWatcher.Errors:
+				Warn(fmt.Sprintf("watch error: %v", err))
 			}
 		}
 	}()
@@ -520,6 +532,41 @@ func (w *Window) UiEventLoop(ei *util.EventOrRunnable, events <-chan util.EventO
 						ibus.SetCursorLocation(w.cursorPositionForIbus())
 					}
 					ec.br()
+				}
+			}
+		}
+
+	case fsnotify.Event:
+		if e.Op&fsnotify.Write != 0 {
+			w.fsnotifyReloadMaybe(e.Name)
+		}
+	}
+}
+
+func (w *Window) fsnotifyReloadMaybe(path string) {
+	first := true
+	for _, col := range w.cols.cols {
+		for _, ed := range col.editors {
+			if ed.bodybuf.Path() == path {
+				if ed.bodybuf.Modified || ed.bodybuf.IsDir() {
+					return
+				}
+
+				if first {
+					fi, err := os.Stat(path)
+					if err != nil {
+						return
+					}
+
+					if fi.ModTime().After(ed.bodybuf.ModTime()) {
+						ed.bodybuf.Reload(0)
+						ed.FixTop()
+						ed.TagRefresh()
+						ed.BufferRefresh()
+					}
+				} else {
+					ed.TagRefresh()
+					ed.BufferRefresh()
 				}
 			}
 		}

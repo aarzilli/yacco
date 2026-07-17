@@ -19,6 +19,9 @@ func editOpen(path string, create bool) (*Editor, error) {
 	if err != nil {
 		return nil, err
 	}
+	if name[0] != '+' {
+		_ = Wnd.fileWatcher.Add(b.Path())
+	}
 	return NewEditor(b), nil
 }
 

@@ -876,7 +876,7 @@ func PutallCmd(ec ExecContext, arg string) {
 	triggeredSaveRules := make(map[string][]string)
 	for _, col := range Wnd.cols.cols {
 		for _, ed := range col.editors {
-			if !fakebuf(ed.bodybuf.Name) && ed.bodybuf.Modified {
+			if !fakebuf(ed.bodybuf.Name) && ed.bodybuf.Modified && ed.bodybuf.CanSave() {
 				err := ed.bodybuf.Put()
 				if err != nil {
 					t += ed.bodybuf.ShortName() + ": " + err.Error() + "\n"

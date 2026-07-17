@@ -825,6 +825,10 @@ func (b *Buffer) Path() string {
 	return filepath.Join(b.Dir, b.Name)
 }
 
+func (b *Buffer) ModTime() time.Time {
+	return b.modTime
+}
+
 func (b *Buffer) FixSel(sel *util.Sel) {
 	if sel.S < 0 {
 		sel.S = 0

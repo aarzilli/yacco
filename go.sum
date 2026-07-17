@@ -1,5 +1,3 @@
-github.com/aarzilli/exp v0.0.0-20240430113420-10848dee8535 h1:lQ5j6g6SNS1dbm/5keCmCMItwIjpb92ztEZPpXspKlI=
-github.com/aarzilli/exp v0.0.0-20240430113420-10848dee8535/go.mod h1:XERIKN7NwPIwxgPZAfVsSprwuRJFWeCXqWcvCQJKuXw=
 github.com/aarzilli/exp v0.0.0-20250508142343-e302c350bfce h1:HNYMMptzfpVIGR+pEFOiEj+KqM/gNoAPLzPcFrzu1h8=
 github.com/aarzilli/exp v0.0.0-20250508142343-e302c350bfce/go.mod h1:XERIKN7NwPIwxgPZAfVsSprwuRJFWeCXqWcvCQJKuXw=
 github.com/aarzilli/freetype v0.0.0-20180724121948-6c8832ae5783 h1:2E1SC5yqiqWSaJeEODtR8gDwQ1VHR4Nj2lRkIWOJANs=
@@ -8,6 +6,8 @@ github.com/aarzilli/go2def v0.0.0-20220703140930-d8673a371c40 h1:367KylwfswhIQPw
 github.com/aarzilli/go2def v0.0.0-20220703140930-d8673a371c40/go.mod h1:4PMT2l7Jtl9phg3vDoJhbJzjIZej7OoxeUzpBeG5MY8=
 github.com/aarzilli/xgb v0.0.0-20170123161437-2ca2a6c0622c h1:l5ZueZ/lOvaqOMMyVL6tTn7bnDzh7A9yl2repJ0eTjk=
 github.com/aarzilli/xgb v0.0.0-20170123161437-2ca2a6c0622c/go.mod h1:zFu4VwDR/j989+bx5/ihbkpnjxTpbB6JyQAgzSb1nr4=
+github.com/fsnotify/fsnotify v1.10.1 h1:b0/UzAf9yR5rhf3RPm9gf3ehBPpf0oZKIjtpKrx59Ho=
+github.com/fsnotify/fsnotify v1.10.1/go.mod h1:TLheqan6HD6GBK6PrDWyDPBaEV8LspOxvPSjC+bVfgo=
 github.com/godbus/dbus/v5 v5.1.0 h1:4KLkAxT3aOY8Li4FRJe/KvhoNFFxo0m6fNuFUO8QJUk=
 github.com/godbus/dbus/v5 v5.1.0/go.mod h1:xhWf0FNVPg57R7Z0UbKHbJfkEywrmjJnf7w5xrFpKfA=
 github.com/golang/protobuf v1.2.0/go.mod h1:6lQm79b+lXiMfvg/cZm0SGofjICqVBUtrP5yJMmIC1U=
@@ -41,8 +41,8 @@ golang.org/x/sys v0.0.0-20201119102817-f84b799fce68/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20210423082822-04245dca01da/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/sys v0.0.0-20211019181941-9d821ace8654/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
-golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f h1:v4INt8xihDGvnrfjMDVXGxw9wrfxYyCjk0KbXjhR55s=
-golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.13.0 h1:Af8nKPmuFypiUBjVoU9V20FiaFXOcuZI21p0ycVYYGE=
+golang.org/x/sys v0.13.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
 golang.org/x/term v0.0.0-20201126162022-7de9c90e9dd1/go.mod h1:bj7SfCRtBDWHUb9snDiAeCFNEtKQo2Wmx5Cou7ajbmo=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.3/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=

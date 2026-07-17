@@ -16,9 +16,10 @@ require (
 )
 
 require (
+	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f // indirect
+	golang.org/x/sys v0.13.0 // indirect
 )
 
 replace golang.org/x/exp => github.com/aarzilli/exp v0.0.0-20250508142343-e302c350bfce
@@ -27,5 +28,4 @@ replace github.com/BurntSushi/xgb => github.com/aarzilli/xgb v0.0.0-201701231614
 
 replace github.com/golang/freetype => github.com/aarzilli/freetype v0.0.0-20180724121948-6c8832ae5783
 
-go 1.18
-
+go 1.23
